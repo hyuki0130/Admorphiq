@@ -55,6 +55,12 @@ _MIN_BOARD_ROWS = 8
 _RARE_SCAN = 6
 # How many times a blocked direction probe is retried from a fresh cell.
 _PROBE_PASSES = 2
+# Refusals at distinct cells before a flat colour is condemned board-wide.
+_REFUSALS_TO_CONDEMN = 1
+# Presses a control gets to reveal its ring before it is dropped from routing.
+_MAX_PRESSES = 12
+# Repeats of the whole sequence required before a ring length is believed.
+_WRAPS_TO_CONFIRM = 2
 
 
 def _chrome_span(g: np.ndarray) -> tuple[int, int]:
@@ -173,6 +179,9 @@ class PhaseGridTool:
         self._pending: Step | None = None
         self._before: np.ndarray | None = None
         self._blocked: set[tuple[Cell, tuple[int, ...]]] = set()
+        self._refused: dict[int, set[Cell]] = {}
+        self._not_floor: set[int] = set()
+        self._retired = False
         self._plan: list[Step] = []
         self._stalls = 0
 
@@ -232,7 +241,9 @@ class PhaseGridTool:
         """The board as it would look with every group in the phase `config` names."""
         out = np.array(board, copy=True)
         for index, group in enumerate(self._groups):
-            for (y, x), colour in group["images"][config[index]].items():
+            if not group["images"]:
+                continue
+            for (y, x), colour in group["images"][config[index] % len(group["images"])].items():
                 out[y, x] = colour
         return out
 
@@ -243,17 +254,28 @@ class PhaseGridTool:
         return tuple(int(v) for v in np.asarray(layout)[y:y + s, x:x + s].ravel())
 
     def _solid(self, layout: np.ndarray, cell: Cell, bg: int) -> bool:
-        """A cell is standable when its whole tile carries no background pixel.
+        """A cell is standable when its whole tile carries no colour known not to be floor.
 
         A GHOSTED tile is its phase colour dithered with the board's OWN background, so one
         background pixel inside the tile is the whole of the test — and a tile made of two other
         colours still counts as solid, which is what a two-tone token needs.
+
+        ⛔ The background is not the only colour that is not floor, and assuming it was cost a
+        whole level. This family draws an EMPTY SLOT where a piece of terrain can sit: a flat
+        strip in a colour of its own, permanently visible, that the piece then fills. The slot
+        is not the background, so it read as standable, and every route ran along terrain that
+        was not there. Which colours behave that way is LEARNED — see `_learn_refusal` — and a
+        learned one is then treated exactly like the background, everywhere on the board at
+        once, because the discovery is about the colour and not about the cell it turned up in.
         """
         y, x = cell
         s = self._side
         if y < 0 or x < 0 or y + s > layout.shape[0] or x + s > layout.shape[1]:
             return False
-        return not bool((layout[y:y + s, x:x + s] == bg).any())
+        tile = layout[y:y + s, x:x + s]
+        if bool((tile == bg).any()):
+            return False
+        return not any(bool((tile == c).any()) for c in self._not_floor)
 
     def _items(self, board: np.ndarray, anchor: Cell, bg: int) -> set[Cell]:
         """Solid tiles that are not one flat colour — the board's objects, not its scenery.
@@ -280,6 +302,44 @@ class PhaseGridTool:
     def _step(self) -> int:
         moves = [max(abs(dy), abs(dx)) for dy, dx in self._deltas.values() if dy or dx]
         return min(moves) if moves else 0
+
+    def _reachable(self, board: np.ndarray, start: Cell, bg: int) -> set[Cell]:
+        """Every cell the avatar can stand on in SOME measured phase — a diagnostic."""
+        out: set[Cell] = set()
+        config0 = tuple(gr["phase"] for gr in self._groups)
+        cache: dict[tuple[int, ...], np.ndarray] = {config0: np.asarray(board)}
+        seen = {(start, config0)}
+        queue = deque([(start, config0)])
+        while queue and len(seen) < _BFS_CAP:
+            pos, cfg = queue.popleft()
+            out.add(pos)
+            if cfg not in cache:
+                cache[cfg] = self._layout(board, cfg)
+            grid = cache[cfg]
+            for dy, dx in self._deltas.values():
+                nxt = (pos[0] + dy, pos[1] + dx)
+                if (nxt, cfg) in seen or not self._solid(grid, nxt, bg):
+                    continue
+                if (nxt, self._signature(grid, nxt)) in self._blocked:
+                    continue
+                seen.add((nxt, cfg))
+                queue.append((nxt, cfg))
+            for index, group in enumerate(self._groups):
+                if not group["period"]:
+                    continue
+                nc = list(cfg)
+                nc[index] = (cfg[index] + 1) % group["period"]
+                ncfg = tuple(nc)
+                land = self._warps.get((group["click"], pos), pos)
+                if (land, ncfg) in seen:
+                    continue
+                if ncfg not in cache:
+                    cache[ncfg] = self._layout(board, ncfg)
+                if not self._solid(cache[ncfg], land, bg):
+                    continue
+                seen.add((land, ncfg))
+                queue.append((land, ncfg))
+        return out
 
     def _route(self, board: np.ndarray, start: Cell, goals: set[Cell], bg: int) -> list[Step]:
         """Shortest action list over (cell, phase vector); a flip costs one action like a move."""
@@ -310,11 +370,10 @@ class PhaseGridTool:
                 seen[(nxt, cfg)] = trail + [(action, None)]
                 queue.append((nxt, cfg))
             for index, group in enumerate(self._groups):
-                step_to = group["next"].get(cfg[index])
-                if step_to is None:
+                if not group["period"]:
                     continue
                 nc = list(cfg)
-                nc[index] = step_to
+                nc[index] = (cfg[index] + 1) % group["period"]
                 ncfg = tuple(nc)
                 # A control moves the avatar only where that was MEASURED; elsewhere it stands.
                 land = self._warps.get((group["click"], pos), pos)
@@ -357,18 +416,20 @@ class PhaseGridTool:
             self._deltas[missing[0]] = unused[0]
 
     def _settle_flip(self, geom: dict[str, Any], click: Cell) -> None:
-        """Bank what this click did to the board, against the button that did it.
+        """Bank the board this press produced, and find the control's PERIOD.
 
-        ⛔ A phase image covers the group's WHOLE footprint, read off the complete board before
-        and after the press — never only the cells that happened to move on that press. Terrain
-        that rotates occupies different cells in different phases, so an image built from one
-        delta is blind on the cells a later press reveals, and the planner then reads those from
-        whatever is on screen and routes the avatar through terrain that is not there.
+        ⛔ A phase is a press COUNT, not a picture. Two distinct phases can render identically:
+        the terrain here is a bridge that closes in from both ends, so a control with an eight
+        press ring shows only five pictures — blank, two, four, six, FULL, six, four, two — and
+        the sequence is a palindrome. Identifying phases by their picture merged each picture's
+        two occurrences, and the merged "next" then recorded whichever transition was seen last.
+        Measured: the FULL bridge became unreachable — nothing in the ring mapped to it — the
+        reachable set collapsed to seven cells, and the level was unwinnable in the model while
+        the picture that wins it sat in the tool's own table.
 
-        ⛔ The step from one phase to the next is MEASURED too, not assumed to be "the next index
-        round the ring". Measured: an eight-orientation control closed its cycle back onto its
-        second image, so the assumed wrap was a lie, every plan through it mispredicted, and the
-        route oscillated between a flip and a blocked move until the level's budget ran out.
+        So the ring length is measured instead, by pressing until the SEQUENCE of pictures
+        repeats as a sequence, with a second wrap to confirm. After that a press is arithmetic —
+        `(phase + 1) % period` — and needs no re-reading of the board at all.
         """
         board = geom["board"]
         if self._before is None or board.shape != self._before.shape:
@@ -388,29 +449,73 @@ class PhaseGridTool:
                 # An inert control: it is not terrain, so it never enters a route.
                 self._settled_clicks.add(click)
                 return
-            group = {"click": click, "images": [{}], "cells": set(), "phase": 0,
-                     "next": {}, "presses": 0}
+            group = {"click": click, "seen": [np.array(self._before, copy=True)],
+                     "cells": set(), "period": 0, "phase": 0, "presses": 0,
+                     "images": [], "hidden": set()}
             self._groups.append(group)
         group["presses"] += 1
         group["cells"] |= changed
-        cells = group["cells"]
-        was = group["phase"]
-        hidden = {landed, self._before_pos}
-        keep = {c for c in cells if not any(self._covers(h, c) for h in hidden if h)}
-        group["images"][was].update({c: int(self._before[c[0]][c[1]]) for c in keep})
-        seen = {c: int(board[c[0]][c[1]]) for c in changed}
-        match = next((i for i, img in enumerate(group["images"])
-                      if all(c in img and img[c] == v for c, v in seen.items())), None)
-        if match is None:
-            group["images"].append({})
-            match = len(group["images"]) - 1
-        group["images"][match].update({c: int(board[c[0]][c[1]]) for c in keep})
-        group["next"][was] = match
-        group["phase"] = match
-        if match in group["next"] or len(group["images"]) >= _MAX_PHASES \
-                or group["presses"] > 2 * _MAX_PHASES:
-            # The ring is closed, or would not close: stop paying to press this control.
+        if group["period"]:
+            # The ring is known; a press is arithmetic and the board need not be re-read.
+            group["phase"] = (group["phase"] + 1) % group["period"]
+            return
+        if self._before_pos is not None:
+            group["hidden"] |= {c for c in group["cells"] if self._covers(self._before_pos, c)}
+        group["seen"].append(np.array(board, copy=True))
+        period = self._period_of(group)
+        if period:
+            group["period"] = period
+            group["images"] = [self._image(group, group["seen"][i]) for i in range(period)]
+            group["phase"] = (len(group["seen"]) - 1) % period
             self._settled_clicks.add(click)
+        elif group["presses"] >= _MAX_PRESSES:
+            # No ring within the budget: keep the board honest but never route a flip through
+            # a control whose next phase cannot be predicted.
+            self._settled_clicks.add(click)
+
+    def _image(self, group: dict[str, Any], snap: np.ndarray) -> dict[Cell, int]:
+        """One phase's picture over the group's footprint, minus anything the avatar covered."""
+        return {c: int(snap[c[0]][c[1]]) for c in group["cells"] if c not in group["hidden"]}
+
+    def _period_of(self, group: dict[str, Any]) -> int:
+        """Smallest ring length the observed sequence of pictures repeats at, twice confirmed.
+
+        ⛔ One repeat is not a ring. A palindromic sequence returns to an earlier picture
+        halfway round, so accepting the first match names a period the control does not have.
+        """
+        seen = [self._image(group, s) for s in group["seen"]]
+        n = len(seen)
+        for period in range(1, min(_MAX_PHASES, n - 1) + 1):
+            pairs = [(i, i + period) for i in range(n - period)]
+            if len(pairs) < _WRAPS_TO_CONFIRM:
+                break
+            if all(seen[i] == seen[j] for i, j in pairs):
+                return period
+        return 0
+
+    def _learn_refusal(self, board: np.ndarray, cell: Cell) -> None:
+        """Generalise a refused move from the cell to the COLOUR it was wearing.
+
+        ⛔ This family draws an EMPTY SLOT where a piece of terrain can sit — a flat strip in a
+        colour of its own, permanently visible, that the piece fills when it arrives. The slot
+        is not the background, so "no background pixel means standable" called it floor and
+        every route ran along terrain that was not there. One refusal settles it for the whole
+        board, because the discovery is about the COLOUR, not the cell it turned up in.
+        """
+        y, x = cell
+        s = self._side
+        tile = np.asarray(board)[y:y + s, x:x + s]
+        if tile.size == 0 or len(np.unique(tile)) != 1:
+            return
+        colour = int(tile.flat[0])
+        if colour in (self._avatar, self._marker):
+            return
+        seen = self._refused.setdefault(colour, set())
+        seen.add(cell)
+        if len(seen) >= _REFUSALS_TO_CONDEMN:
+            self._not_floor.add(colour)
+            # Everything planned against the old reading of the board is now wrong.
+            self._plan = []
 
     def _covers(self, corner: Cell, cell: Cell) -> bool:
         """Does the avatar standing at `corner` hide the pixel `cell`?"""
@@ -439,7 +544,7 @@ class PhaseGridTool:
         three re-plans — the tool latches dead and bids 0.0 for the rest of the game, handing
         the board back rather than owning something it cannot finish.
         """
-        if self._dead or not has_frame(obs):
+        if self._dead or self._retired or not has_frame(obs):
             return 0.0
         simple, click = availability(obs)
         if not click or not set(_SIMPLE).issubset(set(simple)):
@@ -449,7 +554,7 @@ class PhaseGridTool:
         return 0.95 if self._plan else 0.85
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
-        if self._dead or not has_frame(obs):
+        if self._dead or self._retired or not has_frame(obs):
             return []
         level = levels_completed(obs)
         if level != self._level:
@@ -519,7 +624,8 @@ class PhaseGridTool:
         start = self._at(geom["board"], self._avatar)
         goal = self._at(geom["board"], self._marker)
         if start is None or goal is None:
-            self._dead = True
+            # Could be an animation drawing over a piece; give up on the level, not the game.
+            self._retired = True
             return []
         if start == goal:
             # The premise says this clears the level. If the frame still says otherwise, the
@@ -527,7 +633,7 @@ class PhaseGridTool:
             # board while proposing nothing.
             self._stalls += 1
             if self._stalls > 2:
-                self._dead = True
+                self._retired = True
             return []
         if start not in self._visited:
             self._visited.add(start)
@@ -569,9 +675,12 @@ class PhaseGridTool:
                 if (click, start) not in self._warp_tested:
                     return [self._emit(geom, start, (6, (click[1], click[0])))]
 
+        # ⛔ Running out of route RETIRES the tool for this level only. Making it permanent
+        # meant that a level another tool went on to clear was handed back to a tool that had
+        # already declared itself finished with the whole game.
         self._stalls += 1
         if self._stalls > 2:
-            self._dead = True
+            self._retired = True
         return []
 
     def _emit(self, geom: dict[str, Any], start: Cell, step: Step) -> Step:
@@ -587,8 +696,8 @@ class PhaseGridTool:
         if step[0] == 6 and step[1] is not None:
             click = (step[1][1], step[1][0])
             for index, group in enumerate(self._groups):
-                if group["click"] == click:
-                    config[index] = group["next"].get(config[index], config[index])
+                if group["click"] == click and group["period"]:
+                    config[index] = (config[index] + 1) % group["period"]
         return tuple(config)
 
     def _config(self) -> tuple[int, ...]:
@@ -617,4 +726,5 @@ class PhaseGridTool:
         # means the same answer, while a phase vector over several many-orientation controls
         # names a state the route will never stand in twice.
         self._blocked.add((target, self._signature(geom["board"], target)))
+        self._learn_refusal(geom["board"], target)
         self._plan = []

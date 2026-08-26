@@ -39,7 +39,7 @@ import numpy as np
 from admorphiq.tools.base import Step, availability, has_frame, levels_completed
 from admorphiq.tools.segment import background, components
 
-__all__ = ["SlotLaunchTool", "read_board", "Board", "Piece"]
+__all__ = ["SlotLaunchTool", "read_board", "Board", "Piece", "volatile"]
 
 Cell = tuple[int, int]
 _DIRS: dict[int, Cell] = {1: (-1, 0), 2: (1, 0), 3: (0, -1), 4: (0, 1)}
@@ -139,9 +139,15 @@ def _colour_components(g: np.ndarray, rows: int, palette: set[int]) -> list[tupl
     return out
 
 
-def _hole(cells: list[Cell]) -> set[Cell]:
-    """The part of a component's bounding box that its own outline seals off from the outside."""
-    own = set(cells)
+def _hole(cells: list[Cell], solid: set[Cell] | None = None) -> set[Cell]:
+    """The part of a component's bounding box that its own outline seals off from the outside.
+
+    ⛔ `solid` lets other objects help hold the seal, and it is not a nicety. MEASURED: on one board
+    a bomb is drawn over three cells of an outline's rim, the ring reads as broken, its interior
+    leaks out through the gap and the only goal on the board disappears. A piece standing in a gap
+    blocks sight exactly as the rim does.
+    """
+    own = set(cells) | (solid or set())
     y0 = min(c[0] for c in cells)
     y1 = max(c[0] for c in cells)
     x0 = min(c[1] for c in cells)
@@ -198,24 +204,31 @@ def read_board(g: np.ndarray) -> Board | None:
     outlines: list[tuple[frozenset[Cell], Cell, int, int]] = []
     rest: list[tuple[int, list[Cell], set[Cell]]] = []
     fringe: Counter[int] = Counter()
+    skin: set[Cell] = set()
+    floor = int(next(iter(background(g[:rows]))))
+    occupied = {(y, x) for y in range(rows) for x in range(width) if int(g[y][x]) != floor}
     for colour, cells in comps:
-        hole = _hole(cells)
         y0 = min(c[0] for c in cells)
         x0 = min(c[1] for c in cells)
         y1 = max(c[0] for c in cells)
         x1 = max(c[1] for c in cells)
-        if len(hole) >= 4:
-            hmask, hpos, hh, hw = _norm(hole)
+        hole = _hole(cells)
+        for cand in (hole, _hole(cells, occupied)):
+            if len(cand) < 4:
+                continue
+            hmask, hpos, hh, hw = _norm(cand)
             if hpos == (y0 + 1, x0 + 1) and hh == y1 - y0 - 1 and hw == x1 - x0 - 1:
                 outlines.append((hmask, hpos, hh, hw))
                 own = set(cells)
+                skin.update(own)
                 for y in range(y0 - 1, y1 + 2):
                     for x in range(x0 - 1, x1 + 2):
                         edge = y in (y0 - 1, y1 + 1) or x in (x0 - 1, x1 + 1)
                         if edge and 0 <= y < rows and 0 <= x < width and (y, x) not in own:
                             fringe[int(g[y][x])] += 1
-                continue
-        rest.append((colour, cells, hole))
+                break
+        else:
+            rest.append((colour, cells, hole))
     if not outlines:
         return None
     bg = fringe.most_common(1)[0][0] if fringe else int(next(iter(background(g[:rows]))))
@@ -243,38 +256,25 @@ def read_board(g: np.ndarray) -> Board | None:
         if frozenset(body) not in shapes:
             terrain.add(colour)
 
-    walls = np.zeros((rows, width), dtype=bool)
-    glide = np.zeros((rows, width), dtype=bool)
-    pieces: list[Piece] = []
-    filled: set[Cell] = set()
-    for _, hp, hh, hw in outlines:
-        filled.update((hp[0] + y, hp[1] + x) for y in range(hh) for x in range(hw))
-    loose: list[list[Cell]] = []
-    for colour, cells, hole in rest:
-        if colour == bg:
-            continue
-        if colour == wall:
-            for y, x in cells:
-                walls[y][x] = True
-            continue
-        if colour in terrain:
-            for y, x in cells:
-                glide[y][x] = True
-            continue
-        mask, pos, hh, hw = _norm(set(cells))
-        solid = frozenset(set(mask) | {(y - pos[0], x - pos[1]) for y, x in hole})
-        if solid in shapes:
-            pieces.append(Piece(solid, pos, frozenset(int(g[y][x]) for y, x in hole), hh, hw))
-            filled.update(hole)
-            continue
-        loose.append(cells)
+    # ⛔ Terrain is painted from the COLOUR, not from the component list. The shared component pass
+    # walks a square, and the frame is one column wider than it is tall once the gauge row is cut —
+    # so the last column came back unowned and parsed as a 63-cell piece standing off the lattice.
+    view = g[:rows]
+    walls = view == wall if wall is not None else np.zeros((rows, width), dtype=bool)
+    glide = np.isin(view, list(terrain)) if terrain else np.zeros((rows, width), dtype=bool)
+    # ⛔ Objects are cut out COLOUR-BLIND. A burning fuse paints part of its own body a second
+    # colour, and reading each colour as its own object splits one obstacle into two shapes that
+    # match nothing — after which the planner walks a route straight through it.
+    loose = np.zeros((rows, width), dtype=bool)
+    for y in range(rows):
+        for x in range(width):
+            c = int(g[y][x])
+            if c != bg and not walls[y][x] and not glide[y][x] and (y, x) not in skin:
+                loose[y][x] = True
+
+    phase = (outlines[0][1][0] % step, outlines[0][1][1] % step)
+    pieces = _objects(g, rows, width, loose, step, phase)
     if not pieces:
-        return None
-    # ⛔ Refuse the board rather than pretend. Anything left over that is not a marker sitting inside
-    # a piece or an outline is an object this model has no rule for — on the boards where one shows
-    # up it moves on its own, and planning around it as bare floor spends the whole budget on a
-    # sequence the board stopped obeying at the first press.
-    if any(not set(cells) <= filled for cells in loose):
         return None
 
     board = Board()
@@ -288,6 +288,106 @@ def read_board(g: np.ndarray) -> Board | None:
     return board
 
 
+def _aligned(pos: Cell, hh: int, hw: int, step: int, phase: Cell) -> bool:
+    """Does this fragment sit on the board's own lattice, as a whole piece must?"""
+    return (pos[0] % step == phase[0] and pos[1] % step == phase[1]
+            and hh % step == 0 and hw % step == 0)
+
+
+def _objects(g: np.ndarray, rows: int, width: int, loose: np.ndarray, step: int,
+             phase: Cell) -> list[Piece]:
+    """Cut the loose paint into the objects that actually move.
+
+    ⛔ Neither colour alone nor connectivity alone gets this right, and both were measured failing on
+    the same board. Split by colour and a burning fuse becomes two objects, neither of which sits on
+    the lattice. Merge everything that touches and a piece pressed up against an obstacle becomes one
+    blob matching no slot — the level's only steerable piece vanishes and the plan dies mid-level.
+
+    The lattice settles it: a whole piece is lattice-aligned, so a fragment that is NOT aligned is
+    part of its neighbour, and two aligned neighbours are two objects however hard they touch.
+    """
+    parts: list[set[Cell]] = []
+    seen = np.zeros((rows, width), dtype=bool)
+    for y in range(rows):
+        for x in range(width):
+            if not loose[y][x] or seen[y][x]:
+                continue
+            c = int(g[y][x])
+            stack = [(y, x)]
+            seen[y][x] = True
+            cells: list[Cell] = []
+            while stack:
+                cy, cx = stack.pop()
+                cells.append((cy, cx))
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = cy + dy, cx + dx
+                    if (0 <= ny < rows and 0 <= nx < width and loose[ny][nx]
+                            and not seen[ny][nx] and int(g[ny][nx]) == c):
+                        seen[ny][nx] = True
+                        stack.append((ny, nx))
+            body = set(cells)
+            parts.append(body | _hole(cells))
+
+    for _ in range(len(parts)):
+        odd = next(
+            (i for i, cs in enumerate(parts) if not _aligned(*_norm(cs)[1:], step, phase)), None
+        )
+        if odd is None:
+            break
+        cells = parts[odd]
+        touch = {
+            (cy + dy, cx + dx) for cy, cx in cells for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        } - cells
+        # ⛔ Merge into the SMALLEST neighbour that comes out aligned, not the one it touches most.
+        # Measured: a held piece pressed against an obstacle paints the touching edge a third colour,
+        # which splits it in two, and both the obstacle and the piece's own other half then share the
+        # same length of border. Taking the larger swallowed the piece into the obstacle and the
+        # board lost its only steerable object.
+        best, rank = None, None
+        for j, other in enumerate(parts):
+            if j == odd or not (touch & other):
+                continue
+            union = cells | other
+            _, upos, uh, uw = _norm(union)
+            key = (0 if _aligned(upos, uh, uw, step, phase) else 1, uh * uw, -len(touch & other))
+            if rank is None or key < rank:
+                best, rank = j, key
+        if best is None:
+            return []
+        parts[best] = parts[best] | cells
+        parts.pop(odd)
+
+    out: list[Piece] = []
+    for cells in parts:
+        mask, pos, hh, hw = _norm(cells)
+        if not _aligned(pos, hh, hw, step, phase):
+            return []
+        out.append(Piece(mask, pos, _marker(g, pos, mask, hh, hw), hh, hw))
+    return out
+
+
+def _marker(g: np.ndarray, pos: Cell, mask: frozenset[Cell], hh: int, hw: int) -> frozenset[int]:
+    """The colour a piece wears at its own MIDDLE, when that is not the colour it is made of.
+
+    A board marks the piece it is holding, and the mark is painted dead centre. ⛔ "A colour that
+    never reaches the object's outer skin" looked equivalent and is not: when a held piece is pressed
+    against another object the board repaints the touching edge in that very colour, the mark reaches
+    the skin, and the only steerable piece on the board stops looking steerable. The middle does not
+    move.
+    """
+    mid = [
+        (y, x)
+        for y in range((hh - 1) // 2, hh // 2 + 1)
+        for x in range((hw - 1) // 2, hw // 2 + 1)
+        if (y, x) in mask
+    ]
+    if not mid:
+        return frozenset()
+    tally = Counter(int(g[pos[0] + y][pos[1] + x]) for y, x in mask)
+    core = {int(g[pos[0] + y][pos[1] + x]) for y, x in mid}
+    return frozenset(core) if len(core) == 1 and tally.most_common(1)[0][0] not in core else frozenset()
+
+
 def _held(pieces: list[Piece]) -> int | None:
     """Which piece the board is currently holding, when the markers say so without ambiguity.
 
@@ -296,6 +396,9 @@ def _held(pieces: list[Piece]) -> int | None:
     plan pays for an explicit click rather than guessing.
     """
     live = [i for i, p in enumerate(pieces) if p.clickable]
+    if len(live) == 1:
+        # One click target means the board is already holding it — there is nothing else to hold.
+        return live[0]
     if len(live) < 3:
         return None
     tally: Counter[frozenset[int]] = Counter(pieces[i].marks for i in live)
@@ -472,45 +575,71 @@ def _relaxed_costs(model: _Model, target: Cell, i: int) -> dict[Cell, int]:
     return dist
 
 
-def _assign(board: Board) -> list[int] | None:
-    """Which outline each piece is cut for. None when the board is not this family after all."""
-    shapes = board.shapes
-    used = [False] * len(shapes)
-    out: list[int] = []
-    for p in board.pieces:
-        pick = next((k for k, sh in enumerate(shapes) if not used[k] and sh == p.mask), None)
-        if pick is None:
-            return None
-        used[pick] = True
-        out.append(pick)
-    if not all(used):
-        return None
-    return out
+def _fits(board: Board) -> bool:
+    """Does every outline have at least one piece cut to its shape?
+
+    Purpose: the model's own admission ticket. An outline with no piece anywhere on the board is a
+    goal this tool cannot reach, and bidding on it would spend the game.
+    """
+    return all(any(p.mask == sh for p in board.pieces) for sh in board.shapes)
 
 
-def plan(board: Board, cap: int = _NODE_CAP) -> list[Step] | None:
-    """Search the model for a press sequence that fills every outline."""
-    order = _assign(board)
-    if order is None:
+def volatile(board: Board) -> bool:
+    """Is anything on this board outside the model — an object that belongs in no slot?
+
+    Purpose: decides whether a plan can be handed over whole. A board of nothing but pieces and
+    their slots is fully modelled, so the search's sequence is the board's own future and issuing it
+    in one go is exact. An object with no slot moves for reasons this model does not carry, so the
+    plan is re-derived from the frame after every single press instead.
+    """
+    owned = {
+        i for k in range(len(board.shapes))
+        for i, p in enumerate(board.pieces) if p.mask == board.shapes[k]
+    }
+    return len(owned) < len(board.pieces)
+
+
+def plan(board: Board, cap: int = _NODE_CAP, limit: float = _TIME_CAP) -> list[Step] | None:
+    """Search the model for a press sequence that fills every outline.
+
+    ⛔ No piece is assigned to an outline up front. Two boards here carry interchangeable pieces, and
+    a board with obstacles carries pieces that belong in no outline at all; fixing the pairing first
+    threw away the solution on both.
+    """
+    if not _fits(board):
         return None
     model = _Model(board)
-    goal = [board.targets[k] for k in order]
-    costs = [_relaxed_costs(model, goal[i], i) for i in range(model.n)]
+    slots = list(range(len(board.shapes)))
+    # ⛔ A slot is filled by a piece you can take hold of whenever the board offers one. MEASURED on
+    # the first board with obstacles: an obstacle happened to share the goal shape and sat one cell
+    # from the slot, so the cheapest "solution" was to shove IT in — a state the board does not score
+    # as a win, and the plan would have spent the level arriving at it.
+    owners: dict[int, list[int]] = {}
+    for k in slots:
+        same = [i for i, p in enumerate(board.pieces) if p.mask == board.shapes[k]]
+        steer = [i for i in same if board.pieces[i].clickable]
+        owners[k] = steer or same
+    goal = board.targets
+    costs = {
+        (i, k): _relaxed_costs(model, goal[k], i)
+        for k in slots for i in owners[k]
+    }
     big = 1 << 20
+
+    def done(pos: tuple[Cell, ...]) -> bool:
+        return all(any(pos[i] == goal[k] for i in owners[k]) for k in slots)
 
     def heur(pos: tuple[Cell, ...]) -> int:
         total = 0
-        for i, p in enumerate(pos):
-            if p == goal[i]:
-                continue
-            d = costs[i].get(p)
-            if d is None:
+        for k in slots:
+            best = min((costs[(i, k)].get(pos[i], big) for i in owners[k]), default=big)
+            if best >= big:
                 return big
-            total += d
+            total += best
         return total
 
     start = tuple(model.base)
-    if all(start[i] == goal[i] for i in range(model.n)):
+    if done(start):
         return []
     holds = model.click
     if not holds:
@@ -529,7 +658,7 @@ def plan(board: Board, cap: int = _NODE_CAP) -> list[Step] | None:
         tick += 1
         heapq.heappush(heap, (cost + _LEAN * heur(start), tick, start, h, acts))
     popped = 0
-    stop = time.monotonic() + _TIME_CAP
+    stop = time.monotonic() + limit
     while heap and popped < cap:
         f, _, pos, held, acts = heapq.heappop(heap)
         popped += 1
@@ -538,7 +667,7 @@ def plan(board: Board, cap: int = _NODE_CAP) -> list[Step] | None:
         g = len(acts)
         if seen.get((pos, held), big) < g:
             continue
-        if all(pos[i] == goal[i] for i in range(model.n)):
+        if done(pos):
             return list(acts)
         for aid, d in _DIRS.items():
             nxt = model.move(pos, held, d)
@@ -601,6 +730,7 @@ class SlotLaunchTool:
         self._level = -1
         self._plan: list[Step] | None = None
         self._issued = False
+        self._took: Cell | None = None
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Confidence, which is zero unless the board really parses into outlines and their pieces."""
@@ -610,7 +740,7 @@ class SlotLaunchTool:
         if not click or len(simple) < 4:
             return 0.0
         board = read_board(current_frame(obs))
-        if board is None or _assign(board) is None:
+        if board is None or not _fits(board):
             return 0.0
         if not any(p.clickable for p in board.pieces):
             return 0.0
@@ -619,6 +749,7 @@ class SlotLaunchTool:
     def reset(self) -> None:
         self._plan = None
         self._issued = False
+        self._took = None
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         return None
@@ -635,9 +766,27 @@ class SlotLaunchTool:
         board = read_board(current_frame(obs))
         if board is None:
             return []
+        if self._took is not None:
+            # ⛔ Remember what the last click took hold of. Taking hold of the ONLY piece on the board
+            # changes not one pixel, so a plan re-derived after it opens with the same click again,
+            # and the level is spent clicking. Measured: 100 presses, board untouched.
+            x, y = self._took
+            for i, p in enumerate(board.pieces):
+                if (y - p.pos[0], x - p.pos[1]) in p.mask:
+                    board.held = i
+                    break
         steps = plan(board)
+        if not steps:
+            return []
+        if volatile(board):
+            # Hand over ONE press and look again. The board still moves on its own here.
+            if steps[0][0] == 6 and steps[0][1] is not None:
+                self._took = steps[0][1]
+            return steps[:1]
+        for aid, xy in steps:
+            if aid == 6 and xy is not None:
+                self._took = xy
         # Only a plan that was actually handed over counts as issued. An empty one means the board
         # read as already solved, which on the turn a level clears means the frame has not caught up.
-        if steps:
-            self._issued = True
-        return steps or []
+        self._issued = True
+        return steps

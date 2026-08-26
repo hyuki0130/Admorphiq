@@ -46,6 +46,7 @@ corrupt routing rather than failing loudly:
 from __future__ import annotations
 
 from collections import Counter, deque
+from math import gcd
 from typing import Any
 
 import numpy as np
@@ -71,6 +72,12 @@ _CALIBRATION_CAP = 16
 # Joint-search ceiling. The sample board's widest level reaches ~250k states, so this
 # is headroom rather than a tuning knob.
 _SEARCH_CAP = 600_000
+
+# How much of a rider's past to keep, and the longest combined cycle the search will
+# carry. Three riders of period 8 (the deepest sample board) need 8; the ceiling exists
+# so a board of mutually prime cycles cannot multiply the search out of reach.
+_ORBIT_HISTORY = 40
+_ORBIT_TICKS = 48
 
 # Actions handed over per turn. The plan is deterministic, so a longer hand-over would
 # also be correct — the chunk exists so a mis-modelled icon costs six actions, not fifty.
@@ -111,6 +118,19 @@ def _downsample(block: np.ndarray, k: int, off: int) -> tuple[Pattern, int] | No
     return frozenset(lit), on
 
 
+def _repeat_length(seq: list[Cell]) -> int:
+    """The shortest cycle the tail of `seq` repeats, or 0 while it has not repeated yet.
+
+    One full confirmed repeat is required: the last `p` entries must equal the `p` before
+    them. Reading a cycle off a single pass would fix a bounce's turning point wherever
+    the watching happened to start.
+    """
+    for p in range(2, len(seq) // 2 + 1):
+        if all(seq[-1 - i] == seq[-1 - i - p] for i in range(p)):
+            return p
+    return 0
+
+
 def _rotate_cw(pattern: Pattern, k: int) -> Pattern:
     """The same bitmap turned a quarter turn clockwise."""
     return frozenset((c, k - 1 - r) for r, c in pattern)
@@ -136,8 +156,8 @@ def _canonical(pattern: Pattern, k: int) -> tuple[tuple[int, int], ...]:
     return best
 
 
-def _glyph_in(window: np.ndarray, k: int) -> tuple[Pattern, int] | None:
-    """The magnified glyph a panel-like block holds, or None.
+def _glyph_in(window: np.ndarray, k: int) -> tuple[Pattern, int, int] | None:
+    """(pattern, ink colour, magnification) of the glyph a panel-like block holds.
 
     The block's commonest colour is the ground; each other colour is tried as the ink,
     and the one whose pixels fill a square whose side is a whole multiple of `k` wins.
@@ -152,7 +172,7 @@ def _glyph_in(window: np.ndarray, k: int) -> tuple[Pattern, int] | None:
             continue
         got = _downsample(window[y0:y1 + 1, x0:x1 + 1], k, ground)
         if got is not None and got[1] == ink:
-            return got
+            return got[0], got[1], (y1 - y0 + 1) // k
     return None
 
 
@@ -178,7 +198,13 @@ def _find_indicator(grid: np.ndarray) -> tuple[tuple[int, int, int, int], int] |
         if not 2 <= len({int(v) for v in np.unique(window)}) <= 3:
             continue
         for k in _GLYPH_SIDES:
-            if _glyph_in(window, k) is not None and h * w > best_area:
+            got = _glyph_in(window, k)
+            # ⛔ The magnification is load-bearing, not decoration. Without it a board made
+            # OF framed glyph tiles reads as a panel and this tool bids 0.9 on a game it
+            # cannot play (measured: one of the other 24 samples scored 0.90). The
+            # indicator is chrome BECAUSE it draws the key bigger than the board does; a
+            # lock holds its glyph at magnification 1, so requiring 2 separates them.
+            if got is not None and got[2] >= 2 and h * w > best_area:
                 best, best_area = ((y0, x0, y1, x1), k), h * w
                 break
     return best
@@ -205,21 +231,29 @@ def _lock_glyph(cell: np.ndarray, k: int) -> tuple[Pattern, int] | None:
     return _downsample(cell[y0:y1 + 1, x0:x1 + 1], k, body)
 
 
-def _has_lock_shaped_cell(grid: np.ndarray, k: int) -> bool:
-    """Is any `k`x`k` two-colour glyph fully ringed by its own ground colour?
+def _has_lock_shaped_cell(grid: np.ndarray, k: int, panel: tuple[int, int, int, int]) -> bool:
+    """Is any `k`x`k` glyph outside the panel ringed by a colour the board is not made of?
 
-    The detect-time stand-in for the lattice parse, which needs a pitch this tool has
-    not measured before its first action.
+    The detect-time stand-in for the lattice parse, which needs a pitch this tool has not
+    measured before its first action. Two exclusions carry it:
+      - the panel itself, whose magnified glyph offers `k`-sized windows of its own;
+      - rings in either of the frame's two commonest colours, which are the floor and the
+        walls. A lock's body is a third colour, whereas an ICON is a scrap of ink sitting
+        on plain floor — structurally the same shape, told apart only by that.
     """
+    common = {c for c, _ in Counter(int(v) for v in grid.ravel()).most_common(2)}
+    py0, px0, py1, px1 = panel
     h, w = grid.shape
     for y in range(1, h - k):
         for x in range(1, w - k):
+            if not (y + k <= py0 or y > py1 or x + k <= px0 or x > px1):
+                continue
             ring = np.concatenate([
                 grid[y - 1, x - 1:x + k + 1], grid[y + k, x - 1:x + k + 1],
                 grid[y:y + k, x - 1], grid[y:y + k, x + k],
             ])
             vals = np.unique(ring)
-            if vals.size != 1:
+            if vals.size != 1 or int(vals[0]) in common:
                 continue
             if _downsample(grid[y:y + k, x:x + k], k, int(vals[0])) is not None:
                 return True
@@ -274,6 +308,13 @@ class KeyMazeTool:
         self._prev_action = 0
         self._prev_count = 0
         self._probe_order: list[int] = []
+        # Icons that RIDE. Per level, and never carried across one: the same icon is
+        # bolted down on one board and moving on the next, so a belief kept from the last
+        # level would plan a phase the board does not have. `_seen` is each rider's
+        # observed cell history; `_orbit` is the repeating itinerary recovered from it.
+        self._seen_at: dict[tuple, list[Cell]] = {}
+        self._orbit: dict[tuple, list[Cell]] = {}
+        self._phase: dict[tuple, int] = {}
         self._idle = 0
         self._seen_icons: dict[Cell, tuple] = {}
         # Per-level, and deliberately NOT kept: the budget drains at a rate the level
@@ -302,7 +343,7 @@ class KeyMazeTool:
         found = _find_indicator(grid)
         if found is None:
             return 0.0
-        return 0.9 if _has_lock_shaped_cell(grid, found[1]) else 0.0
+        return 0.9 if _has_lock_shaped_cell(grid, found[1], found[0]) else 0.0
 
     # -- turn ------------------------------------------------------------------
 
@@ -338,16 +379,20 @@ class KeyMazeTool:
         plan = self._plan(board, token, grid)
         # Until the drain rate has been measured the search is planning against a budget
         # it has invented, so only its first action is trusted — that action measures it.
-        if self.unit_cost == 0:
+        if self.unit_cost == 0 or self._seen_at:
+            # One action per turn once ANY icon is known to move: every rider's phase is
+            # re-read from the frame each turn, so an itinerary learned only as far as it
+            # has been watched costs a single action when it turns out to run further.
             return plan[:1]
         return self._truncate(board, plan)[:_PLAN_CHUNK]
 
     def _truncate(self, b: _Board, plan: list[int]) -> list[int]:
-        """End the hand-over on the first icon the plan steps onto.
+        """Hand over the run of actions BEFORE the first icon — or that one step alone.
 
         What an icon does is read by comparing the key across the handed-over chunk, so
-        a chunk holding two icons would attribute both effects to one of them. Ending on
-        the first keeps every reading exact without costing an action.
+        the step onto an icon has to arrive by itself. Ending ON the icon instead of
+        before it is what let a three-action chunk trigger one icon twice and record the
+        composition of both as a single step (see `_learn`).
         """
         cell = b.avatar
         for i, action in enumerate(plan):
@@ -360,7 +405,7 @@ class KeyMazeTool:
             slide = b.launch.get(land)
             cell = (land[0] + slide[0], land[1] + slide[1]) if slide else land
             if cell in b.icons:
-                return plan[:i + 1]
+                return plan[:1] if i == 0 else plan[:i]
         return plan
 
     def _probe_button(self) -> int:
@@ -382,19 +427,131 @@ class KeyMazeTool:
         self._prev = None
         if prev is None or action == 0 or prev.shape != grid.shape:
             return
-        self._learn_bar(prev, grid, count)
         if self.pitch == 0:
             self._learn_lattice(prev, grid, action)
             return
         before, after = self._parse(prev), self._parse(grid)
         if before is None or after is None or before.avatar is None or after.avatar is None:
             return
+        # ⛔ Read the bar only from frames where the BOARD is readable. Losing a life
+        # flashes a full-screen wash in the bar's own colour; measured, that one frame
+        # reported a bar of 960 against a real 84, the drain rate was then learned as 878
+        # per action, and the tool concluded it had one action per life.
+        self._learn_bar(prev, grid, count)
         moved = (after.avatar[0] - before.avatar[0], after.avatar[1] - before.avatar[1])
         if action not in self.dirs and moved in _DIRS:
             self.dirs[action] = moved
+        if count == 1:
+            self._advance_riders(self._learn_track(before, after), after)
         icon = before.icons.get(after.avatar)
-        if icon is not None and after.avatar != before.avatar:
+        if icon is None:
+            # A rider the avatar has just stepped onto is under it and so out of sight;
+            # its itinerary is the only thing that says it is the icon that just fired.
+            icon = next((sig for sig, orbit in self._orbit.items()
+                         if orbit[self._phase[sig]] == after.avatar), None)
+        # ⛔ ONE action, or nothing is learned. An icon's effect is read by diffing the key
+        # across the handed-over chunk, so a chunk carrying two triggers of the SAME icon
+        # files the composition of both as one step. Measured: a three-action chunk landed
+        # a colour icon twice and recorded 14 -> 12 over the true 14 -> 8, which closed the
+        # learned colour cycle into a 3-cycle that never reaches the colour the lock wants
+        # — and the tool then bounced on a reshape icon for the rest of the game because a
+        # solution no longer existed in its own model. `_truncate` hands icon steps over
+        # alone so this guard costs nothing; it is here because correctness must not
+        # depend on the launcher model inside `_truncate` being right.
+        if count == 1 and icon is not None and after.avatar != before.avatar:
             self._learn_icon(icon, prev, grid)
+
+    def _learn_track(self, before: "_Board", after: "_Board") -> set[tuple]:
+        """Notice icons that CHANGE CELL under one action, and recover each one's ITINERARY.
+
+        ⛔ Measured on the fifth and sixth levels of the sample board: icons step one cell
+        per action along a route the frame never draws. The fifth has one, walking a line
+        and bouncing; the sixth has THREE, and one of them walks a closed loop in two
+        dimensions — (6,3),(5,3),(4,3),(4,4),(4,5),(5,5),(6,5),(6,4) and round again. A
+        line model reads the loop as a line and plans onto cells the icon never occupies.
+
+        So a rider is modelled as a cyclic sequence of cells rather than a track with a
+        direction: that covers a bounce (a line traversed both ways IS a cycle) and a loop
+        alike, and needs nothing about the invisible route it rides.
+
+        The signature must be UNIQUE in both frames. Refills share one signature, so a
+        refill being spent looks exactly like the same icon having moved, and reading that
+        as a rider would invent one on a board that has none.
+        """
+        refreshed: set[tuple] = set()
+        was = Counter(before.icons.values())
+        now = Counter(after.icons.values())
+        for cell, sig in before.icons.items():
+            if was[sig] != 1 or now.get(sig) != 1:
+                continue
+            landed = next((c for c, s in after.icons.items() if s == sig), None)
+            if landed is None or landed == cell:
+                continue
+            if abs(landed[0] - cell[0]) + abs(landed[1] - cell[1]) != 1:
+                continue
+            seq = self._seen_at.setdefault(sig, [cell])
+            # A life restarts every rider where it began, so a jump that is not one step
+            # is a reset, and history from before it describes a phase that is now gone.
+            if seq and abs(seq[-1][0] - cell[0]) + abs(seq[-1][1] - cell[1]) > 1:
+                seq = self._seen_at[sig] = [cell]
+            seq.append(landed)
+            del seq[:-_ORBIT_HISTORY]
+            refreshed.add(sig)
+            found = _repeat_length(seq)
+            if found:
+                # The itinerary is stored ENDING on the cell just observed, so the rider's
+                # phase is its last index at the moment it is derived.
+                self._orbit[sig] = seq[-found:]
+                self._phase[sig] = found - 1
+        return refreshed
+
+    def _advance_riders(self, refreshed: set[tuple], after: _Board) -> None:
+        """Step every known rider one place, then re-sync the ones actually in view.
+
+        ⛔ A rider standing under the avatar is INVISIBLE, and a model that phases riders
+        only from what it can see loses every one of them the moment the avatar parks on
+        one. Measured on the sixth level of the sample board: all three riders dropped out
+        at once, the reshape the remaining lock needed became unreachable, and the search
+        returned no plan at all — not even one to go and look. Riders step once per action
+        whether or not they can be seen, so the phase is carried and sight is used only to
+        correct it.
+        """
+        for sig, orbit in self._orbit.items():
+            if sig in refreshed:
+                continue
+            self._phase[sig] = (self._phase.get(sig, len(orbit) - 1) + 1) % len(orbit)
+        for cell, sig in after.icons.items():
+            orbit = self._orbit.get(sig)
+            if orbit is None or orbit[self._phase[sig]] == cell:
+                continue
+            where = [i for i, c in enumerate(orbit) if c == cell]
+            if len(where) == 1:
+                self._phase[sig] = where[0]
+            else:
+                # Seen somewhere its itinerary does not explain, or somewhere that
+                # itinerary visits twice: the route is not what was recorded, so record it
+                # again from here rather than plan on a phase that cannot be placed.
+                self._orbit.pop(sig, None)
+                self._phase.pop(sig, None)
+                self._seen_at[sig] = [cell]
+
+    def _riders(self, b: _Board) -> tuple[int, dict[tuple, tuple[list[Cell], int]]]:
+        """(ticks before every rider repeats, itinerary per rider currently on the board).
+
+        Riders all step once per action, so ONE counter fixes where every one of them is —
+        the alternative, a phase per rider, multiplies the search by their product.
+        """
+        live: dict[tuple, tuple[list[Cell], int]] = {}
+        period = 1
+        for sig, orbit in sorted(self._orbit.items()):
+            phase = self._phase.get(sig)
+            if phase is None:
+                continue
+            nxt = period * len(orbit) // gcd(period, len(orbit))
+            if nxt > _ORBIT_TICKS:
+                continue
+            period, live[sig] = nxt, (orbit, phase)
+        return period, live
 
     def _learn_lattice(self, prev: np.ndarray, grid: np.ndarray, action: int) -> None:
         """One successful move declares the cell size, the floor colour and the avatar.
@@ -466,6 +623,11 @@ class KeyMazeTool:
         if was is None or now is None:
             return
         if was == now:
+            if icon in self._seen_at:
+                # A moving icon that produced no change means the avatar arrived where it
+                # USED to be. That says nothing about what it does, and filing it as inert
+                # would make the search stop planning to catch it.
+                return
             # Every plain action spends the bar, so a step that did NOT spend it topped
             # it up. Testing for growth alone would miss a refill taken while full.
             refilled = self._bar(grid) >= self._bar(prev)
@@ -498,7 +660,8 @@ class KeyMazeTool:
                 return None
             self.panel, self.glyph_k = found
         y0, x0, y1, x1 = self.panel
-        return _glyph_in(grid[y0:y1 + 1, x0:x1 + 1], self.glyph_k)
+        got = _glyph_in(grid[y0:y1 + 1, x0:x1 + 1], self.glyph_k)
+        return None if got is None else (got[0], got[1])
 
     def _parse(self, grid: np.ndarray) -> _Board | None:
         """Cut the frame into lattice cells and give each one a role."""
@@ -563,8 +726,11 @@ class KeyMazeTool:
                 self._seen_icons[cell] = b.icons[cell]
             elif cell != b.avatar:
                 self._seen_icons.pop(cell, None)
-        if b.avatar in self._seen_icons:
-            b.icons[b.avatar] = self._seen_icons[b.avatar]
+        recalled = self._seen_icons.get(b.avatar)
+        # ⛔ Never for a RIDER. The cell under the avatar is where a rider WAS; putting it
+        # back there says it is still standing on a square it has already left.
+        if recalled is not None and recalled not in self._seen_at:
+            b.icons[b.avatar] = recalled
 
     def _icon_stands_clear(self, block: np.ndarray) -> bool:
         """Does the decoration avoid the cell's border? Border ink is a neighbour's bleed."""
@@ -666,12 +832,36 @@ class KeyMazeTool:
             return []
         units = self._bar(grid)
         full = max(self.full_units, units)
-        start = (b.avatar, token, units, ())
-        seen = {start}
+        # Riders are searched in TIME: where each will be after the action, not where the
+        # frame shows it now. Every rider's phase is read from THIS frame — its itinerary
+        # is stored ending on the cell it currently occupies — so nothing is carried
+        # forward that a mis-set phase could corrupt.
+        period, riders = self._riders(b)
+        # A rider whose itinerary IS known leaves the static map — where it will be comes
+        # from `at_tick`. One still being watched stays in AT THE CELL IT OCCUPIES NOW, on
+        # purpose: refusing to plan through it costs measurably more than replanning when
+        # it has moved (measured, the fifth level: 65 actions became 107), and walking
+        # toward it is what finishes recovering its route.
+        static = {c: g for c, g in b.icons.items() if g not in self._orbit}
+        at_tick: list[dict[Cell, tuple]] = [{} for _ in range(period)]
+        for sig, (orbit, phase) in riders.items():
+            for t in range(period):
+                at_tick[t][orbit[(phase + t) % len(orbit)]] = sig
+        # Budget is carried in the state but NOT in the visited key: a longer budget is
+        # never worse, so reaching the same (cell, key, refills spent, mover phase) with
+        # less of it is dominated. Keeping it in the key instead multiplies the space by
+        # the budget's whole range and pushes the deepest level past any search ceiling.
+        start = (b.avatar, token, units, (), 0)
+        best: dict[tuple, int] = {(b.avatar, token, (), 0): units}
         queue: deque[tuple[tuple, list[int]]] = deque([(start, [])])
         explore: list[int] | None = None
-        while queue and len(seen) < _SEARCH_CAP:
-            (cell, key, left, spent), path = queue.popleft()
+        while queue and len(best) < _SEARCH_CAP:
+            (cell, key, left, spent, tick), path = queue.popleft()
+            # Every directional action steps every rider once, BEFORE the avatar's own
+            # move is resolved — so the cell to walk onto is where a rider lands, not
+            # where it was.
+            tock = (tick + 1) % period
+            arrivals = at_tick[tock]
             for d, action in by_dir.items():
                 land = (cell[0] + d[0], cell[1] + d[1])
                 if not (0 <= land[0] < b.rows and 0 <= land[1] < b.cols):
@@ -692,7 +882,7 @@ class KeyMazeTool:
                     land = (land[0] + slide[0], land[1] + slide[1])
                     if land not in b.floor_cells:
                         continue
-                sig = b.icons.get(land)
+                sig = arrivals.get(land) or static.get(land)
                 nxt_key, nxt_spent = key, spent
                 if sig is not None and land not in spent:
                     if self.icon_kind.get(sig) == "refill":
@@ -703,9 +893,9 @@ class KeyMazeTool:
                             if explore is None:
                                 explore = path + [action]
                             continue
-                state = (land, nxt_key, budget, nxt_spent)
-                if state in seen:
+                mark = (land, nxt_key, nxt_spent, tock)
+                if budget <= best.get(mark, -1):
                     continue
-                seen.add(state)
-                queue.append((state, path + [action]))
+                best[mark] = budget
+                queue.append(((land, nxt_key, budget, nxt_spent, tock), path + [action]))
         return explore or []

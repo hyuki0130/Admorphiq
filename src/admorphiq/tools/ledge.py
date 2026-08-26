@@ -197,12 +197,14 @@ class LedgeTool:
         self._inert: set[Sig] = set()
         self._lethal: set[Sig] = set()
         self._flip: set[Sig] = set()
+        self._blind = False
         self._dud: set[Sig] = set()
         self._empty: Sig | None = None
         self._pitch = 0
         self._avatar_ink: frozenset[int] = frozenset()
         self._at: Cell | None = None
         self._gdir = 0
+        self._base_gdir = 0
         self._level: int | None = None
         self._prev: dict[str, Any] | None = None
         self._first: Board | None = None
@@ -306,11 +308,17 @@ class LedgeTool:
         after = self._edit(sig, bg)
         return after is not None and not self._is_open(after, bg)
 
-    def _drop(self, board: Board, cell: Cell, bg: Sig, porous: bool = False) -> tuple[Cell, Sig | None]:
-        """Where the body comes to rest and on what. `porous` = assume every unknown lets it by."""
+    def _drop(
+        self, board: Board, cell: Cell, bg: Sig, gdir: int, porous: bool = False
+    ) -> tuple[Cell, Sig | None]:
+        """Where the body comes to rest and on what. `porous` = assume every unknown lets it by.
+
+        Gravity is an ARGUMENT, not a field, because the later boards let a click reverse it and
+        a plan is then made partly under one axis and partly under the other.
+        """
         r, c = cell
         while True:
-            nxt = (r + self._gdir, c)
+            nxt = (r + gdir, c)
             sig = board.get(nxt)
             if sig is None:
                 return (r, c), None
@@ -319,7 +327,7 @@ class LedgeTool:
                 return (r, c), sig
             r = nxt[0]
 
-    def _fatal(self, board: Board, cell: Cell, bg: Sig) -> bool:
+    def _fatal(self, board: Board, cell: Cell, bg: Sig, gdir: int) -> bool:
         """Would resting here risk the level?
 
         Both readings have to be safe. An unknown cell underfoot is either a floor or a hole,
@@ -327,7 +335,9 @@ class LedgeTool:
         one it did not consider.
         """
         for porous in (False, True):
-            _, support = self._drop(board, cell, bg, porous=porous)
+            _, support = self._drop(board, cell, bg, gdir, porous=porous)
+            if support is None and self._blind:
+                return True
             if support is not None and support in self._lethal:
                 return True
         return False
@@ -368,6 +378,17 @@ class LedgeTool:
         old: Board = prev["board"]
         was: Cell = prev["avatar"]
         act: Step = prev["act"]
+        if act[0] == 6:
+            hit = old.get(prev["target"]) if prev["target"] is not None else None
+            if hit is not None and hit in self._flip:
+                # ⛔ A KNOWN switch flips the axis whether or not the body moves, and this is
+                # checked BEFORE the frames are aligned because a flip is exactly the transition
+                # alignment cannot read: it moves the camera by half a screen AND changes which
+                # pixel row the lattice starts on, so the two frames no longer share a cell grid
+                # and `_align` gives up. Measured: the tool then kept the old axis, planned every
+                # route upside down, and repeated one twelve-action loop into thirteen deaths.
+                self._gdir = -self._gdir
+                return
         shift = self._align(old, board)
         if shift is None:
             return
@@ -383,6 +404,8 @@ class LedgeTool:
             self._solid.discard(self._empty)
             self._inert.discard(self._empty)
         if act[0] == 6:
+            # The FIRST switch is found by the body going up: nothing else in this mechanic
+            # lifts a body, so the tile just clicked must have reversed which way down is.
             if here[1] == was[1] and here[0] != was[0] and (1 if here[0] > was[0] else -1) == -self._gdir:
                 # ⛔ The body went UP. Nothing in this mechanic lifts a body except a change of
                 # which way down is, so the tile just clicked reverses gravity — and every route
@@ -475,16 +498,29 @@ class LedgeTool:
         self._prev = None
         self._seen = set()
         self._stalls = 0
+        # ⛔ A restart puts gravity back the way the level started it. Measured: after a switch
+        # was thrown and the run then died, the tool kept planning under the inverted axis on a
+        # board that had reverted, so "gain" pointed at the ceiling and it paced two cells back
+        # and forth until its budget ran out.
+        self._gdir = 0
         if prev is None:
             return
         board: Board = prev["after"]
         cell: Cell | None = prev["landing"]
-        if cell is None:
+        gdir: int = prev["gdir"]
+        if cell is None or not gdir:
             return
-        support = board.get((cell[0] + self._gdir, cell[1]))
-        if support is None or support == bg:
+        support = board.get((cell[0] + gdir, cell[1]))
+        if support is None:
+            # ⛔ The fall ran off the bottom of what the camera shows, so there is no tile to
+            # blame — and with nothing to blame the tool took the same fall again, thirteen
+            # times. What IS learned is the shape of the mistake: a drop whose end cannot be
+            # seen has killed once, so from here on it is refused like a known hazard.
+            self._blind = True
             return
-        _, deeper = self._drop(board, cell, bg, porous=True)
+        if support == bg:
+            return
+        _, deeper = self._drop(board, cell, bg, gdir, porous=True)
         if deeper is not None and deeper != support and deeper in self._lethal:
             self._open.add(support)
             self._solid.discard(support)
@@ -521,43 +557,43 @@ class LedgeTool:
         }
 
     def _hops(
-        self, board: Board, cell: Cell, bg: Sig, goals: set[Cell]
-    ) -> list[tuple[int, Cell | None, Cell, int]]:
-        """Every single move from a cell: (direction, cell to click first, landing, cost)."""
-        out: list[tuple[int, Cell | None, Cell, int]] = []
+        self, board: Board, cell: Cell, gdir: int, bg: Sig, goals: set[Cell]
+    ) -> list[tuple[int, Cell | None, Cell, int, int]]:
+        """Every single move: (direction, cell to click first, landing, gravity after, cost)."""
+        out: list[tuple[int, Cell | None, Cell, int, int]] = []
         for dc in (-1, 1):
             tgt = (cell[0], cell[1] + dc)
             sig = board.get(tgt)
             if sig is None:
                 continue
             if tgt in goals:
-                out.append((dc, None, tgt, 1))
+                out.append((dc, None, tgt, gdir, 1))
                 continue
-            under = (tgt[0] + self._gdir, tgt[1])
+            under = (tgt[0] + gdir, tgt[1])
             floor = board.get(under)
             if self._is_open(sig, bg):
-                rest, _ = self._drop(board, tgt, bg)
-                landed = (rest[0] + self._gdir, rest[1])
+                rest, _ = self._drop(board, tgt, bg, gdir)
+                landed = (rest[0] + gdir, rest[1])
                 if landed in goals:
-                    out.append((dc, None, landed, 1))
-                elif not self._fatal(board, tgt, bg):
-                    out.append((dc, None, rest, 1))
+                    out.append((dc, None, landed, gdir, 1))
+                elif not self._fatal(board, tgt, bg, gdir):
+                    out.append((dc, None, rest, gdir, 1))
                 # The ledge is not there until it is made: click the air under the step solid,
                 # then step onto it. Two actions, and on some boards the only two that exist.
                 if floor is not None and self._prop(floor, bg):
                     built = dict(board)
                     built[under] = self._edit(floor, bg)          # type: ignore[index]
-                    if not self._fatal(built, tgt, bg):
-                        out.append((dc, under, tgt, 2))
+                    if not self._fatal(built, tgt, bg, gdir):
+                        out.append((dc, under, tgt, gdir, 2))
             elif self._door(sig, bg):
                 opened = dict(board)
                 opened[tgt] = self._edit(sig, bg)                 # type: ignore[index]
-                rest, _ = self._drop(opened, tgt, bg)
-                landed = (rest[0] + self._gdir, rest[1])
+                rest, _ = self._drop(opened, tgt, bg, gdir)
+                landed = (rest[0] + gdir, rest[1])
                 if landed in goals:
-                    out.append((dc, tgt, landed, 2))
-                elif not self._fatal(opened, tgt, bg):
-                    out.append((dc, tgt, rest, 2))
+                    out.append((dc, tgt, landed, gdir, 2))
+                elif not self._fatal(opened, tgt, bg, gdir):
+                    out.append((dc, tgt, rest, gdir, 2))
                 elif floor is not None and self._prop(floor, bg):
                     # Open the door AND build the ledge behind it. The third board stacks the
                     # two: the way through is a solid tile that must be dissolved, standing on
@@ -565,19 +601,45 @@ class LedgeTool:
                     # refuses the pair and calls the board finished.
                     both = dict(opened)
                     both[under] = self._edit(floor, bg)           # type: ignore[index]
-                    if not self._fatal(both, tgt, bg):
-                        out.append((dc, under, tgt, 3))
-        under = (cell[0] + self._gdir, cell[1])
+                    if not self._fatal(both, tgt, bg, gdir):
+                        out.append((dc, under, tgt, gdir, 3))
+        under = (cell[0] + gdir, cell[1])
         sig = board.get(under)
         if sig is not None and self._door(sig, bg):
             opened = dict(board)
             opened[under] = self._edit(sig, bg)                   # type: ignore[index]
-            rest, _ = self._drop(opened, cell, bg)
-            landed = (rest[0] + self._gdir, rest[1])
+            rest, _ = self._drop(opened, cell, bg, gdir)
+            landed = (rest[0] + gdir, rest[1])
             if landed in goals:
-                out.append((0, under, landed, 1))
-            elif rest != cell and not self._fatal(opened, cell, bg):
-                out.append((0, under, rest, 1))
+                out.append((0, under, landed, gdir, 1))
+            elif rest != cell and not self._fatal(opened, cell, bg, gdir):
+                out.append((0, under, rest, gdir, 1))
+        return out
+
+    def _turns(
+        self, board: Board, cell: Cell, gdir: int, bg: Sig, goals: set[Cell]
+    ) -> list[tuple[int, Cell | None, Cell, int, int]]:
+        """Throwing a gravity switch, as a move like any other.
+
+        ⛔ Kept OUT of the walking hops and given its own list because it is the one action that
+        reaches ground the body cannot walk to: the fourth board hangs its goal above the start,
+        where "descend" points exactly the wrong way, and no amount of sideways search finds it.
+        A switch is clickable from anywhere on screen, so the body does not have to reach it —
+        which is also why it has to be considered from every state rather than only from under
+        one.
+        """
+        out: list[tuple[int, Cell | None, Cell, int, int]] = []
+        flipped = -gdir
+        for at, sig in board.items():
+            if sig not in self._flip:
+                continue
+            rest, _ = self._drop(board, cell, bg, flipped)
+            landed = (rest[0] + flipped, rest[1])
+            if landed in goals:
+                out.append((0, at, landed, flipped, 1))
+            elif not self._fatal(board, cell, bg, flipped):
+                out.append((0, at, rest, flipped, 1))
+            break                       # one switch is as good as another; they all do this
         return out
 
     def _unknown(self, sig: Sig, bg: Sig) -> bool:
@@ -585,85 +647,86 @@ class LedgeTool:
         return not self._is_open(sig, bg) and sig not in self._solid
 
     def _search(self, board: Board, avatar: Cell, bg: Sig, goals: set[Cell]) -> tuple[int, Cell | None] | None:
+        """Walk first; throw a switch only when walking has nothing left.
+
+        ⛔ A switch is CONSUMED when it is thrown — the tile disappears — so it is a resource,
+        not a move. Offered alongside walking it wins whenever it happens to gain more ground,
+        and on the fourth board that spends the only switch in reach on a detour and strands the
+        body under an inverted axis with no way back. Measured: stranded at the bottom of a
+        shaft with `turns` empty because the tile it needed was the one it had already spent.
+        """
+        found = self._route(board, avatar, bg, goals, turning=False)
+        if found is not None:
+            return found
+        return self._route(board, avatar, bg, goals, turning=True)
+
+    def _route(
+        self, board: Board, avatar: Cell, bg: Sig, goals: set[Cell], turning: bool
+    ) -> tuple[int, Cell | None] | None:
         """The next hop: cheapest route to a singular cell, else the best ground gained.
+
+        The state is WHERE THE BODY IS AND WHICH WAY IS DOWN, and ground gained is measured
+        along the gravity in force at the landing — so a plan that reverses gravity scores the
+        distance it then covers as progress, which under the original axis reads as going
+        backwards. At most one switch per plan: the switch is consumed when thrown, the state
+        does not track that, and one is all any of these boards needs at a time.
 
         Returns (direction, cell to click) — the caller turns that into the ONE action that
         starts it and re-plans from the next frame rather than trusting a batch. The frame after
         a level-up still shows the board just finished, so a queued plan runs the finished
         level's route against the new board.
         """
-        far: dict[Cell, int] = {avatar: 0}
-        lead: dict[Cell, tuple[int, Cell | None]] = {}
-        order = [avatar]
+        State = tuple[Cell, int, bool]
+        home: State = (avatar, self._gdir, False)
+        far: dict[State, int] = {home: 0}
+        lead: dict[State, tuple[int, Cell | None]] = {}
+        order: list[State] = [home]
         best: tuple[int, int, tuple[int, Cell | None]] | None = None
         goal_hit: tuple[int, tuple[int, Cell | None]] | None = None
         curious: tuple[int, tuple[int, Cell | None]] | None = None
         while order and len(far) <= _MAX_EXPAND:
-            order.sort(key=lambda c: far[c])
-            cell = order.pop(0)
+            order.sort(key=lambda st: far[st])
+            state = order.pop(0)
+            cell, gdir, turned = state
             # ⛔ The cheapest experiment on this family is a SIDEWAYS BUMP. Walking into a wall
             # costs one action and nothing else, and walking into a tile that turns out to be
-            # air teaches exactly the fact the planner is missing. Without this the tool sits
-            # in front of the see-through blocks that the third board is built from, calling
-            # them wall because it has never been told otherwise, and stalls with a full
-            # vocabulary and no route.
+            # air teaches exactly the fact the planner is missing. Without this the tool sits in
+            # front of the see-through blocks the third board is built from, calling them wall
+            # because it has never been told otherwise, and stalls with a full vocabulary.
             for dc in (-1, 1):
                 tgt = (cell[0], cell[1] + dc)
                 sig = board.get(tgt)
                 if sig is None or not self._unknown(sig, bg) or tgt in goals:
                     continue
-                if self._fatal(board, tgt, bg):
+                if self._fatal(board, tgt, bg, gdir):
                     continue
-                spent = far[cell] + 1
+                spent = far[state] + 1
                 if curious is None or spent < curious[0]:
-                    curious = (spent, lead.get(cell, (dc, None)))
-            for hop, opens, rest, cost in self._hops(board, cell, bg, goals):
-                start = lead.get(cell, (hop, opens))
-                spent = far[cell] + cost
+                    curious = (spent, lead.get(state, (dc, None)))
+            moves = self._hops(board, cell, gdir, bg, goals)
+            if turning and not turned:
+                moves = moves + self._turns(board, cell, gdir, bg, goals)
+            for hop, opens, rest, after, cost in moves:
+                start_act = lead.get(state, (hop, opens))
+                spent = far[state] + cost
                 if rest in goals:
                     if goal_hit is None or spent < goal_hit[0]:
-                        goal_hit = (spent, start)
+                        goal_hit = (spent, start_act)
                     continue
-                if rest in far and far[rest] <= spent:
+                nxt: State = (rest, after, turned or after != gdir)
+                if nxt in far and far[nxt] <= spent:
                     continue
-                far[rest] = spent
-                lead[rest] = start
-                order.append(rest)
-                gain = (rest[0] - avatar[0]) * self._gdir
+                far[nxt] = spent
+                lead[nxt] = start_act
+                order.append(nxt)
+                gain = (rest[0] - avatar[0]) * after
                 if best is None or (gain, -spent) > (best[0], -best[1]):
-                    best = (gain, spent, start)
+                    best = (gain, spent, start_act)
         if goal_hit is not None:
             return goal_hit[1]
         if best is not None and best[0] > 0:
             return best[2]
         return curious[1] if curious is not None else None
-
-    def _turn(self, board: Board, avatar: Cell, bg: Sig) -> Cell | None:
-        """A gravity switch worth throwing — reachable by click, and safe to fall the other way.
-
-        The switch is the only action on this family that opens ground the body cannot walk to,
-        so it is tried when walking has run out, and only when the fall it causes lands on
-        something that is not known to kill.
-        """
-        if not self._flip:
-            return None
-        self._gdir = -self._gdir
-        try:
-            rest, support = self._drop(board, avatar, bg)
-            if rest == avatar or (support is not None and support in self._lethal):
-                return None
-            if self._fatal(board, avatar, bg):
-                return None
-        finally:
-            self._gdir = -self._gdir
-        best: tuple[int, Cell] | None = None
-        for cell, sig in board.items():
-            if sig not in self._flip:
-                continue
-            dist = abs(cell[0] - avatar[0]) + abs(cell[1] - avatar[1])
-            if best is None or dist < best[0]:
-                best = (dist, cell)
-        return best[1] if best else None
 
     def _probe(self, board: Board, avatar: Cell) -> Cell | None:
         """One click at an unclassified cell, aimed away from the cell underfoot.
@@ -715,12 +778,19 @@ class LedgeTool:
         return 0.9 if self._gdir else 0.6
 
     def reset(self) -> None:
-        """A new board revisits nothing; the VOCABULARY survives, because the tiles do."""
+        """A new board revisits nothing; the VOCABULARY survives, because the tiles do.
+
+        ⛔ Gravity does NOT survive. It is level state, not tile knowledge: a board finished with
+        the switch thrown hands the next one an inverted axis, and every route on it is then
+        planned upside down. It is re-read from the opening frame, with the direction the first
+        board taught as the fallback for an opening the rule cannot call.
+        """
         self._seen = set()
         self._prev = None
         self._first = None
         self._stalls = 0
         self._probed = set()
+        self._gdir = 0
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Learning needs the frame AFTER the action, so it happens at the top of propose."""
@@ -775,9 +845,11 @@ class LedgeTool:
             self._learn(board, avatar, bg)
         bg = self._empty if self._empty is not None else floor_sig(board)
         if self._gdir == 0:
-            self._gdir = self._infer_gravity(board, avatar, bg)
+            self._gdir = self._infer_gravity(board, avatar, bg) or self._base_gdir
         if self._gdir == 0:
             return []
+        if not self._base_gdir:
+            self._base_gdir = self._gdir
 
         # ⛔ Stop on a REVISITED board. A faller with no move left bumps the same wall for the
         # rest of its budget, and this family ENDS a level when the budget runs out.
@@ -804,13 +876,13 @@ class LedgeTool:
             else:
                 act = (lateral[1] if dc > 0 else lateral[0], None)
         else:
-            target = self._turn(board, avatar, bg) or self._probe(board, avatar)
+            target = self._probe(board, avatar)
             if target is None:
                 self._stalls += 1
                 return self._quit()
             self._probed.add(board[target])
             act = (6, (ox + target[1] * p + p // 2, oy + target[0] * p + p // 2))
-        after, landing = self._outcome(board, avatar, bg, act, target, lateral)
+        after, landing, settled_under = self._outcome(board, avatar, bg, act, target, lateral)
         self._prev = {
             "level": level,
             "board": board,
@@ -821,6 +893,7 @@ class LedgeTool:
             "landing": landing,
             "right": lateral[1],
             "goals": {c: board[c] for c in goals},
+            "gdir": settled_under,
         }
         self._idle = 0
         return [act]
@@ -833,7 +906,7 @@ class LedgeTool:
         act: Step,
         target: Cell | None,
         lateral: list[int],
-    ) -> tuple[Board, Cell]:
+    ) -> tuple[Board, Cell, int]:
         """The board and the resting place this action is expected to produce.
 
         ⛔ Kept because the death inference reads it, and reading the PRE-action board instead
@@ -843,14 +916,17 @@ class LedgeTool:
         """
         after = dict(board)
         if act[0] == 6:
+            if target is not None and board.get(target) in self._flip:
+                turned = -self._gdir
+                return after, self._drop(after, avatar, bg, turned)[0], turned
             if target is not None:
                 edited = self._edit(board.get(target, bg), bg)
                 if edited is not None:
                     after[target] = edited
-            return after, self._drop(after, avatar, bg)[0]
+            return after, self._drop(after, avatar, bg, self._gdir)[0], self._gdir
         dc = 1 if act[0] == lateral[1] else -1
         tgt = (avatar[0], avatar[1] + dc)
         sig = after.get(tgt)
         if sig is None or not self._is_open(sig, bg):
-            return after, avatar
-        return after, self._drop(after, tgt, bg)[0]
+            return after, avatar, self._gdir
+        return after, self._drop(after, tgt, bg, self._gdir)[0], self._gdir
