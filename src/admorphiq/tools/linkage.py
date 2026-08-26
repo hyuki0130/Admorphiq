@@ -20,9 +20,10 @@ version of this got wrong. A click whose result would overlap is applied, tested
 and the engine hands back BOTH renders in one observation: layer 0 shows the marker three cells
 inside the wall it never entered, layer -1 shows it where it actually is. A tool reading layer 0
 sees the marker keep advancing after the arm has stopped, learns displacements no control can
-produce, and walls itself in; MEASURED, it drifted for fifty actions on a board it can now
-finish in fifteen. Reading the last layer costs nothing, needs no probe, and needs no algebra:
-**a refusal is exactly an observation with more than one layer whose first and last differ**.
+produce, and walls itself in; MEASURED, it drifted for fifty-one actions and ran the budget out
+on the second board, which it now finishes in thirty-five. Reading the last layer costs nothing,
+needs no probe and needs no algebra: **a refusal is exactly an observation with more than one
+render, because the engine drew the move and then drew the board it put back**.
 
 ⛔ Why the winding is ONE COUNT PER CONTROL and not one per direction. Two controls that shift a
 marker the same way are NOT interchangeable — each drives its own linkage, each has its own stop,
@@ -70,6 +71,13 @@ _MIN_WIDGET = 4
 _MAX_MARKERS = 12
 # A* refuses to grind: these boards resolve in tens of clicks or the model is wrong.
 _MAX_EXPAND = 40_000
+# ⛔ A search this size is affordable a few dozen times, not indefinitely. MEASURED: on the boards
+# this tool cannot finish it kept planning at full width for every one of two hundred actions and
+# ran for over eight minutes on boards where every solvable one finishes in three seconds — which
+# in a harness reads as a hang, not as a loss. Past this much total searching per level the
+# planner keeps following a plan it already has but stops paying to look for a new one.
+_EFFORT = 400_000
+_MIN_EXPAND = 1_500
 _MAX_DEPTH = 96
 # How far a single control may be wound from where the level started it. A control that shifts a
 # marker three cells cannot usefully be wound past the width of the board.
@@ -244,13 +252,11 @@ def _board_same(a: np.ndarray, b: np.ndarray) -> bool:
 class Piece:
     """One structure component: what it looks like, and how each control moves its edges."""
 
-    __slots__ = ("cells", "colour", "law", "rect", "solid")
+    __slots__ = ("cells", "colour", "law", "rect")
 
-    def __init__(self, cells: set[Cell], rect: tuple[int, int, int, int], solid: bool,
-                 colour: int) -> None:
+    def __init__(self, cells: set[Cell], rect: tuple[int, int, int, int], colour: int) -> None:
         self.cells = cells
         self.rect = rect
-        self.solid = solid
         self.colour = colour
         self.law: dict[int, tuple[int, int, int, int]] = {}
 
@@ -333,7 +339,6 @@ def _merge_bands(pieces: list[Piece], holes: set[Cell], band: int) -> list[Piece
         host, rect = hosts[0]
         host.cells |= strip.cells
         host.rect = rect
-        host.solid = True
     return out
 
 
@@ -360,6 +365,11 @@ def read_pieces(g: np.ndarray, marker: int, boxes: list[tuple[int, int, int, int
     # surrounded by one structure colour it is filled back in with that colour, which puts the
     # piece back together; a marker standing on the background is left alone.
     holes = {(int(y), int(x)) for y, x in np.argwhere(board == marker)}
+    # The fill runs over the board it is filling, so a ring of markers standing on a piece is
+    # closed from its rim inwards. ⛔ Judging every hole against an untouched copy instead is the
+    # tidier-looking version and it is MEASURED WORSE — it leaves the centre of each ring open,
+    # the piece under a ring reads as two pieces, and a board that finished in 36 actions stopped
+    # finishing at all.
     ground = segment.background(g)
     for y, x in sorted(holes):
         near = Counter(int(board[b, a]) for b, a in _around(y, x, board.shape)
@@ -372,8 +382,7 @@ def read_pieces(g: np.ndarray, marker: int, boxes: list[tuple[int, int, int, int
     out: list[Piece] = []
     for colour in sorted(palette - skip):
         for cells in segment.components(grid, (palette | {-1, marker}) - {colour}):
-            rect, solid = _fills(set(cells), holes)
-            out.append(Piece(set(cells), rect, solid, colour))
+            out.append(Piece(set(cells), _fills(set(cells), holes)[0], colour))
     return out if band is None else _merge_bands(out, holes, band)
 
 
@@ -475,7 +484,8 @@ def _plan(
     walls: set[Cell],
     caps: dict[tuple[int, int, tuple[int, ...]], int],
     overlaps: Any,
-) -> tuple[list[Key] | None, bool]:
+    limit: int,
+) -> tuple[list[Key] | None, bool, int]:
     """A* over the winding — how far each control has been driven — not over marker cells.
 
     ⛔ The marker's cell is not the state, and treating it as one is what a first version of this
@@ -490,12 +500,12 @@ def _plan(
     places is a permutation of the same few moves — so a plan that knows only exact windings
     re-orders itself after each refusal, walks into the same obstruction by a different road, and
     pays one action per permutation. MEASURED: a whole level's budget spent that way on a board
-    that needs fourteen moves. What is banked instead is "with the other controls where they are,
+    whose shortest solution is twenty-six moves. What is banked instead is "with the other controls where they are,
     this one goes no further this way", which is what an arm running into scenery actually means,
     and it retires an entire branch for one action.
     """
     if not live or not goals:
-        return None, True
+        return None, True, 0
     step = max(1, max((abs(units[i][m][0]) + abs(units[i][m][1])
                        for i in live for m in range(len(base))), default=1))
     start = _at(base, units, counts)
@@ -504,13 +514,13 @@ def _plan(
         (_LEAN * (_assign_cost(start, goals) // step), 0, counts, ())
     ]
     expanded = 0
-    while heap and expanded < _MAX_EXPAND:
+    while heap and expanded < limit:
         _, g_cost, state, path = heapq.heappop(heap)
         if g_cost > seen.get(state, _UNREACHABLE):
             continue
         pos = _at(base, units, state)
         if _assign_cost(pos, goals) == 0:
-            return list(path), False
+            return list(path), False, expanded
         if len(path) >= _MAX_DEPTH:
             continue
         expanded += 1
@@ -541,7 +551,7 @@ def _plan(
                 seen[nxt] = ng
                 heapq.heappush(heap, (ng + _LEAN * (_assign_cost(where, goals) // step),
                                       ng, nxt, path + (key,)))
-    return None, not heap
+    return None, not heap, expanded
 
 
 def _rematch(prev: list[Cell], now: list[Cell]) -> list[Cell]:
@@ -588,6 +598,7 @@ class LinkageReachTool:
         self._overlap: dict[tuple[int, ...], bool] = {}
         self._geometry = False
         self._misses = 0
+        self._effort = 0
         self._blocked: set[tuple[tuple[int, ...], Key]] = set()
         self._pending: tuple[Key | None, tuple[int, ...], Vec, np.ndarray, bool] | None = None
         self._undo: Key | None = None
@@ -691,9 +702,11 @@ class LinkageReachTool:
             self._path_at = _wind(self._state, key)
             return [self._fire(key, g)]
         units = self._units()
-        found, proved = _plan(self._base, units, self._state, places, live, self._forbidden,
-                              self._blocked, self._bounds, self._walls, self._caps,
-                              self._collides if self._geometry else None)
+        allow = max(_MIN_EXPAND, min(_MAX_EXPAND, _EFFORT - self._effort))
+        found, proved, spent = _plan(self._base, units, self._state, places, live, self._forbidden,
+                                     self._blocked, self._bounds, self._walls, self._caps,
+                                     self._collides if self._geometry else None, allow)
+        self._effort += spent
         if found is None and self._geometry:
             # ⛔ The model has just claimed there is no way to the places at all. It is built from
             # one probe per control, and on a board where two pieces could not be told apart it
@@ -702,8 +715,10 @@ class LinkageReachTool:
             # again on the facts the engine itself has handed back.
             if proved:
                 self._geometry = False
-            found, _ = _plan(self._base, units, self._state, places, live, self._forbidden,
-                             self._blocked, self._bounds, self._walls, self._caps, None)
+            found, _, spent = _plan(self._base, units, self._state, places, live, self._forbidden,
+                                    self._blocked, self._bounds, self._walls, self._caps, None,
+                                    allow)
+            self._effort += spent
         self._path = found or []
         if self._path:
             key = self._path.pop(0)
@@ -879,6 +894,11 @@ class LinkageReachTool:
         for bi, p in enumerate(self._pieces):
             box = seen.get(bi)
             if box is None:
+                # ⛔ A piece that cannot be found again is dropped from the model rather than
+                # guessed at. The pieces that go missing are the ones beside a place, where a
+                # marker arriving or leaving re-cuts the structure under it; calling them
+                # stationary instead was MEASURED and is worse, because a wrong obstacle makes
+                # the planner search a board that is not there.
                 self._unread.add(bi)
                 continue
             edge = tuple((b - a) * turn for a, b in zip(p.rect, box))

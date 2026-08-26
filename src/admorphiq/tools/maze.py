@@ -138,6 +138,8 @@ class MazeRunTool:
         self._legal: list[int] = []
         self._deployed: set[Cell] = set()
         self._latched: set[Cell] = set()
+        self._flip: dict[Cell, bool] = {}
+        self._plan: list[Cell] = []
         self._awaiting: Cell | None = None
         self._before: np.ndarray | None = None
         self._palette: set[int] = set()
@@ -214,7 +216,9 @@ class MazeRunTool:
         gate = self._gates.get(cell)
         if assume and (gate is not None or self._thick(grid, cell, scene)):
             return True
-        if gate is not None and gate not in self._deployed and scene.body == gate:
+        if gate in self._latched:
+            return self._flip.get(cell, False)
+        if gate is not None and scene.body == gate and gate not in self._deployed:
             # ⛔ The body is what is holding this door open, so the frame showing it open is
             # not a road — it is the reason walking away closes it. Only a door held by
             # something ELSE, or one that latched, may be planned through.
@@ -286,22 +290,36 @@ class MazeRunTool:
             return [] if probe is None else self._issue(probe, None, here)
 
         free = self._lattice(grid, scene, here)
+
+        # ⛔ Follow the plan already made. Re-deriving the route on every single action looks
+        # harmless and is not: the body's position is a belief two frames behind, and a route
+        # that crosses a latching plate reads differently depending on which side of it the
+        # belief currently sits — so the tool proposed up, then down, then up, forever, two
+        # cells from the plate. A plan is dropped when the world contradicts it (a refusal, a
+        # new door, a rewind), not because the frame moved on.
+        if self._plan and self._plan[0] in free and self._gap(self._plan[0], here) == self._stride():
+            target = self._plan.pop(0)
+            plan = self._walk(target, here)
+            if plan:
+                return plan
+        self._plan = []
+
         route = self._route(here, {scene.exit}, free)
         if route:
-            return self._walk(route[0], here)
+            return self._commit(route, here)
 
         # ⛔ A plate is released the instant the body steps off, so the exit route above is
         # computed with every undeployed door SHUT even when the frame shows it open. Standing
         # on the plate is what opened it, and walking away is what closes it again. The move
         # that is worth making here is the rewind: it puts a clone on the plate for good.
-        # ⛔ Look before spending. The plate will still be there in ten moves; the clone will
-        # not. Measured: a level whose two crossable plates gate nothing on the way out took
-        # both clones on contact and had none left for the plate that mattered.
-        route = self._route(here, self._studs(grid, scene, free), free)
-        if route:
-            return self._walk(route[0], here)
-
         plates = self._wanted(grid, scene) - self._deployed - self._latched
+        # ⛔ Spend on contact. A plate that LATCHES needs no clone and is already excluded —
+        # the evidence arrives free, because the body crosses these plates on its way past and
+        # the door is then seen open with nobody on it. Going to LOOK for that evidence
+        # instead cost eight moves, and a clone replays every move made since the last rewind,
+        # so those eight came back as eight more moves of waiting. Stepping off the plate to
+        # test it is worse still: the body left before the rewind fired, and the clone then
+        # replayed a path that ended one cell short of the plate it was spent to hold.
         if here in plates:
             spend = self._rewind if self._rewind is not None else self._untried(None)
             if spend is not None:
@@ -310,18 +328,64 @@ class MazeRunTool:
                     self._deployed.add(here)
                 return self._issue(spend, None, here)
 
+        route = self._route(here, self._studs(grid, scene, free), free)
+        if route:
+            return self._commit(route, here)
+
+        # ⛔ A latching plate costs no clone, but it still has to be PRESSED — and the rewind
+        # puts every door back the way the level started, latches included. If the door of a
+        # plate known to latch is shut again, going to stand on it is a WALK, not a clone.
+        relight = {
+            plate for door, plate in self._gates.items()
+            if plate in self._latched and not self._flip.get(door, False)
+        }
         unseen = set() if self._gates else free - self._seen
-        for targets in (plates, unseen):
+        for targets in (plates, relight, unseen):
             route = self._route(here, targets, free)
             if route:
-                return self._walk(route[0], here)
+                return self._commit(route, here)
 
-        route = self._toward(here, scene.exit, free)
+        # ⛔ Mark time TOWARD the next plate, not toward the exit. Every move made while
+        # waiting is also a move appended to the path the NEXT clone will replay, so idling in
+        # place buys the wait twice: measured at twelve wasted moves that then became twelve
+        # extra moves of waiting after the following rewind, and the level died on its timer a
+        # few actions short. Walking a road that has to be walked anyway costs nothing.
+        far = self._distances(grid, scene, scene.exit)
+        # A door whose clone is on its way is the threshold to wait AT, not away from: the walk
+        # there is the same walk the route needs once it opens.
+        coming = [d for d, p in self._gates.items() if p in self._deployed and d not in free]
+        ahead = plates or coming
+        aim = min(ahead, key=lambda c: far.get(c, len(far) + 1)) if ahead else scene.exit
+        route = self._toward(here, self._distances(grid, scene, aim), free)
         if route:
             plan = self._walk(route[0], here)
             if plan:
                 return plan
         return self._drift(here, free)
+
+    def _commit(self, route: list[Cell], here: Cell) -> list[Step]:
+        """Take the first step of a route and keep the rest as the plan to follow."""
+        self._plan = route[1:]
+        plan = self._walk(route[0], here)
+        if not plan:
+            self._plan = []
+        return plan
+
+    def _drift(self, here: Cell, free: set[Cell]) -> list[Step]:
+        """Nothing plannable is reachable: take any KNOWN direction that lands on the board.
+
+        Standing still is not an option the board offers, and a move is never wasted while a
+        clone is replaying — it is the clock the clone runs on. Known directions only, so this
+        can never reach for the rewind by accident.
+        """
+        plates = set(self._gates.values())
+        for wanted in (True, False):
+            for action in sorted(self._delta):
+                shift = self._delta[action]
+                nxt = (here[0] + shift[0], here[1] + shift[1])
+                if nxt in free and ((nxt not in plates) is wanted):
+                    return self._issue(action, nxt, here)
+        return []
 
     # -- deciding where to go ------------------------------------------------
 
@@ -385,34 +449,92 @@ class MazeRunTool:
         return ((q, 0), (-q, 0), (0, q), (0, -q))
 
     def _route(self, start: Cell, targets: set[Cell], free: set[Cell]) -> list[Cell]:
-        """Shortest walk from the body to any target, over cells it may stand on."""
+        """Shortest walk from the body to any target, carrying the latch states with it.
+
+        ⛔ A latching plate is not scenery to be walked over. EVERY arrival on it flips its
+        door, so a route that crosses one on the way out shuts the door it is relying on.
+        Measured: the tool found a perfectly good twenty-two step route to the exit, took two
+        steps of it across the plate, watched the door it needed close, turned round, and did
+        that for the rest of the level. So the search state is (cell, latch bits), not cell —
+        one bit per latching door, flipped on entry to its plate.
+        """
         if not targets:
             return []
-        prev: dict[Cell, Cell | None] = {start: None}
-        queue: deque[Cell] = deque([start])
+        doors = sorted(d for d, p in self._gates.items() if p in self._latched)
+        plate_of = {self._gates[d]: i for i, d in enumerate(doors)}
+        shut = {d: i for i, d in enumerate(doors)}
+        start_bits = tuple(self._flip.get(d, False) for d in doors)
+
+        def step_bits(cell: Cell, bits: tuple[bool, ...]) -> tuple[bool, ...]:
+            i = plate_of.get(cell)
+            if i is None:
+                return bits
+            flipped = list(bits)
+            flipped[i] = not flipped[i]
+            return tuple(flipped)
+
+        state = (start, start_bits)
+        prev: dict[tuple[Cell, tuple[bool, ...]], tuple[Cell, tuple[bool, ...]] | None] = {state: None}
+        queue: deque[tuple[Cell, tuple[bool, ...]]] = deque([state])
         while queue:
-            here = queue.popleft()
-            if here in targets and here != start:
-                return self._unwind(prev, here)
+            here, bits = queue.popleft()
+            if here in targets and (here, bits) != state:
+                return self._unwind_states(prev, (here, bits))
             for dy, dx in self._steps():
                 nxt = (here[0] + dy, here[1] + dx)
-                if nxt in free and nxt not in prev:
-                    prev[nxt] = here
-                    queue.append(nxt)
+                i = shut.get(nxt)
+                passable = bits[i] if i is not None else nxt in free
+                if not passable:
+                    continue
+                nxt_state = (nxt, step_bits(nxt, bits))
+                if nxt_state not in prev:
+                    prev[nxt_state] = (here, bits)
+                    queue.append(nxt_state)
         return []
 
-    def _toward(self, start: Cell, goal: Cell, free: set[Cell]) -> list[Cell]:
+    @staticmethod
+    def _unwind_states(prev: dict[Any, Any], end: Any) -> list[Cell]:
+        path = [end]
+        while prev[path[-1]] is not None:
+            path.append(prev[path[-1]])
+        return [cell for cell, _bits in reversed(path)][1:]
+
+    def _distances(self, grid: np.ndarray, scene: _Scene, source: Cell) -> dict[Cell, int]:
+        """Corridor distance from a cell, with every door imagined open.
+
+        ⛔ Straight-line distance is the wrong idea of "close" on a board made of corridors.
+        Measured: the cell two steps from the exit as the crow flies was in a dead-end pocket
+        whose only way out ran the length of the board, while the cell that was genuinely one
+        door from the exit scored three times worse — so the body marked time in the pocket,
+        on top of a latching plate, toggling the door it was waiting for.
+        """
+        free = self._lattice(grid, scene, source, assume=True)
+        dist = {source: 0}
+        queue: deque[Cell] = deque([source])
+        while queue:
+            here = queue.popleft()
+            for dy, dx in self._steps():
+                nxt = (here[0] + dy, here[1] + dx)
+                if nxt in free and nxt not in dist:
+                    dist[nxt] = dist[here] + 1
+                    queue.append(nxt)
+        return dist
+
+    def _toward(self, start: Cell, dist: dict[Cell, int], free: set[Cell]) -> list[Cell]:
         """Get as close to the exit as the board allows; if already there, mark time.
 
         Marking time is not idling. Every move the body makes advances the clone one step along
-        the path it is replaying, and the clone is what holds the plate down.
+        the path it is replaying, and the clone is what holds the plate down. But it must not
+        walk over a latching plate to do it — that toggles the door the waiting is FOR.
         """
+        far = len(dist) + 1
+        plates = set(self._gates.values())
         prev: dict[Cell, Cell | None] = {start: None}
         queue: deque[Cell] = deque([start])
         best = start
         while queue:
             here = queue.popleft()
-            if self._gap(here, goal) < self._gap(best, goal):
+            if here not in plates and dist.get(here, far) < dist.get(best, far):
                 best = here
             for dy, dx in self._steps():
                 nxt = (here[0] + dy, here[1] + dx)
@@ -423,7 +545,7 @@ class MazeRunTool:
             return self._unwind(prev, best)
         for dy, dx in self._steps():
             nxt = (start[0] + dy, start[1] + dx)
-            if nxt in free:
+            if nxt in free and nxt not in plates:
                 return [nxt]
         return []
 
@@ -495,15 +617,32 @@ class MazeRunTool:
                 self._shut.pop(cell, None)
         self._sense_gates(grid, scene)
 
+        held = self._aliens(grid, grid, scene.reach)
         for door, plate in self._gates.items():
-            if scene.body != plate and int(grid[door]) not in self._wall.get(door, ()):
-                # ⛔ Open while NOBODY is standing on its plate: this door LATCHED when it was
-                # pressed. Measured on a level with three plates and two clones — spending one
-                # on the latching plate leaves none for the plate that has to be held, and the
-                # evidence that it latched arrives free, on the way past.
-                self._latched.add(plate)
+            if scene.body == plate:
+                continue
+            if held[plate] or int(grid[door]) in self._wall.get(door, ()):
+                continue
+            # ⛔ Open while NOBODY is standing on its plate: this door LATCHED when it was
+            # pressed. Measured on a level with three plates and two clones — spending one on
+            # the latching plate leaves none for the plate that has to be held, and the
+            # evidence that it latched arrives free, on the way past.
+            #
+            # ⛔ "Nobody" has to include the CLONE. A clone parked on a hold-plate holds the
+            # door open with the body far away, which is pixel-identical to a latch — and
+            # reading it as one retires the very plate the clone was spent on.
+            self._latched.add(plate)
+            self._flip[door] = True
 
         previous, self._last = self._last, scene.body
+        for door, plate in self._gates.items():
+            if plate in self._latched and scene.body == plate and previous != plate:
+                # ⛔ A latch is a BIT THIS TOOL OWNS: every arrival on the plate flips it, and
+                # nothing else touches it. Re-reading it off the frame instead cost the whole
+                # of one level — marking time next to the plate walked on and off it, toggling
+                # the door shut on exactly the alternate frames the route needed it open.
+                self._flip[door] = not self._flip.get(door, False)
+
         if len(self._flight) < _LAG or previous is None:
             return
         action, target, live, origin = self._flight.popleft()
@@ -522,6 +661,7 @@ class MazeRunTool:
                 # so it is voided in BOTH directions: it may not move the belief, and it may not
                 # name a wall. Voiding only the wall left the belief a stride ahead, and the next
                 # refusal was then recorded against an empty corridor two cells further on.
+                self._plan = []
                 for entry in self._flight:
                     entry[1], entry[2] = None, False
             elif action not in self._delta:
@@ -540,6 +680,8 @@ class MazeRunTool:
             self._delta.pop(culprit, None)
             self._unresolved = None
             self._flight.clear()
+            self._plan = []
+            self._flip.clear()  # the rewind puts the level back as it started, latches included
             if self._awaiting is not None:
                 self._deployed.add(self._awaiting)
                 self._awaiting = None
@@ -587,6 +729,7 @@ class MazeRunTool:
                     or max(abs(cell[0] - self._last[0]), abs(cell[1] - self._last[1])) <= scene.reach:
                 continue
             if cell not in self._gates:
+                self._plan = []
                 self._gates[cell] = scene.body
                 self._wall.setdefault(cell, set()).add(int(before[cell]))
 

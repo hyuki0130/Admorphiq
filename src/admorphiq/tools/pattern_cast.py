@@ -3,20 +3,36 @@
 The mechanic, recovered frame-only: a compact panel carries a complete k x k lattice of
 equal square cells. Most sit at one neutral colour; a minority are painted in a second.
 That minority is not decoration — it is an INSTRUCTION. Clicking each painted cell arms
-it, and when the armed set equals the painted set the board resolves the pattern in one
-shot, changing the avatar (it shrinks, or it is carried elsewhere) so that a route which
-was geometrically impossible becomes walkable. The lattice then goes quiet, which is also
-how the tool knows there is nothing further to enter.
+it, and when the armed set equals the painted set the board RESOLVES the pattern. What a
+resolution does is the board's own vocabulary and has to be learned: some change the
+avatar — it shrinks, it grows, it is carried across the board — and some are ranged, a
+projectile that leaves the side the avatar faces and clears a switch standing where no
+step can reach.
 
-Two things make this a plan rather than a search. The instruction is fully visible, so no
-combination is ever tried: a cast costs exactly the number of painted cells. And the panel
-that shows the pattern also METERS the level — every cell entered and every step taken is
-charged against a per-level allowance, and running it out ends the game — so exploring is
-not merely slow here, it loses.
+So the tool runs an agenda, not a habit. Walk to the exit if a route exists. If none
+does, look for the mark a projectile is FOR — a piece bordering the ground we stand on
+that no placement can touch — and go stand where the whole leading face looks at it. If
+there is no such mark and no route, the board is asking for the avatar itself to change.
+Only then is a pattern entered, and only a pattern whose effect matches what is being
+asked for; effects are remembered by pattern, so what one level pays to learn the rest
+get for nothing.
+
+Deeper levels stop displaying the instruction at all. Their patterns live in FURNITURE —
+framed plates standing off the walkable area, one per pattern the level allows. Asking a
+plate costs a turn and nothing else, so the tool asks for the pattern it needs rather
+than entering whatever happens to be lit.
+
+Two things make this a plan rather than a search. The instruction is fully visible once
+asked for, so no combination is ever tried: a cast costs exactly the number of painted
+cells. And the panel that shows the pattern also METERS the level — every cell entered
+and every step taken is charged against a per-level allowance, and running it out ends
+the game — so exploring is not merely slow here, it loses. Every guard in this file that
+looks like timidity is a measured loss: the same pattern entered twice from one stance,
+a mark shot at that never reacts, a turn taken twice on one square.
 
 Selectivity comes from the instruction itself. ``detect`` scores 0 unless a complete
-lattice is present AND cells are painted on it: a quiet lattice means this tool has nothing
-to enter and no business taking the turn.
+lattice is present AND cells are painted on it: a quiet lattice means this tool has
+nothing to enter and no business taking the turn.
 """
 
 from __future__ import annotations

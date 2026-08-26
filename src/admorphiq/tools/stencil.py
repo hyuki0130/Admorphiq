@@ -204,7 +204,11 @@ class StencilTool:
         if not marked:
             return 0.0
         clicks, _ = plan(g, self._code)
-        return 0.9 if clicks else 0.4
+        # ⛔ NO consolation bid. Returning 0.4 for "there is a lattice with a marked tile here"
+        # made this tool bid on ANOTHER game's board — measured by the cross-bid audit, 0.40 on a
+        # game it cannot solve. That is the same defect this round rejected in two other authors'
+        # tools and then found twice in my own. A tool with no plan bids ZERO.
+        return 0.9 if clicks else 0.0
 
     def reset(self) -> None:
         """The ink code survives a level change — the game teaches it once and then stops.

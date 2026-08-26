@@ -182,6 +182,7 @@ class MirrorMergeTool:
         self._duds: set[Cell] = set()                  # stood on it; nothing opened
         self._goal: Cell | None = None
         self._shut: dict[Cell, frozenset[int]] = {}    # how a door reads when it is closed
+        self._raw: dict[Cell, frozenset[int]] = {}     # the board as drawn, doors and all
         self._prev: dict[Cell, frozenset[int]] = {}
         self._expect: tuple[int, tuple[Cell | None, ...], tuple[Cell | None, ...],
                             list[dict[Cell, frozenset[int]]]] | None = None
@@ -198,10 +199,11 @@ class MirrorMergeTool:
         """A one-line account of what the tool currently believes, for the driver's trace."""
         live = [p for p in (self._track or ()) if p is not None]
         return (f"col={self._colour} pitch={self._pitch} pos={live} signs={self._sign} "
-                f"base={self._base} block={sorted(self._block | self._guess)} fatal={sorted(self._fatal)} "
-                f"free={sorted(self._free)} held={self._held} look={self._look and sorted(self._look)} "
+                f"base={self._base} block={sorted(self._block | self._guess)} "
+                f"fatal={sorted(self._fatal)} free={sorted(self._free)} "
                 f"opens={ {k: len(v) for k, v in self._opens.items()} } "
-                f"treads={sorted(self._treads)} pend={self._pend}")
+                f"doors={len(self._shut)} held={self._held} pend={self._pend} "
+                f"queued={len(self._script)}")
 
     # -- reading the board ---------------------------------------------------
 
@@ -263,9 +265,12 @@ class MirrorMergeTool:
         press later, and the tool walked back and forth across that boundary until the level ran
         out of budget.
         """
+        # ⛔ Unconditionally, INCLUDING under an actor. A door with somebody standing in it reads
+        # as that actor and so escapes the redraw, and the planner then holds two different maps
+        # for the same board depending on where the actors happen to be — which is how a shortest
+        # route and its own continuation came out disagreeing, one press apart, forever.
         for cell, colours in self._shut.items():
-            here = cells.get(cell)
-            if here is not None and self._colour not in here and here <= self._free:
+            if cell in cells:
                 cells[cell] = colours
         return cells
 
@@ -299,7 +304,7 @@ class MirrorMergeTool:
         out of, so a route can be planned for the board as it will be rather than as it is.
         """
         moved: list[Cell | None] = []
-        extra = extra | self._opened(state) | self._treads
+        extra = extra | self._opened(state) | (self._treads - self._shut.keys())
         shut = self._block | self._guess
         for i, pos in enumerate(state):
             if pos is None:
@@ -366,7 +371,13 @@ class MirrorMergeTool:
         """
         tally: dict[int, set[Cell]] = defaultdict(set)
         drop = self._free | self._tints | self._fatal | self._chrome
+        # ⛔ A door already known to be a door is not a switch, and neither is a cell with an actor
+        # standing on it. Measured: an actor halfway along a three-cell door split it into a lone
+        # square and a pair, and the lone half went onto the shortlist as something to go and
+        # stand on — a switch invented by the actor's own position.
         for cell, colours in self._cache.items():
+            if cell in self._shut or (self._track and cell in self._track):
+                continue
             for colour in colours - drop:
                 tally[colour].add(cell)
         out: dict[Cell, frozenset[Cell]] = {}
@@ -448,6 +459,8 @@ class MirrorMergeTool:
             for i, pos in enumerate(predicted):
                 if pos is not None and pos != before[i]:
                     was = set(targets[i].get(pos, frozenset()))
+                    if pos in self._shut:
+                        continue
                     entered |= was - self._free
                     if not was <= self._free:
                         landed.add(pos)
@@ -490,14 +503,26 @@ class MirrorMergeTool:
         if not stood:
             return
         gone = frozenset(
-            cell for cell, colours in self._cache.items()
+            cell for cell, colours in self._raw.items()
             if colours <= self._free and cell in self._prev
             and not self._prev[cell] <= self._free and cell not in state
         )
         if not gone:
             return
+        # ⛔ Walking through a door while it was open is not evidence the door is walkable, and
+        # per-cell evidence says exactly that unless a door outranks it. Measured: both actors
+        # crossed while a switch was held, the crossing was banked as "this cell is fine", and
+        # from then on every plan walked through shut doors and pressed into them forever.
+        # ⛔ A thing that has to be OPENED is a thing that is otherwise shut, and its colour is
+        # the switch's colour too. Measured: standing on the switch banked "this colour is
+        # walkable" — true of the switch, false of the door — and the planner then pressed into a
+        # closed door ten times in a row believing it was floor.
+        doors = {c for cell in gone for c in self._prev[cell]} - {self._bg, self._colour}
+        self._block |= doors
+        self._free -= doors
         for cell in gone:
             self._shut.setdefault(cell, self._prev[cell])
+        self._treads -= gone
         for cell in stood:
             # ⛔ Per CELL, never per colour. The door and its switch are painted the same, so
             # clearing the colour would open every door on the board in the planner's head.
@@ -569,13 +594,14 @@ class MirrorMergeTool:
             if asked is not None:
                 return asked
 
-        self._prev = self._cache
-        self._cache = self._shut_doors(self._cells(g))
+        raw = self._cells(g)
+        self._prev, self._raw = self._raw, raw
+        self._cache = self._shut_doors(dict(raw))
         if self._script or self._pend is not None:
             shifting = self._advance()
             if shifting:
                 return shifting
-        now = self._read(self._cache)
+        now = self._read(raw)
         if len(now) < 2:
             return []
         if self._probing is not None:
