@@ -39,7 +39,7 @@ import numpy as np
 from admorphiq.tools import segment
 from admorphiq.tools.base import Step, availability, frame_2d, has_frame
 
-__all__ = ["LinkageReachTool", "Markers", "marker_colour", "read_markers", "read_controls"]
+__all__ = ["LinkageReachTool", "Markers", "marker_colour", "read_markers", "read_controls", "read_walls"]
 
 Cell = tuple[int, int]
 
@@ -50,8 +50,11 @@ _MIN_WIDGET = 4
 _MAX_MARKERS = 12
 # A* refuses to grind: these boards resolve in tens of clicks or the model is wrong.
 _MAX_EXPAND = 60_000
-_MAX_DEPTH = 64
+_MAX_DEPTH = 80
 _UNREACHABLE = 1 << 20
+# What a step into scenery costs, in moves. Big enough to prefer a detour around a wall, small
+# enough that a mover which must finish inside scenery can still get there.
+_WALL_COST = 20
 
 
 # --- perception --------------------------------------------------------------
@@ -192,6 +195,28 @@ def read_controls(g: np.ndarray) -> list[dict[str, Any]]:
     return found
 
 
+def read_walls(g: np.ndarray, colour: int) -> set[Cell]:
+    """Structure the movers have to go around: a region carrying no marker of its own.
+
+    A mover sits INSIDE the thing that carries it, so the carrier's region contains a marker
+    cell and is excluded; so are the places, which are made of marker cells; so are the framed
+    controls, which are not board at all. What is left is scenery. This is a PRIOR, not a fact —
+    the planner pays to cross it rather than being forbidden to, because what a refused move
+    really collides with is the carrier's far end, which no still frame shows.
+    """
+    bg = segment.background(g)
+    marks = {(int(y), int(x)) for y, x in np.argwhere(g == colour)}
+    boxes = [c["box"] for c in read_controls(g)]
+    walls: set[Cell] = set()
+    for cells in segment.components(g.tolist(), bg):
+        if any(c in marks for c in cells):
+            continue
+        if any(y0 <= y <= y1 and x0 <= x <= x1 for y, x in cells for y0, x0, y1, x1 in boxes):
+            continue
+        walls.update(cells)
+    return walls
+
+
 # --- planning ----------------------------------------------------------------
 
 
@@ -215,8 +240,15 @@ def _plan(
     goals: tuple[Cell, ...],
     moves: list[tuple[tuple[int, int], tuple[Cell, ...]]],
     blocked: set[tuple[tuple[Cell, ...], tuple[int, int]]],
+    walls: set[Cell] = frozenset(),  # type: ignore[assignment]
 ) -> list[tuple[int, int]] | None:
-    """A* over the joint marker positions under the learnt translations."""
+    """A* over the joint marker positions under the learnt translations.
+
+    Crossing scenery is priced, not banned. MEASURED on a board whose one route runs over the
+    top of a wall: with every move costing the same, the search crawls along the wall a row at a
+    time, spends two actions learning each row is shut, and the budget ends before it thinks to
+    leave the wall's span. Pricing a step into scenery sends it out of that span first.
+    """
     if not moves or not goals:
         return None
     step = max(1, max(abs(d[0]) + abs(d[1]) for _, vec in moves for d in vec))
@@ -227,7 +259,7 @@ def _plan(
         _, g_cost, pos, path = heapq.heappop(heap)
         if _assign_cost(pos, goals) == 0:
             return list(path)
-        if g_cost > seen.get(pos, _UNREACHABLE) or g_cost >= _MAX_DEPTH:
+        if g_cost > seen.get(pos, _UNREACHABLE) or len(path) >= _MAX_DEPTH:
             continue
         expanded += 1
         for key, vec in moves:
@@ -236,7 +268,7 @@ def _plan(
             nxt = tuple((p[0] + d[0], p[1] + d[1]) for p, d in zip(pos, vec))
             if any(not (0 <= a < 64 and 0 <= b < 64) for a, b in nxt):
                 continue
-            ng = g_cost + 1
+            ng = g_cost + 1 + _WALL_COST * sum(1 for c in nxt if c in walls)
             if ng >= seen.get(nxt, _UNREACHABLE):
                 continue
             seen[nxt] = ng
@@ -302,6 +334,7 @@ class LinkageReachTool:
         self._delta: dict[tuple[int, int], tuple[Cell, ...]] = {}
         self._inert: set[tuple[int, int]] = set()
         self._blocked: set[tuple[tuple[Cell, ...], tuple[int, int]]] = set()
+        self._walls: set[Cell] = set()
         self._path: list[tuple[int, int]] = []
         self._path_at: tuple[Cell, ...] | None = None
         self._null: Cell = (0, 0)
@@ -354,9 +387,10 @@ class LinkageReachTool:
 
         shown = _rematch(list(self._shown), sorted(m.movers))
         if len(shown) != len(self._places):
-            # A marker is momentarily unreadable (a mover passing alongside a ring). One click
-            # on empty background re-renders the board without changing it.
-            return [(6, self._null)]
+            # A mover is momentarily unreadable — passing alongside a ring, or hidden under a
+            # panel. The model still says where it is, so carry on from the prediction rather
+            # than stalling; the next frame that shows it will correct the record.
+            shown = list(self._predicted())
         self._shown = tuple(shown)
 
         if self._resyncing:
@@ -387,7 +421,7 @@ class LinkageReachTool:
             # plan starts by undoing it, and the pair cancels. Following one committed path until
             # the board contradicts it removes that entirely.
             moves = [(k, v) for k, v in self._delta.items() if any(d != (0, 0) for d in v)]
-            self._path = _plan(here, places, moves, self._blocked) or []
+            self._path = _plan(here, places, moves, self._blocked, self._walls) or []
         if not self._path:
             self._path_at = None
             return []
@@ -406,6 +440,11 @@ class LinkageReachTool:
         self._controls = read_controls(g)
         self._truth = tuple(sorted(m.movers))
         self._shown = self._truth
+        panels = {(y, x) for y0, x0, y1, x1 in (c["box"] for c in self._controls)
+                  for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)}
+        # A control panel is drawn OVER the board, so a mover driven under one disappears from
+        # the frame entirely. Pricing the panels like scenery keeps the planner off them.
+        self._walls = (read_walls(g, colour) | panels) - set(places)
         self._null = self._quiet_cell(g)
 
     def _quiet_cell(self, g: np.ndarray) -> Cell:
@@ -419,6 +458,14 @@ class LinkageReachTool:
                 continue
             return (x, y)
         return (0, 0)
+
+    def _predicted(self) -> tuple[Cell, ...]:
+        """What the frame should be showing: previous truth plus the last action's delta."""
+        assert self._truth is not None
+        if not self._queue:
+            return self._truth
+        base, _, vec = self._queue[-1]
+        return base if vec is None else _shift(base, vec)
 
     def _believed(self) -> tuple[Cell, ...]:
         """Where the movers are, taking the newest unresolved action to have been kept."""
@@ -434,14 +481,21 @@ class LinkageReachTool:
         return _shift(base, vec)
 
     def _absorb(self, shown: tuple[Cell, ...]) -> bool:
-        """Fold this frame into the model. False when the arithmetic does not close."""
+        """Fold this frame into the model. False when the arithmetic does not close.
+
+        A click has three possible outcomes and the frame alone shows only two of them apart.
+        It can be KEPT, it can be REFUSED (drawn, then undone behind the frame), and it can be
+        INERT — the widget's arm is already at its limit, so nothing is drawn at all. Inert is
+        the one that must not be mistaken: it makes the frame equal the state BEFORE the click,
+        which no "previous truth plus this delta" reading can explain, and a tool that only
+        knows kept-or-refused answers it by clicking the same dead control forever.
+        """
         assert self._truth is not None
+        zero = tuple((0, 0) for _ in shown)
         if self._queue and self._queue[-1][2] is None:
             base, key, _ = self._queue[-1]
             vec = tuple((a[0] - b[0], a[1] - b[1]) for a, b in zip(shown, base))
-            if all(d == (0, 0) for d in vec):
-                # The frame shows the move even when it is refused, so a still frame means the
-                # control drives nothing reachable from here at all.
+            if vec == zero:
                 self._inert.add(key)
                 self._blocked.add((base, key))
                 self._queue.pop()
@@ -455,18 +509,21 @@ class LinkageReachTool:
 
         if len(self._queue) < 2:
             return True
-        first, second = self._queue[0], self._queue[1]
-        vec1 = second[2]
-        if vec1 is None:
+        (before, older, vec0), (_, newer, vec1) = self._queue[0], self._queue[1]
+        if vec0 is None or vec1 is None:
             return True
-        settled = _unshift(shown, vec1)
-        kept = _shift(first[0], first[2]) if first[2] is not None else first[0]
-        if settled == first[0] and settled != kept:
-            self._blocked.add((first[0], first[1]))
-        elif settled != kept:
+        kept = _shift(before, vec0)
+        for settled, effect in ((kept, vec1), (before, vec1), (kept, zero), (before, zero)):
+            if _shift(settled, effect) == shown:
+                break
+        else:
             return False
+        if settled == before and kept != before:
+            self._blocked.add((before, older))
+        if effect == zero:
+            self._blocked.add((settled, newer))
         self._truth = settled
-        self._queue = [(settled, second[1], vec1)]
+        self._queue = [(settled, newer, effect)]
         return True
 
     def _resync(self) -> list[Step]:

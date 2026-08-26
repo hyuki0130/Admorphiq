@@ -46,7 +46,7 @@ _TURN = 5
 _SLIDE = {(1, 0): 4, (-1, 0): 3, (0, 1): 2, (0, -1): 1}
 _MAX_NODES = 400_000
 _MAX_SOLUTIONS = 400
-_MAX_ORBIT = 16
+_MAX_ORBIT = 26
 _MIN_CELLS = 3
 _MAX_IDLE = 8
 
@@ -231,15 +231,41 @@ class JigsawAssembleTool:
         self._at.append(corner)
         return len(self._forms) - 1
 
-    def _region(self, board: np.ndarray, changed: set[Cell], skip: int | None) -> set[Cell] | None:
-        """The piece the changed cells belong to: its whole region, minus every other piece."""
+    def _region(self, board: np.ndarray, seeds: set[Cell], skip: int | None,
+                keep: set[Cell] | None = None) -> set[Cell] | None:
+        """The piece the seed cells belong to, minus every other piece.
+
+        ⛔ `keep` is not optional in spirit. MEASURED: a piece that turns can come to REST AGAINST
+        a piece nobody has read yet, and the two are then one region — the tool recorded both as
+        a single piece, its orbit never closed, and the board went unreadable. After a turn the
+        piece is exactly what CHANGED plus where it already was; a neighbour is neither.
+        """
         others = self._taken(skip)
         for cells in pieces_of(board)[0]:
-            if cells & changed:
+            if cells & seeds:
                 spare = cells - others
+                if keep is not None:
+                    spare &= keep
                 if len(spare) >= 1:
                     return spare
         return None
+
+    def _upset(self, board: np.ndarray, changed: set[Cell], allow: int) -> bool:
+        """Did the whole board move under us? Then what we just watched explains nothing.
+
+        ⛔ MEASURED: a cleared level only turns into the next one when SOMETHING acts, so the
+        action this tool spends reading the old board is eaten by the transition and answered
+        with a completely different board. Adopting a piece from that answer produced an orbit
+        that could never close, and the level was lost to sixteen wasted turns.
+        """
+        touched = [cells for cells in pieces_of(board)[0] if cells & changed]
+        return len(touched) > allow or len(changed) > 0.5 * board.size
+
+    def _restart(self) -> None:
+        """Forget what was read without forgetting that this tool belongs to this game."""
+        earned, level, idle = self._earned, self._level, self._idle
+        self.reset()
+        self._earned, self._level, self._idle = earned, level, idle
 
     def _absorb_click(self, board: np.ndarray) -> None:
         """The click selected a piece we had not read: record it as it now shows itself."""
@@ -250,6 +276,9 @@ class JigsawAssembleTool:
         changed = {(int(x), int(y)) for y, x in zip(*np.where(board != prev))}
         if not changed:
             self._dead = True  # nothing answered the click; this board is not ours
+            return
+        if self._upset(board, changed, allow=2):
+            self._restart()
             return
         region = self._region(board, {clicked}, None)
         if region is None or clicked not in region:
@@ -265,6 +294,9 @@ class JigsawAssembleTool:
         if not changed:
             self._dead = True  # the turn did nothing; the mechanic is not what we read
             return
+        if self._upset(board, changed, allow=1):
+            self._restart()
+            return
         if self._selected is None:
             # The level handed the selection to a piece we have not identified. Whatever the turn
             # moved IS that piece, and the board we came in on holds its resting form.
@@ -273,28 +305,36 @@ class JigsawAssembleTool:
                 self._dead = True
                 return
             self._selected = self._adopt(prev, before)
+            was = before
+        else:
+            was = self._cells_of(self._selected)
         idx = self._selected
-        region = self._region(board, changed, idx)
+        region = self._region(board, changed, idx, keep=changed | was)
         if region is None:
             self._dead = True
             return
         art, corner = _crop(board, region)
         forms = self._forms[idx]
+        self._at[idx] = corner
         if len(forms) == 1 and _same(art, _quarter(forms[0])):
             # A quarter turn came back: the orbit is the four quarter turns, no more presses owed.
             self._forms[idx] = [forms[0], art, _quarter(art), _quarter(_quarter(art))]
             self._closed[idx] = True
             self._cur[idx] = 1
-            self._at[idx] = corner
-            return
-        if _same(art, forms[0]):
-            self._closed[idx] = True
-            self._cur[idx] = 0
-            self._at[idx] = corner
             return
         forms.append(art)
         self._cur[idx] = len(forms) - 1
-        self._at[idx] = corner
+        # ⛔ The orbit closes on the SEQUENCE repeating, never on one form coming back. MEASURED:
+        # a stack walks up to its top and then walks back down, so the form after k presses does
+        # not determine the form after k+1 — the direction is hidden state. Reading a single
+        # repeat as the period made the tool press three times expecting the tallest form and get
+        # the second-shortest, and the level was then executed against a piece that was not there.
+        for period in range(1, len(forms) - 1):
+            if _same(forms[period], forms[0]) and _same(forms[period + 1], forms[1]):
+                self._forms[idx] = forms[:period]
+                self._closed[idx] = True
+                self._cur[idx] = (len(forms) - 1) % period
+                return
         if len(forms) >= _MAX_ORBIT:
             self._dead = True
 

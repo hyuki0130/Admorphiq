@@ -31,7 +31,7 @@ from typing import Any
 import numpy as np
 
 from admorphiq.tools.base import Step, availability, frame_2d, has_frame
-from admorphiq.tools.segment import background, board_changed, edge_band
+from admorphiq.tools.segment import background, board_changed
 
 __all__ = ["CoverTargetsTool"]
 
@@ -43,6 +43,10 @@ _MARK = 3
 _INERT_AFTER = 3
 # A remembered piece is recognised in a new view once this much of it is still on show.
 _RECOGNISE = 0.5
+# What a repaint is worth in moves, so a pairing that needs none is preferred.
+_REPAINT = 40
+# How far a piece may be walked in from the edge before its shape is taken as measured.
+_NUDGES = 8
 
 
 class CoverTargetsTool:
@@ -67,6 +71,8 @@ class CoverTargetsTool:
         self._acted: int | None = None
         self._grid: np.ndarray | None = None
         self._odd: list[Cell] = []
+        self._probes = 0
+        self._edge = 0
         self._idle = 0
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
@@ -143,13 +149,13 @@ class CoverTargetsTool:
             for dy in (-1, 0, 1)
             for dx in (-1, 0, 1)
         }
-        chrome = edge_band(grid.shape, margin_div=min(grid.shape))
+        chrome = _chrome(grid)
         blocked = set(background(grid.tolist())) | {ringc}
         h, w = grid.shape
         out: dict[int, set[Cell]] = {}
         for r in range(h):
             for c in range(w):
-                if chrome[r, c] or (r, c) in hidden:
+                if (r, c) in chrome or (r, c) in hidden:
                     continue
                 v = int(grid[r, c])
                 if v not in blocked:
@@ -223,8 +229,10 @@ class CoverTargetsTool:
                 "shape": frozenset((y - anchor[0], x - anchor[1]) for y, x in cells),
                 "anchor": (anchor[0] + vec[0], anchor[1] + vec[1]),
                 "axes": {0 if vec[0] else 1},
+                "nudges": 0,
             })
             self._wheel = len(self._parts) - 1
+            self._probes = 0
             return
         part = self._parts[target]
         anchor = part["anchor"]
@@ -261,6 +269,43 @@ class CoverTargetsTool:
                     best, score = colour, hit
             part["colour"] = best
 
+    def _grow(self, blobs: dict[int, set[Cell]], grid: np.ndarray) -> None:
+        """Take in cells of a piece that are simply on show but were never seen to move.
+
+        Motion alone under-measures: a piece whose arm ran off the board, once walked back on,
+        is fully visible yet still short in memory, and the two cells missing from a cross's
+        arm were exactly the ones its winning placement needed. Only a piece that is the sole
+        wearer of its colour, once every piece has been met, can be grown this way — where
+        several share a colour the blob is several pieces and motion is the only thing that
+        tells them apart — and the flood is
+        fenced out of solid patches of colour, which a piece stands on to be repainted and
+        would otherwise swallow.
+        """
+        if self._probes <= len(self._parts):
+            # Not every piece has shown itself yet, and while that is true a lone part may be
+            # standing in for several: on a board of three same-coloured pieces the first one
+            # found swallowed all three.
+            return
+        fenced = _fat(grid)
+        for colour, cells in blobs.items():
+            mine = [p for p in self._parts if p["colour"] == colour]
+            if len(mine) != 1:
+                continue
+            part = mine[0]
+            room = cells - fenced
+            seen = set(_mask(part)) & room
+            stack = list(seen)
+            while stack:
+                y, x = stack.pop()
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        spot = (y + dy, x + dx)
+                        if spot in room and spot not in seen:
+                            seen.add(spot)
+                            stack.append(spot)
+            ay, ax = part["anchor"]
+            part["shape"] = part["shape"] | {(y - ay, x - ax) for y, x in seen}
+
     # --- planning ----------------------------------------------------------
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
@@ -272,8 +317,10 @@ class CoverTargetsTool:
         if spec is None:
             return []
         blobs = self._blobs_of(grid, spec)
+        self._edge = grid.shape[0] - 1
         self._learn(blobs, grid)
         self._recolour(blobs)
+        self._grow(blobs, grid)
         if self._wheel is None:
             self._wheel = self._at_the_wheel()
         self._blobs, self._grid, self._acted = blobs, grid, None
@@ -284,9 +331,14 @@ class CoverTargetsTool:
             return []
         plan = self._assign(pips, blobs)
         if plan is None:
-            plan = self._dip(pips, blobs)
+            # Discovery first: a colour that looks absent from the board may just belong to a
+            # piece not met yet, and dipping before then drove one piece onto another.
+            hunt = self._discover(blobs)
+            if hunt:
+                return hunt
+            plan = self._scheme(pips, blobs)
         if plan is None:
-            return self._discover(blobs)
+            return []
         for i, vec in plan:
             if vec == (0, 0):
                 continue
@@ -327,39 +379,90 @@ class CoverTargetsTool:
         chosen.sort(key=lambda iv: abs(iv[1][0]) + abs(iv[1][1]))
         return chosen
 
-    def _dip(
+    def _scheme(
         self, pips: list[tuple[int, int, int]], blobs: dict[int, set[Cell]]
     ) -> list[tuple[int, tuple[int, int]]] | None:
-        """Take a piece to a patch of a colour the board asks for and no piece is wearing.
+        """Decide which piece wears which colour, then where each one goes.
 
-        When the marks demand a colour that is nowhere on any piece, the board is not
-        unsolvable — it is telling you where to go. The only fixed thing on it wearing that
-        exact colour is where a piece goes to acquire it, and the piece to send is one whose
-        own colour no mark asks for, so nothing already useful is spent.
+        When the marks ask for a colour no piece is wearing, the board is not unsolvable — it
+        is telling you where to go, since the only fixed thing on it wearing that exact colour
+        is where a piece acquires it. But WHICH piece takes WHICH colour is not free: measured
+        on this board, painting the pieces the obvious way round left both of them unable to
+        reach their marks, because a cross covers a row and a column and an X covers two
+        diagonals, and the marks were laid out for the other pairing. So the colour and the
+        placement are chosen together, and a pairing counts only if the piece taking a colour
+        can then cover every mark of it.
         """
         step = self._stride()
-        wanted = {v for _, _, v in pips}
-        short = sorted(wanted - {p["colour"] for p in self._parts})
-        if not step or not short:
+        if not step or not self._parts:
             return None
-        spare = [i for i, p in enumerate(self._parts) if p["colour"] not in wanted]
-        donors = spare or list(range(len(self._parts)))
-        best: tuple[int, int, tuple[int, int]] | None = None
-        for colour in short:
-            patch = self._unmoved(blobs, colour)
-            if not patch:
+        wanted = sorted({v for _, _, v in pips})
+        reach: dict[tuple[int, int], tuple[int, int]] = {}
+        for i, part in enumerate(self._parts):
+            mask = _mask(part)
+            for colour in wanted:
+                want = [(r, c) for r, c, v in pips if v == colour]
+                fits = {
+                    o for o in _offsets(mask, want) if not o[0] % step and not o[1] % step
+                }
+                if fits:
+                    reach[(i, colour)] = min(fits, key=lambda o: abs(o[0]) + abs(o[1]))
+        if not reach:
+            return None
+
+        best: tuple[int, list[tuple[int, int, tuple[int, int]]]] | None = None
+
+        def walk(k: int, used: frozenset[int], cost: int,
+                 picks: list[tuple[int, int, tuple[int, int]]]) -> None:
+            nonlocal best
+            if best is not None and cost >= best[0]:
+                return
+            if k == len(wanted):
+                best = (cost, list(picks))
+                return
+            colour = wanted[k]
+            for i in range(len(self._parts)):
+                if i in used or (i, colour) not in reach:
+                    continue
+                off = reach[(i, colour)]
+                toll = 0 if self._parts[i]["colour"] == colour else _REPAINT
+                walk(k + 1, used | {i}, cost + abs(off[0]) + abs(off[1]) + toll,
+                     [*picks, (i, colour, off)])
+
+        walk(0, frozenset(), 0, [])
+        if best is None:
+            return None
+        plan: list[tuple[int, tuple[int, int]]] = []
+        for i, colour, off in best[1]:
+            if self._parts[i]["colour"] == colour:
+                plan.append((i, off))
                 continue
-            for i in donors:
-                mask = _mask(self._parts[i])
-                for sy, sx in patch:
-                    for my, mx in mask:
-                        off = (_snap(sy - my, step), _snap(sx - mx, step))
-                        cost = abs(off[0]) + abs(off[1])
-                        if off == (0, 0) or (best is not None and cost >= best[0]):
-                            continue
-                        if any((y + off[0], x + off[1]) in patch for y, x in mask):
-                            best = (cost, i, off)
-        return None if best is None else [(best[1], best[2])]
+            dip = self._toward_patch(i, colour, blobs)
+            if dip is None:
+                return None
+            plan.append((i, dip))
+        plan.sort(key=lambda iv: abs(iv[1][0]) + abs(iv[1][1]))
+        return plan
+
+    def _toward_patch(
+        self, part: int, colour: int, blobs: dict[int, set[Cell]]
+    ) -> tuple[int, int] | None:
+        """The shortest push that lands this piece on a fixed patch of that colour."""
+        step = self._stride()
+        patch = self._unmoved(blobs, colour)
+        if not step or not _solid(patch):
+            return None
+        mask = _mask(self._parts[part])
+        best: tuple[int, tuple[int, int]] | None = None
+        for sy, sx in patch:
+            for my, mx in mask:
+                off = (_snap(sy - my, step), _snap(sx - mx, step))
+                cost = abs(off[0]) + abs(off[1])
+                if off == (0, 0) or (best is not None and cost >= best[0]):
+                    continue
+                if any((y + off[0], x + off[1]) in patch for y, x in mask):
+                    best = (cost, off)
+        return None if best is None else best[1]
 
     def _unmoved(self, blobs: dict[int, set[Cell]], colour: int) -> frozenset[Cell]:
         """Cells of this colour that no known piece accounts for; they stay where they are."""
@@ -383,14 +486,41 @@ class CoverTargetsTool:
                 pick = self._toward(axis, _mask(part), blobs)
                 if pick is not None:
                     return self._emit(pick)
-            if self._seen_all():
+            inward = self._inward(part)
+            if inward is not None:
+                return self._emit(inward)
+            if self._probes > len(self._parts):
                 return []
+            self._probes += 1
             return self._cycle()
         blind = self._blind()
         if blind is not None:
             return self._emit(blind)
         known = [a for a in self._effect if a in self._usable()]
         return self._emit(known[0]) if known else []
+
+    def _inward(self, part: dict[str, Any]) -> int | None:
+        """Bring a piece that hangs off the board far enough in to be measured.
+
+        A piece whose arm runs past the edge is short by exactly the cells that never rendered,
+        and planning off that short shape rejected the placement that actually wins — two
+        missing cells on a cross's right arm was the whole difference. You cannot measure what
+        is off screen, so move it on screen first.
+        """
+        if part["nudges"] >= _NUDGES:
+            return None
+        mask = _mask(part)
+        edge = self._edge
+        for axis, want in ((0, 1), (0, -1), (1, 1), (1, -1)):
+            over = min(c[axis] for c in mask) <= 0 if want > 0 else \
+                max(c[axis] for c in mask) >= edge
+            if not over:
+                continue
+            for action, vec in self._effect.items():
+                if action in self._usable() and vec[axis] * want > 0 and not vec[1 - axis]:
+                    part["nudges"] += 1
+                    return action
+        return None
 
     def _blind(self) -> int | None:
         """An action never yet tried, which is the only kind that can teach a new direction."""
@@ -412,11 +542,6 @@ class CoverTargetsTool:
             if any(0 <= y < limit and 0 <= x < limit for y, x in after):
                 return action
         return self._blind()
-
-    def _seen_all(self) -> bool:
-        """Have the controls come back round to a piece already fully learned?"""
-        self._idle += 1
-        return self._idle > len(self._parts) + 2
 
     # --- controls ----------------------------------------------------------
 
@@ -582,6 +707,79 @@ def _cover(
 
     walk(0, todo, 0, [])
     return found
+
+
+def _chrome(grid: np.ndarray) -> set[Cell]:
+    """Cells belonging to a counter pinned along an edge, and no others.
+
+    A fixed margin is too blunt: it swallowed a real column of a piece hanging off the right
+    of the board. A counter is recognisable instead — a full edge line with nothing of the
+    board's own background in it, made of at most two colours in solid runs, which is what a
+    bar that marches one cell per action looks like.
+    """
+    h, w = grid.shape
+    bg = background(grid.tolist())
+    lines = {
+        (0, 0): [(0, x) for x in range(w)],
+        (0, 1): [(h - 1, x) for x in range(w)],
+        (1, 0): [(y, 0) for y in range(h)],
+        (1, 1): [(y, w - 1) for y in range(h)],
+    }
+    out: set[Cell] = set()
+    for cells in lines.values():
+        run = [int(grid[y, x]) for y, x in cells]
+        if any(v in bg for v in run) or len(set(run)) > 2:
+            continue
+        if sum(1 for a, b in zip(run, run[1:]) if a != b) > 1:
+            continue
+        out |= set(cells)
+    return out
+
+
+def _fat(grid: np.ndarray) -> set[Cell]:
+    """Cells that are inside something solid, rather than on a one-cell-thin skeleton.
+
+    A cell with all eight neighbours its own colour cannot be on a cross, an X or a bar — only
+    inside a filled patch. Those cells and their neighbours mark the patch out.
+    """
+    h, w = grid.shape
+    core: set[Cell] = set()
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            here = int(grid[y, x])
+            if all(
+                int(grid[y + dy, x + dx]) == here
+                for dy in (-1, 0, 1)
+                for dx in (-1, 0, 1)
+            ):
+                core.add((y, x))
+    return {
+        (y + dy, x + dx)
+        for y, x in core
+        for dy in (-1, 0, 1)
+        for dx in (-1, 0, 1)
+    }
+
+
+def _solid(cells: frozenset[Cell]) -> bool:
+    """Does this fill its own bounding box in both directions — a patch, not a piece?
+
+    The pieces on these boards are skeletons — a cross, an X, a bar — so they cover a few per
+    cent of the box they span, and requiring solidity is what stops a piece being mistaken
+    for a supply of its own colour and driven into. Two details are measured, not chosen: the
+    box must be thick in both directions, because a bar fills its own one-cell-tall box
+    perfectly; and a few cells may be missing, because a patch with another piece lying
+    across it showed 15 of its 16 cells and was rejected as a patch.
+    """
+    if len(cells) < 4:
+        return False
+    ys = [c[0] for c in cells]
+    xs = [c[1] for c in cells]
+    h = max(ys) - min(ys) + 1
+    w = max(xs) - min(xs) + 1
+    if h < 2 or w < 2:
+        return False
+    return len(cells) * 4 >= h * w * 3
 
 
 def _snap(value: int, step: int) -> int:

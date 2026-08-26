@@ -53,6 +53,7 @@ class PatternCastTool:
 
     def __init__(self) -> None:
         self._level = -1
+        self._engaged = False
         self.reset()
 
     # --- lifecycle ---------------------------------------------------------
@@ -75,7 +76,9 @@ class PatternCastTool:
         self._aim: tuple[Cell, int] | None = None
         self._rearms = 0
         self._reads = 0
+        self._casts = 0
         self._seen: set[Box] = set()
+        self._suspect = False
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Learning happens in ``propose``, which sees both sides of a transition."""
@@ -114,31 +117,35 @@ class PatternCastTool:
             fresh = self._level >= 0
             self._level = level
             self.reset()
-            if fresh:
-                # A cleared level leaves the FINISHED board on screen for one more frame,
-                # avatar already merged into its exit. Planning on it is not merely wasted:
-                # a lattice click aimed at the old pattern lands on the NEW one and arms a
-                # cell the new pattern does not want, which no later click can undo without
-                # spending the allowance twice. Spend one inert click and look again.
-                again = self._read_again(grid)
-                if again is not None:
-                    return [again]
+            self._suspect = fresh
 
         pad = _find_pad(grid)
         if pad is None:
             return []
         origins, side, colours = pad
+        self._engaged = self._engaged or bool(_painted(colours))
+        if not self._engaged:
+            # A lattice that has never shown a pattern is somebody else's furniture. Other
+            # boards carry regular grids of flat squares for their own reasons, and acting
+            # on one — even inertly — is taking a turn this tool has no plan for.
+            return []
         panel = _panel_box(grid, origins)
 
         self._confirm_entry(colours)
         self._learn(grid, panel)
+
         # Walk BEFORE entering anything. A resolved pattern can be directional — it acts
-        # the way the avatar faces — so entering it from wherever we happen to stand
-        # spends the allowance on a shot into a wall. Walking first both closes the
-        # distance and, when the last step is refused, leaves the avatar facing exactly
-        # the thing that refused it.
+        # the way the avatar faces — so entering it from wherever we happen to stand spends
+        # the allowance on a shot into a wall. Walking first closes the distance and, when
+        # the walk runs out, leaves the avatar standing where a shot has something to hit.
         step = self._navigate(grid, panel, simple)
-        if step is None:
+        # A cleared level leaves the FINISHED board on screen for one more frame, with the
+        # avatar already merged into its exit. Walking such a frame is harmless — the plan
+        # is simply refused — but ENTERING it is not: a click aimed at the old pattern lands
+        # on the NEW lattice and arms a cell that pattern does not want, which no later click
+        # undoes without paying for the pattern twice. Reading the avatar and its exit off
+        # the frame is the proof that the frame describes this board; until then, no clicks.
+        if step is None and not self._suspect:
             step = self._face_then_enter(origins, side, colours)
         if step is None:
             step = self._read_again(grid)
@@ -206,7 +213,10 @@ class PatternCastTool:
             o for o in self._objects(grid, board)
             if not (_halo(o["cells"]) & ground) and o["cells"].isdisjoint(self._goal or set())
         ]
-        if not shelf or self._rearms >= 2 * len(shelf):
+        # Two attempts, no more. Each costs the entry price of a whole pattern, and a
+        # level whose exit needs a pattern we cannot identify is better left than paid for
+        # repeatedly — running the allowance out LOSES the level that is already won.
+        if not shelf or self._rearms >= 2:
             return None
         shelf.sort(key=lambda o: (-o["size"], o["box"]))
         pick = shelf[self._rearms % len(shelf)]
@@ -237,23 +247,30 @@ class PatternCastTool:
     ) -> Step | None:
         """Click one painted cell, or nothing when the pattern is fully entered.
 
-        "Entered" is held against the colour the cell took, so a cell toggled back off by
-        a stray click returns to the pending list on its own.
+        "Entered" is held against the colour the cell HAD, so a cell toggled back off by a
+        stray click returns to the pending list on its own, while the wholesale recolour a
+        resolution paints over the lattice does not read as fresh work.
         """
         painted = _painted(colours)
-        if not painted:
-            # The lattice has gone quiet: whatever was entered has been resolved, so the
-            # board is a different board and every square is worth standing on again.
-            if self._entered:
-                self._seen.clear()
-                self._entered.clear()
-            return None
         pending = [
             cell for cell in painted
             if cell not in self._entered
             or self._entered[cell] == colours[cell[0]][cell[1]]
         ]
         if not pending:
+            # Everything we entered has taken: the pattern has resolved. Some boards clear
+            # the lattice at that point and some leave it lit, so completion is read from
+            # our own entries, never from the lattice going quiet.
+            if self._entered:
+                self._entered.clear()
+                self._seen.clear()
+                self._casts += 1
+            return None
+        # Three resolutions per level: enough for a board that genuinely wants two, few
+        # enough that a board we have MISREAD cannot drain the allowance and lose a level
+        # already won. Measured: left uncapped it re-entered one pattern five times and
+        # ran the level out.
+        if self._casts >= 3:
             return None
         if self._awaiting is not None and self._reentry > _MAX_REENTRY:
             return None
@@ -345,6 +362,7 @@ class PatternCastTool:
             self._goal = goal["cells"]
             avatar_box = avatar["box"]
         self._avatar_box = avatar_box
+        self._suspect = False
         goal_box = _cells_box(self._goal)
 
         stride = self._stride or (avatar_box[2] - avatar_box[0] + 1)
@@ -366,13 +384,18 @@ class PatternCastTool:
             if place != (avatar_box[0], avatar_box[1]):
                 return (reach[place][0], None)
             return None
-        return self._nudge(avatar_box, goal_box, moves)
+        return self._nudge(avatar_box, goal_box, moves, reach)
 
-    def _nudge(self, avatar: Box, goal: Box, moves: list[int]) -> Step | None:
+    def _nudge(
+        self, avatar: Box, goal: Box, moves: list[int], reach: dict[Cell, list[int]]
+    ) -> Step | None:
         """No route yet — close the gap on the wider axis, and face that way.
 
-        Facing is not incidental: a step the wall refuses still turns the avatar, and a
-        pattern the board resolves as a projectile travels the way the avatar faces.
+        Directions the search has already shown to be walls are not tried: a refused step
+        costs a unit of the allowance to learn what the map on hand already says. Facing
+        is not incidental either — a pattern the board resolves as a projectile travels
+        the way the avatar faces — but that turn is bought once, deliberately, and only
+        when the avatar is not already facing the right way.
         """
         dy = (goal[0] + goal[2]) - (avatar[0] + avatar[2])
         dx = (goal[1] + goal[3]) - (avatar[1] + avatar[3])
@@ -383,7 +406,13 @@ class PatternCastTool:
             wants.append((abs(dx), 4 if dx > 0 else 3))
         wants.sort(reverse=True)
         self._heading = next((a for _, a in wants if a in moves), None)
-        if avatar in self._seen:
+        stride = self._stride or (avatar[2] - avatar[0] + 1)
+        offsets = {1: (-stride, 0), 2: (stride, 0), 3: (0, -stride), 4: (0, stride)}
+        wants = [
+            (d, a) for d, a in wants
+            if (avatar[0] + offsets[a][0], avatar[1] + offsets[a][1]) in reach
+        ]
+        if len(self._seen) > 1 and avatar in self._seen:
             # Already stood here since the last thing that changed the board, so nudging
             # on can only retrace. Two walls at right angles otherwise bounce the avatar
             # between them until the allowance runs out and the level is LOST — measured.
