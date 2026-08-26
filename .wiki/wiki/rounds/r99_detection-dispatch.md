@@ -384,6 +384,31 @@ card drifted between v3 and now WITHOUT INTENT, which is exactly why 0.20 → 0.
 explanations and remains unseparated. The claim is that they were never measured against the card
 at all, so their contribution is unknown in both direction and size.
 
+### Measured at last: the harness changes contribute NOTHING
+
+The rule written above was applied retroactively — swap in the pre-R92 harness (`37c3967`,
+2026-07-11), run the 25, restore. It took 3.3 minutes:
+
+```
+July harness (pre-R92)   0.2772
+current harness          0.2772
+games differing at all:  0 of 25
+```
+
+⛔ **One of the three confounded explanations is eliminated.** The R92/R93 commits change nothing
+the card can see, which the previous day's measurement already explains: the harness only ever
+receives the seven games that score zero, and code changes inside a zero stay zero.
+
+| explanation | status |
+|---|---|
+| ~~harness change~~ | ⛔ **excluded — contributes 0 on the public 25** |
+| detectors misfiring on private games | open |
+| run truncated by the budget | open |
+
+⚠️ Zero on the PUBLIC 25 is not zero on the hidden 110: if the probe gives up more often there,
+the harness carries games it never carries here. But nothing in this data lets the harness explain
+the −0.02.
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
