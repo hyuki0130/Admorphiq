@@ -704,3 +704,16 @@ and the two were being read as one thing until this run.
 
 What the run does establish: **the harness change is card-neutral — zero regression across 25
 games**, which is the gate that had to be passed before any of it could stay.
+
+
+## What actually ships from this round (2026-08-27)
+
+`kaggle_chained_agent.py` builds its unified member from `harness.registry.default_tools()`, so
+**`StencilTool` is in the submission** and will fire on any hidden game carrying the mechanic —
+alongside the augmenter fixes, which change how the searcher spends its budget on every game.
+
+That is the part the card cannot show and the part that matters: the card is 25 PUBLIC games of
+which thirteen are adapter-handled, and the eval is 110 PRIVATE ones. A tool that recovers a rule
+from frames transfers by construction; an adapter that recognises a game does not. The card being
+unmoved is therefore the expected result of this round, not a disappointing one — but it is also
+not evidence the tool helps, and nothing here should be read as such until a hidden score moves.
