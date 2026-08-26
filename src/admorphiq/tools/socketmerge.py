@@ -1,23 +1,40 @@
-"""Vacuum-merge boards: pull like pieces together, then park them in the sockets.
+"""Vacuum-merge boards: build exactly the pieces the header asks for, then park them.
 
-RECOVERED MECHANIC (measured on a live sample board, 2026-08-27). A click inside the
+RECOVERED MECHANIC (measured on live sample boards, 2026-08-27). A click inside the
 playfield opens a short vacuum: every piece whose bounding box lies within a fixed reach
 of the click is dragged so that its CENTRE lands exactly on the clicked cell. Pieces that
-land on top of each other and are the SAME size fuse into one piece of the next size up;
+land on top of each other and are the SAME size fuse into one piece one step UP a ladder;
 pieces of DIFFERENT sizes that land together are rejected — the board flashes, the move is
-undone and the step budget is docked (2, then 4, then 6...). A level is won when each
-socket printed on the board holds a piece, and the boards are built so that fusing
-everything down to as many pieces as there are sockets produces exactly the pieces wanted.
+undone and the step budget is docked. A level is won when the sockets printed on the board
+hold exactly what the header asks for.
 
-Three measurements shape the code and none of them were guessable from a still frame:
+The header is the specification, and it prints two separate things on two separate strips.
+On a background-coloured strip it prints the LADDER as a row of colour swatches, one per
+rank in order, so a piece's colour names its rank outright; a second such strip, when
+present, lists the STRIKER kinds. On the chrome field it prints the REQUIRED ITEMS, each
+drawn as the very shape it asks for — a piece of some rank, or a striker.
+
+A striker is the ladder run backwards. It hunts the nearest piece, and a hit knocks that
+piece DOWN one rank (a hit at the bottom rank destroys it). The deep boards hand out one
+oversized piece and a striker, so descending the ladder on purpose is the only way to
+build what they ask for, and on some of them a striker must itself be parked in a socket.
+
+Measurements that shape the code, none of them guessable from a still frame:
 
 * One vacuum costs TWO agent actions. The click returns the pre-vacuum frame; the board
   only settles on the next action. The filler is aimed into the header, where clicks are
-  measured to be inert, so it costs an action but not a step.
+  measured to be inert, so it costs an action but not a step. It is held as STATE rather
+  than queued behind the click — see propose().
+* NOTHING on the board moves except during a vacuum. There is no waiting a striker out;
+  every step of its approach is bought with a click.
 * The reach is not printed anywhere, so it is LEARNED: the tool aims a little further out
   each time a drag lands, and once a vacuum is ignored it halves what is left between the
-  proven reach and the ignored one. Every probe that lands is also a real move, so the
-  whole game pays about two wasted vacuums to know the reach exactly.
+  proven reach and the ignored one.
+* A striker is deaf during the vacuum that carries it, so a blow always lands one click
+  later than it is set up.
+* One kind of striker is LAUNCHED rather than dragged: it takes only the DIRECTION of the
+  click and then flies a fixed distance, sailing past the clicked cell. That distance is
+  learned the same way the reach is, and a strike is aimed by where the flight ENDS.
 * Mixing sizes in one vacuum is punished, so every click is checked against the whole
   board first and rejected if it would sweep up a piece of another size.
 """
@@ -147,6 +164,12 @@ class SocketMergeTool:
         # A vacuum spans TWO actions and the pair must not be split. This flag
         # deliberately survives reset() — see propose().
         self._settling = False
+        # How a striker answers a vacuum. MEASURED: one kind is LAUNCHED — it takes only
+        # the DIRECTION of the click and then flies a fixed distance, sailing straight past
+        # the clicked cell — while another kind is dragged onto the click like a piece.
+        # Both are properties of the game, so both survive reset().
+        self._flight: float | None = None
+        self._launched: bool | None = None
         self.reset()
 
     def reset(self) -> None:
@@ -156,13 +179,20 @@ class SocketMergeTool:
         self._want_strikers = 0
         self._striker_colours: set[int] = set()
         self._sockets: tuple[tuple[int, int], ...] = ()
-        self._pending: tuple[np.ndarray, int] | None = None  # (frame at click, gap aimed at)
+        # (frame at click, gap aimed at, the click, the nearest striker's centre then)
+        self._pending: tuple[np.ndarray, int, tuple[int, int], tuple[int, int] | None] | None = None
         self._last_hash: int | None = None
         self._blocked: set[tuple[int, int]] = set()
         self._ever: set[tuple[int, int]] | None = None
         self._marks: list[tuple[int, int]] = []
         self._haz_step = 0
         self._idle = 0
+        self._aiming = False
+        # A striker cannot strike during the vacuum that carries it — MEASURED, and it is
+        # why aiming at the victim every turn hits nothing: each new vacuum re-catches the
+        # striker and cancels the blow it was about to land. After a strike is set up, one
+        # click has to go somewhere the striker cannot feel.
+        self._struck = False
 
     # --- perception ---------------------------------------------------------
 
@@ -173,7 +203,7 @@ class SocketMergeTool:
         one sits on, not by where it is. A run of equal swatches on a BACKGROUND-coloured
         strip is the KEY — the ladder, in order, one swatch per rank, so a piece's colour
         names its rank outright. Everything on the CHROME field is a REQUIRED ITEM, drawn
-        as the very sprite it asks for; an item whose colour is on the key is a piece of
+        as the very shape it asks for; an item whose colour is on the key is a piece of
         that rank, and one whose colour is not is a striker.
 
         ⛔ MEASURED, and it is what stopped the tool at the fifth board: taking the palette
@@ -188,7 +218,7 @@ class SocketMergeTool:
         for c in field:
             header[header == c] = -9
 
-        key: list[tuple[int, int]] = []  # (x0, colour)
+        key: list[tuple[int, int, int, int]] = []  # (y0, y1, x0, colour)
         want: list[tuple[int, int, int]] = []  # (colour, width, height)
         # Welded, not 4-connected: a striker is drawn speckled, and counting its pieces
         # instead of the striker made one required attacker read as six.
@@ -206,14 +236,53 @@ class SocketMergeTool:
             ]
             on_bg = sum(1 for c in ring if c in bg)
             if ring and on_bg * 2 > len(ring):
-                key.append((x0, colour))
+                key.append((y0, y1, x0, colour))
             else:
                 want.append((colour, x1 - x0 + 1, y1 - y0 + 1))
 
+        # A header can print MORE THAN ONE key, on separate strips: the merge ladder, and
+        # below it the roster of striker kinds. MEASURED — reading them as a single row
+        # ordered by column put a striker colour at the bottom of the ladder, so every
+        # striker on the board then counted as a piece of the lowest rank and the board's
+        # requirement came out nonsense. Strips are split by the ROW they occupy.
+        bands: list[list[tuple[int, int, int, int]]] = []
+        for sw in sorted(key):
+            for band in bands:
+                if sw[0] <= band[0][1] and band[0][0] <= sw[1]:
+                    band.append(sw)
+                    break
+            else:
+                bands.append([sw])
+
+        def has_block(colours: set[int]) -> bool:
+            """Does the playfield hold a solid square of any of these, wider than a cell?
+
+            That is what separates the two keys: pieces are drawn as filled squares, while
+            strikers are speckled and shatter into single cells. The width test is the
+            load-bearing half — without it a striker's own speckle passes as a square.
+            """
+            body = np.full_like(g, -9)
+            body[top:] = g[top:]
+            for c in set(int(v) for v in np.unique(body)) - colours:
+                body[body == c] = -9
+            for comp in connected_components(body, background=-9):
+                y0, x0, y1, x1 = comp["bbox"]
+                side = y1 - y0 + 1
+                if side >= 2 and (x1 - x0 + 1) == side and comp["size"] == side * side:
+                    return True
+            return False
+
+        pick = bands[0] if bands else []
+        if len(bands) > 1:
+            pick = next((b for b in bands if has_block({sw[3] for sw in b})), bands[0])
         ladder: list[int] = []
-        for _x, colour in sorted(key):
+        for _y0, _y1, _x, colour in sorted(pick, key=lambda sw: sw[2]):
             if colour not in ladder:
                 ladder.append(colour)
+        for band in bands:
+            if band is pick:
+                continue
+            self._striker_colours.update(sw[3] for sw in band)
         self._ladder = ladder
         # With no key printed the icons are all the tool knows a piece can look like, so
         # they carry the palette themselves — the shallow boards where rank never matters.
@@ -342,6 +411,29 @@ class SocketMergeTool:
         self._marks = marks
         return tuple(out)
 
+    def _learn_flight(
+        self, board: _Board, click: tuple[int, int], was: tuple[int, int] | None
+    ) -> None:
+        """Watch one striker across one vacuum and record HOW it answers a click.
+
+        A striker dragged onto the clicked cell behaves like a piece and needs no model.
+        One that ends up somewhere else along the same line is the launched kind, and the
+        distance it covered is the only number a strike can be aimed with. Both are read
+        off the tool's own moves, so nothing is spent learning them.
+        """
+        if was is None or not board.strikers:
+            return
+        now = min(board.strikers, key=lambda z: (z.cx - was[0]) ** 2 + (z.cy - was[1]) ** 2)
+        gone = ((now.cx - was[0]) ** 2 + (now.cy - was[1]) ** 2) ** 0.5
+        if gone < 1.0:
+            return  # this striker was out of reach and the click told us nothing
+        aimed = ((click[0] - was[0]) ** 2 + (click[1] - was[1]) ** 2) ** 0.5
+        if gone > aimed + 1.5:
+            self._launched = True
+            self._flight = gone if self._flight is None else (self._flight + gone) / 2.0
+        elif self._launched is None:
+            self._launched = False
+
     @staticmethod
     def _header_rows(g: np.ndarray, bg: set[int]) -> int:
         """Rows of the top header, found by its own colour rather than by its height.
@@ -418,13 +510,14 @@ class SocketMergeTool:
         shoving it the only lever. How close is too close is counted in the hazard's own
         measured strides, so a faster hazard is given a wider berth without being told.
         """
-        if not board.hazards:
+        pool = list(board.hazards)
+        if not pool or not board.pieces:
             return None
 
         def spread(x: int, y: int) -> float:
             return min(((x - p.cx) ** 2 + (y - p.cy) ** 2) ** 0.5 for p in board.pieces)
 
-        z = min(board.hazards, key=lambda b: spread(b.cx, b.cy))
+        z = min(pool, key=lambda b: spread(b.cx, b.cy))
         best_d = spread(z.cx, z.cy)
         if best_d > self._danger():
             return None
@@ -447,7 +540,18 @@ class SocketMergeTool:
         n_sock = len(board.sockets)
 
         if board.want_rank or board.want_strikers:
+            self._aiming = False
             work = self._plan_spec(board, pieces, w, h)
+            if self._aiming:
+                # A strike and a shove are the same lever pulled opposite ways. While a
+                # blow is being set up or is in flight, the striker is the instrument, and
+                # holding it at arm's length would spend actions undoing the plan.
+                #
+                # ⛔ Guarding the OTHER strikers on these turns was tried and MEASURED a
+                # LOSS: it cost a level outright and eight extra actions on another, while
+                # buying nothing on the board it was written for. The boards that field
+                # several strikers need a different answer, not a partial guard.
+                return work
         else:
             work = None
             if len(pieces) > n_sock:
@@ -476,13 +580,20 @@ class SocketMergeTool:
             if free.get(r, 0) > 0:
                 free[r] -= 1
                 return None
+            # A fuse that is available RIGHT NOW comes before a strike. Both reach the
+            # same rank, but the pieces a fuse consumes are the low ones, and low pieces
+            # are exactly what a loose striker can knock out of existence — a strike at
+            # the bottom rank deletes rather than demotes. Spending the fragile material
+            # first is the difference on the boards that field several strikers, where the
+            # tool was measured walking a striker across the board while the other two
+            # worked through the pieces it was going to need.
+            if r > 0 and free.get(r - 1, 0) >= 2:
+                return "merge", r - 1
             above = [d for d in free if d > r and free[d] > 0]
             if above:
                 return "strike", min(above)
             if r <= 0:
                 return None  # nothing below rank 0 to build from
-            if free.get(r - 1, 0) >= 2:
-                return "merge", r - 1
             for _ in range(2):  # two of the rank below are needed; make them first
                 step = take(r - 1)
                 if step is not None:
@@ -500,6 +611,14 @@ class SocketMergeTool:
         self, board: _Board, pieces: list[_Piece], w: int, h: int
     ) -> tuple[int, int] | None:
         """Produce exactly the printed items, then park them."""
+        if self._struck:
+            # The blow is in flight and the striker that carries it stays exempt: guarding
+            # against it now would shove away the setup the previous click paid for.
+            self._struck = False
+            move = self._elsewhere(board, w, h)
+            if move is not None:
+                self._aiming = True
+                return move
         have: dict[int, int] = {}
         for p in pieces:
             have[p.rank] = have.get(p.rank, 0) + 1
@@ -511,6 +630,7 @@ class SocketMergeTool:
                 if group:
                     move = self._strike(board, group[0], w, h)
                     if move is not None:
+                        self._aiming = True
                         return move
             # WHETHER to fuse is the requirement's call; WHICH pair is a cost question,
             # and the answer is the nearest one, exactly as on the shallow boards. Naming
@@ -523,44 +643,114 @@ class SocketMergeTool:
                 return move
         return self._deliver_spec(board, pieces, w, h)
 
-    def _strike(
-        self, board: _Board, victim: _Piece, w: int, h: int
-    ) -> tuple[int, int] | None:
-        """One vacuum that puts a striker on top of `victim`, knocking it down a rank.
+    def _blob_land(
+        self, z: _Blob, px: int, py: int, board: _Board, w: int, h: int
+    ) -> tuple[float, float]:
+        """Where a striker caught by a click at (px, py) comes to rest.
 
-        Clicking the victim's OWN centre is the whole trick: the victim is at zero gap
-        from it and so re-lands exactly where it already stands, while the striker — swept
-        by the same vacuum — is dragged onto the same cell and lands the hit. When the
-        striker is too far for that, it is walked in first.
+        The launched kind keeps only the DIRECTION and travels a fixed distance, so it
+        arrives past the click — often well past. Predicting that is what makes a strike
+        aimable at all; aiming at the victim and hoping was measured to miss every time,
+        the striker crossing the board back and forth through its target.
         """
-        if not board.strikers:
-            return None
-        z = min(board.strikers,
-                key=lambda b: (b.cx - victim.cx) ** 2 + (b.cy - victim.cy) ** 2)
-        cx, cy = victim.cx, victim.cy
-        if _gap(cx, cy, z.x0, z.y0, z.x1, z.y1) <= self._reach and board.top <= cy <= board.bottom:
-            # No OTHER piece may ride along: two pieces landing together either fuse or
-            # are rejected, and both undo the rank this move exists to change.
-            if not [p for p in self._sweep(board, cx, cy, self._reach) if (p.x, p.y) != (victim.x, victim.y)]:
-                return cx, cy
-        return self._walk_blob(board, z, (cx, cy), w, h)
+        if not self._launched or self._flight is None:
+            return float(px), float(py)
+        dx, dy = px - z.cx, py - z.cy
+        span = (dx * dx + dy * dy) ** 0.5
+        if span <= 0:
+            return float(z.cx), float(z.cy)
+        wide, tall = (z.x1 - z.x0) / 2.0, (z.y1 - z.y0) / 2.0
+        return (
+            min(max(z.cx + dx / span * self._flight, wide), w - 1 - wide),
+            min(max(z.cy + dy / span * self._flight, board.top + tall),
+                min(board.bottom, h - 1) - tall),
+        )
 
-    def _walk_blob(
-        self, board: _Board, z: _Blob, target: tuple[int, int], w: int, h: int
-    ) -> tuple[int, int] | None:
-        """One vacuum that drags a striker as close to `target` as the reach allows."""
-        best_d = (z.cx - target[0]) ** 2 + (z.cy - target[1]) ** 2
-        best: tuple[int, int] | None = None
-        span = self._reach + 4
+    def _blob_clicks(
+        self, board: _Board, z: _Blob, w: int, h: int, spare: _Piece | None = None
+    ) -> list[tuple[int, int, tuple[float, float]]]:
+        """Clicks that catch this striker, with where each one leaves it.
+
+        `spare` is the one piece allowed to ride along — the victim of a strike, which is
+        swept back onto the very cell it already occupies and so does not actually move.
+        """
+        out: list[tuple[int, int, tuple[float, float]]] = []
+        span = self._reach + max(z.x1 - z.x0, z.y1 - z.y0) + 1
         for px in range(max(0, z.cx - span), min(w, z.cx + span + 1)):
             for py in range(max(board.top, z.cy - span), min(board.bottom + 1, z.cy + span + 1)):
                 if _gap(px, py, z.x0, z.y0, z.x1, z.y1) > self._reach:
                     continue
-                if self._sweep(board, px, py, self._reach):
-                    continue  # never drag a piece along with the striker
-                d = (px - target[0]) ** 2 + (py - target[1]) ** 2
-                if d < best_d:
-                    best_d, best = d, (px, py)
+                riders = [p for p in self._sweep(board, px, py, self._reach)
+                          if spare is None or (p.x, p.y) != (spare.x, spare.y)]
+                if riders:
+                    continue
+                out.append((px, py, self._blob_land(z, px, py, board, w, h)))
+        return out
+
+    def _strike(
+        self, board: _Board, victim: _Piece, w: int, h: int
+    ) -> tuple[int, int] | None:
+        """Set a striker down on `victim` so the NEXT click knocks it a rank lower.
+
+        Two measured facts shape this. A striker is deaf during the vacuum that moves it,
+        so the blow always lands one click later — hence `_struck`, which spends the
+        following click somewhere the striker cannot feel. And a launched striker cannot be
+        parked on a chosen cell, only thrown a fixed distance along a chosen line, so the
+        click is picked for where the throw ENDS rather than for where it points.
+        """
+        # Either way of spotting a striker is as good as the other here. A board that ASKS
+        # for one names its colour on the header, and a board that merely HAS one gives it
+        # away by moving; both are the same object and both can be aimed. MEASURED: reading
+        # only the named ones left the tool with the right plan and no way to run it on the
+        # board where the striker is scenery rather than cargo.
+        pool = board.strikers + board.hazards
+        if not pool:
+            return None
+        z = min(pool, key=lambda b: (b.cx - victim.cx) ** 2 + (b.cy - victim.cy) ** 2)
+        reach = (z.x1 - z.x0 + victim.side) / 2.0 + 1.0
+        best: tuple[int, int] | None = None
+        best_d = reach * reach
+        for px, py, (lx, ly) in self._blob_clicks(board, z, w, h, spare=victim):
+            # The victim rides this vacuum when it is in range, and then it is the CLICK
+            # it ends up centred on, not where it started.
+            vx, vy = (px, py) if _bbox_gap(px, py, victim) <= self._reach else (victim.cx, victim.cy)
+            d = (lx - vx) ** 2 + (ly - vy) ** 2
+            if d < best_d:
+                best_d, best = d, (px, py)
+        if best is not None:
+            self._struck = True
+            return best
+        # Out of range this turn: close the distance with whichever of the two can move.
+        step = self._walk_blob(board, z, (victim.cx, victim.cy), w, h)
+        if step is not None:
+            return step
+        return self._walk(board, victim, (z.cx, z.cy), w, h)
+
+    def _elsewhere(self, board: _Board, w: int, h: int) -> tuple[int, int] | None:
+        """A click that leaves the striker alone, so the blow it is holding can land.
+
+        Any cell out of every striker's reach will do; the far corner of the playfield
+        from the nearest striker is chosen because it also cannot disturb the pieces.
+        """
+        pool = board.strikers + board.hazards
+        if not pool:
+            return None
+        for px, py in ((0, board.bottom), (w - 1, board.bottom), (0, board.top), (w - 1, board.top)):
+            if all(_gap(px, py, z.x0, z.y0, z.x1, z.y1) > self._reach for z in pool) \
+                    and not self._sweep(board, px, py, self._reach):
+                return px, py
+        return None
+
+    def _walk_blob(
+        self, board: _Board, z: _Blob, target: tuple[int, int], w: int, h: int
+    ) -> tuple[int, int] | None:
+        """One vacuum that leaves a striker as close to `target` as its motion allows."""
+        best_d = float((z.cx - target[0]) ** 2 + (z.cy - target[1]) ** 2)
+        best: tuple[int, int] | None = None
+        for px, py, (lx, ly) in self._blob_clicks(board, z, w, h):
+            d = (lx - target[0]) ** 2 + (ly - target[1]) ** 2
+            if d < best_d:
+                best_d, best = d, (px, py)
         return best
 
     def _deliver_spec(
@@ -787,13 +977,14 @@ class SocketMergeTool:
         # Reach learning, against the settled board rather than the click's own reply: a
         # drag that landed proves the gap it was aimed at, one that did nothing caps it.
         if self._pending is not None:
-            before, gap = self._pending
+            before, gap, click, was = self._pending
             self._pending = None
             band = slice(board.top, board.bottom + 1)
             if bool((before[band] != g[band]).any()):
                 self._reach = max(self._reach, gap)
             elif self._probing:
                 self._reach_ceiling = min(self._reach_ceiling or gap, gap)
+            self._learn_flight(board, click, was)
 
         # Reach is learned in two phases: step out by _GROW until a vacuum is ignored,
         # then halve the remaining gap until the proven value and the ignored one are
@@ -813,6 +1004,8 @@ class SocketMergeTool:
         if move is None:
             self._blocked.clear()
             return [(6, (0, 0))]
-        self._pending = (g.copy(), gap)
+        was = min(board.strikers, key=lambda z: _gap(move[0], move[1], z.x0, z.y0, z.x1, z.y1)) \
+            if board.strikers else None
+        self._pending = (g.copy(), gap, move, (was.cx, was.cy) if was else None)
         self._settling = True
         return [(6, move)]

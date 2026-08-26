@@ -68,6 +68,7 @@ _LATCH = 5
 _SIDES = range(3, 9)
 _MAX_GLYPHS = 240
 _MAX_WAIT = 80
+_MAX_CHASE = 40
 
 
 # --- glyph readers ----------------------------------------------------------
@@ -183,11 +184,15 @@ def _has_enclosed_gap(mask: np.ndarray, cells: list[Cell]) -> bool:
     return bool((gap & ~seen).any())
 
 
+def _span(a: Cell, b: Cell) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
 class _Board:
     """One frame, read as a lattice of pieces."""
 
     __slots__ = ("side", "origin", "rows", "cols", "carrier", "facing",
-                 "cargo", "blocked", "porous", "bays")
+                 "cargo", "blocked", "porous", "bays", "movers", "marked", "hostile")
 
     def __init__(self) -> None:
         self.side = 0
@@ -199,6 +204,9 @@ class _Board:
         self.blocked: set[Cell] = set()
         self.porous: set[Cell] = set()
         self.bays: set[Cell] = set()
+        self.movers: dict[Cell, int] = {}
+        self.marked: set[Cell] = set()
+        self.hostile = False
 
     def inside(self, c: Cell) -> bool:
         return 0 <= c[0] < self.rows and 0 <= c[1] < self.cols
@@ -218,6 +226,10 @@ class HaulDeliveryTool:
         self._pairs: set[tuple[int, int]] = set()
         self._walls: set[Cell] = set()
         self._screens: set[Cell] = set()
+        self._seen: dict[Cell, int] = {}
+        self._roam: set[int] = set()
+        self._friendly: set[int] = set()
+        self._chase = 0
         self._refused: Counter[tuple[Cell, Cell | None, int]] = Counter()
         self._pending: tuple[Cell, Cell | None, int] | None = None
         self._offset: Cell | None = None          # cargo's offset while latched
@@ -239,6 +251,10 @@ class HaulDeliveryTool:
         self._bays = set()
         self._walls = set()
         self._screens = set()
+        # ⛔ Which cells held something is a fact about THIS board; carrying it into the next
+        # level makes every wall of the old board look like something that walked away.
+        self._seen = {}
+        self._chase = 0
         self._refused = Counter()
         self._pending = None
         self._offset = None
@@ -281,8 +297,17 @@ class HaulDeliveryTool:
             return []
         level = levels_completed(obs)
         if level != self._level:
+            stepped = self._level is not None
             self._level = level
             self.reset()
+            # ⛔ The frame that REPORTS a level cleared still draws the level just finished, so
+            # reading it learns the OLD board's furniture and its uncovered bays into the new
+            # level. Measured: a barrier from the previous level ran down the middle of the next
+            # one, sealing the carrier into a three-cell corridor for the rest of the game. One
+            # key press buys the real frame, and one press per level is nothing against a budget
+            # this tool finishes a level well inside.
+            if stepped:
+                return [(_MOVES[0], None)]
         board = self._read(frame_2d(obs))
         if board is None:
             return self._blind()
@@ -434,6 +459,7 @@ class HaulDeliveryTool:
         # without the colour rule an actor becomes a destination.
         rects = []
         screens = np.zeros_like(terrain)
+        fills = {f for _, f in self._pairs}
         for cells in _regions(terrain):
             found = _framed_rect(gm, cells)
             if found is not None:
@@ -442,6 +468,7 @@ class HaulDeliveryTool:
             if _has_enclosed_gap(terrain, cells):
                 for y, x in cells:
                     screens[y, x] = True
+                continue
         for (y0, x0, y1, x1), edge, fill in rects:
             if (y1 - y0 + 1) * (x1 - x0 + 1) > side * side:
                 self._pairs.add((edge, fill))
@@ -452,11 +479,20 @@ class HaulDeliveryTool:
                     py, px = oy + r * side, ox + c * side
                     if y0 <= py <= y1 and x0 <= px <= x1:
                         self._bays.add((r, c))
+        # ⛔ A bay is recognised only once nothing is standing on it, so on a board where a piece
+        # starts ON the bay the cells around it are read as furniture for as long as that takes —
+        # and furniture is remembered. Measured: the tool towed a piece to the very edge of the
+        # bay and let go, because the bay itself was in its wall list. Learning a bay therefore
+        # UNLEARNS the wall.
+        self._walls -= self._bays
+        self._screens -= self._bays
         board.bays = set(self._bays)
 
         # ⛔ Judge a cell against the REMEMBERED bay, never against this frame's rectangle.
         # Measured: one delivered piece splits the bay's drawing in two, each half then reads as
         # furniture, and the carrier is walled into the corner it just delivered from.
+        prev, self._seen = self._seen, {}
+        flats: dict[Cell, int] = {}
         for cell, tile in tiles.items():
             if cell == board.carrier:
                 continue
@@ -472,14 +508,49 @@ class HaulDeliveryTool:
             sl = (slice(oy + r * side, oy + (r + 1) * side), slice(ox + c * side, ox + (c + 1) * side))
             solid = tile != bg
             if solid.any():
+                shades = set(tile.ravel().tolist())
+                flat = int(next(iter(shades))) if len(shades) == 1 else -1
+                self._seen[cell] = flat
+                flats[cell] = flat
+                # ⛔ A second destination, painted in the bays' own FILL colour but with no frame
+                # round it and standing where no bay stands, is where something on this board
+                # takes the cargo that is NOT the bay — and it is the only warning, available
+                # from the board's first frame, that one of the things that walks here is undoing
+                # the work rather than doing it. Read it CELL BY CELL: measured, the one on this
+                # board is drawn flush against a wall, and asked as a question about connected
+                # regions it comes back as part of the wall and says nothing.
+                if flat in fills:
+                    board.hostile = True
                 self._walls.add(cell)
                 if screens[sl][solid].all():
                     self._screens.add(cell)
+            else:
+                # A cell that was covered and is now bare says what covered it WALKS. That is the
+                # whole test: real furniture is drawn in every frame, so its colour never appears
+                # here, and a colour that does is one this board moves around by itself.
+                gone = prev.get(cell)
+                if gone is not None and gone >= 0:
+                    self._roam.add(gone)
+                # ⛔ Remembering furniture forever is only right for furniture. Some of what
+                # stands on these boards WALKS — measured, three of them, and every cell each one
+                # crossed became a permanent wall until the board was a maze of places nothing
+                # had ever been. An empty cell settles it: real furniture is drawn in every frame,
+                # so a cell showing bare background never held any. A cell the carrier or a piece
+                # is standing on is not empty and is left alone, which is what kept the rule that
+                # a piece HIDES the furniture under it.
+                self._walls.discard(cell)
+                self._screens.discard(cell)
         # ⛔ Furniture is remembered, because a piece standing on it HIDES it. Measured: a piece
         # towed into a porous barrier covered the barrier, the cell then read as ordinary, and the
         # planner spent the rest of the level walking the carrier into a wall it could not enter.
         board.blocked |= self._walls
         board.porous |= self._screens
+        board.movers = {c: v for c, v in flats.items() if v in self._roam}
+        # A glyph that is not cargo and not a bay is an actor the carrier is LOOKING AT: this
+        # board redraws such an actor with a ring the moment it is faced, and that ring is the
+        # only frame-visible confirmation that it is the kind which can be dealt with.
+        board.marked = {c for c, v in glyphs.items()
+                        if v and v[1] != cargo_core and c not in board.bays}
         return board
 
     # -- deciding ------------------------------------------------------------
@@ -537,7 +608,29 @@ class HaulDeliveryTool:
 
     @staticmethod
     def _near(cell: Cell, bays: set[Cell]) -> int:
-        return min(abs(cell[0] - b[0]) + abs(cell[1] - b[1]) for b in bays)
+        return min(_span(cell, b) for b in bays)
+
+    def _targets(self, board: _Board) -> dict[Cell, Cell]:
+        """One bay per loose piece, nearest pairing first.
+
+        ⛔ Aiming every piece at the bay NEAREST it sends them all to the same side. Measured on a
+        board whose bays sit in three pockets, each reachable by a different mover: six of seven
+        pieces were delivered and the seventh was shoved into a pocket whose bays were already
+        full, where the mover picked it up and then stood holding it for the rest of the level
+        because it had nowhere to put it. A bay holds ONE piece, so it may be promised to one
+        piece only, and the pocket a piece is sent to follows from that promise.
+        """
+        bays = self._open_bays(board, None)
+        loose = [c for c in board.cargo if c not in board.bays]
+        pairs = sorted((_span(p, b), p, b) for p in loose for b in bays)
+        out: dict[Cell, Cell] = {}
+        taken: set[Cell] = set()
+        for _, piece, bay in pairs:
+            if piece in out or bay in taken:
+                continue
+            out[piece] = bay
+            taken.add(bay)
+        return out
 
     def _open_bays(self, board: _Board, held: Cell | None) -> set[Cell]:
         return {b for b in board.bays if b not in board.cargo or b == held}
@@ -563,11 +656,17 @@ class HaulDeliveryTool:
         # nothing here strands the tool one action short of the whole rest of the game.
         if not board.bays:
             return self._nudge(board, carrier)
+        targets = self._targets(board)
         if self._offset is not None:
-            return self._deliver(board, carrier, self._offset)
-        return self._collect(board, carrier)
+            return self._deliver(board, carrier, self._offset, targets)
+        if board.hostile:
+            act = self._hunt(board, carrier)
+            if act is not None:
+                return act
+        return self._collect(board, carrier, targets)
 
-    def _deliver(self, board: _Board, carrier: Cell, offset: Cell) -> int | None:
+    def _deliver(self, board: _Board, carrier: Cell, offset: Cell,
+                 targets: dict[Cell, Cell]) -> int | None:
         ride = (carrier[0] + offset[0], carrier[1] + offset[1])
         bays = self._open_bays(board, ride)
         if ride in bays:
@@ -578,9 +677,12 @@ class HaulDeliveryTool:
         if reach:
             steps = paths[min(reach)[1]]
             return steps[0] if steps else _LATCH
-        # Walled off from every bay: leave the piece as close to one as it can be put, and let
-        # whatever else moves on this board take it from there.
-        best = min(paths, key=lambda q: (self._near((q[0] + offset[0], q[1] + offset[1]), bays),
+        # Walled off from the bay this piece is promised: leave it as close to THAT bay as it can
+        # be put, and let whatever else moves on this board take it from there.
+        goal = targets.get(ride)
+        if goal is None:
+            return _LATCH
+        best = min(paths, key=lambda q: (_span((q[0] + offset[0], q[1] + offset[1]), goal),
                                          len(paths[q])))
         if best == carrier:
             # ⛔ This grip is spent, which is NOT the same as the piece being as close as it can
@@ -594,7 +696,51 @@ class HaulDeliveryTool:
             return _LATCH
         return paths[best][0]
 
-    def _collect(self, board: _Board, carrier: Cell) -> int | None:
+    def _hunt(self, board: _Board, carrier: Cell) -> int | None:
+        """Walk up to whatever is undoing the work and use the latch on it.
+
+        ⛔ Delivering is not enough on a board that has a second destination: what carries pieces
+        there takes them back OUT of the bays, so a board can be finished and unfinished forever.
+        The latch, aimed at an actor rather than at a piece, removes it — but only some actors,
+        and pressing it on the wrong one wastes the press. The board says which is which: face it,
+        and the kind that CAN be removed is redrawn with a ring round it that turn. So the ring is
+        the licence to press, and an actor that stays flat while being faced has its colour
+        written off and is never chased again.
+
+        ⚠️ Gated on there BEING a second destination, and on nothing else being worth doing.
+        Chasing costs actions out of a declared budget, and on the boards where every mover is
+        helping, that chase is the difference between finishing and running out.
+        """
+        if self._chase > _MAX_CHASE:
+            return None
+        if board.facing is not None:
+            d = _DELTA[board.facing]
+            ahead = (carrier[0] + d[0], carrier[1] + d[1])
+            if ahead in board.marked:
+                return _LATCH
+            if ahead in board.movers:
+                self._friendly.add(board.movers[ahead])
+                return None
+        prey = [c for c, kind in board.movers.items() if kind not in self._friendly]
+        if not prey:
+            return None
+        walk = self._walk(board, carrier)
+        best: tuple[int, int] | None = None
+        for cell in prey:
+            for act in _MOVES:
+                d = _DELTA[act]
+                stance = (cell[0] - d[0], cell[1] - d[1])
+                if stance not in walk:
+                    continue
+                cost = len(walk[stance]) + (0 if stance == carrier else 1)
+                if best is None or cost < best[0]:
+                    best = (cost, act) if stance == carrier else (cost, walk[stance][0])
+        if best is None:
+            return None
+        self._chase += 1
+        return best[1]
+
+    def _collect(self, board: _Board, carrier: Cell, targets: dict[Cell, Cell]) -> int | None:
         bays = self._open_bays(board, None)
         # A piece already standing in a bay is placed — judge that against EVERY bay, not the
         # open ones, or the piece just delivered reads as still wanted and the plan loops.
@@ -604,6 +750,9 @@ class HaulDeliveryTool:
         walk = self._walk(board, carrier)
         best: tuple[int, int, Cell] | None = None
         for piece in wanted:
+            goal = targets.get(piece)
+            if goal is None:
+                continue
             for act in _MOVES:
                 d = _DELTA[act]
                 stance = (piece[0] - d[0], piece[1] - d[1])
@@ -615,8 +764,8 @@ class HaulDeliveryTool:
                 if not drop:
                     if not board.porous:
                         continue
-                    haul = min(self._near((q[0] + d[0], q[1] + d[1]), bays) for q in tow)
-                    if haul >= self._near(piece, bays):
+                    haul = min(_span((q[0] + d[0], q[1] + d[1]), goal) for q in tow)
+                    if haul >= _span(piece, goal):
                         continue
                     cost = len(walk[stance]) + 200 + haul * 4
                 else:
