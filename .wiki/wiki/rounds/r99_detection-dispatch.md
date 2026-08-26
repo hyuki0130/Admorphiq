@@ -2450,3 +2450,45 @@ not the pattern.
 of those actions are spent AFTER the first clear, failing at level 2. The number I needed was one
 field deeper in the same file. ⛔ Before a measurement becomes a direction, look at the breakdown that
 would refute it.
+
+## The generic path hits a WALL, it does not decay — per-level breakdown
+
+Every game the generic path plays shows the same shape: the levels it can do it does at or better
+than human, then it spends the ENTIRE remaining budget on the next one and gets nowhere.
+
+```
+game   levels cleared         actions used   then wasted on the next
+cd82   6 of 6                        108              0     <- complete
+su15   3 (1.0, 1.0, 0.402)            74          8,355
+ar25   2 (1.0, 1.0)                   77          8,264
+re86   2 (1.0, 1.0)                   64          8,291
+sb26   2 (1.0, 0.932)                 38          8,301
+ls20   1 (0.915)                      23          8,375
+wa30   1 (1.0)                        30          8,367
+s5i5   1 (1.0)                        19          8,305
+ft09   1 (0.611)                      55          8,275
+tn36   1 (0.426)                      49          8,385
+lp85   1 (0.078)                      61          8,251
+lf52   1 (0.007)                     376          8,274
+tu93   1 (0.001)                     695          8,432
+r11l   1 (0.001)                     972          8,923
+sp80   1 (0.000)                   2,341          8,230
+m0r0   1 (0.000)                   5,269          8,052
+vc33   2 (0.000, 0.000)            7,418          8,106
+```
+
+**It is a binary wall, not a decay.** ar25 clears two levels in 77 actions and cannot buy a third with
+8,264. re86 the same. sb26 the same. The agent has no way to tell that it cannot do a level, so it
+spends everything discovering that.
+
+Two things follow:
+
+* **The depth wall is capability, not tuning** — which is exactly what `NOGIVEUP` said independently
+  (25x the give-up, 0 of 23 games change). Two different experiments, same conclusion.
+* **cd82 proves the ceiling is not structural.** The GENERIC path clears all six levels in 108
+  actions for 0.9463 — no adapter, no mechanic-specific code. When a game's mechanic is inside what
+  the generic agent can express, depth follows for free and the score is near-maximal.
+
+So the general-agent question is sharp: **what is different about the level where each game walls?**
+Not "how do we search deeper" — the search is not the bottleneck, and 8,000 actions of it prove that
+sixteen times over.
