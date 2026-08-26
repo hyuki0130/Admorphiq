@@ -1548,6 +1548,32 @@ detection (--agent detect) 0.2756      every port lands EXACTLY on its ceiling (
 adapter ceiling          0.3296
 ```
 
+⛔ **THE GENERIC PATH'S LOSS IS DEPTH, NOT EFFICIENCY (measured 2026-08-26).** This is the finding
+that should direct general-agent work; it was got WRONG first and corrected by one field.
+
+The generic path — the one that plays every game no adapter claims, i.e. most of the private 110 —
+run over all 25:
+
+```
+17 of 25 games clear at least one level.   Mean 0.0566.
+Level-1 actions vs the human baseline: MEDIAN 1.3x.
+Ten of seventeen at <= 1.5x, SEVEN of those scoring a perfect 1.0 on level 1.
+```
+
+It is **near-human on the first level and then stops**. ls20 scores 0.9149 on level 1 and 0.0327 for
+the game, because one level of seven is `1/(1+2+...+7)` of the weight. Efficiency is a real problem on
+a MINORITY — six games, lf52 11.8x through vc33 522x — not the pattern.
+
+**So the target for an unseen game is level 2, 3, 4 — not a faster level 1.** And it says plainly what
+the thirteen adapters actually bought: depth (ft09 6 levels vs generic 1, ls20 7 vs 1, m0r0 6 vs 1),
+which is why the public card multiplied while the hidden score did not — private games mostly get the
+generic path, which reaches level 1 and stops.
+
+⚠️ The first version of this entry read the TOTAL action counts (8,000-15,000), concluded "exhaustive
+search", and was wrong: most of those actions are spent AFTER the first clear, failing at level 2. The
+refuting number was one field deeper in the same file. ⛔ Before a measurement becomes a direction,
+look at the breakdown that would refute it.
+
 ⛔ **THE CARD IS A PROXY AND IT IS NOT TRACKING THE SCORE (measured 2026-08-26).** Read this before
 spending another day on ports.
 
