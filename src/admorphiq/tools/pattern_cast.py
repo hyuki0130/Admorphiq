@@ -41,6 +41,14 @@ _SIDES = (5, 4, 3, 2)
 _MAX_REENTRY = 3
 # A path longer than this is not a plan, it is a wander — and the allowance forbids it.
 _MAX_PATH = 64
+# Resolutions per level. A board that genuinely wants two patterns, plus the price of
+# finding out which is which, and no more: a board we have MISREAD must not be able to
+# drain the allowance and lose a level already won.
+_MAX_CASTS = 8
+# Plate enquiries per level. Free of the allowance, so this only bounds a spin.
+_MAX_ASKS = 24
+# Frames a resolution is given to show itself before it is called a miss.
+_SETTLE = 4
 
 Cell = tuple[int, int]
 Box = tuple[int, int, int, int]
@@ -54,6 +62,10 @@ class PatternCastTool:
     def __init__(self) -> None:
         self._level = -1
         self._engaged = False
+        # What each pattern DOES, keyed by the pattern itself. A board's vocabulary is the
+        # board's, not the level's: the same arrangement resolves the same way on every
+        # level, so what one level pays to learn the next levels get for nothing.
+        self._effects: dict[frozenset[Cell], str] = {}
         self.reset()
 
     # --- lifecycle ---------------------------------------------------------
@@ -79,6 +91,20 @@ class PatternCastTool:
         self._casts = 0
         self._seen: set[Box] = set()
         self._suspect = False
+        self._target: set[Cell] | None = None
+        self._need: str | None = None
+        self._pending: (
+            tuple[frozenset[Cell], Box | None, tuple[frozenset[int], frozenset[Cell]] | None, int]
+            | None
+        ) = None
+        self._shelf: list[Box] = []
+        self._plates: dict[Box, frozenset[Cell]] = {}
+        self._asked: tuple[Box, frozenset[Cell]] | None = None
+        self._lit: frozenset[Cell] = frozenset()
+        self._asked_since: set[Box] = set()
+        self._duds: set[Cell] = set()
+        self._turned: set[Box] = set()
+        self._spent: set[tuple[Any, ...]] = set()
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Learning happens in ``propose``, which sees both sides of a transition."""
@@ -133,6 +159,15 @@ class PatternCastTool:
 
         self._confirm_entry(colours)
         self._learn(grid, panel)
+        self._classify(grid, panel)
+        self._lit = frozenset(_painted(colours))
+        if self._asked is not None and self._lit and self._lit != self._asked[1]:
+            # The plate we last asked ANSWERED — the lattice is showing something it was
+            # not showing before. Recorded so the plate can be preferred, or avoided,
+            # without paying for its pattern a second time. A plate that changed nothing
+            # is not credited with whatever happens to be lit.
+            self._plates[self._asked[0]] = self._lit
+            self._asked = None
 
         # Walk BEFORE entering anything. A resolved pattern can be directional — it acts
         # the way the avatar faces — so entering it from wherever we happen to stand spends
@@ -189,41 +224,105 @@ class PatternCastTool:
         """
         facing = self._prev_step[0] if self._prev_step else None
         if not self._faced and self._heading is not None:
+            # A REFUSED step turns on the spot; a legal one walks. So turning toward a mark
+            # that lies beside us carries us past it, to a square from which the same mark
+            # is lined up from the OTHER side — and two such squares hand the avatar back
+            # and forth until the allowance is gone. Measured. One turn per square is the
+            # bound: on the second visit we shoot from where we already face.
+            first = self._avatar_box not in self._turned
+            self._turned.add(self._avatar_box)
             self._faced = True
-            if self._heading != facing:
+            if first and self._heading != facing:
                 return (self._heading, None)
         return self._enter_pattern(origins, side, colours)
 
     def _rearm(self, grid: np.ndarray, panel: Box) -> Step | None:
-        """The lattice has gone quiet while we are still stuck — ask for a new pattern.
+        """The lattice is not showing the pattern we want — ask the shelf for another.
 
         Boards of this family park their instructions in FURNITURE: framed boxes that
         stand off the walkable area entirely, one per pattern the level allows. Clicking
-        one puts its pattern back on the lattice. Furniture is identified by exactly that
-        property — it is a piece the avatar could never walk up to, because the ground
-        inside its frame is not joined to the ground the avatar stands on. Cycled so a
-        level offering several patterns eventually offers the one that helps, and capped
-        so a level offering none cannot spin.
+        one puts its pattern back on the lattice, and costs nothing but the turn. Furniture
+        is identified by exactly that property — a piece the avatar could never walk up to,
+        because the ground inside its frame is not joined to the ground it stands on.
+
+        Which one is asked for is not a rotation: once a pattern's effect has been paid for
+        it is remembered, so a plate whose pattern does the thing we currently need is
+        preferred, an unpaid-for plate comes next, and a plate we KNOW does the wrong thing
+        is only touched when there is nothing else.
         """
-        if self._avatar_box is None or self._floor is None:
+        if self._avatar_box is None or self._floor is None or self._need is None:
             return None
-        board = _board_only(grid, panel)
-        ground = _ground(board, self._avatar_box, self._floor)
-        shelf = [
-            o for o in self._objects(grid, board)
-            if not (_halo(o["cells"]) & ground) and o["cells"].isdisjoint(self._goal or set())
-        ]
-        # Two attempts, no more. Each costs the entry price of a whole pattern, and a
-        # level whose exit needs a pattern we cannot identify is better left than paid for
-        # repeatedly — running the allowance out LOSES the level that is already won.
-        if not shelf or self._rearms >= 2:
+        self._shelf = self._shelf or self._furniture(grid, panel)
+        # Asking a plate is free of the allowance — only casting is charged — so the bound
+        # here is not a price, it is a spin guard: every plate gets one ask per board
+        # change, and a board that changes no more offers nothing more to ask for.
+        left = [p for p in self._shelf if p not in self._asked_since]
+        if not left or self._rearms >= _MAX_ASKS:
             return None
-        shelf.sort(key=lambda o: (-o["size"], o["box"]))
-        pick = shelf[self._rearms % len(shelf)]
+        pick = min(left, key=lambda p: (self._rank(p), self._shelf.index(p)))
+        self._asked_since.add(pick)
+        if self._plates.get(pick) == self._lit:
+            # Its pattern is already the one on the lattice; asking again shows the same
+            # thing and spends a turn to do it.
+            return None
+        y0, x0, y1, x1 = pick
+        self._asked = (pick, self._lit)
         self._rearms += 1
         self._seen.clear()
-        y0, x0, y1, x1 = pick["box"]
         return (6, ((x0 + x1) // 2, (y0 + y1) // 2))
+
+    def _stance(self, pattern: frozenset[Cell]) -> tuple[Any, ...]:
+        """Everything about our position that a resolution's outcome depends on.
+
+        Where we stand and how big we are, and — when the resolution is a directional one —
+        which way we face. Leaving the facing out looks harmless and is not: a board that
+        wants two switches shot from the same corner refuses the second shot, because the
+        first has already spent that place.
+        """
+        facing = self._heading if self._need == "fire" else None
+        return (pattern, self._avatar_box, facing)
+
+    def _rank(self, plate: Box) -> int:
+        """0 = offers what we need, 1 = unknown, 2 = wrong effect, 3 = already spent here."""
+        pattern = self._plates.get(plate)
+        if pattern is None:
+            return 1
+        if self._stance(pattern) in self._spent:
+            return 3
+        effect = self._effects.get(pattern)
+        if effect is None:
+            return 1
+        return 0 if effect == self._need else 2
+
+    def _furniture(self, grid: np.ndarray, panel: Box) -> list[Box]:
+        """The plates on the shelf, largest first, one entry per plate.
+
+        A framed plate is several pieces to a component reader — the frame, and each blob
+        of the pattern painted inside it — so entries wholly inside an entry already taken
+        are dropped. Without that the tool asks the same plate for a pattern three times
+        over, once per blob, and reads the refusals as three different plates.
+        """
+        assert self._avatar_box is not None and self._floor is not None
+        board = _board_only(grid, panel)
+        ground = _ground(board, self._avatar_box, self._floor)
+        off = [
+            o for o in self._objects(grid, board)
+            if not (_halo(o["cells"]) & ground)
+            and o["cells"].isdisjoint(self._goal or set())
+            # Big enough to DRAW the pattern it offers. Boards leave single stray cells
+            # standing off the walkable area for their own reasons, and a plate list that
+            # admits them spends one turn each asking a speck for an instruction.
+            and o["box"][2] - o["box"][0] >= _MIN_K
+            and o["box"][3] - o["box"][1] >= _MIN_K
+        ]
+        off.sort(key=lambda o: (-o["size"], o["box"]))
+        plates: list[Box] = []
+        for o in off:
+            box = o["box"]
+            if any(_inside(box, kept) for kept in plates):
+                continue
+            plates.append(box)
+        return plates
 
     def _read_again(self, grid: np.ndarray) -> Step | None:
         """Nothing is readable — spend one inert click to get a fresh frame.
@@ -251,9 +350,9 @@ class PatternCastTool:
         stray click returns to the pending list on its own, while the wholesale recolour a
         resolution paints over the lattice does not read as fresh work.
         """
-        painted = _painted(colours)
+        painted = frozenset(_painted(colours))
         pending = [
-            cell for cell in painted
+            cell for cell in sorted(painted)
             if cell not in self._entered
             or self._entered[cell] == colours[cell[0]][cell[1]]
         ]
@@ -266,18 +365,88 @@ class PatternCastTool:
                 self._seen.clear()
                 self._casts += 1
             return None
-        # Three resolutions per level: enough for a board that genuinely wants two, few
-        # enough that a board we have MISREAD cannot drain the allowance and lose a level
-        # already won. Measured: left uncapped it re-entered one pattern five times and
-        # ran the level out.
-        if self._casts >= 3:
+        # Only ever entered against a REASON — a mark lined up in front of us, or a board
+        # that has refused every route and wants the avatar itself changed. A pattern
+        # entered because it happened to be lit is how a level already won gets spent.
+        if self._need is None or self._casts >= _MAX_CASTS or self._pending is not None:
+            return None
+        # A pattern already paid for once, whose effect is not the effect we need, is worth
+        # a turn asking the shelf for a different one — never four charges of the allowance
+        # to watch it do the wrong thing twice.
+        if self._effects.get(painted, self._need) != self._need:
+            return None
+        # The board is deterministic: the same pattern, entered from the same place at the
+        # same size, does the same thing. Measured on a board with three plates — a size
+        # pattern entered twice shrank the avatar and grew it straight back, and would have
+        # gone on alternating until the allowance ran out.
+        if self._stance(painted) in self._spent:
             return None
         if self._awaiting is not None and self._reentry > _MAX_REENTRY:
             return None
+        if len(pending) == 1:
+            # The last cell of the pattern: whatever the board does next is this pattern's
+            # doing, and this is the only moment at which the before-picture is still true.
+            mark = None
+            if self._target and self._prev is not None:
+                mark = (
+                    frozenset(int(self._prev[y][x]) for y, x in self._target),
+                    frozenset(self._target),
+                )
+            self._pending = (painted, self._avatar_box, mark, _SETTLE)
+            self._spent.add(self._stance(painted))
+            self._asked_since.clear()
         r, c = self._awaiting[0] if self._awaiting is not None else pending[0]
         self._awaiting = ((r, c), colours[r][c])
         y, x = origins[r][c]
         return (6, (x + side // 2, y + side // 2))
+
+    def _classify(self, grid: np.ndarray, panel: Box) -> None:
+        """Name what the pattern we last entered actually DID.
+
+        Two outcomes are distinguishable from the frame alone. The mark we were aiming at
+        is gone: the pattern is a ranged one. The avatar is a different shape, or standing
+        somewhere no step of ours could have put it: the pattern changes the avatar, which
+        is what "no route exists" asks for. Neither, once the board has settled: a ranged
+        resolution that missed — which is the same news for our purposes, since what it is
+        NOT is the pattern that changes geometry.
+
+        Settling is the whole difficulty. A resolution is announced on the frame that
+        completes the pattern and APPLIED several frames later, so a verdict read off the
+        next frame alone calls every pattern inert — measured: all three of one board's
+        patterns came back "missed", and the tool then refused to enter any of them.
+        """
+        if self._pending is None:
+            return
+        pattern, before, mark, ttl = self._pending
+        if mark and not (mark[0] & {int(grid[y][x]) for y, x in mark[1]}):
+            self._pending = None
+            self._effects[pattern] = "fire"
+            return
+        after = self._avatar(_board_only(grid, panel))
+        if after is not None and before is not None:
+            resized = (
+                after[2] - after[0] != before[2] - before[0]
+                or after[3] - after[1] != before[3] - before[1]
+            )
+            jumped = max(abs(after[0] - before[0]), abs(after[1] - before[1])) > 2 * (
+                self._stride or 1
+            )
+            if resized or jumped:
+                self._pending = None
+                self._effects[pattern] = "geom"
+                self._avatar_box = after
+                return
+        if ttl <= 0:
+            self._pending = None
+            self._effects[pattern] = "fire"
+            if mark:
+                # We stood where the whole face looked at this piece, resolved a pattern,
+                # and the piece did not react. It is scenery, not the switch — and left in
+                # the running it is shot again from the next stance, and the next.
+                self._duds |= mark[1]
+                self._target = None
+            return
+        self._pending = (pattern, before, mark, ttl - 1)
 
     # --- what the last transition taught -----------------------------------
 
@@ -294,11 +463,20 @@ class PatternCastTool:
             return
         self._blocked.clear()
         self._faced = False
-        # Cells the avatar left behind are, by definition, walkable ground.
+        # Cells the avatar left behind are, by definition, walkable ground — but not
+        # necessarily THE ground. Boards paint markers on the floor, and an avatar that
+        # steps off one hands back the marker's colour as the new floor: measured, a board
+        # whose ground is colour 2 came back as colour 15 every second step, and the
+        # reachability map flipped with it, bouncing the avatar between two cells until the
+        # allowance ran out. So a fresh reading has to be at least as WIDESPREAD as the one
+        # it replaces to take its place.
         vacated = _box_cells(self._avatar_box) - _box_cells(box)
         floors = Counter(int(grid[y][x]) for y, x in vacated)
         if floors:
-            self._floor = floors.most_common(1)[0][0]
+            candidate = floors.most_common(1)[0][0]
+            spread = Counter(v for row in _board_only(grid, panel) for v in row)
+            if self._floor is None or spread[candidate] >= spread[self._floor]:
+                self._floor = candidate
         # Only a STEP calibrates the step. A resolved pattern can carry the avatar right
         # across the board, and taking that jump for the stride makes every later plan
         # propose leaps the avatar cannot perform.
@@ -374,17 +552,93 @@ class PatternCastTool:
         if route:
             self._heading = None
             self._aim = None
+            self._need = None
             return (route[0], None)
 
-        self._aim = _aim(grid, avatar_box, self._goal, self._floor, reach,
-                         self._objects(grid, board), _ground(board, avatar_box, self._floor))
+        objs = self._objects(grid, board)
+        ground = _ground(board, avatar_box, self._floor)
+        self._aim = self._retarget(grid, objs, ground, avatar_box, reach)
         if self._aim is not None:
             place, heading = self._aim
             self._heading = heading
+            self._need = "fire"
             if place != (avatar_box[0], avatar_box[1]):
                 return (reach[place][0], None)
             return None
+        # No route and nothing to shoot at: the board is asking for the avatar itself to
+        # change — a different size, or a different place entirely.
+        self._need = "geom"
         return self._nudge(avatar_box, goal_box, moves, reach)
+
+    def _retarget(
+        self,
+        grid: np.ndarray,
+        objs: list[dict[str, Any]],
+        ground: set[Cell],
+        avatar_box: Box,
+        reach: dict[Cell, list[int]],
+    ) -> tuple[Cell, int] | None:
+        """Choose the piece a ranged resolution is for, and where to stand to hit it.
+
+        The mark is a piece that borders the ground we stand on yet no placement can ever
+        touch — a switch in an alcove behind a gap too narrow to enter. That is what a
+        ranged resolution is FOR; anything the avatar can simply walk up against needs no
+        projectile.
+
+        Target and stance are chosen TOGETHER, because a mark with no line of sight is not
+        a plan: a board that offers two of them, one standing squarely between the avatar
+        and the other, otherwise fixes on the near one and shoots it forever.
+
+        Held across resolutions once chosen. Shrinking to line up the shot can make the
+        alcove walkable, and a mark dropped the moment it becomes reachable is a mark the
+        tool re-derives as absent — which is how one board spent its allowance shrinking,
+        growing and shrinking again with nothing to aim at.
+        """
+        wall = set(background(grid))
+        if self._target is not None:
+            if any(o["cells"] & self._target for o in objs):
+                return self._sight(grid, avatar_box, self._target, wall, reach)
+            self._target = None
+        covered: set[Cell] = set()
+        for place in reach:
+            covered |= _footprint(place, avatar_box)
+        own = _box_cells(avatar_box)
+        marks = [
+            o["cells"] for o in objs
+            if not (o["cells"] & (self._goal or set()))
+            and not (o["cells"] & own)
+            and not (o["cells"] & self._duds)
+            and _halo(o["cells"]) & ground
+            and not (_halo(o["cells"]) & covered)
+        ]
+        for mark in sorted(marks, key=len, reverse=True):
+            sight = self._sight(grid, avatar_box, mark, wall, reach)
+            if sight is not None:
+                self._target = mark
+                return sight
+        if marks:
+            self._target = max(marks, key=len)
+        return None
+
+    def _sight(
+        self,
+        grid: np.ndarray,
+        avatar_box: Box,
+        mark: set[Cell],
+        wall: set[int],
+        reach: dict[Cell, list[int]],
+    ) -> tuple[Cell, int] | None:
+        """Face-wide line of sight first, one line of sight only as a second thought.
+
+        Which cell of the avatar a resolution fires from is the board's convention, not
+        ours, so the only stance that is certainly a hit is one where EVERY cell of the
+        leading face looks at the mark. When no such stance exists at the size we are, the
+        answer is not a hopeful shot from a corner — it is to change size and look again.
+        """
+        seen = _aim(grid, avatar_box, mark, wall, reach, True)
+        if seen is None and self._casts:
+            seen = _aim(grid, avatar_box, mark, wall, reach, False)
+        return seen
 
     def _nudge(
         self, avatar: Box, goal: Box, moves: list[int], reach: dict[Cell, list[int]]
@@ -557,6 +811,14 @@ def _board_only(grid: np.ndarray, panel: Box) -> list[list[int]]:
     ]
 
 
+def _inside(inner: Box, outer: Box) -> bool:
+    """Whether one bounding box sits wholly within another."""
+    return (
+        inner[0] >= outer[0] and inner[1] >= outer[1]
+        and inner[2] <= outer[2] and inner[3] <= outer[3]
+    )
+
+
 def _cells_box(cells: set[Cell]) -> Box:
     ys = [y for y, _ in cells]
     xs = [x for _, x in cells]
@@ -641,38 +903,22 @@ def _ground(board: list[list[int]], avatar: Box, floor: int) -> set[Cell]:
 def _aim(
     grid: np.ndarray,
     avatar: Box,
-    goal: set[Cell],
-    floor: int,
+    target: set[Cell],
+    wall: set[int],
     reach: dict[Cell, list[int]],
-    objs: list[dict[str, Any]],
-    ground: set[Cell],
+    whole_face: bool,
 ) -> tuple[Cell, int] | None:
-    """Where to stand and which way to face so a directional resolution hits something.
+    """Where to stand and which way to face so a directional resolution hits the mark.
 
-    Which something is the whole question, and it is answered by REACH, not by proximity.
-    A piece the avatar can walk up against needs no projectile — it is already within
-    reach and shooting it spends the pattern for nothing. The piece worth a shot is the
-    one that borders the same ground yet no step can ever reach: that is what a ranged
-    resolution is FOR, and on these boards it is the switch that clears the way, standing
-    in an alcove behind a gap too narrow to enter.
+    A ranged resolution leaves the avatar along ONE cell of the side it faces, and which
+    cell that is — top, middle, bottom — is the board's convention, not ours. So the
+    placement worth walking to is the one where the WHOLE leading face looks at the mark
+    over unbroken floor: from such a placement every convention hits. ``whole_face`` off
+    accepts a single line of sight instead, which is a guess and is only taken once a
+    resolution has already been spent and the geometry did not improve.
     """
-    if not reach:
+    if not reach or not target:
         return None
-    # Where the avatar can STAND is not the same as where the ground goes: the avatar is
-    # several cells wide, so a gap the ground runs through can still admit no placement.
-    # That difference is exactly the "out of reach" the shot is for.
-    covered: set[Cell] = set()
-    for place in reach:
-        covered |= _footprint(place, avatar)
-    marks = [
-        o["cells"] for o in objs
-        if not (o["cells"] & goal)
-        and _halo(o["cells"]) & ground
-        and not (_halo(o["cells"]) & covered)
-    ]
-    if not marks:
-        return None
-
     h, w = grid.shape
     ah = avatar[2] - avatar[0] + 1
     aw = avatar[3] - avatar[1] + 1
@@ -681,20 +927,27 @@ def _aim(
     for place, path in reach.items():
         if best is not None and len(path) >= best[0]:
             continue
-        cy, cx = place[0] + ah // 2, place[1] + aw // 2
-        edges = {
-            1: (place[0] - 1, cx), 2: (place[0] + ah, cx),
-            3: (cy, place[1] - 1), 4: (cy, place[1] + aw),
+        y0, x0 = place
+        faces = {
+            1: [(y0 - 1, x0 + j) for j in range(aw)],
+            2: [(y0 + ah, x0 + j) for j in range(aw)],
+            3: [(y0 + i, x0 - 1) for i in range(ah)],
+            4: [(y0 + i, x0 + aw) for i in range(ah)],
         }
         for action, (dy, dx) in rays.items():
-            y, x = edges[action]
-            while 0 <= y < h and 0 <= x < w:
-                if any((y, x) in m for m in marks):
-                    best = (len(path), place, action)
-                    break
-                if int(grid[y][x]) != floor:
-                    break
-                y, x = y + dy, x + dx
+            hits = 0
+            for sy, sx in faces[action]:
+                y, x = sy, sx
+                while 0 <= y < h and 0 <= x < w:
+                    if (y, x) in target:
+                        hits += 1
+                        break
+                    if int(grid[y][x]) in wall:
+                        break
+                    y, x = y + dy, x + dx
+            if hits == len(faces[action]) if whole_face else hits > 0:
+                best = (len(path), place, action)
+                break
     return (best[1], best[2]) if best else None
 
 
