@@ -802,3 +802,44 @@ The searching architecture is mis-specified for these games: it treats the board
 explore and the budget as something to spend, when the budget IS the loss condition and the
 mechanic is recoverable from a handful of probes. Stage one needs more rule-recovery tools, not a
 better search. The measurement that says so is this table.
+
+
+## Second rule-recovery tool: TrackAlignTool (2026-08-27)
+
+Built from the DATA, not from probing: `dump_sample_levels.py` showed lp85 level 0 as 19 tiles,
+two buttons tagged `button_A_L` / `button_A_R`, one static marker, one goal tile, a 13-action
+budget, and a win predicate reading "a goal sits at the marker's position". The tool recovers all
+of that from frames — a closed loop of equal tiles, a static marker beside one slot, controls that
+rotate the loop — and rotates to the computed offset.
+
+**lp85 level 1 in FIVE actions.** The budget is 13, the human baseline 17, and the searching
+generic path took **924**.
+
+Three derivations were wrong first, each fixed by one measurement:
+
+* the tile side is the one whose blocks form a closed LOOP, not the one that finds the most
+  blocks — a 4x4 tile contains four 2x2 ones, so the smallest side always wins a count;
+* the loop is found by PEELING blocks that cannot lie on a cycle, not by requiring every block to
+  have two neighbours: the controls are blocks too, and have none;
+* a control is COMPACT — the largest non-track blob on the board is the frame's own one-pixel
+  border, and probing it spends an action to learn that a border does nothing.
+
+**Transfer, measured**: swept over all 25, `track` fires on lp85 alone and costs **zero actions**
+on the other 24 (it declines before proposing); `stencil` fires on ft09 alone and costs three.
+Two tools, two mechanics, **0/24 false positives each**.
+
+**Registered, and the regression that measured the registration**: the first version bid 0.3 for
+"there is a loop here" even with no marker, and that took **ft09 from 0.4762 to 0.3819** on the
+full 25 while lp85 gained 0.0278 — a net LOSS. A lattice that happens to contain a cycle is not
+this mechanic, and a tool with nothing to propose must not compete for the turn. With `detect`
+returning 0.0 instead, the re-run is clean:
+
+```
+generic tools alone, full 25:  0.0200 -> 0.0211
+only lp85 moved (0.0000 -> 0.0278); ft09 restored to 0.4762; 23 games byte-identical
+```
+
+**Open**: lp85 level 2 is three CONCENTRIC rings with their own control pairs and 2-pixel tiles.
+The reader now finds them (pitch candidates include multiples of the observed gap, because
+adjacency at the base gap links the rings and the peel then deletes the whole track), and the
+tool acts — 44 actions inside a 60-action budget — but does not yet clear it.

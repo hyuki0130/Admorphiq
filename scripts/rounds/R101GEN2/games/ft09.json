@@ -1,0 +1,47 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.381874,
+  "total_score_pct": 38.187,
+  "games": [
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 4,
+      "elapsed_s": 77.37,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 4,
+          "human_actions": 43,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 122,
+          "human_actions": 12,
+          "score": 0.009675
+        },
+        {
+          "level": 3,
+          "agent_actions": 16,
+          "human_actions": 23,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 21,
+          "human_actions": 28,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.381874,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09"
+    }
+  ]
+}
