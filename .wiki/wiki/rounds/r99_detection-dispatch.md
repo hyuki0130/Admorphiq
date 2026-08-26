@@ -99,6 +99,8 @@ it. ⚠️ Probe the axis being mirrored: a VERTICAL probe leaves m0r0 and ka59 
 
 ## What is parked, and the limit it names
 
+⛔ **UNPARKED 2026-08-26 — the finding was right and the instrument was wrong. See below.**
+
 lp85 is the largest remaining gap and resists both forms. Statically no threshold exists — its
 rotation-button finder returns 3 where ft09 returns 12 and s5i5 returns 2, so lp85 sits BETWEEN
 its rivals. And a click probe changes zero cells, because ⛔ **the ring mechanic appears at LEVEL
@@ -1149,3 +1151,36 @@ What makes this axis worth the measurement at all: a game the fallback ALREADY c
 human's cost, needs no new mechanic and claims no new game — so it carries none of the
 cd82-hijack risk that stopped the port campaign.
 
+
+
+## lp85 — the park was a single-feature verdict, and the conjunction passes (2026-08-26)
+
+lp85 was the largest remaining gap by a wide margin: **0.6970**, against **0.6097** for the twelve
+other unported games COMBINED. It was parked on a true finding — no button-count threshold
+separates it (3 controls) from ft09 (12) and s5i5 (2) — which is a verdict on ONE FEATURE, not on
+the mechanic. Every shippable port in this round is a conjunction, and lp85's own `_detect`
+already is one:
+
+    click-only  AND  >=1 rotation control  AND  >=1 moving token
+                AND  per colour class, #movers == #destinations
+
+The last term is exactly the pair rule the round's ports are written to. It also makes detection
+and solvability the SAME question for this adapter — a board that passes is one the solver can
+finish — so the two cannot drift apart. It had never been measured.
+
+| gate | result |
+| --- | --- |
+| public 25 | fires on own game, **0/24** false positives |
+| archived unfamiliar boards | **0 misfires / 15** |
+| shipped-path score | **0.6992 — the adapter ceiling exactly** |
+
+Tenth consecutive lossless port. The park note stays in the docstring together with the reason it
+was wrong, because the finding it rested on is still true and would otherwise be re-derived.
+
+**The transferable rule: a park recorded against one feature is not a park against the mechanic.**
+Re-read every park for which instrument produced it — this one cost 0.028 of card and sat there
+because a threshold, not a conjunction, was the thing that failed.
+
+Card arithmetic 0.2772 -> ~0.3051; the full-25 re-measure (`scripts/rounds/R99CARD/run.sh`, the
+runner that unsets the three env overrides so the deployed configuration is what gets measured) is
+the number that counts.
