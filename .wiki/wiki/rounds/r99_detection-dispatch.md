@@ -496,9 +496,29 @@ be tied to particular colour indices.
 * failing does not prove the reverse either — a private game of the same family might use the
   same colour conventions, in which case ft09's detector fires anyway.
 
-What it does establish is a difference in FOOTING: sb26 and tr87 rest on structure, ft09 and ls20
-rest partly on palette, and the two most valuable ports on the card (ft09 and ls20 both score
-1.0000) are the two with the weaker footing.
+⛔ **The probe then INVALIDATED itself.** Run against the five ports whose transfer is already
+MEASURED — they fire on archived version hashes and go on to solve them:
+
+```
+m0r0   own board False   (⚠️ it has no static detector at all; probe-ported. My script did not
+                          check that, so this row is my instrument's defect, not a result)
+re86   recoloured FAIL   — yet fires on archived 4e57566e and clears FOUR levels there
+su15   recoloured FAIL   — yet clears SIX levels on archived 4c352900
+sk48   recoloured FAIL   — yet works on the archive AND on a Kaggle hash we do not have
+r11l   recoloured PASS
+```
+
+**Three detectors that fail recolouring demonstrably transfer to real variants.** So recolouring
+is far harsher than an actual version change: the real hashes appear to KEEP their colour
+conventions, and failing this probe says nothing about transfer.
+
+So the footing conclusion is WITHDRAWN. "ft09 and ls20 rest on palette, therefore their footing
+is weaker" does not follow, because three games that rest on palette by the same test transfer
+fine.
+
+What this leaves: **recolouring is not a stand-in for a version change**, measured by checking it
+against cases whose answer was already known — the check I should have run before reading its
+verdict on ft09 and ls20 at all.
 
 Three defects had to be cleared to get a run at all, all in the build script and all found by
 pushing the KERNEL ONLY, without consuming a submission slot —

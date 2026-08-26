@@ -5,8 +5,14 @@ Purpose: four ports (ft09, ls20, sb26, tr87) have no archived second version, so
 the closest available stand-in: version hashes differ in exactly this kind of surface detail,
 and a detector that reads STRUCTURE should not care which colour index carries it.
 
-⚠️ It is a stand-in, not the real question. A real variant changes layout and internals too;
-this changes only the palette. Surviving it is necessary, not sufficient.
+⛔ MEASURED INVALID as a transfer proxy, and kept only as a record of that. Run against the five
+ports whose transfer is already known, three that FAIL recolouring (re86, su15, sk48) fire on
+their archived version hashes and solve them — so real variants keep their colour conventions and
+failing this probe says nothing about transfer. It also mis-tests probe-ported adapters like m0r0,
+which have no static detector to recolour.
+
+Do not read a verdict from this script. It is here because reading one from it, before checking it
+against cases whose answer was known, produced a conclusion that had to be withdrawn.
 
 Expected feedback: per detector, whether it still fires when every non-background colour index
 is permuted. A detector that stops firing was keying on a colour VALUE.
