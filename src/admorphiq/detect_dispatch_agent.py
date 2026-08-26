@@ -33,6 +33,7 @@ from admorphiq.adapters25.base import GameAdapter, available_action_ids, has_fra
 #: The probe is HORIZONTAL. Measured: a vertical probe leaves m0r0 and ka59
 #: indistinguishable, because both move their pieces the same way under ACTION1.
 _PROBE_ACTION_ID = 3
+_BAIL_ACTIONS = 1000
 _PROBE_ACTION = GameAction.ACTION3
 
 
@@ -41,6 +42,19 @@ class DetectDispatchAgent:
 
     def __init__(self, fallback: Any) -> None:
         self._fallback = fallback
+        # Bail-out. A dispatch is decided from ONE frame and was never revisited, so a
+        # detector that fires on an unseen private game costs that game entirely — the
+        # adapter burns the budget and the fallback, which would have scored something,
+        # never runs. The public 25 cannot show this (every detector is gated to 0/24
+        # there), and the hidden set says v3 scored 0.20 where dispatch scores 0.18.
+        #
+        # MEASURED threshold: among the thirteen DISPATCHED public games, the slowest
+        # first clear is sc25 at 461 actions; every other is <= 25. lf52 (377), tu93
+        # (696) and vc33 (3656) are slower still but run the FALLBACK, so a dispatch bail
+        # cannot touch them. 1000 therefore leaves the public card byte-identical while
+        # capping what a wrong dispatch can cost on an unseen board.
+        self._acted = 0
+        self._bailed = False
         self._chosen: Any | None = None
         self._probe_before: Any | None = None
         self._probe_sent = False
@@ -143,4 +157,17 @@ class DetectDispatchAgent:
         if agent is None:
             self._probe_sent = True
             return _PROBE_ACTION
+        self._acted += 1
+        if (
+            not self._bailed
+            and agent is not self._fallback
+            and self._acted >= _BAIL_ACTIONS
+            and int(getattr(latest_frame, "levels_completed", 0) or 0) == 0
+        ):
+            # Cleared nothing in a thousand actions: this dispatch was wrong. Hand the
+            # rest of the budget to the fallback rather than spend it all on a mechanic
+            # the board does not have.
+            self._bailed = True
+            self._chosen = self._fallback
+            agent = self._fallback
         return agent.choose_action(frames, latest_frame)

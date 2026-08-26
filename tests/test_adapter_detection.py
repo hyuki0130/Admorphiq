@@ -303,3 +303,61 @@ def test_the_deployed_budget_fits_the_competition_time_limit():
         f"{worst_case_hours:.1f}h over {hidden_games} games at {actions_per_second} actions/sec, "
         f"past the {limit_hours}h limit"
     )
+
+
+def test_dispatch_bails_to_the_fallback_when_the_adapter_clears_nothing():
+    """Purpose: pin that a WRONG dispatch cannot cost a whole game.
+
+    A dispatch is decided from one frame and was never revisited, so a detector firing on
+    an unseen private game spent that game's entire budget on a mechanic the board does not
+    have — and the fallback, which would have scored something, never ran. The public 25
+    cannot show this because every detector is gated to 0/24 there.
+
+    Expected feedback: a pass means an adapter that has cleared no level within
+    _BAIL_ACTIONS hands the remaining budget back to the fallback. A fail means one wrong
+    detection again costs the whole game.
+    """
+    from admorphiq.detect_dispatch_agent import _BAIL_ACTIONS, DetectDispatchAgent
+
+    class Stub:
+        def __init__(self, name):
+            self.name = name
+            self.calls = 0
+
+        def is_done(self, frames, latest_frame):
+            return False
+
+        def choose_action(self, frames, latest_frame):
+            self.calls += 1
+            return self.name
+
+    class Frame:
+        levels_completed = 0
+
+    fallback, adapter = Stub("fallback"), Stub("adapter")
+    agent = DetectDispatchAgent(fallback)
+    agent._chosen = adapter
+
+    frame = Frame()
+    for _ in range(_BAIL_ACTIONS - 1):
+        assert agent.choose_action([], frame) == "adapter"
+    assert agent.choose_action([], frame) == "fallback", "did not bail at the threshold"
+    assert agent.choose_action([], frame) == "fallback", "bail must be permanent"
+
+
+def test_the_bail_threshold_clears_every_dispatched_public_game():
+    """Purpose: pin that the bail is a NO-OP on the public 25.
+
+    The threshold is a measurement, not a preference: among the thirteen dispatched public
+    games the slowest first clear is sc25 at 461 actions and every other is <= 25. Games
+    slower than that (lf52 377, tu93 696, vc33 3656) run the FALLBACK, which the bail
+    cannot touch.
+
+    Expected feedback: a pass means no dispatched public game can trip the bail, so the
+    card is unchanged. A fail means the threshold was lowered below a real clear and the
+    public card is about to regress.
+    """
+    from admorphiq.detect_dispatch_agent import _BAIL_ACTIONS
+
+    slowest_dispatched_first_clear = 461  # sc25, measured in scripts/rounds/R99CARD4
+    assert _BAIL_ACTIONS > slowest_dispatched_first_clear
