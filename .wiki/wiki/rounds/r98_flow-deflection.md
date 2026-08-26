@@ -9785,3 +9785,47 @@ the static set was recorded first, and it has not been run. Item 3 is closer, no
 sp80 into the detection-dispatch card — an axis that ships hand-written per-game code with no LLM in
 its path, and which `CLAUDE.md` now records as conflicting with the non-negotiable dual-scoreboard
 doctrine. The measurement stands on its own; the axis it came from is a separate question.
+
+## Item 3 CLOSED by measurement: the static notch shortlist names every grounded target, 20/20
+
+The comparison the previous entry said had not been run has now been run, after the instrument fault
+it needed was fixed.
+
+**First, the structural fact, verified in code rather than inferred.** `board()` returns UNKNOWN
+unless `sink_candidates()` is known, and `sink_candidates()` needs `self._animations` — so **the
+propagator's board is unobtainable before the first spill BY CONSTRUCTION.** That is item 3's precise
+statement, and it is why the first attempt at a rest capture crashed on `.value`: at level entry, and
+even after the fixed probes, there is no board to capture. `board_view()` needs only an observed
+frame, so the rest dump is the raw cell map.
+
+`depth_walk.py` now takes a REST capture behind `R98_CAPTURE_REST`, gated off exactly like the two
+existing captures, placed after the fixed probes — the earliest point where a frame has been observed
+and no spill has run, so every target still wears its own appearance. **Walk unchanged with the gate
+off and on: 3/3 levels, 107 actions, +0 against the baseline. Oracle gate re-run: 3/3 PASS.**
+
+Pairing each level's REST colours with that level's grounded `sinks`:
+
+```
+walk_idx0_1   grounded 2   static 2   covered 2/2
+walk_idx1_1   grounded 3   static 3   covered 3/3
+walk_idx2_1   grounded 3   static 3   covered 3/3
+walk_idx3_*   grounded 3   static 1   covered 3/3   (x4 boards)
+
+over 7 captured boards: 20/20 grounded targets are named statically
+```
+
+**Every grounded target is named by a notch-bearing region, with no misses**, and on idx0/idx1/idx2
+the static count matches the grounded count exactly — no extras either. On idx3 one static region
+covers all three, which is the 4-connectivity merge `_by_mouth` already exists to split ("targets
+standing side by side merge into a single region... a single merged target makes 'satisfy every
+target' mean 'satisfy the one blob'").
+
+⚠️ **What is closed and what is not.** Closed: targets ARE recoverable from static structure before
+any commit, so a pre-spill shortlist is available and item 3's premise holds. Not closed: this
+measures COVERAGE, and on idx3 exactness needs `_by_mouth` applied to the static set — which is a
+composition of two things already in the file, not new work, but it has not been measured that way.
+
+⚠️ The earlier 12/20 on this same check was its own blind spot: it read colours from the WALK
+captures, where idx0's grounded target cells carry the BACKGROUND colour (`{12: 5}` against background
+12) and a background-excluding shape test cannot see them. Same script, same corpus of `sinks`, right
+colours — 12/20 becomes 20/20.

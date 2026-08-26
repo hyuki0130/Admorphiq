@@ -61,13 +61,23 @@ def notch_regions(colours: dict[str, int], size: int) -> list[frozenset[tuple[in
 
 
 def main() -> int:
+    here = os.path.dirname(__file__)
     rows = []
-    for path in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "evidence", "walk_idx*.json"))):
+    for path in sorted(glob.glob(os.path.join(here, "evidence", "walk_idx*.json"))):
         d = json.load(open(path))
         if not d.get("sinks"):
             continue
+        # The grounded answer comes from the WALK capture (taken around a commit); the
+        # colours must come from the REST capture of the same level, because in the walk
+        # capture a target is not wearing its own appearance.
+        level = os.path.basename(path).split("_idx")[1].split("_")[0]
+        rest = os.path.join(here, "evidence", f"rest_idx{level}.json")
+        if not os.path.exists(rest):
+            print(f"{os.path.basename(path):20s} no rest capture for idx{level} — SKIPPED")
+            continue
+        r = json.load(open(rest))
         grounded = [frozenset(map(tuple, s)) for s in d["sinks"]]
-        static = notch_regions(d["colours"], d["size"])
+        static = notch_regions(r["colours"], r["size"])
         # a grounded target is COVERED when some static region contains all its cells
         covered = sum(1 for g in grounded if any(g <= s for s in static))
         rows.append((os.path.basename(path), len(grounded), len(static), covered))

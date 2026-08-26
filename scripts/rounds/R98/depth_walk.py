@@ -20,6 +20,7 @@ bonus; a level that stops names the next piece of work. Either is usable.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -168,6 +169,28 @@ def play_level(w: Walker) -> tuple[bool, str]:
     for a in (1, 1, 2, 3, 4):
         w.act(a, g)
     phase["fixed probes"] = w.actions - phase["start"]
+    # REST capture, env-gated and off by default like the other two. Every existing capture
+    # is taken around a COMMIT, when a target is not wearing its own appearance — measured:
+    # on walk_idx0/1/2 the grounded target cells carry the BACKGROUND colour, so a static
+    # shape test cannot find them at all and static_shortlist_check.py reports its own blind
+    # spot instead of a coverage number. Here is the earliest point that works: the probes
+    # are MOVES, so no spill has run and every target still wears its own appearance, while
+    # the grounding has seen enough to return a board at all (at level entry it is UNKNOWN,
+    # measured — the first attempt crashed on `.value` there).
+    if os.environ.get("R98_CAPTURE_REST"):
+        # `board()` cannot serve this: it needs `sink_candidates()`, which needs
+        # `self._animations` — so the propagator's board is unobtainable before the first
+        # spill BY CONSTRUCTION, which is exactly the gap open item 3 names. `board_view()`
+        # needs only an observed frame, so the rest dump is the raw cell map plus the size.
+        view = g.board_view()
+        if getattr(view, "value", None) is not None:
+            cells = view.value
+            side = int(round(len(cells) ** 0.5))
+            path = f"{os.environ['R98_CAPTURE_REST']}_idx{w.level}.json"
+            with open(path, "w") as fh:
+                json.dump({"size": side,
+                           "colours": {f"{r},{c}": int(v) for (r, c), v in cells.items()}},
+                          fh)
     # ⛔ A per-direction RETRY loop used to sit here, pressing each unmeasured direction up to
     # twice more. Measured on every level of a full walk: `deltas_of(g)` is EMPTY before it
     # runs and EMPTY after, so its own success condition is never met and it repaired nothing
