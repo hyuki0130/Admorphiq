@@ -122,3 +122,34 @@ scope kept honest — `toggle` still scores 0 on the other nineteen.
 harness reads this table as its knowledge and a false exclusion in it is a false belief the model then
 acts on faithfully — which is exactly what "the model is following the table" meant. Leaving a refuted
 claim in the source of truth is worse than the score it costs.
+
+## ⛔ CORRECTION: no LLM was in any of these runs — "the harness picks graph" is not about the model
+
+The user asked how tool selection was run on ceph-build, which has no GPU and no model server. It was
+not. `tool_alternatives.py` builds the agent like this:
+
+```python
+def _no_llm(_messages: object) -> str:
+    """The deployed LLM-free configuration: raising engages signature routing."""
+    raise RuntimeError("LLM-free deployment")
+
+agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+```
+
+The LLM callable RAISES, which drops the harness into frame-signature routing. That is the deployed
+configuration — and it means every "picks" number in this round and the last is **signature routing's
+choice, not a model's**.
+
+**What survives, and what does not:**
+
+* **Survives** — the forced-tool sweep. Each tool was run ALONE, so its 20/20 result is what that tool
+  can do regardless of who selects it. "A perfect selector leaves 19 of 20 games where they are" holds
+  for ANY selector, including a model. R100's answer stands.
+* **Withdrawn** — *"the harness's tool selection has COLLAPSED TO ONE TOOL"* and the reading of
+  `picks.log` as an anchor pathology like R5-R11's. Nine games showing `pick=graph` says signature
+  routing chose graph nine times. **It says nothing about what a model would pick**, because no model
+  was asked.
+
+⚠️ And this is the day's larger finding in miniature: **there is no LLM anywhere in the deployed
+path.** The card dispatches on hand-written detectors, and the harness beneath it runs `_no_llm`. The
+question *"what is the LLM for, then"* is not rhetorical — on the current card, nothing.
