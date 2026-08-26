@@ -775,3 +775,30 @@ every budget by roughly fifteen times (768 where the game declares 50), because 
 around the border went into the numerator. The indicator is a segment; the rest of the edge is
 furniture. Pinned in `tests/test_budget_reader.py`, both directions — a board with no indicator
 must return None, and an oscillating border must too.
+
+
+## Stage one's scoreboard, and the one thing on it that works (2026-08-27)
+
+`scripts/rounds/R101GEN` — the generic tools ALONE (`--agent unified`), full 25, budget 4000.
+**Mean 0.0200** against the card's 0.3162. Level-1 cost against each game's DECLARED budget:
+
+| game | levels | actions to clear L1 | human | declared budget | |
+|---|---|---|---|---|---|
+| **ft09** | 4 | **4** | 43 | 32 | **within budget, and super-human** |
+| vc33 | 1 | 316 | 7 | 50 | over 6.3x |
+| tu93 | 2 | 1119 | 19 | 50 | over 22.4x |
+| lp85 | 1 | 924 | 17 | 13 | over 71.1x |
+| sp80 | 1 | 3274 | 39 | 30 | over 109.1x |
+| cd82 / lf52 / m0r0 / r11l / tn36 | 1 each | 150 / 59 / 604 / 73 / 73 | 55 / 32 / 30 / 22 / 32 | — | |
+| ar25 bp35 cn04 dc22 g50t ka59 ls20 re86 s5i5 sb26 sc25 sk48 su15 tr87 wa30 | **0** | — | — | — | **16 of 25 never clear anything** |
+
+**One tool on this board plays at human efficiency, and it is the one built today.** ft09 clears
+its first level in FOUR actions where the human baseline is 43 and the game allows 32 — because
+`StencilTool` recovers the rule and then acts, instead of searching for a state that satisfies an
+inferred goal. Every searching path on the table is 6x to 109x over the budget the game declares.
+
+⛔ **So the answer to "is this a hard algorithmic problem" is no, or at least not the hard part.**
+The searching architecture is mis-specified for these games: it treats the board as something to
+explore and the budget as something to spend, when the budget IS the loss condition and the
+mechanic is recoverable from a handful of probes. Stage one needs more rule-recovery tools, not a
+better search. The measurement that says so is this table.

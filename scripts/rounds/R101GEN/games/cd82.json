@@ -1,0 +1,29 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.006402,
+  "total_score_pct": 0.64,
+  "games": [
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 47.93,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 150,
+          "human_actions": 55,
+          "score": 0.134444
+        }
+      ],
+      "game_score": 0.006402,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CD82"
+    }
+  ]
+}
