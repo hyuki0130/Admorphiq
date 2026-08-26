@@ -1779,3 +1779,47 @@ wets none of them.
 **This is what R98's propagator was built for and measured against** — exact cell-for-cell on
 idx0/idx1/idx2, which includes this level. The fidelity gap is now established rather than
 hypothesised, and it is total on this board rather than marginal.
+
+## ⛔ WITHDRAWN: "the models disagree completely" was measured with the wrong colour
+
+The previous entry's headline — predicted 3 of 3, actual 0 of 3, **zero** wetted cells in any target
+— is false and is withdrawn. It counted a target as wet only where its cells carried the FLOW
+colour (6). Targets do not render that way. Their colour histogram across the commit's layers:
+
+```
+commit 1 (22 layers)   target 0 {11: 1552, 13: 160, 12: 48}
+                       target 1 {11: 1552, 13: 160, 12: 48}
+                       target 2 {11: 1232, 13: 480, 12: 48}
+commit 2 (27 layers)   target 0 {11: 1200, 13: 960}
+                       target 1 {11: 1280, 13: 880}
+                       target 2 {11: 1600, 13: 560}
+```
+
+Colour 11 is the target's own appearance; **13** is what its cells take while the spill runs, and 12
+appears too. Colour 6 never does. So "zero wetted cells" measured the absence of a colour targets
+never wear, not the absence of water.
+
+The contradiction was visible in the same run and I wrote past it: predicted water was a strict
+SUBSET of actual water (overlap 203 of 203 predicted, 560 actual), and the prediction satisfies all
+three targets by the control — so the actual water *had* to reach them. A reading that cannot be
+true given the other readings in its own output is a reading to re-take, not to report.
+
+**What survives, and it is little:**
+
+* the control is still valid — replay on the planner's own inputs reproduces its 3/3 verdict;
+* the engine wets everything the simulator predicts and 357 cells more (commit 1), so the kernel
+  model UNDER-spreads rather than sending water elsewhere;
+* the targets do receive colour 13 during the spill — **the flow reaches them**;
+* and the level still does not advance.
+
+⚠️ That last pair points back toward the reading withdrawn two entries ago (coverage happens, the
+level fails anyway) — but what colour 13 versus 12 versus 11 MEANS is not established, and I am not
+going to swing a third time on a guess about it.
+
+**The control that settles it**: compare the target colour histogram on a commit that WINS (levels 1
+and 2 both clear) against this one that does not. Satisfaction has a signature in that difference or
+it does not, and either way the answer comes from a level whose outcome is known.
+
+⛔ Sixth time this round a claim came from a field read for something it does not record. The rule
+was already on this page in three forms. Writing it again is not the fix; running the control BEFORE
+the headline is.
