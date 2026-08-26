@@ -2342,3 +2342,25 @@ measure and exists only for the 110 we cannot — which is the only place the la
 anything.
 
 ⛔ Submitting is the user's decision, and today's daily slot is already spent on `55784359`.
+
+## The bail could have shipped inert, and now cannot
+
+Two ways this protection could exist locally and be absent where it counts, both checked:
+
+1. **State carried between games.** The bail counts `self._acted` on the dispatcher. Every local
+   card measurement runs ONE PROCESS PER GAME, so a counter that never resets would be invisible to
+   it — and the submission runs all 110 games in one process. Already pinned: an existing test
+   asserts the agent is constructed INSIDE the notebook's per-game loop and that `action_counter` is
+   an instance field, so `_acted` starts at zero for every game.
+2. **The shipped entry point not driving the counter.** This one had no pin. Locally
+   `--agent kaggle_detect` builds `build_detect()` and calls `DetectDispatchAgent.choose_action`
+   directly, so the bail is exercised in every card run. The submission does not: the framework
+   calls `KaggleDetectAgent.choose_action_with_data`. The bail only counts if that method routes
+   through the dispatcher's `choose_action` — and if it were ever changed to reach past it, the
+   protection would be present in every local measurement and absent in the only run that scores.
+   Now pinned.
+
+⚠️ The general shape is worth keeping: **a safeguard verified only on the local harness is verified
+on a configuration that does not ship.** The same file already records the version of this that bit
+— the deployed `MAX_ACTIONS` cap lives on a wrapper local measurement never constructs, so cutting
+the budget was once "verified" against a mechanism that does not ship.

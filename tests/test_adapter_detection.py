@@ -367,3 +367,28 @@ def test_the_bail_threshold_clears_every_dispatched_public_game():
     # threshold under 1,379 would be below a demonstrated single-level requirement.
     costliest_dispatched_level = 1379  # sc25 level 3, same run
     assert _BAIL_ACTIONS > costliest_dispatched_level
+
+
+def test_the_shipped_call_path_drives_the_bail_counter():
+    """Purpose: pin that the bail counts actions on the path the SUBMISSION actually uses.
+
+    The bail counts inside `DetectDispatchAgent.choose_action`. Locally, `--agent
+    kaggle_detect` builds `build_detect()` and calls that method directly, so every card
+    measurement exercises it. The submission does NOT: the framework calls
+    `KaggleDetectAgent.choose_action_with_data`, and the bail is only driven if that
+    method routes through the dispatcher's `choose_action`. If it were ever changed to
+    reach past it — to an adapter, or to a cached agent — the protection would be present
+    in every local run and absent in the only run that scores.
+
+    Expected feedback: a pass means the shipped entry point increments the counter the
+    bail reads. A fail means the bail ships inert.
+    """
+    import inspect
+
+    from admorphiq.kaggle_detect_agent import KaggleDetectAgent
+
+    body = inspect.getsource(KaggleDetectAgent.choose_action_with_data)
+    assert "self._agent.choose_action(" in body, (
+        "the shipped action path must go through the dispatcher's choose_action, "
+        "which is where the bail counts"
+    )
