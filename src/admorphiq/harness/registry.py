@@ -12,10 +12,12 @@ from admorphiq.tools.base import Tool
 def default_tools() -> list[Tool]:
     """Instantiate the generic Claude-built tools in priority order.
 
-    `StencilTool` goes FIRST because it is the most selective: it declines any frame without a
-    tile lattice carrying an instruction glyph, measured at 0 false positives across the 25
-    sample games and three actions to withdraw. A tool that is cheap to be wrong about belongs
-    ahead of one that will always propose something.
+The rule-recovery tools go FIRST because they are the most selective: it declines any frame without a
+    board that does not carry their mechanic — `StencilTool` wants a tile lattice with an
+    instruction glyph, `TrackAlignTool` a closed loop of equal tiles with a marked slot. Both
+    measured at **0 false positives across the 25 sample games**, withdrawing in three actions and
+    ZERO respectively. A tool that is cheap to be wrong about belongs ahead of one that will
+    always propose something.
     """
     from admorphiq.tools.dead_signature import DeadSignatureTool
     from admorphiq.tools.dealias import DealiasTool
@@ -24,6 +26,7 @@ def default_tools() -> list[Tool]:
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.stencil import StencilTool
     from admorphiq.tools.toggle import ToggleTool
+    from admorphiq.tools.track import TrackAlignTool
     from admorphiq.tools.world_model import WorldModelTool
 
     graph = GraphSearchTool()
@@ -34,6 +37,7 @@ def default_tools() -> list[Tool]:
 
     return [
         StencilTool(),
+        TrackAlignTool(),
         graph,
         WorldModelTool(),
         PaintFloodTool(),

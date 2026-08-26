@@ -32,8 +32,15 @@ def main() -> None:
         steps = tool.propose([], obs)
         if not steps:
             idle += 1
-            print(f"     no proposal at level {done} after {acted} actions")
-            break
+            if idle >= 3:
+                print(f"     no proposal at level {done} after {acted} actions")
+                break
+            # The frame following a level-up still shows the board just finished, so a tool that
+            # reads it correctly reports "already aligned". One action moves it on.
+            obs = env.step(GameAction.ACTION6, data={"x": 0, "y": 0})
+            acted += 1
+            continue
+        idle = 0
         for _, xy in steps:
             obs = env.step(GameAction.ACTION6, data={"x": xy[0], "y": xy[1]})
             acted += 1
