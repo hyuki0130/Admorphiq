@@ -2591,3 +2591,39 @@ more search does not help (`NOGIVEUP`, 0 of 23) and the agent is already near-hu
 reading and it is not yet tested; the test is whether the wall level's state space is actually larger
 in a way the planner's representation blows up on, which needs the planner instrumented rather than
 the board described.
+
+## ⛔ RECOVERED FROM /tmp: the harness's tool selection has COLLAPSED TO ONE TOOL
+
+The user asked whether ceph-build holds work the repository does not. It holds 43 uncommitted run
+scripts spanning Jul 19 to Aug 26, and four diagnostic logs that lived only in `/tmp` — one reboot
+from gone. They are on the LLM-harness axis, which is the axis the doctrine names, and they contain
+the sharpest finding of the day:
+
+```
+picks.log — which tool the harness selects, per game
+  vc33 cn04 sp80 sc25 bp35 dc22 m0r0 sk48 g50t     ALL NINE: pick=graph
+
+alt.log — what each tool scores on games the harness fails
+  vc33/graph   levels=1     <- what the harness chose
+  vc33/toggle  levels=2     <- a better tool existed
+  r11l/graph   levels=1     r11l/{world_model,paint,toggle,dealias} levels=0
+  sp80/*       levels=0 for every tool
+```
+
+**The harness picks `graph` on every game tested**, and on vc33 a different tool measurably clears
+more. That is not a small tuning issue — it is the same anchor pathology this project already
+documented in rounds R5-R11, when Qwen collapsed onto `bfs_state_space` / `click_rare` regardless of
+the board, and the lesson recorded then was that adding names to the whitelist does not change
+routing behaviour.
+
+⚠️ **This was measured at 07:24 and 07:44 this morning, and the afternoon session (mine) never saw
+it** — it spent the day extending detection dispatch, an axis that ships hand-written per-game code
+and has no LLM in its path. The morning's own round dirs (CAP2000, JULYHARNESS, TRUESHIP, SHIPPED1)
+WERE committed; what was not committed was the DETECT ladder and these four logs, so the conclusions
+survived and the evidence for the harness axis did not.
+
+**What this changes**: the generic path's wall — 19 of 25 games walling at level 1 or 2, measured
+this afternoon — now has a candidate cause that is not "the planner cannot handle more entities". It
+may be that the harness never selects the tool that could. vc33 is one measured instance of exactly
+that. ⛔ One instance is not the general case, and the test is to run `tool_alternatives.py` across
+the games that wall, not just the three it covered.
