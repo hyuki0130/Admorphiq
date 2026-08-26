@@ -1524,6 +1524,19 @@ weeks. Re-check the board before quoting it; never cite a six-week-old anchor.
 **Goal (user, 2026-08-25): clear ALL games and chase the top band WITHIN AUGUST.** First realistic
 milestone = 2.66 (12th); target = 5.99.
 
+⛔ **A CHANGE TO THE HARNESS IS A CHANGE TO THE CARD — re-measure it (2026-08-26).** The agent25
+research axis extends `src/admorphiq/harness/`, and that harness is the chain's SECOND MEMBER, so
+every research commit ships in the deployed fallback. Five did between v3 (hidden 0.20) and the
+2026-08-25 submission (hidden 0.18) — R92's tool-calling agent and code sandbox, R93's solver cores
+and a **click-xy transition fix** — none aimed at the card, none measured against it. The card
+drifted WITHOUT INTENT, which is why 0.20 -> 0.18 cannot be attributed to anything.
+
+The fix is cheap now: at the deployed budget a full-25 takes **3.3 minutes** on ceph-build. So
+after touching `harness/`, `chained_agent.py`, `world_model_agent.py` or anything they import, run
+`--agent kaggle_detect` over the 25 and compare to `scripts/rounds/TRUESHIP/games` before the next
+submission. A research change that moves the card is not forbidden — it just may not move it
+silently.
+
 **DETECTION DISPATCH — the card's depth is unlocked by frame evidence, not `game_id` (2026-08-25).**
 `src/admorphiq/detect_dispatch_agent.py` asks every PORTED adapter, on the first frame, whether its
 mechanic is present; exactly one answer dispatches, anything else falls back to the current card, so
