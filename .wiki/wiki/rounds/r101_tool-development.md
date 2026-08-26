@@ -965,3 +965,33 @@ both halves are now in every agent brief:
   measured, 0.4762 -> 0.0476 on a game the offending tool never touched.
 
 **A tool's confidence is not self-expression. It is a claim on someone else's budget.**
+
+
+## ⛔ The remaining gap is DEPTH, not efficiency — my own diagnosis, corrected by measurement
+
+I wrote that the low-scoring games "clear a level but spend so many actions that the squared
+metric prices it at zero", and briefed a whole wave of agents on that basis. The per-level costs
+say otherwise:
+
+| game | score | levels | actions on L1 | human | ratio |
+|---|---|---|---|---|---|
+| lp85 | 0.0278 | 1 | **5** | 17 | 0.3x |
+| tn36 | 0.0357 | 1 | 14 | 32 | 0.4x |
+| s5i5 | 0.0278 | 1 | 13 | 20 | 0.7x |
+| cn04 | 0.0476 | 1 | 18 | 29 | 0.6x |
+| m0r0 | 0.0476 | 1 | 19 | 30 | 0.6x |
+| su15 | 0.0222 | 1 | 17 | 22 | 0.8x |
+
+**Every one of them clears its first level FASTER than the human baseline.** The score is low
+because they stop at level ONE, and RHAE weights by level index: a first level out of eight is
+`1/(1+2+…+8) = 1/36` of the game. Making level 1 faster is worth almost nothing; reaching level 2
+is worth twice level 1, and level 8 is worth eight times it.
+
+So the brief for the deepening wave is not "spend fewer actions" — it is **"reach the next
+level"**, and the two questions to ask per game are (a) does the tool's mechanic even appear on
+level 2, and (b) is the harness stopping it before the tool does.
+
+⛔ This is the second time today a direction was set from a plausible reading of an aggregate and
+corrected by opening the per-item breakdown — the first was reading a 5.6x card gain as progress
+when the hidden score had not moved. **Before a number becomes a direction, look at the breakdown
+that would refute it.**
