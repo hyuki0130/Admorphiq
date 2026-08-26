@@ -471,6 +471,35 @@ tr87  cd924810 = cd924810   -          ⚠️ none
 second version of those games to test against, so the question is unanswerable locally rather than
 answered badly. sk48 is the one port that ran on a board nobody chose for the test, and it worked.
 
+### The four with no variant, probed by RECOLOURING — two fail
+
+Version hashes differ in surface detail, so permuting the palette (a bijection over the used
+colours: structure preserved exactly, only labels moved) is the closest stand-in available for
+the four ports with no archived version:
+
+```
+ft09   own board True,  recoloured [False, False, False]   ⛔ keys on a colour VALUE
+ls20   own board True,  recoloured [False, False, False]   ⛔
+sb26   own board True,  recoloured [True, True, True]      OK
+tr87   own board True,  recoloured [True, True, True]      OK
+```
+
+⛔ **ft09's and ls20's detectors read colour values, not structure.** That undercuts the ground I
+gave those two ports: I recorded them as "the mechanic's control scheme plus the entities it
+cannot do without", and ft09's *complete 8-cell ring* and ls20's *the level parses* turn out to
+be tied to particular colour indices.
+
+⚠️ Stated carefully, because a stand-in is not the real question:
+
+* recolouring changes ONLY the palette; a genuine variant also changes layout and internals, so
+  passing is **necessary, not sufficient** — sb26 and tr87 are not thereby proven to transfer;
+* failing does not prove the reverse either — a private game of the same family might use the
+  same colour conventions, in which case ft09's detector fires anyway.
+
+What it does establish is a difference in FOOTING: sb26 and tr87 rest on structure, ft09 and ls20
+rest partly on palette, and the two most valuable ports on the card (ft09 and ls20 both score
+1.0000) are the two with the weaker footing.
+
 Three defects had to be cleared to get a run at all, all in the build script and all found by
 pushing the KERNEL ONLY, without consuming a submission slot —
 [[../lessons/submission_build_defects_20260826]].
