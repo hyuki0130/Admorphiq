@@ -267,3 +267,37 @@ uniform once its 36 HUD cells were removed.
 
 ⚠️ `ar25` and `sk48` still answer nothing in 150 probes. That stands as a finding about those two
 games rather than about the filter.
+
+## The HUD is a BAND, not single cells — and that revealed ft09's rule exactly
+
+Measuring what one responder does colour-wise, rather than counting cells:
+
+```
+ft09, click (36,36) -> 38 cells changed
+   colour 9 -> 8   x36 cells   rows 36-41, cols 36-41   = a 6x6 TILE
+   colour 12 -> 11 x2 cells    row 63                   = the counter
+```
+
+⛔ **The counter moved TWO cells, so the `len(delta) == 1` filter could not see it.** A progress bar
+is defined by WHERE it sits, not by how many of its cells move at once. The filter now removes the
+edge-pinned BAND — and only the part of a delta that falls in the band, never a whole response — with
+two guards so a board whose real rule lives at the edge is not gutted: at least three distinct band
+cells, and no band cell touched by more than half the probes.
+
+```
+game   footprint before -> after   hud   uniform
+ft09   [38] -> [36]                 16   YES   <- exactly the 6x6 tile
+cd82   [94, 95] -> [94]             41   YES   <- became uniform
+ka59   [1]                           0   YES
+m0r0   [2]                           0   YES
+```
+
+**Five uniform operators now**, and ft09's rule is fully recovered: **eight responders on a stride-8
+lattice, each toggling its own 6x6 tile from colour 9 to 8.** That is a GF(2) system, and the target
+is on the board — the adapter's own decode records it as glyph constraints, *"ink colour 0 means the
+cell's colour must EQUAL that glyph's marker; ink colour 2 means it must DIFFER"*.
+
+⚠️ `lp85` went the other way: it filtered 288 HUD cells under the single-cell rule and filters 0 under
+the band rule. With only two responders the "no band cell touched by more than half the probes" guard
+cannot separate a counter from a rule — two samples are not a distribution. That is a real limit of
+the guard on sparse boards and is not yet fixed.

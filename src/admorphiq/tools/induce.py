@@ -112,16 +112,24 @@ def _hud_cells(raw: dict[Cell, list[Cell]], probes: int, size: int = 64) -> set[
             counts[c] = counts.get(c, 0) + 1
     hud = {c for c, n in counts.items() if n >= 0.8 * len(raw)}
 
+    # ⛔ NOT "single-cell changes": measured on ft09, one responder changes 38 cells of which 36
+    # are its 6x6 tile (colour 9 -> 8) and TWO are the row-63 counter (12 -> 11). A `len(delta)
+    # == 1` test misses those two entirely. The counter is defined by WHERE it sits, not by how
+    # many of its cells move at once, so the band is what gets filtered — and only the part of a
+    # delta that falls in the band, never the whole response.
     margin = max(1, size // 16)
-    edge_singletons = {
-        delta[0]
-        for delta in raw.values()
-        if len(delta) == 1
-        and (delta[0][0] < margin or delta[0][0] >= size - margin
-             or delta[0][1] < margin or delta[0][1] >= size - margin)
-    }
-    if len(edge_singletons) >= 3:
-        hud |= edge_singletons
+
+    def in_band(cell: Cell) -> bool:
+        r, c = cell
+        return r < margin or r >= size - margin or c < margin or c >= size - margin
+
+    band_cells = {c for delta in raw.values() for c in delta if in_band(c)}
+    # A board whose REAL rule lives at the edge would be gutted by this, so require the band to
+    # look like a counter: many distinct cells, each touched by few probes.
+    if len(band_cells) >= 3:
+        touched = {c: sum(1 for d in raw.values() if c in d) for c in band_cells}
+        if max(touched.values()) <= 0.5 * len(raw):
+            hud |= band_cells
 
     survivors = {cell for cell, d in raw.items() if any(c not in hud for c in d)}
     return hud if survivors else set()
