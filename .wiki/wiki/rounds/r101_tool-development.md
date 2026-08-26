@@ -107,3 +107,43 @@ a page can dwell on perception because perception was hard for us, not because t
 It is enough to show the mismatch is worth taking seriously; it is not yet a specification. The next
 step is to derive the required tool set from the games' MECHANICS rather than from their pages'
 vocabulary.
+
+## Derived from MECHANICS: the 25 games are four classes, and `graph` fits one
+
+Not counting page vocabulary this time — grouping the 25 declared mechanics by what each
+structurally requires:
+
+```
+A. NAVIGATE an avatar through constrained space (goal = reach a cell)          7 games
+   dc22 tu93 ls20 m0r0 g50t bp35 s5i5
+   requires: an avatar identified by MOTION + reachability over blocked cells + a goal cell
+
+B. TRANSPORT objects to places (goal = every item on its target)               6 games
+   wa30 re86 ka59 su15 r11l lp85
+   requires: object identity + a carry/attach model + PAIRING items to destinations
+
+C. SET a configuration, then the board RESOLVES it (goal = the resolution wins) 5 games
+   sp80 tn36 sc25 cd82 ar25
+   requires: a faithful SIMULATOR of the resolution + search over CONFIGURATIONS, not actions
+
+D. TRANSFORM the board by a discovered rule (goal = a target arrangement)      7 games
+   ft09 sb26 sk48 tr87 lf52 cn04 vc33
+   requires: the RULE induced from observed transitions + a target read off the board + ordering
+```
+
+**`graph` expands a state graph over ACTIONS. That is class A's shape and only class A's.**
+
+* **Class C** needs search over CONFIGURATIONS. One configuration is tens of actions, so an action
+  graph explodes before it reaches a second candidate — and the resolution (the spill, the program
+  run, the cast) is a single step the graph cannot see inside.
+* **Class D** needs the rule INDUCED first. Without it, every click is a guess — which is exactly the
+  72-99% inert measurement: ft09 (class D) opens 24 states from 1,610 transitions.
+* **Class B** needs assignment — which item to which destination — a question an action graph never
+  poses.
+
+That is the mismatch stated structurally rather than by word-count. **Eighteen of twenty-five games
+are in classes B, C and D**, and the only tool that clears anything is built for class A.
+
+⚠️ The classes are mine, drawn from the adapters' own one-line mechanic declarations. They are a
+hypothesis about what the games demand, and the test is whether a tool built to a class's shape clears
+its games — not whether the grouping reads well.
