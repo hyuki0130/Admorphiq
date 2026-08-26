@@ -61,3 +61,49 @@ pruning, the second is goal inference, the third is planning.
 Repair 1 is the largest group, has the sharpest signal, and already has a tool meant to do it. Start
 by measuring why `dead_signature` does not prune on `ft09` — the most extreme case at 99% inert with
 only 24 states opened.
+
+
+## Reading the 25 game wikis: the tool set does not match what the games ask for
+
+Before improving any tool, rule 0 now requires judging whether it is the right tool. Counting what
+each game's own wiki page dwells on (mentions of simulation / win-condition / perception / sequencing
+vocabulary across all 25 pages):
+
+```
+capability the games ask for              games mentioning it     tool that provides it
+perception — occlusion, sensors,          25 / 25                 NONE (each tool improvises)
+  frame-identifiable targets, colour-      lp85 75x, r11l 68x,
+  blind detection                          ls20 41x, su15 37x
+sequencing / assignment / multi-goal      25 / 25                 NONE
+  coverage                                 re86 68x, r11l 37x,
+                                           sb26 37x, lp85 36x
+a faithful offline simulator              17 / 25                 world_model (measured 0/25 alone)
+  g50t 33x, ls20 33x, sb26 28x, su15 27x
+reading the win condition                  9 / 25                 llm_goal (fails with no LLM)
+```
+
+And the six tools we have:
+
+```
+graph        state-graph search      the only one clearing anything on 19 of 20 boards
+toggle       exact GF(2) solve       one game (vc33)
+paint        fill planning           one game (cd82, and only via the chained path)
+world_model  online dynamics         measured 0/25 standalone
+dealias      hash de-aliasing        an augmentation
+llm_goal     goal inference          fails without an LLM
+```
+
+**The two capabilities every single game asks for — perception and sequencing — have no dedicated
+tool**, while four of the six tools serve one game, or none.
+
+⛔ **So `dead_signature`'s inertness is a symptom, not the disease.** The set was assembled from
+solutions we happened to build rather than from what the games demand, and the harness runs ONE of
+them at a time — while the games ask for perception AND sequencing AND simulation together. A tool
+that must learn in the background cannot exist in a one-active-tool loop, which is exactly why it
+learned 0 keys in 599 actions.
+
+⚠️ This is a reading of what the wiki pages EMPHASISE, which is a proxy for what the games require —
+a page can dwell on perception because perception was hard for us, not because the game demands it.
+It is enough to show the mismatch is worth taking seriously; it is not yet a specification. The next
+step is to derive the required tool set from the games' MECHANICS rather than from their pages'
+vocabulary.
