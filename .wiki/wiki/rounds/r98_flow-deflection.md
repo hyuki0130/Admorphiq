@@ -10117,3 +10117,41 @@ that were exact. **The unbounded walk is load-bearing, not an oversight.**
 What this buys is that those levers are now closed rather than untried — the next attempt has to
 explain why the engine stops at the obstacle's edge in THIS spread while our unbounded walk is
 correct everywhere else.
+
+## Walk length CANNOT express idx3's overstep — an impossibility, not another failed guess
+
+Two more fixes tested, and the second one closes the axis.
+
+**Fix 4 — clamp the PIECE branch's flank spawn to the piece's extent** (fix 1's idea at the location
+that is actually on the path): `idx0 0->20, idx1 0->25, idx2 0->22, idx3 3->52`. Much worse
+everywhere. So the engine DOES step past a piece's edge routinely; "the spread stays within the
+obstacle" is false as a general rule, and the question is why this ONE spread differs.
+
+**The stream, traced.** Instrumenting the spawn shows the whole walk:
+
+```
+(4,10) <- (4,9)    walked = -1
+(4,11) <- (4,10)   walked = -1
+(4,12) <- (4,11)   walked = -1     <- the overstep
+```
+
+It enters at `(4,9)` and walks right along `piece1` (columns 9-11): steps onto 10, 11, then 12. The
+overstep is the **fourth cell** of a walk that began on the piece.
+
+**Fix 5 — bound that walk, sweeping the reach:**
+
+```
+start=0 reach=2   total 12 -> 113   every capture breaks
+start=0 reach=3   total 12 ->  26   idx2 breaks 0 -> 14
+start=0 reach=4   total 12 ->  12   the bound never binds
+```
+
+**There is no reach that fixes idx3 and keeps idx0/idx1/idx2 exact.** Reach 4 changing nothing means
+every walk is at most four; reach 3 breaking idx2 means idx2 contains a walk of exactly four. And
+idx3's overstep IS the fourth step of its walk. **The engine permits a four-step walk on idx2 and
+refuses one on idx3.**
+
+⛔ So walk LENGTH cannot express the difference — not "this reach is wrong" but "no reach exists".
+Five candidate fixes are now measured and refuted (`_beside` extent, WALK_REACH up, WALK_REACH down,
+bound-everything, piece-extent clamp), and the axis they all share is closed. Whatever separates the
+two four-step walks is a property of the board or the stream, not of the counter.
