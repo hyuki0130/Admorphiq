@@ -301,3 +301,34 @@ cell's colour must EQUAL that glyph's marker; ink colour 2 means it must DIFFER"
 the band rule. With only two responders the "no band cell touched by more than half the probes" guard
 cannot separate a counter from a rule — two samples are not a distribution. That is a real limit of
 the guard on sparse boards and is not yet fixed.
+
+## ft09 CLEARED from the induced rule — 4 clicks, nothing hardcoded
+
+The full chain, every step from the frame:
+
+```
+1. discover_lattice        8 responders, pitch 8 INFERRED from their own coordinates
+2. the lattice point that does NOT respond   -> that is the glyph's seat
+3. read the glyph          3x3 compass of 2x2 pixels; centre pixel is the MARKER
+                           marker = 8,  ink = [[0,2,2],[0,8,0],[0,2,2]]
+4. derive the target       ink 0 -> this tile must EQUAL the marker
+                           ink 2 -> this tile must DIFFER from it
+                           compare against each tile's current dominant colour
+   -> clicks needed: (36,36) (44,36) (44,52) (52,36)
+
+executed -> levels_completed = 1, in FOUR actions
+```
+
+**No game id, no coordinate constant, no stride constant.** The pitch came from the responders, the
+glyph's seat from which lattice point stayed silent, the marker from the glyph's own centre, and the
+target from the ink-versus-marker comparison.
+
+For scale: the harness spends 1,610 transitions on this board to open 24 states at 99% inert. The
+game-specific adapter clears it in 4 actions — **the induced generic path matches that**, on a rule it
+recovered rather than one written into it.
+
+⚠️ One level, one game. What it establishes is that the T-D chain closes end to end: probe -> lattice
+-> rule -> target -> plan -> clear. What it does NOT establish is that the glyph reading generalises
+— ft09's compass is one target encoding, and sb26, sk48, tr87, lf52, cn04 and vc33 will each display
+their target differently. The next step is deeper levels of ft09 (do the glyphs change?) and then the
+same chain against a second class-D game.
