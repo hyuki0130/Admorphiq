@@ -2405,3 +2405,48 @@ against us.
 mechanic-specific solvers on thirteen games. On the private set most games get the searcher, which
 scores ~0 whether or not it eventually clears — which is consistent with the hidden score barely
 moving while the public card multiplied.
+
+## ⛔ CORRECTION: the generic path is EFFICIENT on level 1 — the loss is DEPTH
+
+The previous entry's headline — *"it is solving them by exhaustive search, and the squared metric
+annihilates that"* — is wrong as a general statement, and the measurement that shows it is the
+level-1 action count against the human baseline:
+
+```
+game    agent  human    ratio   L1 score
+cd82        6     55     0.1x   1.0000
+wa30       30     71     0.4x   1.0000
+sb26        9     18     0.5x   1.0000
+su15       12     22     0.5x   1.0000
+re86       24     26     0.9x   1.0000
+s5i5       19     20     0.9x   1.0000
+ar25       31     32     1.0x   1.0000
+ls20       23     22     1.0x   0.9149
+ft09       55     43     1.3x   0.6112
+tn36       49     32     1.5x   0.4265
+lp85       61     17     3.6x   0.0777
+lf52      376     32    11.8x   0.0072
+tu93      695     19    36.6x   0.0007
+r11l      972     22    44.2x   0.0005
+sp80     2341     39    60.0x   0.0003
+m0r0     5269     30   175.6x   0.0000
+vc33     3656      7   522.3x   0.0000
+
+median 1.3x over the 17 games that clear level 1
+```
+
+**Ten of seventeen clear level 1 at 1.5x human or better, seven of them at a perfect 1.0.** The
+generic path is not a flailing searcher on most boards — it is near-human on the first level and then
+**stops**. ls20 scores 0.9149 on level 1 and 0.0327 for the game, because one level of seven is
+`1/(1+2+...+7)` of the available weight.
+
+So the loss is **DEPTH**, not efficiency: 17 of 25 games clear something, almost all of them stop at
+one or two levels of six to ten, and the level-index weighting makes the shallow clears worth almost
+nothing. Efficiency is a real problem on a MINORITY — six games from lf52's 11.8x to vc33's 522x —
+not the pattern.
+
+⚠️ **Seventh time this round a headline came from a partial view.** I read the total action counts
+(8,000-15,000) and concluded "exhaustive search", without reading the per-level split that says most
+of those actions are spent AFTER the first clear, failing at level 2. The number I needed was one
+field deeper in the same file. ⛔ Before a measurement becomes a direction, look at the breakdown that
+would refute it.
