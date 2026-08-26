@@ -1224,6 +1224,30 @@ sp80 is the next-largest gap (0.1429). Two measurements, no port yet:
 That is a candidate conjunction, NOT a gate result: the 0/24 measurement across all 25 games has
 not been run, and a discriminator that separates four boards is not yet shown to separate 25.
 
+**PORTED the same day, and the discriminator was not the scale.** Scale is one feature, and this
+round has just paid for treating one feature as a verdict. What ports sp80 is the family's own
+rule: satisfaction runs through a NOTCH — a cell a target does not hold whose left and right
+neighbours it does — and R98's grounding already treats a region WITHOUT one as an obstacle rather
+than a target, so a board of this family cannot lack one.
+
+| gate | result |
+| --- | --- |
+| public 25 | fires on own game, **0/24** false positives |
+| archived unfamiliar boards | **0 misfires / 15** |
+| shipped-path score | **0.1429 — the adapter ceiling exactly** |
+
+⚠️ **Reading in CELLS is load-bearing, and that was measured rather than assumed.** The same notch
+test relaxed to be scale-free — any interior gap in a region's row, so a multi-pixel notch still
+registers on raw pixels — fires on ALL FOUR (cd82 4, sp80 2, m0r0 2, cn04 2) and separates nothing.
+The loosening that looks like generalisation is what destroys the discrimination.
+
+The scale inference this needs lived in `hypothesis_select`, which the adapter quarantine lint
+forbids importing. Copying it would have put its four measured traps in two places, so
+`infer_board_scale` / `cellify` / `colour_regions` moved UNCHANGED into
+`admorphiq.kernels.board_scale` and `grounding_flow` imports them from there — verified as one
+implementation by identity, with R98's guards and 331 flow/kernel/grounding tests still green.
+**R98's modelling work reached the card here for the first time.**
+
 ⛔ Also measured, and it closes a shortcut: **lp85 was the only adapter carrying its own
 solvability predicate.** All fourteen remaining unported adapters have no `_detect`, so each needs
 its conjunction written by hand rather than lifted.
