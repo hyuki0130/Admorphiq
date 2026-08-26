@@ -430,9 +430,29 @@ If the card spends 61% more actions on the public 25, it plausibly spends more o
 too, and finishes FEWER games inside the same wall clock. That is the truncation explanation, and
 this is the first evidence for it.
 
-⛔ Held loosely: **one game is 95% of the increase.** Whether hidden games behave like cn04 is
-unknown, and a single outlier is a thin basis for a 61% claim. The submission now running at
-budget 4,000 tests it directly — truncation cannot happen there.
+⛔ **WITHDRAWN — the comparison was invalid.** `per_level` records the actions spent on levels
+that were CLEARED; a game that clears nothing contributes 0 no matter how much budget it burned:
+
+```
+SUBCAND1 (chained)  cn04  per_level = []                    <- cleared nothing, so 0 recorded
+SHIPPED1 (detect)   cn04  per_level = [{56,048 actions}]    <- cleared L1, so it appears
+```
+
+So the "+56,048" is not our card spending more. It is our card **CLEARING a level the previous
+one never cleared** — better, not slower. Both runs almost certainly burned their whole budget on
+cn04; only one has it recorded.
+
+⚠️ And the right number was available all along: the Kaggle server logs report TOTAL actions
+directly.
+
+```
+2026-08-25  budget 100,000   148,018 actions / 25 games = 5,920 each
+2026-08-26  budget   4,000    77,446 actions / 25 games = 3,098 each
+```
+
+I summed a partial local field instead of reading the total the server prints — the same shape as
+this session's other misreadings, and the third time a conclusion was built on a column that does
+not mean what its name suggests.
 
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
