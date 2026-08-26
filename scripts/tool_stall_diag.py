@@ -4,8 +4,13 @@ Purpose: stage one of the recorded plan is "strengthen the generic tools until t
 (OPERATING_RULES rule 0). The sweep says fifteen games score zero under every tool; it does not say
 what is missing. Strengthening a tool needs the failure NAMED per game, not counted.
 
-Expected feedback: per game — distinct states reached, distinct transitions, whether any goal was
-drawn, and whether the frontier ran dry or the budget did. A game whose frontier dries with few
+⚠️ This drives the BARE `UnifiedAgent`, which is NOT the deployed generic path. `--agent chained`
+puts `WorldModelAgent` in front, and that is where cd82's 6/6-in-108-actions comes from — this
+script reports cd82 at 0 because it never runs that stage. Compare its numbers with each other,
+never with GENERIC30's.
+
+Expected feedback: per game — distinct states reached, distinct transitions, how many of
+those are SELF-LOOPS (an action that changed nothing), and whether any goal was drawn. A game whose frontier dries with few
 states has a perception/expansion problem; one with many states and no goal has a goal-inference
 problem; one that exhausts budget while still expanding has a search-efficiency problem. Those are
 three different repairs.
@@ -53,12 +58,17 @@ def main() -> int:
         frames.append(obs)
         levels = getattr(obs, "levels_completed", levels)
     g = next((t for t in tools if type(t).__name__ == "GraphSearchTool"), None)
-    states = len(getattr(g, "_edges", {}) or getattr(g, "_nodes", {}) or {})
-    tried = getattr(g, "_tried_from", {}) or {}
-    trans = sum(len(v) for v in tried.values()) if isinstance(tried, dict) else 0
+    # `_edges` is a dict of {state_hash: {action_key: next_hash}} — the states are its keys and
+    # the transitions are the inner entries. An earlier version read `_tried_from`, which this tool
+    # does not have, so every game reported transitions=0 and that was the instrument, not a finding.
+    edges = getattr(g, "_edges", {}) or {}
+    states = len(edges)
+    trans = sum(len(v) for v in edges.values())
+    self_loops = sum(1 for h, d in edges.items() for nxt in d.values() if nxt == h)
     goal = getattr(g, "_external_goal", None) or getattr(g, "_goal", None)
+    inert = (100 * self_loops // trans) if trans else 0
     print(f"{game:6s} levels={levels} steps={step} states={states} transitions={trans} "
-          f"goal={'yes' if goal else 'NO'} frontier_dry={states > 0 and trans >= states * 3}")
+          f"self_loops={self_loops} ({inert}% inert) goal={'yes' if goal else 'NO'}")
     return 0
 
 
