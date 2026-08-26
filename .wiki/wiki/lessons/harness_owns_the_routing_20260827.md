@@ -106,6 +106,26 @@ convenience for its author; the harness is what is scored. An author looking onl
 probe cannot see type 3 at all, so the integrator has to trace the real loop for every tool whose
 probe and harness numbers disagree.
 
+## When to stop letting an author tune a tool
+
+One tool regressed its own game **four times** in this round, each time after its author's probe
+showed more levels:
+
+```
+committed file : ls20 6 levels in the harness
+author's edits : 4 -> 2 -> 3 levels, and -0.4286 on one full-25
+```
+
+Each time the committed version was kept, and each time that was right. The pattern is not
+carelessness — the author is optimising against a probe that drives the tool DIRECTLY, while the
+harness resets it at every level-up, feeds it only its own transitions, and re-plans after every
+action. Those are different problems, and solving the first can unsolve the second.
+
+⛔ **After the second such regression, change the author's instrument, not their code.** The brief
+becomes: run `scripts/harness_probe.py`, make ONE change, re-run it, keep only if the level count
+rises, revert yourself otherwise. If it regresses again after that, stop taking edits to that tool
+— it is at a local optimum the probe cannot see past, and further tuning is a net loss.
+
 ## Prevention
 
 - When a tool's standalone probe and its harness score disagree, suspect the ROUTING first. A
