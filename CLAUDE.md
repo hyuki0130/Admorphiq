@@ -1548,6 +1548,25 @@ detection (--agent detect) 0.2756      every port lands EXACTLY on its ceiling (
 adapter ceiling          0.3296
 ```
 
+**CARD NOW 0.3108 (2026-08-26)** — 0.0566 -> 0.2772 (9 ports) -> 0.3051 (+lp85) -> 0.3108 (+sp80),
+each measured full-25 on `--agent kaggle_detect`, each moving EXACTLY the one game it ported.
+
+⛔ **A park recorded against ONE FEATURE is not a park against the mechanic.** Both late ports were
+parked and both came free once the mechanic's own CONJUNCTION was measured instead of a threshold.
+lp85: no button-COUNT threshold separates 3 from ft09's 12 and s5i5's 2 — true, and one feature;
+its own `_detect` already required control + mover + per-colour #movers==#destinations, which is
+the pair rule, and passed 0/24. sp80: the flow family's satisfaction runs through a NOTCH, and the
+grounding already calls a region without one an obstacle; control scheme narrows to four and, read
+IN CELLS, only sp80 has notched regions. ⚠️ Reading in cells is load-bearing — the scale-free
+variant fires on all four and separates nothing. **The loosening that looks like generalisation
+destroys the discrimination.** Measured negative: lp85 was the ONLY adapter carrying its own
+solvability predicate, so the remaining fourteen need theirs written by hand.
+
+⛔ **A guard that fails OPEN reports success while protecting nothing** — the full-25 runner threw
+`wait -n` at bash 3.2 (what macOS ships), where it is an invalid option, so the throttle never
+blocked and all 25 launched at once. Throttle with `xargs -P`; skip games that already have a
+result so a killed run resumes rather than restarts.
+
 ⛔ **A detector ships only at 0/24 false positives** across the public games
 (`scripts/detector_falsepos.py`). The gate is a measurement, not a precaution: an sb26 detector at
 2/24 predicted an s5i5 regression and a full-25 run produced exactly it (0.0278 -> 0.0000).
