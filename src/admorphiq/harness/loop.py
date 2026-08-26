@@ -113,7 +113,20 @@ class UnifiedAgent:
         # 20-minute wall-clocks on death-looping games).
         self._code_tenures = 0
 
-    def _reset_level(self) -> None:
+    def _reset_level(self, keep_current: bool = False) -> None:
+        """Drop per-level state. `keep_current` holds the board for the tool in charge.
+
+        ⛔ On a level-up this used to clear `_current`, forcing a re-decide on the very next
+        action — and that decision is made on the TRANSITIONAL frame, where the tool that just
+        solved the level often scores 0 because the board it reads has not been drawn yet.
+        Measured on one game: a tool cleared level 1 in 16 actions, was replaced by the general
+        searcher on the level-up, and the searcher then spent the remaining 384 actions clearing
+        nothing. Clearing a level is the strongest evidence of fit there is; it must outrank a
+        detect() score taken mid-transition. A tool that then stalls is still retired by the
+        normal stall path.
+        """
+        keep = self._current if keep_current else None
+        owns = self._primary_owns if keep_current else False
         for t in self.tools.values():
             t.reset()
         self._queue: list[Step] = []
@@ -126,8 +139,8 @@ class UnifiedAgent:
         self._recent_frames: list[np.ndarray] = []
         self._tried: list[str] = []
         self._failed: set[str] = set()
-        self._current: str | None = None
-        self._primary_owns = False
+        self._current: str | None = keep
+        self._primary_owns = owns
         self._prev_frame: np.ndarray | None = None
         self._prev_step: Step | None = None
         self._since_progress = 0
@@ -443,7 +456,7 @@ class UnifiedAgent:
                 # The last board of the just-cleared level = direct evidence of
                 # what "solved" looks like for this game's mechanics.
                 self._clear_frames.append(self._prev_frame.copy())
-            self._reset_level()
+            self._reset_level(keep_current=True)
             self._last_levels = levels
             self._feedback = f"cleared level {levels}"
 
