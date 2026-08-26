@@ -304,6 +304,31 @@ minutes, which is still nowhere near the limit. The choice is between two safe n
 between speed and score.
 
 
+## THE SCORE: 0.18 — BELOW the card it replaced (2026-08-26 11:41)
+
+```
+55774529  detection dispatch  local 0.2772  ->  hidden 0.18
+54664749  v3                  local 5.83    ->  hidden 0.20
+54637991  v1                  local 1.072   ->  hidden 0.14
+```
+
+⛔ **0.18 against the previous card's 0.20.** Against the criteria fixed below BEFORE the score
+existed, this is the third reading — the one the 0/24 gate and the transfer scoring were built to
+prevent. It is also BELOW the range this round projected (0.19–0.94).
+
+⚠️ Three explanations fit the number and nothing here separates them:
+
+1. **detectors misfiring on private games** — the reading as written;
+2. **games left unfinished** — the submitted kernel predates the budget cut and ran with
+   `MAX_ACTIONS = 100,000` for over ten hours; a run cut short scores zero on whatever it never
+   reached, and that has nothing to do with detection;
+3. **a different fallback** — v3's card and this one differ in the fallback too, so 0.20 and 0.18
+   are not a controlled comparison of "with ports" against "without".
+
+⛔ Do not read the first as established. The measurement that would separate them is the same card
+WITHOUT the ports, submitted under the same budget — a controlled comparison this round never ran,
+because the ports and the fallback changed together.
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
