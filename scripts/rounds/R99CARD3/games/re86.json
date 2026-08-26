@@ -1,0 +1,65 @@
+{
+  "agent": "kaggle_detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.727294,
+  "total_score_pct": 72.729,
+  "games": [
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 7,
+      "elapsed_s": 45.16,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 25,
+          "human_actions": 26,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 139,
+          "human_actions": 42,
+          "score": 0.0913
+        },
+        {
+          "level": 3,
+          "agent_actions": 53,
+          "human_actions": 86,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 56,
+          "human_actions": 108,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 97,
+          "human_actions": 189,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 68,
+          "human_actions": 139,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 150,
+          "human_actions": 424,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.727294,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "RE86"
+    }
+  ]
+}

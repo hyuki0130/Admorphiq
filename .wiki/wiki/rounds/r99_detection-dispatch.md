@@ -1299,3 +1299,18 @@ action and g50t's identifying motion is the player's, which the frame does not y
 single-feature verdict over a mechanism that WAS expressible, and it came free. This one is the
 other kind — the mechanism is a motion, and no amount of static conjunction reaches it. Recording
 which kind a park is, is what makes it re-examinable later instead of permanent.
+
+## Card ladder (2026-08-26)
+
+```
+0.0566  ->  0.2772  ->  0.3051  ->  0.3108  ->  0.3145
+ card       9 ports    +lp85      +sp80      +tn36
+```
+
+Every one measured full-25 on `--agent kaggle_detect`; every one moves EXACTLY the game it
+ported and nothing else; every port lands on its adapter ceiling to six decimals. Twelve ports.
+
+tn36's port carries the round's sharpest detector rule in a new place: it is written as the
+mechanic's structure (>=2 opcode columns AND a run button AND a player/goal pair), **not** as
+"`_parse` returned something". A detector built on *my solver did not refuse* inherits the
+solver's permissiveness, which is measured here — sb26's parser accepted s5i5 and sc25.

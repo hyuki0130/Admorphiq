@@ -1,0 +1,29 @@
+{
+  "agent": "kaggle_detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.000131,
+  "total_score_pct": 0.013,
+  "games": [
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 1,
+      "elapsed_s": 20.67,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 377,
+          "human_actions": 32,
+          "score": 0.007205
+        }
+      ],
+      "game_score": 0.000131,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52"
+    }
+  ]
+}
