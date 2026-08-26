@@ -64,6 +64,22 @@ CLEARED a level, the harness must not take the board off it on a transitional fr
 lived in `harness/loop.py` and neither was reachable from inside any tool —
 [[harness_owns_the_routing_20260827]].
 
+## A per-game score is not a property of that game's tool
+
+Measured at the end of the round: a tool file that had NOT changed by a single byte scored
+**0.5357 in one run and 0.7500 in the next**. Other tools around it had changed, and the routing
+changed with them.
+
+So a per-game number cannot be attributed to that game's tool alone, and three things follow:
+
+* an agent cannot predict its own score, even in principle — which is why the keep/revert decision
+  sits with the integrator (`OPERATING_RULES.md` rule 8), not the author;
+* a comparison is only meaningful when the whole tree is frozen and the registry is the only
+  difference — see [[moving_target_measurement_20260827]];
+* a tool improving while its game's score falls is not a contradiction. It happened three times to
+  one tool in this round: each time its own probe showed more levels and the harness showed fewer,
+  and each time the committed version was kept and was right.
+
 ## Related
 
 - [[../rounds/r101_tool-development]] — the round, with both tools and every measurement.
