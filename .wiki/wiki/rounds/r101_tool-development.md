@@ -695,9 +695,12 @@ round was measured, not this change.
 ⛔ **So the bench gains did NOT reach the card, and that is the honest headline.** cd82 and vc33
 each newly clear a level under the bare `UnifiedAgent`, and g50t's state count went 18 -> 562 —
 but the shipped path runs `KaggleChainedAgent` (WorldModelAgent first, then the unified member,
-at the deployed budget), and under it cd82 is already adapter-handled at 0.9463 while vc33 still
-scores 0.0000. A number measured on the bare harness is not a number about the card, and the two
-were being read as one thing until this run.
+at the deployed budget), and under it cd82 is already adapter-handled at 0.9463 while vc33 scores 1e-06 — it DOES clear a
+level there, in 4,000 actions, which the squared metric prices at zero. And it cleared exactly
+one level in the previous round too, so even that is not this change's doing. Levels tell the
+same story: 74 -> 79 across the two rounds, entirely from sc25 (0->3), sp80 (1->2) and tn36
+(1->2), all adapter ports. A number measured on the bare harness is not a number about the card,
+and the two were being read as one thing until this run.
 
 What the run does establish: **the harness change is card-neutral — zero regression across 25
 games**, which is the gate that had to be passed before any of it could stay.
