@@ -147,3 +147,34 @@ are in classes B, C and D**, and the only tool that clears anything is built for
 ⚠️ The classes are mine, drawn from the adapters' own one-line mechanic declarations. They are a
 hypothesis about what the games demand, and the test is whether a tool built to a class's shape clears
 its games — not whether the grouping reads well.
+
+## T-D step 1 measured on ft09: the rule induces in 49 probes
+
+Before writing `induce`, the premise was tested — can the rule actually be recovered from probe
+transitions on the worst inert case?
+
+```
+ft09: simple actions = []  click = True     (click-only)
+49 clicks on a stride-8 grid -> 8 of them change anything
+   live cells: (36,36) (36,44) (36,52)
+               (44,36)         (44,52)
+               (52,36) (52,44) (52,52)
+   each changes EXACTLY 38 cells, running along its own row from the click point
+```
+
+**A 3x3 lattice at stride 8 with its centre absent**, and every live cell flips the same 38-cell
+footprint. That is a GF(2) toggle rule, fully specified by **49 probes**.
+
+Against what the harness actually does on this game: **1,610 transitions to open 24 states, 99%
+inert.** It is searching 4,096 click coordinates without ever noticing that only 8 do anything.
+
+**So T-D's step order is not a design preference, it is the measurement:**
+
+1. **Find the lattice** — probe on a stride, keep the cells that change anything. 49 actions here.
+2. **Measure each live cell's effect** — the footprint it flips, as a vector.
+3. **Solve in rule space** — GF(2) over those vectors toward the target read off the board.
+
+Steps 1 and 2 cost ~60 actions and replace an unbounded guess with a solvable system. ⛔ The stride is
+the one free parameter and must be derived, not fixed: 8 worked here because ft09's lattice happens to
+sit on it, and a tool that hardcodes 8 is tuned to ft09. The generic form is to probe coarse, and
+refine the stride where a change is found — which is the next thing to build and measure.
