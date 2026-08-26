@@ -12,14 +12,42 @@ A zero is "no response found by THIS sweep", never "this game ignores clicks".
 """
 
 import sys
+
 sys.path.insert(0,"src")
 from arc_agi import Arcade, OperationMode
 from arcengine import GameAction
+
 from admorphiq.adapters25.base import canonical_layer
 from admorphiq.tools.induce import discover_lattice
+
+
+def _kind(delta):
+    """MOVE or EDIT? A uniform footprint means one operator OR one object translating.
+
+    ⛔ Measured on cn04, which the footprint column alone called "a single 135-cell operator":
+    the 135 cells are a 15x15 shape TRANSLATING three cells per action. The discriminator is that
+    a move leaves two disjoint congruent blobs (vacated + occupied) while an edit leaves one.
+    """
+    cells=set(delta)
+    seenc=set(); blobs=[]
+    for c in cells:
+        if c in seenc: continue
+        st=[c]; seenc.add(c); blob=[]
+        while st:
+            y,x=st.pop(); blob.append((y,x))
+            for dy,dx in ((1,0),(-1,0),(0,1),(0,-1)):
+                n=(y+dy,x+dx)
+                if n in cells and n not in seenc:
+                    seenc.add(n); st.append(n)
+        blobs.append(blob)
+    if len(blobs)==2 and abs(len(blobs[0])-len(blobs[1]))<=max(2,len(cells)//10):
+        return "move"
+    return "edit"
+
+
 arcade=Arcade(operation_mode=OperationMode.OFFLINE)
 seen=set()
-print(f"{'game':6s} {'resp':>4s} {'pitch':>5s} {'hud':>4s}  footprints")
+print(f"{'game':6s} {'resp':>4s} {'pitch':>5s} {'hud':>4s}  footprints / kind")
 for info in arcade.get_environments():
     title=(info.title or info.game_id).split('-')[0].lower()
     if title in seen: continue
@@ -34,4 +62,6 @@ for info in arcade.get_environments():
     except Exception as e:
         print(f"{title:6s} ERROR {type(e).__name__}"); continue
     sizes=sorted({len(v) for v in r["live"].values()})
-    print(f"{title:6s} {len(r['live']):4d} {str(r['stride']):>5s} {r['hud_cells']:4d}  {sizes[:6]}")
+    kinds={_kind(v) for v in r["live"].values()}
+    print(f"{title:6s} {len(r['live']):4d} {str(r['stride']):>5s} {r['hud_cells']:4d}  "
+          f"{sizes[:6]:} {sorted(kinds)}")

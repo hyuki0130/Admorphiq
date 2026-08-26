@@ -542,6 +542,19 @@ counter reports zero, and a real block response survives with its counter pixel 
 sp80 sits in it and is known to answer a placement with a twenty-layer spill. Recorded on the
 script itself so the number is not quoted later as "these games ignore clicks".
 
-**Next tool target on this evidence: cn04** — four responders, a single 135-cell footprint, pitch
-8. That is the cleanest uniform operator left after ft09, and cn04 is one of the games the
-generic path has never taken past level 1.
+**⛔ "Next tool target: cn04" — WITHDRAWN the same day, by measurement.** The single 135-cell
+footprint is not an operator. cn04's colour-0 shape is 15x15 = 135 cells, and its clicks merely
+BLINK it; the shape MOVES three cells per simple action (A1 up, A2 down, A3 left, A4/A5 right,
+stopping at the wall). cn04 is a navigation game with a large moving body, which is `graph`
+territory and not a new mechanic at all.
+
+Two corrections follow, and the second is the useful one:
+
+* **a uniform footprint means one operator OR one object** — a move leaves two disjoint congruent
+  blobs (vacated + occupied) where an edit leaves one, and the sweep now reports which;
+* **this sweep is CLICK-ONLY and therefore silent about movement.** Twelve games show no click
+  response and every one of them is driven by the simple actions. So the map's real message is
+  not "here are the induce games" but: **the click-driven mechanics are a minority, and the
+  coverage gap for stage 1 is movement games walling at level 2** — which is exactly what the
+  2026-08-26 measurement already said (`median 1.3x human on level 1, then stop`) and what this
+  round had drifted away from.
