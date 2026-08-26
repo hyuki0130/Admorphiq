@@ -429,6 +429,16 @@ answer ENDS THE GAME.** A sweep of the 32 bit patterns — set the bits, press, 
 ("pressing it moved nothing, therefore it is not a run trigger") was right about the frame and
 wrong about the button: nothing moves because the answer is wrong, and the game is counting.
 
+**What the level data says (read 2026-08-27, no engine):** levels 2 and beyond carry a
+`Programs` list — one entry per piece, e.g. `[[1,1,1,1],[33,33,33,33]]` on level 2 and
+`[[3,3,3,3],[33,33,33,33],[34,34,34,34],[2,2,2,2]]` on level 3 — alongside `Positions`,
+`Rotations` and `Reset`. The values are small integers with bit structure (33 = 0b100001,
+34 = 0b100010), which is the bit-encoded program the five slots compose.
+
+⛔ **Level 1 carries NO data at all.** So the five bits cannot be looked up even in principle on
+the level a tool meets first; they have to be DERIVED from the board. That closes the question of
+where the answer lives and leaves the harder one — what on the board determines it — open.
+
 ⛔ **tn36 cannot be brute-forced.** Roughly three attempts exist per game. The five bits have to
 be DERIVED from the board — most likely from the 30 colour-11 cells, which is where a tool
 should look next — and a tool that guesses here does not lose a level, it loses the game.
