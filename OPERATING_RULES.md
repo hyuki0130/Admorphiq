@@ -73,3 +73,42 @@ better one. GPU kernel runs are separate: `kaggle kernels push` does NOT consume
 must be measured AS SHIPPED (`--agent kaggle_detect`, not `--agent detect`) before it goes, and a
 submission whose build is not committed is not reproducible — kernel source, `kernel-metadata.json`,
 the push command and the dataset-version-to-commit mapping all go in with it.
+
+## 7. The watchdog contract — what to do when a tick fires
+
+⛔ **The wiki and this file are the single source of truth. The cron prompt must stay a POINTER**, not
+a copy: the moment it carries rules of its own there are two sources and they drift. If a rule needs
+changing, change it HERE and both the cron agent and the session pick it up.
+
+A tick firing means work had already stopped. **The cron is a watchdog, not a work queue** — finish a
+step and start the next one without waiting for it.
+
+**On every tick, in order:**
+
+1. Read this file.
+2. `tail -40 .wiki/wiki/rounds/index.md` — the most recent round is the current axis. Read that
+   round page's "Open work".
+3. Check what is running: local background tasks, and
+   `ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build 'uptime; pgrep -cf python'`.
+
+**Before taking an open item as the task, MEASURE that it is still open.** On 2026-08-26 all three of
+R98's open items turned out stale — "the sink shortlist comes back empty" (the walk clears that level
+in 22 actions), "multi-piece placement" (the compiler already plans over every piece jointly), and "a
+fourth target the schema cannot express" (the round itself corrected it). Each took one replay to
+check. An open list is a claim about the present.
+
+⛔ **Do not chase a visible residual instead of the list.** Five ticks went into idx3's three leftover
+cells while `CLAUDE.md` already said *"17 distinct events say the engine always steps off, so there is
+no step-off rule to find here"*. A conclusion already in the record is not progress when re-derived.
+
+⛔ **Do not invent a sweep to keep ceph busy.** That produced a full detour onto another axis the same
+day. An idle box is better than a misdirected one — but a box idle while the current axis has parallel
+work is waste, so check which case it is.
+
+When every open item is measured closed, open the next round and register it in `index.md`. Rounds are
+meant to be finished; nothing here is tied to any particular one.
+
+After a change: `uv run ruff check` on files you wrote, the related tests, and the round's own gates.
+Commit progress to the round page, and bring the MEASUREMENTS back too — `scripts/ceph_pull.sh`,
+`scripts/memory_mirror.sh` — because the instance and the memory directory both vanish with the
+machine.
