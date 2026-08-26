@@ -131,6 +131,7 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
+    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
@@ -565,6 +566,34 @@ class Adapter(GameAdapter):
     """Rarity-ranked click-target probing composed entirely from admorphiq.kernels."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A ring-rotation placement board: clicked controls rotate rings that carry
+        every moving token onto a matching fixed destination.
+
+        Two conditions, and the second is the adapter's OWN solvability test rather
+        than a threshold chosen for detection.
+
+        1. **Click-only.** Rings are rotated by clicking their controls; the board
+           offers no simple actions. MEASURED (recorded in this package's ft09
+           detector): lp85 is one of the five click-only public games.
+        2. **The placement conjunction** — at least one rotation control, at least one
+           moving token, and PER COLOUR CLASS as many movers as destinations. The third
+           term is the pair rule this package's ports are written to: a mover without
+           its destination, or a destination without its mover, is not this mechanic.
+           A board that satisfies all three is one the solver can actually finish, so
+           detection and solvability are the same question here and cannot drift apart.
+
+        ⛔ This was PARKED on the finding that no BUTTON-COUNT threshold separates lp85
+        (3) from ft09 (12) and s5i5 (2) — true, and the reason a single feature was the
+        wrong instrument. The conjunction is what the round's shippable ports are made
+        of, and it had never been measured. Its false-positive rate is the gate.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if simple_ids or not has_click:
+            return False
+        return bool(cls(giveup=1)._detect(canonical_layer(latest_frame)))
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         # A smoke run measured LP85 GAME_OVER-ing (not just no-op clicking)
