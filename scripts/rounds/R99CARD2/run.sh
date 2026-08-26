@@ -21,7 +21,7 @@
 set -u
 cd "$(dirname "$0")/../../.."
 unset GF_GIVEUP HARNESS_STALL HARNESS_CTX
-OUT=scripts/rounds/R99CARD
+OUT=scripts/rounds/R99CARD2
 GAMES="ar25 bp35 cd82 cn04 dc22 ft09 g50t ka59 lf52 lp85 ls20 m0r0 r11l re86 s5i5 sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33 wa30"
 PAR="${PAR:-6}"
 BUDGET="${BUDGET:-4000}"
