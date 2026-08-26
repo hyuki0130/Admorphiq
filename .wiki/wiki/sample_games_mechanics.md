@@ -57,6 +57,15 @@ RHAE prices a level at `(human/agent)²`. So over-exploring does not merely fail
 converts an eventual clear into a score of approximately zero. tu93's level 4 allows 20 actions;
 a run that takes 2,000 and then clears it scores `(20/2000)² = 0.0001`.
 
+**And dying is NOT a free reset.** `scripts/score_efficiency.py:336` keeps
+`action_count_this_level` accumulating ACROSS a GAME_OVER restart — it is zeroed only when a
+level is actually completed, and the reset action itself is counted. So the retry loop our agents
+run (`restart_on_game_over`) does not buy exploration; it spends the level's score on it.
+
+**Verified live**: tu93 reaches `GAME_OVER` after **exactly 50 actions**, which is the
+`StepCounter=50` its level data declares. The static reading predicts the engine precisely, which
+is the whole argument for reading the data instead of probing it.
+
 ⛔ Consequence for stage one: a tool needs to READ the budget off the frame (it is drawn — a
 counter, a shrinking bar, a scrolling sprite) and plan inside it. "Explore, then act" has to
 become "act within N", and no amount of tool-by-tool strengthening changes that.
