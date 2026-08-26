@@ -62,7 +62,14 @@ submission slot — only `kaggle competitions submit` does, one per day, resetti
 server and found zero games), and dataset versions must be verified by FILE SIZE, never by
 `datasets status`.
 
-## 6. Submissions are the user's decision
+## 6. Use the daily submission slot; use GPU quota when the work needs it
 
-Prepare the candidate, measure it as SHIPPED (`--agent kaggle_detect`, not `--agent detect`), report,
-and wait. Never push one unasked.
+**Standing directive, 2026-08-26**: the Kaggle submission slot is one per day, resetting 00:00 UTC,
+and **leaving it unused is waste** — put the best measured candidate in it rather than holding for a
+better one. GPU kernel runs are separate: `kaggle kernels push` does NOT consume a submission, only
+`kaggle competitions submit` does, so run GPU work whenever weekly quota remains.
+
+⚠️ This supersedes the earlier "never push one unasked" reading. What survives from it: the candidate
+must be measured AS SHIPPED (`--agent kaggle_detect`, not `--agent detect`) before it goes, and a
+submission whose build is not committed is not reproducible — kernel source, `kernel-metadata.json`,
+the push command and the dataset-version-to-commit mapping all go in with it.
