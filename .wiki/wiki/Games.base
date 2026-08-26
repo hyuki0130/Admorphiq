@@ -1,0 +1,13 @@
+filters:
+  and:
+    - 'file.inFolder("games")'
+views:
+  - type: table
+    name: Sample games
+    order:
+      - file.name
+      - game_id
+      - generalizes
+    sort:
+      - property: file.name
+        direction: ASC

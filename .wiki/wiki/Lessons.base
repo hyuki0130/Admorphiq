@@ -1,0 +1,20 @@
+filters:
+  and:
+    - 'file.inFolder("lessons")'
+views:
+  - type: table
+    name: All lessons
+    order:
+      - file.name
+      - topic
+      - date
+      - keywords
+    sort:
+      - property: date
+        direction: DESC
+  - type: cards
+    name: By topic
+    order:
+      - file.name
+      - topic
+      - date

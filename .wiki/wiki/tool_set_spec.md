@@ -7,6 +7,8 @@ keywords: [tool-set, stage-one, 25-of-25, reach, deliver, configure, induce, cla
 
 # Tool set spec — four generic tools for the 25 sample games
 
+> The four generic tools, the order they are built in, and how each is tested.
+
 **Where this sits**: [[top_policy]] stage 1 — I build generic tools until they clear all 25 sample
 games; only then does the LLM patch them on hidden games. Round page: [[rounds/r101_tool-development]].
 Full design with rationale: `docs/design_r101_tool_set.md`.

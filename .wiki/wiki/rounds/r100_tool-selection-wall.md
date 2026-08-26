@@ -9,6 +9,8 @@ date: 2026-08-26
 
 # R100 — does the tool-selection collapse explain the generic path's wall?
 
+> Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
+
 ## Why this round, and why now
 
 R98 is exhausted on the public set (its own page carries the accounting): per-target predicates

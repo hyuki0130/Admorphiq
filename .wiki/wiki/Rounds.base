@@ -1,0 +1,30 @@
+filters:
+  and:
+    - 'file.inFolder("rounds")'
+    - 'file.name != "index"'
+formulas:
+  age: 'if(date, (now() - date).days, "")'
+views:
+  - type: table
+    name: All rounds
+    order:
+      - file.name
+      - round
+      - axis
+      - verdict
+      - date
+      - commit
+    sort:
+      - property: round
+        direction: DESC
+  - type: table
+    name: Open or failed
+    filters:
+      not:
+        - 'verdict == "PASS"'
+    order:
+      - file.name
+      - round
+      - axis
+      - verdict
+      - date

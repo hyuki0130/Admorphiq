@@ -122,7 +122,17 @@ before the baseline moves. Lint/tests gate hygiene; the bench gates routing.
 
 ## What this skill is NOT
 
-- Not kepano's `obsidian-skills` (callouts / `.base` / canvas). Our retriever
-  parses none of those — they'd be noise in Qwen's context. Only `[[backlinks]]`
-  + plain markdown + frontmatter matter here.
+- Not kepano's `obsidian-skills` **for the `.md` CONTENT**. Callouts and embeds
+  land in the bytes Qwen reads and buy it nothing, so page bodies stay austere:
+  `[[backlinks]]` + plain markdown + frontmatter.
+
+  ⛔ **But the blanket rejection was too broad, and it was corrected by
+  measurement (2026-08-27).** `wiki_retrieval.resolve_link` only ever builds
+  `.md` candidates, so a `.base` or `.canvas` file is INVISIBLE to Qwen and
+  costs zero runtime budget. Those formats are free, and they are the only
+  navigable view a human has over 239 pages. `Rounds.base`, `Lessons.base` and
+  `Games.base` sit in `.wiki/wiki/` and read the frontmatter this skill already
+  requires (`type` 203 pages, `keywords` 86, `date` 85, `verdict` 64, `round`
+  59, `commit` 57). Install `obsidian-bases` / `json-canvas` / `obsidian-markdown`
+  under `.claude/skills/` and use them for those artefacts only.
 - Not for Qwen. Qwen reads the output; it never loads this skill.

@@ -70,6 +70,10 @@ is the whole argument for reading the data instead of probing it.
 counter, a shrinking bar, a scrolling sprite) and plan inside it. "Explore, then act" has to
 become "act within N", and no amount of tool-by-tool strengthening changes that.
 
+The two reusable abstractions this page produced have their own concept pages:
+[[concepts/action_budget]] (thirteen games cap their actions and END on overrun) and
+[[concepts/swallowed_action]] (an action arriving mid-animation is consumed without effect).
+
 ## The fact that changes how every tool must be written
 
 **Several games LOSE when an action budget runs out**, and the budget is drawn on screen:

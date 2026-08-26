@@ -7,6 +7,8 @@ keywords: [model-guidance, context-budget, gemma4-31b, qwen3.8-27b, gpt-oss-120b
 
 # Model guidance spec — how the harness tells a model which tool to use, within its context
 
+> How each candidate offline model is guided to the right tool within its own context budget.
+
 **Where this sits**: [[top_policy]] stage 2. Stage 1 builds the tools ([[tool_set_spec]]); this is
 the layer that lets a MODEL pick and configure them on a game it has never seen. Written now, before
 the tools exist, so the tools are built with the guidance in mind rather than retrofitted.

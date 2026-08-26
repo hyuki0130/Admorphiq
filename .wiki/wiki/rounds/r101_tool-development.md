@@ -9,6 +9,8 @@ date: 2026-08-26
 
 # R101 — stage 1: develop the tools to 25/25
 
+> Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear — three tools registered, the action-budget finding, and the selectivity rule that governs how tools are kept.
+
 Per `OPERATING_RULES.md` rule 0: I build the generic tools until they clear all 25 sample games;
 only then does the LLM patch and combine them on hidden games. This round is stage 1.
 
@@ -754,6 +756,10 @@ Twenty live measurements on one game, ten of them correcting an earlier reading,
 answer than one command. The failures recorded above are real and the fixes stand, but the METHOD
 that generated them was the wrong one and is now written into `OPERATING_RULES.md`.
 
+
+The abstraction is now [[../concepts/action_budget]]; the timing trap that goes with it is
+[[../concepts/swallowed_action]]; the mechanics read out of every game's own source are
+[[../sample_games_mechanics]].
 
 ## The budget is READABLE from the frame — 9 of 13 recovered (2026-08-27)
 

@@ -7,6 +7,8 @@ keywords: [policy, two-stage, tool-development, 25-of-25, hidden-set, harness, k
 
 # Top policy — the two stages, and who does what
 
+> The two stages: I build the generic tools until they clear all 25 sample games; the LLM then patches and combines them on hidden games through the harness.
+
 Set by the user 2026-08-26, after the plan was lost twice in one day while sitting unread in this same
 wiki. `OPERATING_RULES.md` rule 0 carries the operational form; this page is the wiki's copy so a
 reader who starts from `index.md` finds it.
