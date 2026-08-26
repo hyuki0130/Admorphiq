@@ -1972,3 +1972,46 @@ closed against the flow direction, so that rising water (`fall = (-1, 0)`) is he
 passing over. The test is to compare the target shapes' openings relative to the fall direction
 between the levels that win and the level that does not — a shape measurement on boards whose
 outcome is already known, which is the same control that produced everything above.
+
+## Closure refuted, and the hazard reading comes BACK — on evidence this time
+
+Two measurements, one refuting an inference of mine and one reinstating a hypothesis I withdrew.
+
+**The closure inference is refuted.** Level 3's targets are walled against the flow exactly as the
+winning levels' are:
+
+```
+WON  level 1   leading edge 12 cells -> 12 walled / 0 open   (fall (1, 0))
+WON  level 2   leading edge 12 cells -> 12 walled / 0 open   (fall (-1, 0))  x3
+lost level 3   leading edge 12 cells -> 12 walled / 0 open   (fall (-1, 0))  x2
+```
+
+So "the basin is open against the flow direction" is not what separates them. (The step-127 row
+reads `fall (0, 0)` — the flow model was reset at that instant — and is unusable.)
+
+**And full coverage DOES happen on the failing level.** Counting which cells ever take colour 13:
+
+```
+WON  level 1   80/80 cells ever 13   finally 12: 80, 64
+WON  level 2   80/80 cells ever 13   finally 12: 48, 48, 48
+lost level 3   80/80 cells ever 13   finally 12: 0, 0, 0
+```
+
+Every cell of every target is wetted on the losing commit, and none is retained.
+
+⛔ **That reopens the hazard hypothesis I withdrew two entries ago, and the withdrawal has to be
+withdrawn.** I retracted it on the reading "coverage was only 1 of 6" — which was itself the
+measurement that counted a colour targets never wear. With a valid instrument the picture is:
+**every target fully covered, nothing retained, level fails.** That is precisely the pattern R98
+CERTIFIED on this family: *two placements fill every sink, one advances and one fails, differing
+only in hazard contact.*
+
+⚠️ Consistent with, not proven. What would prove it: whether the spill contacts a hazard on this
+board — R98's grounding already distinguishes hazard cells from walls, and its note that "reaching a
+hazard can end the attempt, while reaching a frame just ends the droplet" is the distinction at
+issue.
+
+**The lesson underneath is about retraction, not about flow.** A hypothesis retracted on a broken
+measurement is not disproved — it is untested, and it has to go back on the list rather than stay
+crossed off. Twice now this round a conclusion has been carried forward from a reading that was
+later shown wrong, and only the second one was caught by re-deriving it.
