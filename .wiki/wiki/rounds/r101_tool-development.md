@@ -852,3 +852,45 @@ see the cost.
 The reader now finds them (pitch candidates include multiples of the observed gap, because
 adjacency at the base gap links the rings and the peel then deletes the whole track), and the
 tool acts — 44 actions inside a 60-action budget — but does not yet clear it.
+
+
+## Third tool: MirrorMergeTool (2026-08-27)
+
+Built from the source read, not from probing: m0r0's `step()` shows that clicking a `sys_click`
+marker SELECTS it, that 1-4 then move it, and that clicking empty space flips to a mode where
+every marker moves at once with per-name MIRRORING; `next_level()` fires when no active marker
+remains. The frame shows two mirrored mazes with one actor each.
+
+The tool learns each control's per-actor delta from four probes — never assuming the mirror from
+geometry — then BFS-plans the join over the joint state.
+
+**m0r0 level 1 in 19 actions** against a human baseline of 30 and a searching generic path of
+**604**. (A hand-run of the same plan takes 15; the tool spends 4 on learning the controls.)
+
+Two ordering traps, both fixed by measurement:
+
+* the delta must be keyed by which HALF an actor is in. The corner list is sorted, so the moment
+  two actors' sort order flips, an index-keyed delta is applied to the wrong actor and every plan
+  after that is fiction. This is the same trap that made a hand-written model look wrong when it
+  was exactly right — the "mismatch" was two identical positions in a different order;
+* the actor COLOUR must be pinned for the level. Re-picking "the rarest colour" each frame latched
+  onto a different colour mid-plan and reported the actors at two opposite corners of the frame.
+
+**Measured before keeping it** (the discipline this round paid for): full 25, generic tools alone,
+`0.0211 -> 0.0230`, **only m0r0 moved** (0.0001 -> 0.0476), and the shipped card is unchanged at
+0.3162. 1769 tests pass.
+
+**Open**: m0r0 level 2 adds obstacle sprites and the tool overruns the 150-action budget.
+
+## Stage one standing, three tools in
+
+| | generic tools alone | card (with adapters) |
+|---|---|---|
+| start of round | 0.0200 | 0.3162 |
+| now | **0.0230** | 0.3162 |
+
+ft09 0.4762 (stencil) · m0r0 0.0476 (mirror) · lp85 0.0278 (track) · the rest unchanged.
+**3 of 25 games have a rule-recovery tool. 16 still clear nothing.**
+
+⛔ **No Kaggle submission until the sample games are cleared** (user directive, 2026-08-27,
+recorded in `OPERATING_RULES.md` above rule 6).

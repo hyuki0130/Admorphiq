@@ -62,6 +62,12 @@ submission slot — only `kaggle competitions submit` does, one per day, resetti
 server and found zero games), and dataset versions must be verified by FILE SIZE, never by
 `datasets status`.
 
+⛔ **NO KAGGLE SUBMISSION UNTIL THE SAMPLE GAMES ARE CLEARED (user directive, 2026-08-27).**
+This overrides rule 6 below for now. The daily slot is not to be spent while stage one is
+unfinished: the generic tools clear 3 games of 25, the submission's score would not move, and
+preparing one costs attention that belongs on the tools. Build tools, measure the full 25, record.
+Ask again when the sample set is cleared.
+
 ## 6. Use the daily submission slot; use GPU quota when the work needs it
 
 **Standing directive, 2026-08-26**: the Kaggle submission slot is one per day, resetting 00:00 UTC,
