@@ -1458,3 +1458,24 @@ campaign is built to avoid.
 the twenty-five games have a ceiling under 0.15, and seven of those are ceilinged at a single level.
 That is depth work — the multi-session builds already spec'd — and it is a different kind of effort
 from the last two days'. The dispatch lever gave 5.6x and is now down to its last one-twentieth.
+
+## The 0.3162 card is VERIFIED as shipped (2026-08-26)
+
+Five adapters changed since the last verification (lp85, sp80, tn36, sc25, plus the kernel move
+under grounding_flow), so the card was re-checked rather than assumed:
+
+```
+full suite            1752 passed, 1 skipped
+guards                all ten hold
+benched --agent detect          0.3162
+shipped --agent kaggle_detect   0.3162     differing games: 0 of 25
+```
+
+The two are genuinely different configurations — the bench builds a live LLM backend and takes the
+runner's `GF_GIVEUP`; the notebook gets a dead LLM callable, so the harness routes by frame
+signature, and takes the deployed default. They now run through ONE runner with an `AGENT` variable,
+because measuring them with two runners is how a "shipped" measurement once silently ran at budget
+100,000.
+
+This makes 0.3162 a submission candidate whose shipped behaviour is measured rather than inferred.
+⛔ Submitting is the user's decision and one submission is already pending; nothing is pushed here.

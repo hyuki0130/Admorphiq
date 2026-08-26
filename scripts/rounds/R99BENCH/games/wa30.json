@@ -1,0 +1,29 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.022222,
+  "total_score_pct": 2.222,
+  "games": [
+    {
+      "game_id": "wa30-ee6fef47",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 39.09,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 32,
+          "human_actions": 71,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.022222,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "WA30"
+    }
+  ]
+}
