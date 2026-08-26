@@ -29,10 +29,12 @@
 
 > ## STAGE 1 — ALL 25 SAMPLE GAMES NOW CLEAR A LEVEL UNDER THE GENERIC TOOLS (2026-08-27)
 >
-> **Generic tools ALONE (zero adapters), full 25: `0.0200` -> `0.2257` in one day, 25/25 clearing
-> at least one level, cumulative regressions ZERO.** This morning 16 of 25 cleared nothing.
-> Conquered outright: **ar25 1.000 · sb26 1.000 · tr87 1.000** (ft09 0.476, ka59 0.357, dc22 0.286,
-> ls20 0.274, re86 0.269, sc25 0.244 …). Round page:
+> **Generic tools ALONE (zero adapters), full 25: `0.0200` -> `0.6149` in one day — 30.7x, and 1.9x
+> the deployed card's 0.3162 which is built from thirteen per-game adapters. 25/25 clear at least
+> one level, ELEVEN conquered outright, cumulative regressions ZERO.** This morning 16 of 25
+> cleared nothing. Conquered: **ar25 · sb26 · tr87 · cd82 · cn04 · r11l · tu93 · vc33 · tn36 ·
+> sk48** (+ft09 partial). Weakest remaining: bp35 0.133, m0r0 0.143 — both still faster than a
+> human on level 1 and stopped by depth. Round page:
 > [`.wiki/wiki/rounds/r101_tool-development.md`](.wiki/wiki/rounds/r101_tool-development.md).
 >
 > ⛔ **"Clears" is not "conquered."** Six games (tn36 0.007 down to sp80 0.000) clear a level but
@@ -50,10 +52,17 @@
 > 2. **FAN OUT, THEN INTEGRATE** (rule 8). One background agent per GAME, each owning exactly two
 >    new files and forbidden the registry/loop/segment/other tools; the parent registers one at a
 >    time and keeps it only when a full-25 run on ceph shows no game regressed.
-> 3. **The harness, not the tools, held the biggest losses.** Two defects in `harness/loop.py` cost
->    more than every tool improvement combined: a level-up handed the board away on a transitional
->    frame (ar25 went 1 level -> 8/8 when fixed), and a bid of `0.0` beat the initial best so an
->    unclaimed board went to whoever was first in registration order.
+> 3. **The gains came from THREE layers, and only one of them is visible to a tool's author.**
+>    The tool layer is the agents' (mechanics, depth). The HARNESS layer is the integrator's: a
+>    level-up handed the board away on a transitional frame (ar25 went 1 level -> 8/8 when fixed),
+>    a bid of `0.0` beat the initial best, and the model's tool menu was hardcoded. The INSTRUMENT
+>    layer is the integrator's too: a non-reproducible baseline nearly reverted three innocent
+>    tools, and an audit script reused stale frames and reported a working tool as bidding zero.
+>    A tool's own probe disagrees with the harness in three distinct ways — use
+>    `scripts/harness_probe.py`, not a per-tool probe, and `scripts/bid_matrix.py` for selectivity.
+> 4. **One rule recurred in every layer: a tool with no plan must bid ZERO.** Three violations
+>    found, TWO of them in tools I wrote myself; removing the last one took a game from 0.58 to
+>    1.00 outright.
 >
 > ⛔ **EVERY NUMBER ABOVE IS THE LLM-FREE FALLBACK PATH.** `loop.py` drops to signature routing when
 > the llm call raises, and the round runners set no `HARNESS_MODEL`. Exercising the real path
