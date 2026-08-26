@@ -6,6 +6,20 @@ a rule that dies at the next context compaction or the next machine.
 
 ## 1. ceph-build runs at MAXIMUM parallelism, capped at 60 cores
 
+⛔ **ceph-build is SHARED, and the load average is NOT all yours.** Measured 2026-08-27 while
+chasing a load of 96: the top consumers were an `ollama runner` at 3743% CPU (my own 26B model)
+AND a `freqtrade` process 91 days old, postgres, rabbitmq and docker/runc — other people's
+workloads. Read `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head` before concluding the load is
+yours, and set the parallelism against the load you FIND, not against 64 cores.
+
+⛔ **Do not run LLM inference here.** There is no GPU, and one 26B model on CPU takes ~37 cores by
+itself — more than half the cap, for one process. LLM-in-the-loop verification belongs on a GPU
+(Kaggle's free quota, or GCP with the user's awareness that it now costs money). See rule 5.
+
+⛔ **`pkill -f <pattern>` matches YOUR OWN ssh command line.** Killing a run by a pattern that
+appears in the command that issues the kill silently kills the kill. Put the kill in a script file
+on the box, or split the pattern (`"score_effici""ency.py"`).
+
 The box has 64. Saturating them locks out SSH; leave 4 for the shell. **The cap is not a target to
 approach cautiously — it is a ceiling to work up against.** An idle measurement box is wasted time,
 and this has been said on 2026-08-26 morning, again that afternoon, and again that evening.
