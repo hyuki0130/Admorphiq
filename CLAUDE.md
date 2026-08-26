@@ -27,27 +27,41 @@
 > whole days.
 
 
-> ## STAGE 1 PROGRESS — one tool built, and what it cost (2026-08-27)
+> ## STAGE 1 — ALL 25 SAMPLE GAMES NOW CLEAR A LEVEL UNDER THE GENERIC TOOLS (2026-08-27)
 >
-> **`admorphiq.tools.StencilTool` — the first stage-1 tool. ft09 4/6 levels in 60 actions with
-> zero game constants** (no game id, no tile size, no pitch, no palette, no coordinate). Round
-> page with the full failure ledger: [`.wiki/wiki/rounds/r101_tool-development.md`](.wiki/wiki/rounds/r101_tool-development.md).
+> **Generic tools ALONE (zero adapters), full 25: `0.0200` -> `0.2257` in one day, 25/25 clearing
+> at least one level, cumulative regressions ZERO.** This morning 16 of 25 cleared nothing.
+> Conquered outright: **ar25 1.000 · sb26 1.000 · tr87 1.000** (ft09 0.476, ka59 0.357, dc22 0.286,
+> ls20 0.274, re86 0.269, sc25 0.244 …). Round page:
+> [`.wiki/wiki/rounds/r101_tool-development.md`](.wiki/wiki/rounds/r101_tool-development.md).
 >
-> **The honest scale this sets.** Swept over all 25 games the tool fires on **ft09 alone** and
-> withdraws from the other 24 in three actions (0/24 false positives, earned by RECOVERING the
-> rule rather than recognising the game). One mechanic took a session and about twenty
-> measurements, ten of which corrected an earlier reading. Stage 1 is roughly that, per mechanic.
+> ⛔ **"Clears" is not "conquered."** Six games (tn36 0.007 down to sp80 0.000) clear a level but
+> spend so many actions that the squared metric prices it at ~zero. The remaining work is not more
+> tools; it is solving inside the budget.
 >
-> ⛔ **Two sample games are now MEASURED to punish a wrong action** — ft09 charges a LEVEL (one
-> click took a run 4 -> 3; clicking on through level 5 went 4 -> 0), and tn36 ENDS THE GAME after
-> about three wrong submissions. Assume this is the norm: **a generic tool needs a reason to act,
-> not merely the absence of a reason not to.** The stencil tool now stops on a revisited tile map
-> and ends a game holding what it won.
+> **Three things changed how this is done — all three are in `OPERATING_RULES.md`:**
 >
-> **Open, with the evidence banked so it is not re-derived**: ft09 level 5 (its neighbourhood
-> model self-contradicts — 4 tiles demanded in two colours at once); tn36 (interaction surface
-> fully decoded — brick-offset 4x4 lattice whose tiles are inert, five bit slots at pitch 5, a
-> submit disc — but what DERIVES the five bits from the 30 colour-11 cells is unfound).
+> 1. **READ THE GAME'S OWN SOURCE AND LEVEL DATA FIRST** (rule 0 always said so).
+>    `scripts/read_sample_games.py` + `scripts/dump_sample_levels.py` read all 25 games and 179
+>    levels with the engine never started. That is how the load-bearing fact surfaced: **thirteen
+>    games declare a per-level ACTION BUDGET and END on overrun** (tu93 level 4 allows 20 actions,
+>    lp85 level 1 allows 13) — which is why a searching agent scoring 0.02 was never a search
+>    problem. Mechanics for all 25: [`.wiki/wiki/sample_games_mechanics.md`](.wiki/wiki/sample_games_mechanics.md).
+> 2. **FAN OUT, THEN INTEGRATE** (rule 8). One background agent per GAME, each owning exactly two
+>    new files and forbidden the registry/loop/segment/other tools; the parent registers one at a
+>    time and keeps it only when a full-25 run on ceph shows no game regressed.
+> 3. **The harness, not the tools, held the biggest losses.** Two defects in `harness/loop.py` cost
+>    more than every tool improvement combined: a level-up handed the board away on a transitional
+>    frame (ar25 went 1 level -> 8/8 when fixed), and a bid of `0.0` beat the initial best so an
+>    unclaimed board went to whoever was first in registration order.
+>
+> ⛔ **EVERY NUMBER ABOVE IS THE LLM-FREE FALLBACK PATH.** `loop.py` drops to signature routing when
+> the llm call raises, and the round runners set no `HARNESS_MODEL`. Exercising the real path
+> exposed two more defects — the model's tool menu and its ranking were BOTH hardcoded to eight
+> literal names, so the eighteen tools built that day were unnameable by the model. Both are fixed
+> (menu = `default_tools()`, ranking = each tool's own `detect`), but **the LLM path's 25-game
+> performance is UNMEASURED and needs a GPU** — ceph-build is a shared CPU box where one 26B model
+> takes ~37 cores.
 
 > ## ⛔ TOP POLICY — the two stages, and who does what (2026-08-26, user-set)
 >
