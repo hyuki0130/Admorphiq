@@ -10250,3 +10250,46 @@ and the first two are exactly the games R98 never looked at when it called tu93 
 
 ⛔ The lesson is the one this session has now paid for four times: **a measurement that lives only in
 a transcript does not exist.** This one was recovered by grepping the JSONL; the next one may not be.
+
+## The second family member has NO CANDIDATE on the public 25 — R98's open list is exhausted
+
+Reading every public adapter's declared mechanic:
+
+```
+AR25 mirror-reflection coverage      LP85 rare-color click
+BP35 gravity platformer              LS20 shape/colour/rotation maze
+CD82 ring-paint                      M0R0 mirror-players merge-maze
+CN04 connector-marker arrangement    R11L click-driven drag-assembly
+DC22 button-barrier gated maze       RE86 delivery / colour-assignment
+FT09 click-toggle-parity             S5I5 slider / goal-to-target
+G50T momentary-plate + ghost         SB26 portal-graph sort/assignment
+KA59 multi-piece delivery            SC25 spell-pattern toggle + navigate
+LF52 peg-solitaire jump-and-capture  SK48 snake shape / pattern-matching
+SP80 water-routing / spill-coverage  <-- the only one
+SU15 vacuum-merge delivery           TN36 opcode-column program-synthesis
+TR87 rule-derivation / rewrite       TU93 sliding-maze navigation
+VC33 rare-color click                WA30 pick-carry-drop delivery
+```
+
+**`SP80` is the only place-then-propagate game in the set.** Grepping for `flow|spill|propagat`
+across the quarantine hits only `sp80.py` and `sc25.py`, and sc25 is a spell-pattern toggle.
+
+That settles what the burst pool was: **the high-burst games are near-OOD CONFUSABLES, not members** —
+exactly as the recovered transcript said (*"a high burst is not membership"*). sb26 at 42 is a
+portal-graph DFS; lf52 at 27 is peg solitaire. They share the observable precondition and nothing
+else.
+
+**So R98's open list is now fully accounted for:**
+
+```
+per-target predicates                       REFUTED — contact loses on every captured board
+multi-piece placement                       STALE — implemented; idx1 (3 pieces/3 sinks) clears in 22a
+a second member needing a scale-1 extractor  NO CANDIDATE — sp80 is the family's only public member
+```
+
+⛔ **R98 is exhausted on the public set**, and not because the work failed — the family was confirmed,
+the propagator is exact on three levels, SELECT was CONFIRMED on three models. It is exhausted because
+a family of one has nowhere left to expand publicly. Expanding it needs a member from the hidden 110,
+which cannot be developed against.
+
+That is the ground for opening the next round rather than continuing this one.
