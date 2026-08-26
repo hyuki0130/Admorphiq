@@ -611,3 +611,24 @@ if the record is not read before the probe is written.**
 ⛔ Also: a probe that calls `arcade.make()` per trial measures only the absorbed first action.
 Three sweeps reported g50t inert for that reason, including a BFS that concluded the game has
 ONE reachable state.
+
+
+## The tool is in the harness, and it costs the other games nothing (2026-08-27)
+
+`StencilTool` registered FIRST in `harness/registry.default_tools()` — most selective first, so
+the tool that is cheap to be wrong about is asked before the ones that always propose something.
+
+**ft09 through the harness: 4 levels**, the tool chosen by the harness's own signature routing
+(`click_fraction=1.00, has_movement=False`), with no LLM in the path.
+
+**Verified no-op elsewhere.** Twelve games re-run at 1500 steps against the numbers taken before
+registration: tu93 250/584/63, re86 318/554/148, tr87 266/596/109, g50t 18/57/24, wa30 209/408/64,
+ls20 501/1174/113, ar25 507/1215/523, sk48 578/1356/604 — **identical in every field**. The
+0/24 detect measurement holds inside the harness, not just in the standalone sweep.
+
+Two extremes surfaced in the same run and are worth their own line:
+
+* **vc33: 94% inert** — 1016 of 1071 transitions change nothing. Consistent with its click probe,
+  where all 50 responders were the row-0 counter and the board answers nothing at stride 8;
+* **lp85: 3 states, 100% inert, 1 level** — it clears a level and then every transition is a
+  self-loop. Its adapter clears 8/8, so this is the widest generic-vs-adapter gap on the board.

@@ -10,16 +10,24 @@ from admorphiq.tools.base import Tool
 
 
 def default_tools() -> list[Tool]:
-    """Instantiate the six generic Claude-built tools in priority order."""
+    """Instantiate the generic Claude-built tools in priority order.
+
+    `StencilTool` goes FIRST because it is the most selective: it declines any frame without a
+    tile lattice carrying an instruction glyph, measured at 0 false positives across the 25
+    sample games and three actions to withdraw. A tool that is cheap to be wrong about belongs
+    ahead of one that will always propose something.
+    """
     from admorphiq.tools.dead_signature import DeadSignatureTool
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.llm_goal import LLMGoalTool
     from admorphiq.tools.paint_flood import PaintFloodTool
+    from admorphiq.tools.stencil import StencilTool
     from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.world_model import WorldModelTool
 
     return [
+        StencilTool(),
         GraphSearchTool(),
         WorldModelTool(),
         PaintFloodTool(),
