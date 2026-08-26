@@ -27,6 +27,28 @@
 > whole days.
 
 
+> ## STAGE 1 PROGRESS — one tool built, and what it cost (2026-08-27)
+>
+> **`admorphiq.tools.StencilTool` — the first stage-1 tool. ft09 4/6 levels in 60 actions with
+> zero game constants** (no game id, no tile size, no pitch, no palette, no coordinate). Round
+> page with the full failure ledger: [`.wiki/wiki/rounds/r101_tool-development.md`](.wiki/wiki/rounds/r101_tool-development.md).
+>
+> **The honest scale this sets.** Swept over all 25 games the tool fires on **ft09 alone** and
+> withdraws from the other 24 in three actions (0/24 false positives, earned by RECOVERING the
+> rule rather than recognising the game). One mechanic took a session and about twenty
+> measurements, ten of which corrected an earlier reading. Stage 1 is roughly that, per mechanic.
+>
+> ⛔ **Two sample games are now MEASURED to punish a wrong action** — ft09 charges a LEVEL (one
+> click took a run 4 -> 3; clicking on through level 5 went 4 -> 0), and tn36 ENDS THE GAME after
+> about three wrong submissions. Assume this is the norm: **a generic tool needs a reason to act,
+> not merely the absence of a reason not to.** The stencil tool now stops on a revisited tile map
+> and ends a game holding what it won.
+>
+> **Open, with the evidence banked so it is not re-derived**: ft09 level 5 (its neighbourhood
+> model self-contradicts — 4 tiles demanded in two colours at once); tn36 (interaction surface
+> fully decoded — brick-offset 4x4 lattice whose tiles are inert, five bit slots at pitch 5, a
+> submit disc — but what DERIVES the five bits from the 30 colour-11 cells is unfound).
+
 > ## ⛔ TOP POLICY — the two stages, and who does what (2026-08-26, user-set)
 >
 > **Full text: [`OPERATING_RULES.md`](OPERATING_RULES.md) rule 0. This block is the pointer that
