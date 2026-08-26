@@ -1823,3 +1823,43 @@ it does not, and either way the answer comes from a level whose outcome is known
 ⛔ Sixth time this round a claim came from a field read for something it does not record. The rule
 was already on this page in three forms. Writing it again is not the fix; running the control BEFORE
 the headline is.
+
+## The control answered: the gap is SATISFACTION, not propagation
+
+One instrument, two commits whose outcome is known — level 2 clears, level 3 does not — and the
+target cells' colour histogram across each commit's animation layers:
+
+```
+WON   level 2, 22 layers   target 0 {11:1552, 13:160, 12:48}
+                           target 1 {11:1552, 13:160, 12:48}
+                           target 2 {11:1232, 13:480, 12:48}
+
+LOST  level 3, 27 layers   target 0 {11:1200, 13:960}
+                           target 1 {11:1280, 13:880}
+                           target 2 {11:1600, 13:560}
+```
+
+(The histograms are complete: 1552+160+48 = 1760 = 80x22, and 1200+960 = 2160 = 80x27.)
+
+**Colour 12 appears in all three targets on the commit that WINS and in none of them on the commit
+that LOSES.** Colour 13 goes the other way — the losing commit has MORE of it (44%, 41%, 26% of
+cell-layers) than the winning one (9%, 9%, 27%). So 13 is water passing through a target, and **12
+is the target being satisfied.**
+
+That relocates the fidelity gap precisely. It is **not propagation** — the engine wets everything
+the kernel predicts and more, and the flow plainly reaches all three targets on the failing level.
+It is **satisfaction**: `simulate_flow` counts a target satisfied when fluid enters a cell whose two
+perpendicular neighbours belong to the same target (an "interior hit"), and on level 3 the engine
+gives that board水 through every target while marking none of them filled. The kernel's satisfaction
+rule is not the engine's.
+
+⚠️ **And one more correction to last entry's numbers.** The commit reported there as "commit 1"
+({11:1552, 13:160, 12:48}, 22 layers) is the level-2 **WINNING** commit, not a level-3 failure — the
+capture keyed on `_committed` while attributing the level from a counter that had not yet advanced.
+The comparison above re-takes both readings from one run with the outcome recorded alongside each,
+which is what made the difference legible at all.
+
+**Next**: the same signature should be checked on level 1's winning commit, and then the kernel's
+interior-hit test replaced by one that predicts colour 12 rather than mere entry. That is a change
+to `simulate_flow`'s satisfaction predicate alone — the propagation it already gets right — which is
+a far smaller thing than relocating R98's 3,738 lines.
