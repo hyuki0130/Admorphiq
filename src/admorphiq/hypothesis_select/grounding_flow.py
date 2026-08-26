@@ -1456,6 +1456,40 @@ class FlowGrounding:
                     out |= part
         return frozenset(out)
 
+    def _static_sink_candidates(self) -> Any:
+        """The shortlist BEFORE any spill has run, from shape alone.
+
+        Every source in :meth:`sink_candidates` needs ``self._animations``, so the
+        shortlist was UNKNOWN until the first commit — and a board cannot be assembled
+        without it, which is why multi-piece planning found an empty shortlist on a level
+        whose three pieces satisfy nothing individually.
+
+        The family's own rule makes shape sufficient: a target is satisfied through a
+        NOTCH, and :meth:`_by_mouth` already records that "a region with no notch is an
+        OBSTACLE, not a target of this family, whichever source named it". So notch-bearing
+        regions are the candidates, split per mouth exactly as the spill-fed path splits
+        them.
+
+        MEASURED against the spill-grounded answer on every board R98 captured
+        (``scripts/rounds/R98/static_shortlist_check.py``): 20/20 grounded targets named,
+        and 20/20 matching CELL FOR CELL after ``_by_mouth`` — including idx3, where one
+        4-connected region carries all three targets and splits into exactly three.
+
+        Returns UNKNOWN when no frame has been observed, so a caller that had nothing
+        before still has nothing.
+        """
+        if self._prev_cells is None:
+            return UNKNOWN
+        background = Counter(self._prev_cells.values()).most_common(1)[0][0]
+        groups: list[frozenset[Cell]] = []
+        for colour in set(self._prev_cells.values()) - {background}:
+            for region in _regions(self._prev_cells, colour):
+                if self._mouths(region):
+                    groups.extend(self._by_mouth(region))
+        if not groups:
+            return UNKNOWN
+        return Grounded(tuple(sorted(groups, key=lambda g: min(g))), "low")
+
     def sink_candidates(self) -> Any:
         """The shortlist the model binds target roles from. A shortlist, never a
         decision — which of these IS a target is the model's choice.
@@ -1473,7 +1507,7 @@ class FlowGrounding:
           probing spill happens to satisfy nothing.
         """
         if not self._animations:
-            return UNKNOWN
+            return self._static_sink_candidates()
         groups: list[frozenset[Cell]] = []
         for anim in self._animations:
             for g in anim.changed_regions:

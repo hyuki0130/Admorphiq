@@ -9727,6 +9727,7 @@ games.
 | `gated_enum_test.py` | is the model faithful on every reachable placement, and does each slot discriminate? | no |
 | `feasibility_probe.py` | does a winning layout exist at all under the verified model? | no |
 | `reference_propagator.py` | the colour-reading fixture the certifications replay through; imports the one propagator so there is a single implementation | no |
+| `static_shortlist_check.py` | does the STATIC notch shortlist name the same targets the spill grounds? (20/20 named, 20/20 exact after `_by_mouth`) — needs REST captures, see its docstring | no |
 
 Eight more are single-question probes from the round's opening — `discovery_probe_idx0.py`,
 `evidence_probe_idx0.py`, `oracle_probe_idx0.py`, `condition_probe.py`, `source_probe.py`,
