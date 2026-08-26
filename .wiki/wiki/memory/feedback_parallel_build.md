@@ -1,5 +1,5 @@
 ---
-name: feedback-fan-out-then-integrate
+name: feedback_parallel_build
 description: Tool development runs as one background agent per game, integrated centrally and kept only on a full-25 measurement
 metadata:
   type: feedback
@@ -22,4 +22,4 @@ counter is not board content.
 Then integrate CENTRALLY — only the parent edits `registry.py` — one tool at a time, and run the
 full 25 on ceph-build at PAR=25 (~2 minutes). Keep only if no game regressed. Selectivity is a
 property of the tool SET, so no agent may decide whether its own work is kept. See
-[[feedback-measure-full-25-before-keeping]] and [[project-stage1-tool-build]].
+[[feedback_measure_full_25]] and [[project_stage1_tool_build]].

@@ -7,6 +7,8 @@ verdict: Five defects in one session lived in the deployment path and were INVIS
 
 # The deployment path is not the measured path
 
+> The benched configuration and the shipped one differ; a number measured on one is not a number about the other.
+
 A local score can be perfect while the submission is broken, because the two do not run the same
 code. Five defects in one session, none of which any local number could have revealed:
 

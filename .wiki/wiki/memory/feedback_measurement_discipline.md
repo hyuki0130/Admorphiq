@@ -1,5 +1,5 @@
 ---
-name: feedback-measurement-discipline
+name: feedback_measurement_discipline
 description: "Timestamp every output; run measurements as background shells (rate-limit-proof); one live SUMMARY.txt per round; never discard partial results — analyze and advance"
 metadata:
   node_type: memory
@@ -47,7 +47,7 @@ archive it"), draw the conclusion if signal is sufficient, and launch the NEXT r
 finding — in parallel. Keep rounds going continuously until the user intervenes.
 
 **Don't be hasty.** Killing/restarting processes recklessly wasted hours. Think, check time, reuse
-work. Relates to [[feedback-online-rl-is-the-spine]], [[feedback-never-stop]], [[feedback-dev-loop]].
+work. Relates to [[feedback_online_rl_is_the_spine]], [[feedback_never_stop]], [[feedback_dev_loop]].
 
 **Kaggle dataset-version race (2026-07-22, r95b fill v2).** `kaggle datasets status` reports
 the PREVIOUS version's "ready" while a new version is still processing — a kernel pushed

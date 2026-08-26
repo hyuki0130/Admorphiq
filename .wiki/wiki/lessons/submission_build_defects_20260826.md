@@ -7,6 +7,8 @@ verdict: Four defects in one 40-line build script, all found by pushing the KERN
 
 # Four defects in one build script, and why pushing the kernel alone found them
 
+> Two operational traps that made a submission measure something other than what it shipped.
+
 The submission build was committed for the first time (the 0.20 card's never was —
 [[submission_not_reproducible_20260825]]). Pushing the KERNEL without consuming a submission slot
 turned up four defects, each invisible locally.

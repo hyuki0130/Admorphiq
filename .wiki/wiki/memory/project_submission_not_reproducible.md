@@ -1,5 +1,5 @@
 ---
-name: project-submission-not-reproducible
+name: project_submission_not_reproducible
 description: "CORRECTED — the 0.20 card IS rebuildable (solvers live in world_model_agent.py, not adapters25); what is missing is the BUILD PROCEDURE: no kernel-metadata, no push script, no dataset-version to commit mapping"
 metadata:
   type: project

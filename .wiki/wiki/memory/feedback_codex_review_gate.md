@@ -1,5 +1,5 @@
 ---
-name: feedback-codex-review-gate
+name: feedback_codex_review_gate
 description: "ALL planning, design, test plans, AND analyses must be reviewed with Codex (codex exec) before acting on them — user standing order 2026-07-14"
 metadata: 
   node_type: memory

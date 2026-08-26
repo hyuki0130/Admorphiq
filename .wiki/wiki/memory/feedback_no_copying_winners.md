@@ -1,5 +1,5 @@
 ---
-name: feedback-no-copying-winners
+name: feedback_no_copying_winners
 description: "NEVER copy Duck/winner harness code — reference-only for understanding; we must design a BETTER original solution (user standing order, 2026-07-14)"
 metadata: 
   node_type: memory

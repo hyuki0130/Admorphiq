@@ -1,5 +1,5 @@
 ---
-name: feedback-online-rl-is-the-spine
+name: feedback_online_rl_is_the_spine
 description: "The performance lever for ARC-AGI-3 is TEST-TIME ONLINE CNN+RL (learn fresh per game), NOT sample-specific algorithm primitives or offline-on-public RL — both fail to transfer to the 110 private games"
 metadata: 
   node_type: memory
@@ -35,5 +35,5 @@ preview, 12.58%): CNN + RL learned FRESH PER GAME AT TEST TIME.**
 **How to apply:** the deployed agent should be the online test-time CNN+RL learner. Validate on the
 25 public games — since it learns fresh per game, all 25 are effectively unseen = the generality
 test. Sources: medium.com/@dries.epos 1st-place writeup; github.com/DriesSmit/ARC3-solution;
-arcprize.org/blog/arc-agi-3-preview-30-day-learnings. Relates to [[project-general-direction-worldmodel]],
-[[project-bc-transfer-ceiling]], [[feedback-rl-not-abandoned]].
+arcprize.org/blog/arc-agi-3-preview-30-day-learnings. Relates to [[project_general_direction_worldmodel]],
+[[project_bc_transfer_ceiling]], [[feedback_rl_not_abandoned]].

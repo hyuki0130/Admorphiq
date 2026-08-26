@@ -56,3 +56,6 @@ Both failures share a shape: **the plan was in the repository and the session ac
 - [[architecture_self_improving_agent]] — where "Goal: 25/25 generic clears" is stated
 - [[rounds/r100_tool-selection-wall]] — the sweep that produced stage 1's work list
 - [[rounds/r99_detection-dispatch]] — the axis that is NOT the plan, and its doctrine conflict
+
+The machine-local memory directory is mirrored into this wiki so it survives a change of
+machine; its catalog is [[memory/README]].

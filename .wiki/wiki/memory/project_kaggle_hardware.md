@@ -1,5 +1,5 @@
 ---
-name: project-kaggle-hardware
+name: project_kaggle_hardware
 description: "ARC-AGI-3 2026 Kaggle eval hardware is g4-standard-48 (96GB VRAM), NOT T4 16GB — corrects a foundational CLAUDE.md assumption"
 metadata: 
   node_type: memory

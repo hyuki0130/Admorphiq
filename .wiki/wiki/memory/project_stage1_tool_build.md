@@ -1,5 +1,5 @@
 ---
-name: project-stage1-tool-build
+name: project_stage1_tool_build
 description: Stage 1 = build frame-only rule-recovery tools until the 25 sample games clear; how to build one, and the scoreboard
 metadata:
   type: project
@@ -28,4 +28,4 @@ when there is no plan. Measure the FULL 25 before keeping any tool change — it
 ceph-build at PAR=25.
 
 Segmentation lives in ONE place, `tools/segment.py`, with its own tests. See
-[[feedback-measure-full-25-before-keeping]] and [[policy-two-stage-tools-then-llm]].
+[[feedback_measure_full_25]] and [[policy_two_stage_tools_then_llm]].

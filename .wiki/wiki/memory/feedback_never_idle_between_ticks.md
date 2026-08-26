@@ -1,5 +1,5 @@
 ---
-name: feedback-never-idle-between-ticks
+name: feedback_never_idle_between_ticks
 description: "Never wait for the next cron tick — the cron is a watchdog, not a work queue; keep measuring continuously"
 metadata: 
   node_type: memory

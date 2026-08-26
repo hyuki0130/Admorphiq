@@ -27,7 +27,7 @@ Round 1 regression on 2026-04-20 revealed that v2 version hashes break 12 of our
 ### Every `wiki/**/*.md` page must answer:
 1. **What is this?** (one-sentence summary in a `>` blockquote at the top)
 2. **How did we arrive at this claim?** (provenance — link to raw/traces, raw/commits.md, source code line ranges)
-3. **What related pages should a reader consult?** (explicit `Related` section with `[[...]]` backlinks)
+3. **What related pages should a reader consult?** (explicit `Related` section with ``[[...]]`` backlinks)
 4. **What would falsify this claim?** (when writing lessons/debug — the symptom that means "this advice no longer applies")
 
 ### History over state
@@ -40,7 +40,7 @@ When in doubt, describe the *journey*:
 Every new claim should cite ≥1 concept page, ≥1 lesson page, and ≥1 peer game page when applicable.
 
 ### Link targets must exist
-Before writing `[[X]]`, make sure X exists or add a TODO to create it.
+Before writing ``[[X]]``, make sure X exists or add a TODO to create it.
 
 ### Rollup in index.md
 Regenerate `.wiki/wiki/index.md` via `scripts/generate_wiki_index.py` after each batch.

@@ -1,5 +1,5 @@
 ---
-name: project-leaderboard-2026-08-and-method
+name: project_leaderboard_2026_08_and_method
 description: "LB re-checked 2026-08-25: top = 5.99 (cstl), 2nd 4.58 (Tufa), 12th 2.66 — the old '1.38-1.61 top band' is STALE by 4x. Ours 0.20. Goal: clear all games + chase within August. Measurement method = ceph-build 64c, ALL 25 games in parallel."
 metadata:
   type: project

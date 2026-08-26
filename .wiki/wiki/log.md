@@ -663,3 +663,37 @@ Key state as of 2026-07-02: deployed card = online-RL + potential-based reward s
 DEPTH is the ceiling; the REWARD-shaping axis is the one working lever (M0R0/CD82 → L2). Reliable
 metric = 9 L1-stuck games @3000 × 3 seeds, judged by mean game_score.
 Provenance: this session; see lessons/online_rl_sprint_round_log.md + memory/project_online_rl_baseline.md.
+
+## 2026-08-27 round R101 — Stage-one tools: read the DATA, plan inside the budget, fan out
+
+Stage one is "the generic tools clear all 25 sample games". The generic path started the day at
+**0.0200** with 16 of 25 clearing nothing and ended at **0.0651** with 9 of 25 clearing at least
+one level, no game regressed.
+
+Three findings did the work, and each corrected how the previous ones had been reached:
+
+1. **Read each game's own source and level data instead of probing it.** Both live in one python
+   file per game under `environment_files/`. `scripts/read_sample_games.py` and
+   `scripts/dump_sample_levels.py` read all 25 games and 179 levels with the engine never started.
+   One read of g50t's `step()` settled in seconds what eight live probes could not.
+2. **Thirteen of the 25 declare a per-level ACTION BUDGET and END on overrun** — 20 actions on one
+   level, 13 on another. The searching path runs 4,000-8,000 per game, so it was disqualified
+   before it started. ⛔ This was ALREADY in the wiki: `games/LP85.md`, `games/WA30.md` and
+   `games/LS20.md` each named their StepCounter, and 19 pages mentioned "action budget". The graph
+   was fine; the traversal was not.
+3. **Selectivity is a property of the TOOL SET.** A tool bidding 0.3 for "the shape looks vaguely
+   right" took an untouched game from 0.4762 to 0.0476 — a 20x net loss bought by a gain of zero.
+   `detect` now returns 0.0 without a plan, and a tool is kept only on a full-25 measurement.
+
+Tools registered: stencil (ft09 4/6, first level in 4 actions vs 43 human), track (lp85 L1 in 5),
+mirror (m0r0 L1 in 19 vs 30 human and 604 for the searching path), then seven more from a
+fifteen-game parallel fan-out — subroutine (sb26 **8/8**), rule_rewrite (tr87 **6/6**),
+socketmerge (su15 5), assemble (cn04 4), pattern_cast (sc25 2), cover_targets (re86 2),
+linkage (s5i5 1).
+
+Pages touched: `rounds/r101_tool-development.md`, `sample_games_mechanics.md`,
+`concepts/action_budget.md`, `concepts/swallowed_action.md`,
+`lessons/tool_selectivity_20260827.md`, `parallel_build_protocol.md`,
+`games/{FT09,LP85,M0R0,SB26,TR87,SU15,CN04,SC25,RE86,S5I5}.md`, `Rounds.base`, `Lessons.base`,
+`Games.base`.
+Provenance: this session; `OPERATING_RULES.md` rules 7a and 8.

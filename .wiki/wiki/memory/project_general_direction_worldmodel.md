@@ -1,5 +1,5 @@
 ---
-name: project-general-direction-worldmodel
+name: project_general_direction_worldmodel
 description: "The general path to private-game score = object-centric perception + online (test-time) world model + search planning + RL; BC is a warm-start, not the destination"
 metadata: 
   node_type: memory
@@ -25,12 +25,12 @@ public gold:
 
 **Why:** the top team (StochasticGoose, ≈1.21) is CNN+RL, but the load-bearing
 half is online RL that adapts per game at TEST time — not BC on a public set.
-We initially copied the transferable-weak half (see [[project-bc-transfer-ceiling]]).
+We initially copied the transferable-weak half (see [[project_bc_transfer_ceiling]]).
 This direction matches Chollet's framing (efficiency of skill acquisition in
 novel situations).
 
 **How to apply:** two-layer plan — ship BC v6 for M1 (safety net), build this
 general agent as the R27+ climb toward M2/final/the $350K bonus. Don't
 blind-benchmark the top team; copy the *online-learning* idea, not the
-public-gold BC. RL redesign tracked in [[feedback-rl-not-abandoned]]. Doc:
+public-gold BC. RL redesign tracked in [[feedback_rl_not_abandoned]]. Doc:
 docs/sprint_m1_architecture_20260625.md.

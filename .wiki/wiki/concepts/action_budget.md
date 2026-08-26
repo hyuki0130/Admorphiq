@@ -42,9 +42,8 @@ Declared in each game's own level data under names the designers chose — `Step
 **A searching agent is disqualified before it starts.** The generic path runs 4,000–8,000 actions
 per game and opens hundreds of states per level; these budgets are 20–320. The stall diagnostic's
 "1,500 steps, 500 states, zero levels" was never a search-breadth problem — the game had been lost
-hundreds of actions earlier and the searcher was still expanding. This is why the tools that work
-([[stencil_mechanic]], and the track and mirror families) RECOVER a rule and act, rather than
-explore and then decide.
+hundreds of actions earlier and the searcher was still expanding. This is why the tools that work — the stencil, track and mirror families — RECOVER a rule and
+act, rather than explore and then decide. See [[../rounds/r101_tool-development]].
 
 It also aligns the boards with the metric: RHAE scores `(human/agent)²` per level, and these
 budgets sit near the human envelope.

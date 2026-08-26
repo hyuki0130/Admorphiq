@@ -80,3 +80,6 @@ Next action: T-D `induce`, starting from ft09 — the extreme case at 99% inert 
 - [[rounds/r101_tool-development]] — this round
 - [[rounds/r100_tool-selection-wall]] — the sweep proving selection is not the problem
 - [[tool_selector]] — the runtime decision table (its `toggle` row was corrected 2026-08-26)
+
+How each candidate offline model is guided to the right tool inside its own context budget is
+[[model_guidance_spec]].

@@ -1,5 +1,5 @@
 ---
-name: policy-two-stage-tools-then-llm
+name: policy_two_stage_tools_then_llm
 description: TOP POLICY — build generic tools to 25/25 sample clears myself, THEN the LLM patches them on hidden games; order, machines, and what is NOT the plan
 metadata:
   type: project

@@ -7,6 +7,8 @@ verdict: The adapter port is a DISPATCH change, not a rewrite — every adapter 
 
 # The 6x gap, and why closing it is cheaper than it looked (2026-08-25)
 
+> Porting an adapter changes what the shipped dispatcher does, so it is a card change and must be re-measured on the full 25.
+
 ## The measured gap
 
 Both cards measured the same afternoon on ceph-build, 25 games each, in parallel

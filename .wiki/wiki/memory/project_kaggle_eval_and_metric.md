@@ -1,5 +1,5 @@
 ---
-name: project-kaggle-eval-and-metric
+name: project_kaggle_eval_and_metric
 description: "ARC-AGI-3 eval = 110 PRIVATE unseen games; metric = efficiency SQUARED (min(human/agent,1)^2); leaderboard reality + submission mechanics"
 metadata: 
   node_type: memory

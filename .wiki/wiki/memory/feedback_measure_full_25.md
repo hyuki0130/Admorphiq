@@ -1,5 +1,5 @@
 ---
-name: feedback-measure-full-25-before-keeping
+name: feedback_measure_full_25
 description: Measure the full 25 games before keeping any tool change; score a tool by net card effect, never by its own game
 metadata:
   type: feedback

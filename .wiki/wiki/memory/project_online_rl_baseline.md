@@ -1,5 +1,5 @@
 ---
-name: project-online-rl-baseline
+name: project_online_rl_baseline
 description: "Deployed online-RL card's honest RHAE baseline = full-25 mean game_score 0.0051 (14/25 clear, mostly L1); depth is the ceiling; learner saturated to exploration tweaks"
 metadata:
   node_type: memory
@@ -27,5 +27,5 @@ planning) or a stronger learner — not another exploration tweak.
 **One kept hint:** R16's object-click prior got CD82 (0.0004->0.0074) and M0R0 to LEVEL 2 — the only
 L2 clears ever seen on these games. It net-regressed the 9-subset *efficiency*, but was judged on
 the wrong metric; whether it helps the FULL-25 TOTAL (via depth) is the open question. Depth is the
-real lever. Relates to [[feedback-online-rl-is-the-spine]], [[feedback-measurement-discipline]],
-[[project-general-direction-worldmodel]].
+real lever. Relates to [[feedback_online_rl_is_the_spine]], [[feedback_measurement_discipline]],
+[[project_general_direction_worldmodel]].

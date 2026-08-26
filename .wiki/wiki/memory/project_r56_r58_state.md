@@ -222,7 +222,7 @@ harness). NEXT (needs GPU): flip HARNESS_KERNEL_API=1, measure agent25 above the
 plateau; then Phase-2. NHN GPU sizing: 2×V100 (64GB, ₩7,898/h) fits gemma4-31b-q8 (~35-40GB)
 for correctness; final 9h-throughput check must be on Kaggle (RTX PRO 6000 96GB). Codex CLI:
 ChatGPT account only serves model `gpt-5.6-sol` (all -codex/o3 rejected). Round page:
-[[.wiki/wiki/rounds/r92_agent25-kernel-bridge]].
+`rounds/r92_agent25-kernel-bridge`.
 
 **⏸ RESUME POINT (2026-07-20 — teammate weekly limit, resets Jul 21 20:00 KST).** User
 directive: pause lanes now, resume when the limit resets; meanwhile Kaggle notebook re-push

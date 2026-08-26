@@ -1,5 +1,5 @@
 ---
-name: project-bc-transfer-ceiling
+name: project_bc_transfer_ceiling
 description: "BC policy trained on 25-game PUBLIC gold has a transfer ceiling; eval is 110 PRIVATE games — measure transfer, don't trust the proxy score"
 metadata: 
   node_type: memory
@@ -31,5 +31,5 @@ overfit; on the private 110 BC alone lands near the exploration floor.
 
 **How to apply:** treat 3.41% as a dev proxy, NOT a leaderboard predictor. BC v6
 still ships for M1 as the safety net, but the spine for the private leaderboard
-must learn at test time — pivot weight to [[project-general-direction-worldmodel]].
-See [[project-kaggle-eval-and-metric]], [[feedback-rl-not-abandoned]].
+must learn at test time — pivot weight to [[project_general_direction_worldmodel]].
+See [[project_kaggle_eval_and_metric]], [[feedback_rl_not_abandoned]].

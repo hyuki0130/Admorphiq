@@ -1,5 +1,5 @@
 ---
-name: project-leaderboard-first-score
+name: project_leaderboard_first_score
 description: "First hidden-set LB score 0.14 (v6, 2026-07-14); measured public-proxy→hidden transfer ~13%; LB top band 1.38–1.61 (supersedes old \"top 12.58%\" anchor)"
 metadata: 
   node_type: memory

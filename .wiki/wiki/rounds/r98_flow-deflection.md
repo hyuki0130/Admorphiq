@@ -3140,7 +3140,7 @@ level's walk at all, and idx0 is the level the contract is built on.
 
 Question 7 answered first, and it was not a contradiction: idx0's stream walks seven cells
 along the piece's top because the reach binds only LANDING droplets. Its single source
-(`falling_sources = [[9, 0, 1]]`, one lane, one row) is a free fall, and a free fall walks
+(`falling_sources = `[9, 0, 1]``, one lane, one row) is a free fall, and a free fall walks
 unbounded. Captured and replayed, the model reproduces idx0's whole spill **cell for cell —
 zero invented, zero missed**.
 
@@ -6400,7 +6400,7 @@ hazard cells, absorber count, falling sources. Verified populated rather than as
 ```
 outcome: cleared
 board  : {"size": 16, "direction": [1, 0], "pieces": [5], "sinks": [[13, 4], [13, 10]],
-          "hazards": [[15, 3], [15, 9]], "absorbers": 0, "falling_sources": [[9, 0, 1]]}
+          "hazards": [[15, 3], [15, 9]], "absorbers": 0, "falling_sources": `[9, 0, 1]`}
 ```
 
 — and those hazard cells are idx0's, matching the committed contract capture, so the fingerprint
@@ -6587,8 +6587,8 @@ three cross-level boards came back at 36, 34 and 64 error — worse than any idx
 reason is not propagation:
 
 ```
-cross_idx0: standing=[] falling=[[9, 0, 1]]   invented=0 missed=36
-cross_idx1: standing=[] falling=[[10, 0, 14]] invented=0 missed=34
+cross_idx0: standing=[] falling=`[9, 0, 1]`   invented=0 missed=36
+cross_idx1: standing=[] falling=`[10, 0, 14]` invented=0 missed=34
 cross_idx2: standing=[] falling=[[1,0,14], [9,0,14], [14,0,14]] invented=0 missed=64
 ```
 

@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 174.
+**Total pages**: 239.
 
 ## Games (25)
 
@@ -77,8 +77,9 @@ category, drill into specific pages.
 
 - [[strategies/brittle/internal_method_call.md]] — Direct calls to obfuscated game-internal methods. Maximum v1 score, zero generalization. Do not recommend — document only for refactor visibility.
 
-## Concepts (cross-game domain entities) (11)
+## Concepts (cross-game domain entities) (13)
 
+- [[concepts/action_budget.md]] — A per-level cap on actions that ENDS THE GAME when exceeded — thirteen of the twenty-five sample games declare one, as low as 13 actions, and it is drawn on screen.
 - [[concepts/bit_encoding.md]] — A row of clickable cells encodes a binary number (or opcode) by their toggle state. A separate "play" button executes the encoded program, usually moving a cursor/player on another part of the frame.
 - [[concepts/frame_hashing.md]] — A compact fingerprint of the current frame used to deduplicate states in BFS/graph search. Enables tractable state-space exploration despite the nominally huge frame space.
 - [[concepts/gf2_toggle_stencil.md]] — Any click-grid where each click flips a fixed cell subset is a linear system over GF(2); the solution is a click *subset* (`2^n` candidates), not an ordered sequence (`n!`). Measure the stencil `A` empirically, then solve `A·x = b`.
@@ -89,16 +90,20 @@ category, drill into specific pages.
 - [[concepts/rare_color_click.md]] — On some games the level advances when the agent clicks a specific pixel whose color is distinctly rare in the frame. Cheap to solve: cluster by color, find the smallest cluster of a non-background color, click its centroid.
 - [[concepts/rotation_state.md]] — Some games expose piece orientation (0°, 90°, 180°, 270°) as the discrete state variable. An action rotates the selected piece by one step; the goal is to match a reference orientation configuration.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
+- [[concepts/swallowed_action.md]] — An action that arrives while the board is animating is CONSUMED WITHOUT EFFECT — it costs budget, changes nothing, and teaches a searcher a wall that is not there.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (37)
+## Lessons (engineering wisdom from past incidents) (45)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
+- [[lessons/adapter_port_is_a_dispatch_change_20260825.md]] — Porting an adapter changes what the shipped dispatcher does, so it is a card change and must be re-measured on the full 25.
+- [[lessons/adapter_port_progress_20260825.md]] — L0/L1 are cleared by the rare-colour sweep. **L2** is the ring-permutation board — "2 targets +
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71
 - [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
+- [[lessons/deployment_path_is_not_the_measured_path_20260826.md]] — The benched configuration and the shipped one differ; a number measured on one is not a number about the other.
 - [[lessons/duck_harness_teardown_20260714.md]] — The Duck (Tufa, M1 #1, 1.21%) is a Qwen 3.6 27B FP8 code-REPL agent: the game is
 - [[lessons/dynamic_obstacle_execution_20260723.md]] — A moving obstacle poisons EVERY static inference layer in turn — wall
 - [[lessons/env_metadata_duplicate_game_id_20260719.md]] — 15 of 25 games kept a stale old-hash dir whose metadata.json claimed the NEW game_id; arc_agi resolves duplicate ids by rglob scan order, so APFS (Mac) and ext4 (ceph-build) silently loaded DIFFERENT game content under the SAME reported game_id.
@@ -111,6 +116,7 @@ category, drill into specific pages.
 - [[lessons/gf2_lights_out_stencil_20260423.md]] — R16-R18 gave `_plan_lights_out` a GF(2) stencil + Gaussian-elimination solver + delta-chaining; it clears FT09 L1 but L2+ stays blocked because the diff-sorted top cells are coupled display feedback, not real toggle buttons.
 - [[lessons/hardcoded_is_anti.md]] — Any hardcoded mapping of `level → solution` is a bet that level layouts stay identical. They do not. Every hardcoded solver eventually breaks; the only question is how much score it takes with it when it does.
 - [[lessons/inferential_budget_vs_algo_20260423.md]] — `scripts/probe_inferential_direct.py` ran the I-Agent against 10
+- [[lessons/instrument_validity_20260825.md]] — Nine measurement failures in one session, none of them in the thing being measured.
 - [[lessons/ka59_v2_action6_semantic_20260423.md]] — The `ka59-9f096b4a` (v1) → `ka59-38d34dbb` (v2) hash rotation
 - [[lessons/lb_top_team_research_20260714.md]] — M1 top-3 all use offline LLM brains (Gemma-4-31B ×2, Qwen 3.6 27B); the untried lever for us is vision-LLM-as-policy; our model pick and brittle-purge direction are independently validated.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
@@ -125,9 +131,13 @@ category, drill into specific pages.
 - [[lessons/size_floor_and_settle_reads.md]] — Both surfaced repeatedly on 2026-07-14 (SB26, CD82) and each has a general fix.
 - [[lessons/sokoban_search_explosion_20260423.md]] — Frame-hash BFS cannot clear 2-player Sokoban (KA59) inside the Kaggle envelope — branching ~24/step makes a depth-10 search ~10^13 states, far beyond the 15k-state cap. The fix is a specialist `_plan_push_bfs` over `(player_xy, block_set)` tuples with an A* Manhattan-to-goal heuristic.
 - [[lessons/su15_l1_singleton_colors_20260423.md]] — SU15 looks like the canonical merge puzzle, so `_plan_merge`
+- [[lessons/submission_build_defects_20260826.md]] — Two operational traps that made a submission measure something other than what it shipped.
+- [[lessons/submission_not_reproducible_20260825.md]] — the submission path is `kaggle_submission.py` → `KaggleChainedAgent` →
+- [[lessons/tool_selectivity_20260827.md]] — Asked directly, after a day of it: "you have all the game data and you still cannot solve them —
 - [[lessons/tools_verdict_dossier_20260714.md]] — "Hand-crafted tools are harmful" is a MISREADING of Duck's claim — game-SPECIFIC tools hurt,
 - [[lessons/tr87_dial_match_hypothesis_falsified_20260713.md]] — **✅ RESOLVED 2026-07-14 (verification-only internal read).** The win rule is a
 - [[lessons/trust_regression_not_commits.md]] — Commit messages often reflect a single-game test or an aspirational total. Only a full 25-game regression run produces a trustworthy score. Always cite the regression artifact, never the commit message.
+- [[lessons/unanimous_wrong_answers_are_a_prompt_defect_20260823.md]] — Three independent offline models — gemma4-31b, gpt-oss-120b and qwen3.8-27b —
 - [[lessons/v2_hash_obfuscation.md]] — When the ARC Prize API serves a second version hash of a game, game internals (attribute names, sprite tags, method names, level layouts) are re-obfuscated — so any solver that reads those internals fails silently.
 - [[lessons/vllm_cross_session_nondeterminism_20260715.md]] — A "control" arm that should replicate a prior run's control arm — same
 
@@ -151,8 +161,9 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (60)
+## Top-level dispatch (architecture, selector, log, schema) (115)
 
+- [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
 - [[rounds/r07_deploy-online-rl.md]] — Decided to deploy online-RL solo (not world-model, not ensemble) — world-model is sample-specific and ensemble is metric-negative under squared efficiency.
@@ -188,10 +199,58 @@ category, drill into specific pages.
 - [[rounds/r50b_honest-k8.md]] — Leakage-free K=8 on Kaggle-identical HW — gemma4-31b-q8 0.133/0.139 is the real EWM baseline; gpt-oss-120b collapses to 0.039; prior "hard game unlocks" were held-out-leak mirages
 - [[rounds/r51_fewshot-prior-sweep.md]] — Two-axis sweep (few 15→40, mechanics prior) x 2 models — averages flat but effects are strongly game- and model-dependent; per-game union 0.211 motivates runtime adaptive-config synthesis
 - [[rounds/r52_ewm-integration.md]] — Productized the R49-R51 EWM into the deployed agent (GF_EWM, default OFF) — mechanically works but scores identically to baseline; the no-change pruning signal is redundant with empirical exploration, and runtime fit is far below bench fit
+- [[memory/README.md]] — The machine-local memory directory copied into the wiki, because that directory does not travel and the wiki does.
 - [[architecture_self_improving_agent.md]] — Per unseen game, the offline runtime brain (the MEASURED-best model on 96GB — currently gemma4-31b-q8 per R50b; re-benched on this harness; candidates gemma4-31b / gpt-oss-120b / Qwen 3.6-27B) SELECTS and APPLIES a library of our
 - [[tool_selector.md]] — The local LLM's decision table — map what you OBSERVE in the first frames to the FIRST tool to run, with how-to-use, falsification (when it's failing → switch), and next-best. Perfect first pick within the tight budget.
 - [[architecture.md]] — Three-layer agent design — Cognition (LLM) / Memory (Wiki) / Action (Strategies) — with explicit dev-time vs Kaggle-time boundaries and a self-improvement loop.
+- [[memory/feedback_codex_review_gate.md]] — "ALL planning, design, test plans, AND analyses must be reviewed with Codex (codex exec) before acting on them — user standing order 2026-07-14"
+- [[memory/feedback_dev_loop.md]] — Failure → document → redesign → delegate → test → repeat loop for all development work
+- [[memory/feedback_english_only_artifacts.md]] — All docs, code, comments, wiki pages, commit messages must be English; Korean only in chat with user
+- [[memory/feedback_generic_not_game_specific.md]] — When strengthening math/algorithm layers, every decision branch must run on frame observations or feature signatures, never game-title strings
+- [[memory/feedback_infinite_loop.md]] — Run test→log→analyze→fix→retest loop indefinitely until all 25 games solved, no rush for quick results
+- [[memory/feedback_llm_drives_loop.md]] — Qwen is the game-completion agent — comprehend / pick / execute / fix. Claude Code is the implementation helper for code fixes Qwen proposes, not the unilateral designer
+- [[memory/feedback_measure_full_25.md]] — Measure the full 25 games before keeping any tool change; score a tool by net card effect, never by its own game
+- [[memory/feedback_measurement_discipline.md]] — "Timestamp every output; run measurements as background shells (rate-limit-proof); one live SUMMARY.txt per round; never discard partial results — analyze and advance"
+- [[memory/feedback_never_idle_between_ticks.md]] — "Never wait for the next cron tick — the cron is a watchdog, not a work queue; keep measuring continuously"
+- [[memory/feedback_never_stop.md]] — Never say "let's continue next session" or "we did a lot today" — keep working in infinite loop
+- [[memory/feedback_no_copying_winners.md]] — "NEVER copy Duck/winner harness code — reference-only for understanding; we must design a BETTER original solution (user standing order, 2026-07-14)"
+- [[memory/feedback_no_python_augmentation.md]] — Do NOT add Python-level post-processing to patch LLM mistakes. Enrich the wiki so the LLM reasons correctly from frame observations alone.
+- [[memory/feedback_online_rl_is_the_spine.md]] — "The performance lever for ARC-AGI-3 is TEST-TIME ONLINE CNN+RL (learn fresh per game), NOT sample-specific algorithm primitives or offline-on-public RL — both fail to transfer to the 110 private games"
+- [[memory/feedback_parallel_build.md]] — Tool development runs as one background agent per game, integrated centrally and kept only on a full-25 measurement
+- [[memory/feedback_phase_commit.md]] — Commit per phase with docs update, code review, and push convention
+- [[memory/feedback_preserve_framework.md]] — When a test/framework is portable by design, do not fold local-environment coupling into it; build a separate driver instead
+- [[memory/feedback_proactive_doc_sync.md]] — Update CLAUDE.md and project memories without being asked when phase/state changes
+- [[memory/feedback_rl_not_abandoned.md]] — "One bad RL run is not a verdict on the method; validate multiple versions / checkpoints with keep-best before concluding, and don't blind-benchmark the top team"
+- [[memory/feedback_runner_budget_override.md]] — Never lower total_budget in scripts/run_ensemble.py below class default without explicit justification — silent regressions follow
+- [[memory/feedback_submission_user_decides.md]] — NO automatic Kaggle submissions — the user decides when to submit (standing order 2026-07-14); also minimize GPU quota usage (CPU-only pushes for LLM-free kernels, batched experiments only)
+- [[memory/feedback_verify_via_regression.md]] — Trust scripts/ensemble_results.json and full 25-game runs over commit messages
+- [[memory/feedback_wiki_doctrine.md]] — The .wiki/ directory must support LLM reasoning, not just document current state; write history + concepts + lessons + reasoning chains, heavily cross-linked
 - [[log.md]] — Append-only chronological record of every dev-time round and significant infra change. Grep `^## \[` for latest entries.
+- [[model_guidance_spec.md]] — How each candidate offline model is guided to the right tool within its own context budget.
+- [[parallel_build_protocol.md]] — User directive, 2026-08-27: *"백그라운드로 도구별로 개발하도록 붙여서 속도 높여! 언제까지 하나씩
+- [[memory/policy_two_stage_tools_then_llm.md]] — TOP POLICY — build generic tools to 25/25 sample clears myself, THEN the LLM patches them on hidden games; order, machines, and what is NOT the plan
+- [[memory/project_bc_transfer_ceiling.md]] — "BC policy trained on 25-game PUBLIC gold has a transfer ceiling; eval is 110 PRIVATE games — measure transfer, don't trust the proxy score"
+- [[memory/project_cpu_dev_vm_ceph_build.md]] — "GCP credits EXHAUSTED (real money now) — for CPU-only work use the ceph-build VM instead: ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build (64 cores/251GB RAM/Python 3.12). GCP only when GPU is truly required, with user awareness."
+- [[memory/project_current_state.md]] — Admorphiq ARC-AGI-3 — verified 22/25 games, 56/182 levels (~30.77%); commits claim 25/25/69 but unverified
+- [[memory/project_dev_test_env.md]] — "The Kaggle-matched GCP dev/test environment + how to run tests (score_efficiency, orchestrator_probe), model candidates, and the local-Mac limits — for cross-session continuity"
+- [[memory/project_ensemble_strategies.md]] — Current ensemble strategy count, categories, and target games for each new strategy
+- [[memory/project_game_analysis.md]] — Detailed analysis of each game's mechanics, what works, what doesn't, and hypotheses for solving
+- [[memory/project_general_direction_worldmodel.md]] — "The general path to private-game score = object-centric perception + online (test-time) world model + search planning + RL; BC is a warm-start, not the destination"
+- [[memory/project_kaggle_eval_and_metric.md]] — "ARC-AGI-3 eval = 110 PRIVATE unseen games; metric = efficiency SQUARED (min(human/agent,1)^2); leaderboard reality + submission mechanics"
+- [[memory/project_kaggle_hardware.md]] — "ARC-AGI-3 2026 Kaggle eval hardware is g4-standard-48 (96GB VRAM), NOT T4 16GB — corrects a foundational CLAUDE.md assumption"
+- [[memory/project_leaderboard_2026_08_and_method.md]] — "LB re-checked 2026-08-25: top = 5.99 (cstl), 2nd 4.58 (Tufa), 12th 2.66 — the old '1.38-1.61 top band' is STALE by 4x. Ours 0.20. Goal: clear all games + chase within August. Measurement method = ceph-build 64c, ALL 25 games in parallel."
+- [[memory/project_leaderboard_first_score.md]] — "First hidden-set LB score 0.14 (v6, 2026-07-14); measured public-proxy→hidden transfer ~13%; LB top band 1.38–1.61 (supersedes old \"top 12.58%\" anchor)"
+- [[memory/project_llm_selection.md]] — Qwen 3 8B is primary Kaggle candidate; 14B as reserve; Gemma 4 26B MoE excluded due to T4 VRAM; edge variants dropped
+- [[memory/project_online_rl_baseline.md]] — "Deployed online-RL card's honest RHAE baseline = full-25 mean game_score 0.0051 (14/25 clear, mostly L1); depth is the ceiling; learner saturated to exploration tweaks"
+- [[memory/project_phase8_restart.md]] — Linear Phase 8 plan replaced by agentic loop with Cognition/Memory/Action separation and dev/Kaggle time boundaries
+- [[memory/project_phase8_wiki.md]] — Admorphiq Phase 8 uses markdown knowledge base (no vector DB) readable by Qwen 3 8B offline on Kaggle
+- [[memory/project_r56_r58_state.md]] — "R56-R58 state (2026-07-15 dawn): generic kernel library + script25 adapters (ft09 3/6 super-human, sb26 first live clear), win-condition typology + GoalLedger, explanation-layer protocol; Codex verdicts list; VM/engagement runs in flight"
+- [[memory/project_stage1_tool_build.md]] — Stage 1 = build frame-only rule-recovery tools until the 25 sample games clear; how to build one, and the scoreboard
+- [[memory/project_submission_not_reproducible.md]] — "CORRECTED — the 0.20 card IS rebuildable (solvers live in world_model_agent.py, not adapters25); what is missing is the BUILD PROCEDURE: no kernel-metadata, no push script, no dataset-version to commit mapping"
+- [[memory/project_unified_harness_r53.md]] — R53 unified self-improving harness — 6 from-scratch generic tools + retry loop; graph clears 3/9 legacy games; continuation = per-tool strengthening
+- [[memory/project_wiki_agent_first_run.md]] — 40-env Qwen 3 8B WikiAgent bench — 15/40 envs, 36/290 levels (12.41%), classification accuracy 45%
+- [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
+- [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear — three tools registered, the action-budget finding, and the selectivity rule that governs how tools are kept.
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
 - [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal
@@ -212,7 +271,13 @@ category, drill into specific pages.
 - [[rounds/r95_hypothesis-dsl.md]] — After R92 (from-scratch authoring: 0), R93 (small-card patching: works
 - [[rounds/r96_controlled-grid-dynamics.md]] — The proven R95 pipeline (family schema → grounding → verifier → compiler →
 - [[rounds/r97_self-extension.md]] — Can the offline model, facing a deliberately ablated enum vocabulary,
+- [[rounds/r98_flow-deflection.md]] — The third hypothesis family after R95 (cell-state) and R96 (movement). Its
+- [[rounds/r99_detection-dispatch.md]] — Two months of adapter work (R56–R84) reached 0.3296 on the script25 scoreboard while the
+- [[memory/reference_karpathy_llm_wiki.md]] — Full Karpathy "LLM Wiki" (2026-04-02) analysis in Korean is saved at docs/llm_wiki_karpathy_analysis_ko.md; gap table maps missing pieces to R23+ sub-rounds
+- [[sample_games_mechanics.md]] — ⛔ **The method correction that produced this page.** `OPERATING_RULES.md` rule 0 says stage one
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
+- [[tool_set_spec.md]] — The four generic tools, the order they are built in, and how each is tested.
+- [[top_policy.md]] — The two stages: I build the generic tools until they clear all 25 sample games; the LLM then patches and combines them on hidden games through the harness.
 
 ## Raw sources
 

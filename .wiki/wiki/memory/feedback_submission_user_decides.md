@@ -1,5 +1,5 @@
 ---
-name: feedback-submission-user-decides
+name: feedback_submission_user_decides
 description: NO automatic Kaggle submissions — the user decides when to submit (standing order 2026-07-14); also minimize GPU quota usage (CPU-only pushes for LLM-free kernels, batched experiments only)
 metadata:
   type: feedback

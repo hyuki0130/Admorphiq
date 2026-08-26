@@ -1,5 +1,5 @@
 ---
-name: feedback-rl-not-abandoned
+name: feedback_rl_not_abandoned
 description: "One bad RL run is not a verdict on the method; validate multiple versions / checkpoints with keep-best before concluding, and don't blind-benchmark the top team"
 metadata: 
   node_type: memory
@@ -31,5 +31,5 @@ two discards a promising lever.
 - Likely RL fixes: lower LR, stronger KL/BC anchor, drop +0.02/frame-change
   shaping (rewards wiggling), longer training.
 - Don't blind-benchmark the top team — copy the *online test-time learning*
-  idea, not the public-gold BC. See [[project-general-direction-worldmodel]],
-  [[project-bc-transfer-ceiling]], [[feedback-verify-via-regression]].
+  idea, not the public-gold BC. See [[project_general_direction_worldmodel]],
+  [[project_bc_transfer_ceiling]], [[feedback_verify_via_regression]].
