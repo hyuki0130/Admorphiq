@@ -839,6 +839,15 @@ generic tools alone, full 25:  0.0200 -> 0.0211
 only lp85 moved (0.0000 -> 0.0278); ft09 restored to 0.4762; 23 games byte-identical
 ```
 
+⛔ **The multi-ring attempt was measured and REVERTED (2026-08-27).** Loosening the ring reader
+so it could see a three-ring board made the track tool fire on ft09's lattice: **ft09 0.4762 ->
+0.0476, mean 0.0211 -> 0.0037** on the full 25, while the standalone ft09 probe still scored 4
+levels the whole time. A 20x net loss bought by a gain of zero. Reverted; the full 25 re-run is
+byte-identical to 0.0211. The attempt is kept at `/tmp` only — what survives is the lesson,
+[[../lessons/tool_selectivity_20260827]]: in a shared harness a tool's mistake steals another
+tool's turn, so selectivity is a harder constraint than solving, and a single-game probe cannot
+see the cost.
+
 **Open**: lp85 level 2 is three CONCENTRIC rings with their own control pairs and 2-pixel tiles.
 The reader now finds them (pitch candidates include multiples of the observed gap, because
 adjacency at the base gap links the rings and the peel then deletes the whole track), and the
