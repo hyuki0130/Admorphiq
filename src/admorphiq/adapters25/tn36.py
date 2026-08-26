@@ -40,6 +40,7 @@ from typing import Any
 from admorphiq.adapters25.base import (
     GameAction,
     GameAdapter,
+    available_action_ids,
     canonical_layer,
     click_action,
     has_frame,
@@ -79,6 +80,40 @@ class Adapter(GameAdapter):
     move program that lands the player on the goal, set bits, play."""
 
     GAME_ID = GAME_ID
+
+    @classmethod
+    def _detect_mechanic(cls, latest_frame: Any) -> bool:
+        """A program-synthesis board: opcode columns you set, a button that runs them,
+        and a sprite that has to end up on its goal.
+
+        Three conditions, all of them structure the mechanic requires rather than
+        anything one board happens to have.
+
+        1. **Click-only.** Bits are set and the program is run entirely by clicking;
+           the board offers no simple actions. MEASURED across the 25 public games:
+           five are click-only (ft09, lp85, r11l, s5i5, tn36), of which three are
+           already ported, so this narrows and does not decide.
+        2. **A program of at least two opcode columns, with a run button.** One column
+           is a single instruction, not a program; and columns you cannot run are not
+           this mechanic. Both members of the pair are required, which is how every
+           port in this package is written.
+        3. **Exactly two same-coloured sprites** — the player and the goal it must
+           match. A board with one has nothing to aim at; a board with more is not
+           this puzzle's win condition.
+
+        ⛔ Deliberately NOT written as "``_parse`` returned something". A detector built
+        on "my solver did not refuse" inherits the solver's permissiveness — measured in
+        this round, where sb26's parser accepted s5i5 and sc25. The parse is used to READ
+        the structure; the three conditions above are what is then required of it.
+        """
+        simple_ids, has_click = available_action_ids(latest_frame)
+        if simple_ids or not has_click:
+            return False
+        parsed = _parse(canonical_layer(latest_frame))
+        if parsed is None:
+            return False
+        columns, _play_click, blobs = parsed
+        return len(columns) >= 2 and len(blobs) == 2
 
     def __init__(self, giveup: int = _GIVEUP_DEFAULT) -> None:
         self.restart_on_game_over = True
