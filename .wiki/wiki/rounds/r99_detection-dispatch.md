@@ -403,7 +403,25 @@ receives the seven games that score zero, and code changes inside a zero stay ze
 |---|---|
 | ~~harness change~~ | ⛔ **excluded — contributes 0 on the public 25** |
 | detectors misfiring on private games | ⚠️ **weakened — 0 misfires on 15 unfamiliar boards** |
-| run truncated by the budget | open |
+| ~~run-to-run noise~~ | ⚠️ **weakened — the card is DETERMINISTIC** |
+| run truncated by the budget | **open — the standing explanation** |
+
+### The card is deterministic, so 0.18 is its value and not a draw
+
+I raised "0.20 and 0.18 are each one sample, so the gap may be noise" and never measured it. Six
+games, run twice each at the deployed configuration:
+
+```
+cd82 (0.946286, 6) x2    sb26 (0.846019, 8) x2    re86 (0.727294, 7) x2
+su15 (0.436789, 6) x2    sk48 (0.277778, 4) x2    r11l (0.259423, 4) x2
+```
+
+Identical to six decimals. So re-submitting the same card under the same conditions returns 0.18
+again; the number is the card's, not a draw from a distribution.
+
+⚠️ Two limits: this shows OUR card is deterministic, not that v3's was, and some hidden games may
+be stochastic in themselves (several public ones carry a `nondeterminism` signature). The gap
+still needs a cause — it just cannot be dismissed as sampling.
 
 ### Misfiring, tested on the least familiar boards available
 
