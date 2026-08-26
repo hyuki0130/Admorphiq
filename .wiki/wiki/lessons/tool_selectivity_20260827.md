@@ -57,6 +57,13 @@ ft09's lattice and taking turns from the tool that could solve it.
   (tiles, pitch, lattice, ring) is shared machinery and should be pinned with its own tests, so a
   fix for one board cannot silently loosen every tool at once.
 
+## The other half, found later the same day
+
+Selectivity is what a tool owes the SET. The set owes the tool something back: once a tool has
+CLEARED a level, the harness must not take the board off it on a transitional frame. Both defects
+lived in `harness/loop.py` and neither was reachable from inside any tool —
+[[harness_owns_the_routing_20260827]].
+
 ## Related
 
 - [[../rounds/r101_tool-development]] — the round, with both tools and every measurement.
