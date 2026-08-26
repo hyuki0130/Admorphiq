@@ -1705,3 +1705,40 @@ rather than one or two.
 ⚠️ Root cause NOT yet named, and deliberately not guessed at. What is established: the failure is in
 how the flow propagates, the board is 3x the source of the levels that work, and neither hazards nor
 a stale fall direction explains it.
+
+## An instrument that fails its own control — stopped before it became a conclusion
+
+Chasing sp80 level 3's propagation error produced a promising lead: the adapter passes
+`frozenset()` as `static_blocked` at BOTH planner call sites (sp80.py:470 and sp80.py:640), so the
+simulator plans as though the board holds no static obstacles at all — only the movable pieces
+block flow. `plan_flow_coverage_multi`'s own docstring says the goal fires when `simulate_flow`
+over "``static_blocked`` plus all placed pieces" satisfies EVERY region.
+
+Replaying `simulate_flow` on the committed placement:
+
+```
+static_blocked = frozenset()   (what the adapter passes)   ->  4 of 6 targets
+static_blocked = the board's real obstacles (452 cells)    ->  3 of 6 targets
+what the engine actually did                               ->  1 of 6 targets
+```
+
+⛔ **All three disagree, and that convicts the INSTRUMENT before it convicts the adapter.** The
+planner's goal fires only at 6 of 6, so the placement it accepted must score 6 of 6 under ITS
+inputs. My replay scores 4 — therefore my inputs are not the planner's, and nothing about the
+planner can be concluded from this replay yet.
+
+One reconstruction error was already found and fixed mid-measurement, which is why the numbers moved:
+pieces were first rebuilt from `self._exec_pieces`, giving **336** cells, when the board holds
+**80**. `_execute_step` assigns `self._exec_pieces[idx] = _cells_of_color(grid, self._movable_color)`
+— every cell of the movable colour, written into ONE index — so that array is not a per-piece
+position record and must not be read as one. Reading the placement off the board fixed that and the
+prediction still does not reproduce the planner's verdict, so at least one more input differs
+(stale targets from a different call, the source set, or the moment the placement was sampled).
+
+**The control this measurement needs, and did not have**: wrap `plan_flow_coverage_multi` to record
+its actual arguments and returned plan, then replay `simulate_flow` on exactly those. If the replay
+does not score 6 of 6 on the planner's own inputs, the replay is wrong — not the planner.
+
+⚠️ Recorded rather than pushed through, because this round has already paid five times for a claim
+built on something read rather than measured. The lead itself (empty `static_blocked`) is still
+worth testing; it is simply not tested yet.
