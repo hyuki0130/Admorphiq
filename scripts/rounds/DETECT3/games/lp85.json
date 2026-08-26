@@ -1,0 +1,29 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.002157,
+  "total_score_pct": 0.216,
+  "games": [
+    {
+      "game_id": "lp85-305b61c3",
+      "win_levels": 8,
+      "levels_completed": 1,
+      "elapsed_s": 3416.46,
+      "total_actions": 100000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 61,
+          "human_actions": 17,
+          "score": 0.077667
+        }
+      ],
+      "game_score": 0.002157,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LP85"
+    }
+  ]
+}

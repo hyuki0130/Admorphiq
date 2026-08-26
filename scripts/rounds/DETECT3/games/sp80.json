@@ -1,0 +1,29 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 1.3e-05,
+  "total_score_pct": 0.001,
+  "games": [
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 1198.36,
+      "total_actions": 100000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 2341,
+          "human_actions": 39,
+          "score": 0.000278
+        }
+      ],
+      "game_score": 1.3e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80"
+    }
+  ]
+}

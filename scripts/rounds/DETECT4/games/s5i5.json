@@ -1,0 +1,29 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.027778,
+  "total_score_pct": 2.778,
+  "games": [
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 1,
+      "elapsed_s": 1140.49,
+      "total_actions": 100000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 19,
+          "human_actions": 20,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.027778,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.079568,
+  "total_score_pct": 7.957,
+  "games": [
+    {
+      "game_id": "sb26-7fbdac44",
+      "win_levels": 8,
+      "levels_completed": 2,
+      "elapsed_s": 2.64,
+      "total_actions": 344,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 9,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 29,
+          "human_actions": 28,
+          "score": 0.932224
+        }
+      ],
+      "game_score": 0.079568,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SB26"
+    }
+  ]
+}

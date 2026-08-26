@@ -1,0 +1,29 @@
+{
+  "agent": "chained",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 1.7e-05,
+  "total_score_pct": 0.002,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 184.43,
+      "total_actions": 9127,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 695,
+          "human_actions": 19,
+          "score": 0.000747
+        }
+      ],
+      "game_score": 1.7e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.0,
+  "total_score_pct": 0.0,
+  "games": [
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 0.2,
+      "total_actions": 50,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33"
+    }
+  ]
+}

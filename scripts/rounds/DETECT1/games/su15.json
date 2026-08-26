@@ -1,0 +1,41 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.093476,
+  "total_score_pct": 9.348,
+  "games": [
+    {
+      "game_id": "su15-1944f8ab",
+      "win_levels": 9,
+      "levels_completed": 3,
+      "elapsed_s": 1.43,
+      "total_actions": 152,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 12,
+          "human_actions": 22,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 21,
+          "human_actions": 42,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 41,
+          "human_actions": 26,
+          "score": 0.402142
+        }
+      ],
+      "game_score": 0.093476,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SU15"
+    }
+  ]
+}

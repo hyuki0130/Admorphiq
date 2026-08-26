@@ -1,0 +1,41 @@
+{
+  "agent": "detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.285714,
+  "total_score_pct": 28.571,
+  "games": [
+    {
+      "game_id": "tr87-cd924810",
+      "win_levels": 6,
+      "levels_completed": 3,
+      "elapsed_s": 1.24,
+      "total_actions": 503,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 17,
+          "human_actions": 54,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 35,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 26,
+          "human_actions": 40,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.285714,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TR87"
+    }
+  ]
+}
