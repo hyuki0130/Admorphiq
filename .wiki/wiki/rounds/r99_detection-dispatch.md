@@ -1520,3 +1520,37 @@ be settled first and none of them is a one-tick job:
    duplication the `board_scale` move existed to prevent.
 
 Recorded so the next session starts from a decision instead of a survey.
+
+## Question 3 settled by measurement: it is the OLD kernel flow model that fails
+
+The three questions blocking the sp80 depth work were "which part is pure", "does the kernels'
+doctrine admit it", and "how to avoid two flow models in one library". The third is the cheapest and
+it turns out to answer the other two.
+
+Instrumenting the adapter's own `_phase` through a live sp80 run:
+
+```
+level 0   learn 2   probe 4   plan 4                                  -> cleared at step 9
+level 1   learn 3   probe 4   classify 1   execute 8                  -> cleared at step 25
+level 2   learn 6   probe 8   classify 2   execute 97   graph 1061    -> never cleared
+```
+
+**The flow model was learned and a plan WAS executed** — 97 actions of it — and then the adapter
+fell back to graph exploration for the remaining thousand. So the failure is NOT the scope limit the
+adapter's own docstring names ("when the flow model can't be learned... falls back"). It is a plan
+that ran and was wrong.
+
+That is exactly the axis R98 spent its round on. Its propagator is recorded EXACT cell-for-cell on
+idx0/idx1/idx2 — the same three levels — after the instrument fixes that took its corpus from 93
+cells of error to 12. The adapter's `simulate_flow` is a less faithful model of the same mechanic.
+
+**So the work is not "move R98's game-specific machinery into a generic library".** `kernels`
+already hosts a flow model (`learn_flow_operators` / `simulate_flow` / `plan_flow_coverage`), which
+the adapter already imports; R98 built a measurably better model OF THE SAME KIND. The doctrine
+question dissolves — a flow simulator is already admitted — and the duplication question inverts:
+the point is to end with ONE flow model, the exact one, rather than the two there would have been.
+
+⛔ Still not a one-tick job, and the honest scope is now visible: replacing a kernel that a shipped
+adapter imports means re-measuring sp80's levels 1 and 2, which currently clear SUPER-HUMAN (10
+actions vs 39 human, 16 vs 58). A fidelity improvement that costs either of those loses more than
+level 3 gains.
