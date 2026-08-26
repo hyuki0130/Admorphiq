@@ -55,7 +55,7 @@ _MAX_STATES = 120_000
 _MAX_PROBES = 3
 _MAX_LOOSE = 6
 _MAX_PARKINGS = 5
-_MAX_PLACINGS = 120
+_MAX_PLACINGS = 40
 
 
 def _blobs(cells: set[Cell]) -> list[list[Cell]]:
@@ -171,7 +171,18 @@ class MirrorMergeTool:
         self._drop: Cell | None = None
         self._paths: dict[Cell, list[Cell]] = {}
         self._maybe: set[int] = set()             # colours stood on but not yet vouched for
-        self._stuck: tuple[Any, ...] | None = None
+        self._stuck: set[tuple[Any, ...]] = set()
+        self._pull: list[int | None] = [None, None]   # which way a HELD piece answers a control
+        self._opens: dict[Cell, frozenset[Cell]] = {}  # standing here holds those cells open
+        self._treads: set[Cell] = set()           # cells an actor has been SEEN standing on
+        self._maybe_at: set[Cell] = set()
+        self._guess: set[int] = set()             # colours ASSUMED to stop, pending a bump
+        self._moves: dict[tuple[Any, ...], list[Cell]] = {}
+        self._seen: dict[Cell, frozenset[Cell]] = {}   # every switch the board has ever shown
+        self._duds: set[Cell] = set()                  # stood on it; nothing opened
+        self._goal: Cell | None = None
+        self._shut: dict[Cell, frozenset[int]] = {}    # how a door reads when it is closed
+        self._prev: dict[Cell, frozenset[int]] = {}
         self._expect: tuple[int, tuple[Cell | None, ...], tuple[Cell | None, ...],
                             list[dict[Cell, frozenset[int]]]] | None = None
         self._cache: dict[Cell, frozenset[int]] = {}
@@ -187,8 +198,10 @@ class MirrorMergeTool:
         """A one-line account of what the tool currently believes, for the driver's trace."""
         live = [p for p in (self._track or ()) if p is not None]
         return (f"col={self._colour} pitch={self._pitch} pos={live} signs={self._sign} "
-                f"base={self._base} block={sorted(self._block)} fatal={sorted(self._fatal)} "
-                f"free={sorted(self._free)}")
+                f"base={self._base} block={sorted(self._block | self._guess)} fatal={sorted(self._fatal)} "
+                f"free={sorted(self._free)} held={self._held} look={self._look and sorted(self._look)} "
+                f"opens={ {k: len(v) for k, v in self._opens.items()} } "
+                f"treads={sorted(self._treads)} pend={self._pend}")
 
     # -- reading the board ---------------------------------------------------
 
@@ -217,7 +230,13 @@ class MirrorMergeTool:
         # ⛔ The surround is impassable by construction — the actors never leave the board — so
         # whatever paints it is a stopper, and knowing that before moving is what lets the first
         # plan use walls to break the lockstep without gambling on an untested colour.
-        band = np.asarray(g)[edge_band(np.asarray(g).shape)]
+        #
+        # ⛔ ONE PIXEL of surround, not a margin. Measured on the fifth board: a generous band
+        # reached four pixels in and swallowed a piece of real board furniture sitting against
+        # the edge, which then read as wall for the rest of the level and shut the only route.
+        # The warning normally runs the other way — an edge-pinned counter is not board content —
+        # so the band has to be thin enough to be only the counter's own line.
+        band = np.asarray(g)[edge_band(np.asarray(g).shape, len(g))]
         self._chrome = {int(v) for v in band}
         self._block = (self._tints | self._chrome) - self._free
 
@@ -234,6 +253,22 @@ class MirrorMergeTool:
             for r in range(rows) for c in range(cols)
         }
 
+    def _shut_doors(self, cells: dict[Cell, frozenset[int]]) -> dict[Cell, frozenset[int]]:
+        """Draw every known door SHUT, whatever the picture says right now.
+
+        ⛔ Otherwise the model counts the same opening twice. A door standing open is drawn as
+        floor, so the map says "always floor" while the state rule says "floor while somebody
+        holds the switch" — and a plan built on the first is checked against the second. Measured:
+        a twenty-one press route existed from the cell where the switch was held and vanished one
+        press later, and the tool walked back and forth across that boundary until the level ran
+        out of budget.
+        """
+        for cell, colours in self._shut.items():
+            here = cells.get(cell)
+            if here is not None and self._colour not in here and here <= self._free:
+                cells[cell] = colours
+        return cells
+
     def _read(self, cells: dict[Cell, frozenset[int]]) -> list[Cell]:
         """Where the actors are now, read off the lattice rather than off blob shapes.
 
@@ -246,10 +281,14 @@ class MirrorMergeTool:
 
     def _delta(self, actor: int, action: int) -> list[Cell]:
         """Every displacement this actor could take, given what is known of its signs."""
-        dy, dx = self._base[action]
-        vertical = [self._sign[actor][0]] if self._sign[actor][0] else [-1, 1]
-        horizontal = [self._sign[actor][1]] if self._sign[actor][1] else [-1, 1]
-        return sorted({(dy * v, dx * h) for v in vertical for h in horizontal})
+        key = (actor, action, tuple(self._sign[actor]))
+        found = self._moves.get(key)
+        if found is None:
+            dy, dx = self._base[action]
+            vertical = [self._sign[actor][0]] if self._sign[actor][0] else [-1, 1]
+            horizontal = [self._sign[actor][1]] if self._sign[actor][1] else [-1, 1]
+            found = self._moves[key] = sorted({(dy * v, dx * h) for v in vertical for h in horizontal})
+        return found
 
     def _apply(self, state: tuple[Cell | None, ...], action: int,
                cells: dict[Cell, frozenset[int]], strict: bool,
@@ -260,6 +299,8 @@ class MirrorMergeTool:
         out of, so a route can be planned for the board as it will be rather than as it is.
         """
         moved: list[Cell | None] = []
+        extra = extra | self._opened(state) | self._treads
+        shut = self._block | self._guess
         for i, pos in enumerate(state):
             if pos is None:
                 moved.append(None)
@@ -271,11 +312,11 @@ class MirrorMergeTool:
                     continue
                 if colours & self._fatal:
                     return None
-                if strict and not colours <= self._free and not colours & self._block:
+                if strict and not colours <= self._free and not colours & shut:
                     return None
             first = targets[0]
             colours = cells.get(first)
-            blocked = colours is None or (first not in extra and bool(colours & (self._block | self._fatal)))
+            blocked = colours is None or (first not in extra and bool(colours & (shut | self._fatal)))
             moved.append(pos if blocked else first)
         return self._merge(state, moved)
 
@@ -300,6 +341,43 @@ class MirrorMergeTool:
                 for i in together[:2]:
                     moved[i] = None
         return tuple(moved)
+
+    def _opened(self, state: tuple[Cell | None, ...]) -> frozenset[Cell]:
+        """Which shut cells are standing open, given where the actors are RIGHT NOW.
+
+        ⛔ This is why the board's state cannot be read off the frame alone once a level has
+        locks in it: a barrier's colour says nothing about whether it is passable this press.
+        What opens it is an actor standing somewhere else, so passability is a function of the
+        SEARCH STATE, not of the picture — and the search has to carry it or it will plan a route
+        through a door that shuts the moment the actor holding it walks away.
+        """
+        if not self._opens:
+            return frozenset()
+        here = {p for p in state if p is not None}
+        return frozenset().union(frozenset(), *(v for k, v in self._opens.items() if k in here))
+
+    def _keys(self) -> dict[Cell, frozenset[Cell]]:
+        """Colours drawn BOTH as a run and as a lone square: the run is the barrier, the square
+        is what opens it.
+
+        A board that draws a door and its switch in one colour is naming the pair, and the shape
+        tells them apart — a door is a bar of cells, a switch is one cell on its own. Nothing is
+        assumed from that: it is the shortlist of cells worth standing on when nothing else works.
+        """
+        tally: dict[int, set[Cell]] = defaultdict(set)
+        drop = self._free | self._tints | self._fatal | self._chrome
+        for cell, colours in self._cache.items():
+            for colour in colours - drop:
+                tally[colour].add(cell)
+        out: dict[Cell, frozenset[Cell]] = {}
+        for cells in tally.values():
+            groups = _blobs(cells)
+            alone = [g[0] for g in groups if len(g) == 1]
+            runs = frozenset(c for g in groups if len(g) > 1 for c in g)
+            if alone and runs:
+                for cell in alone:
+                    out[cell] = runs
+        return out
 
     # -- learning from what happened -----------------------------------------
 
@@ -359,12 +437,22 @@ class MirrorMergeTool:
             # onto the undoing class, the frame came back showing them there, and only the NEXT
             # press produced the flash and the restore — so a same-frame "it worked" promoted the
             # one colour that must never be walked into, and the board then cycled forever.
-            self._free |= self._maybe
+            # ⛔ Per CELL when the colour has already stopped somebody. A board that paints a
+            # door and its switch alike makes "colour 15 is walkable" a false generalisation from
+            # a true observation — and the planner then routes straight through a shut door.
+            self._free |= self._maybe - self._block
+            self._guess -= self._maybe
+            self._treads |= self._maybe_at
             entered = set()
+            landed = set()
             for i, pos in enumerate(predicted):
                 if pos is not None and pos != before[i]:
-                    entered |= set(targets[i].get(pos, frozenset())) - self._free
+                    was = set(targets[i].get(pos, frozenset()))
+                    entered |= was - self._free
+                    if not was <= self._free:
+                        landed.add(pos)
             self._maybe = entered
+            self._maybe_at = landed
             self._track = predicted
             return
         followed = self._follow(before, now)
@@ -376,6 +464,7 @@ class MirrorMergeTool:
             blame = self._maybe or {c for reach in targets for cs in reach.values() for c in cs}
             self._fatal |= blame - self._free - self._block
             self._maybe = set()
+            self._maybe_at = set()
             self._track = None
             return
         for i, pos in enumerate(followed):
@@ -384,12 +473,36 @@ class MirrorMergeTool:
             if pos == before[i] and predicted[i] != before[i]:
                 self._block |= set(targets[i].get(predicted[i], frozenset())) - self._free
             elif pos != before[i]:
-                self._free |= set(targets[i].get(pos, frozenset()))
+                walked = set(targets[i].get(pos, frozenset()))
+                self._free |= walked - self._block
+                self._guess -= walked
+                self._treads.add(pos)
                 base = self._base.get(action, (0, 0))
                 for axis in (0, 1):
                     if base[axis] and i:
                         self._sign[i][axis] = 1 if pos[axis] - before[i][axis] == base[axis] else -1
         self._track = followed
+
+    def _learn_opens(self, state: tuple[Cell | None, ...]) -> None:
+        """Cells that fell open while an actor arrived somewhere: that arrival is what holds them."""
+        stood = [p for p in state if p is not None and p in self._prev
+                 and not self._prev[p] <= self._free]
+        if not stood:
+            return
+        gone = frozenset(
+            cell for cell, colours in self._cache.items()
+            if colours <= self._free and cell in self._prev
+            and not self._prev[cell] <= self._free and cell not in state
+        )
+        if not gone:
+            return
+        for cell in gone:
+            self._shut.setdefault(cell, self._prev[cell])
+        for cell in stood:
+            # ⛔ Per CELL, never per colour. The door and its switch are painted the same, so
+            # clearing the colour would open every door on the board in the planner's head.
+            self._opens[cell] = self._opens.get(cell, frozenset()) | gone
+            self._treads.add(cell)
 
     def _follow(self, before: tuple[Cell | None, ...],
                 now: list[Cell]) -> tuple[Cell | None, ...] | None:
@@ -456,7 +569,8 @@ class MirrorMergeTool:
             if asked is not None:
                 return asked
 
-        self._cache = self._cells(g)
+        self._prev = self._cache
+        self._cache = self._shut_doors(self._cells(g))
         if self._script or self._pend is not None:
             shifting = self._advance()
             if shifting:
@@ -470,6 +584,11 @@ class MirrorMergeTool:
             self._learn_step(now)
         if self._track is None or sorted(p for p in self._track if p is not None) != now:
             self._track = tuple(now)
+        # ⛔ On EVERY path, not only the one where the model was right. The press that first
+        # stands on a switch is by definition a press the model got wrong — it predicted a bump,
+        # because the switch is painted like the door that bumped it — so learning the opening
+        # only from confirmed steps learns it from every switch except the one that matters.
+        self._learn_opens(self._track)
 
         known = [a for a in legal if a in self._base]
         plan = self._plan(self._track, known, strict=True)
@@ -482,14 +601,18 @@ class MirrorMergeTool:
             asked = self._ask(legal)
             if asked is not None:
                 return asked
-        if plan is None and clickable and self._stuck != self._mood():
+        if plan is None and clickable and self._mood() not in self._stuck:
+            self._stuck.add(self._mood())
             self._script = self._shift_plan(known) or self._place_plan(known)
-            self._stuck = None if self._script else self._mood()
             if self._script:
+                self._stuck.clear()
                 return self._advance()
+        goal = frozenset()
+        if plan is None:
+            plan, goal = self._poke_plan(known)
         if not plan:
             return []
-        return self._commit(plan[0])
+        return self._commit(plan[0], goal)
 
     def _begin(self, g: Any, legal: list[int]) -> list[Step] | None:
         """Before the actor is known: survey the board, then adopt it or ask which piece moves."""
@@ -542,8 +665,8 @@ class MirrorMergeTool:
                                     else (a[0] - b[0], a[1] - b[1])
                                     for b, a in zip(before, followed)])
 
-    def _commit(self, action: int) -> list[Step]:
-        predicted = self._apply(self._track, action, self._cache, strict=False)
+    def _commit(self, action: int, extra: frozenset[Cell] = frozenset()) -> list[Step]:
+        predicted = self._apply(self._track, action, self._cache, strict=False, extra=extra)
         if predicted is None:
             return []
         targets = [
@@ -647,8 +770,7 @@ class MirrorMergeTool:
             path = self._paths[mark]
             script.append(("click", mark))
             for a, b in zip(path, path[1:]):
-                step = (b[0] - a[0], b[1] - a[1])
-                action = next((k for k, v in self._base.items() if v == step), None)
+                action = self._press_for((b[0] - a[0], b[1] - a[1]))
                 if action is None:
                     return []
                 script.append(("move", action))
@@ -697,6 +819,7 @@ class MirrorMergeTool:
             return []
         marks = sorted({cell for cells in loose.values() for cell in cells})
         held = {p for p in (self._track or ()) if p is not None}
+        was_guess = set(self._guess)
         tried = 0
         for mark in marks:
             for path in self._reach(mark, (set(marks) - {mark}) | held):
@@ -707,15 +830,29 @@ class MirrorMergeTool:
                 after = dict(self._cache)
                 after[spot] = self._cache[mark]
                 after[mark] = frozenset({self._bg}) if self._bg is not None else frozenset()
+                # ⛔ A piece being placed AS a wall must be planned as one. Left unclassified it is
+                # a colour the strict pass refuses to walk into, so the only routes that use the
+                # new wall are exactly the routes strict throws away — and the search finds
+                # nothing while the answer sits in its candidate list. If the board disagrees the
+                # first bump says so and the guess is retracted.
+                self._guess = set(self._cache[mark]) - self._free
                 if self._plan(self._track, actions, strict=True, cells=after) is None:
+                    self._guess = was_guess
                     continue
                 self._paths = {mark: path}
                 return self._script_for({mark: spot}, after, held)
         return []
 
+    def _press_for(self, shift: Cell) -> int | None:
+        """Which control shoves a held piece this way, given what its sense is known to be."""
+        sy = self._pull[0] or 1
+        sx = self._pull[1] or 1
+        return next((k for k, v in self._base.items() if (v[0] * sy, v[1] * sx) == shift), None)
+
     def _mood(self) -> tuple[Any, ...]:
         """What a search over piece placements depends on — re-running it unchanged is waste."""
-        return (self._track, frozenset(self._block), frozenset(self._fatal), frozenset(self._free))
+        return (self._track, frozenset(self._block | self._guess), frozenset(self._fatal),
+                frozenset(self._free), tuple(self._pull), frozenset(self._opens))
 
     def _click(self, cell: Cell) -> list[Step]:
         oy, ox = self._origin
@@ -765,11 +902,85 @@ class MirrorMergeTool:
             return True
         if self._held is None or self._look is None:
             return False
-        want = (self._held[0] + self._base[payload][0], self._held[1] + self._base[payload][1])
-        if self._cache.get(want) != self._look:
-            return False
-        self._held = want
-        return True
+        # ⛔ A held piece answers the RAW control, and the tool's own idea of "forward" is
+        # anchored to whichever actor it happened to sort first — which on a mirrored board is
+        # as likely to be the reversed one as not. Measured: every shove went the wrong way and
+        # every script was abandoned on its first press. So the piece's sense is LEARNED too.
+        base = self._base[payload]
+        verticals = [self._pull[0]] if self._pull[0] else [1, -1]
+        horizontals = [self._pull[1]] if self._pull[1] else [1, -1]
+        for v in verticals:
+            for h in horizontals:
+                shift = (base[0] * v, base[1] * h)
+                spot = (self._held[0] + shift[0], self._held[1] + shift[1])
+                if self._cache.get(spot) != self._look:
+                    continue
+                agreed = shift == base or self._pull == [v, h]
+                if base[0]:
+                    self._pull[0] = v
+                if base[1]:
+                    self._pull[1] = h
+                self._held = spot
+                return agreed
+        return False
+
+    def _poke_plan(self, actions: list[int]) -> tuple[list[int] | None, frozenset[Cell]]:
+        """Nothing routes and nothing shoves: stand on a switch and watch what the board does.
+
+        ⛔ The switch is a cell of a colour already MEASURED to stop an actor — because the door
+        of the same colour stopped one — so every safe pass refuses it and the level ends there.
+        The shape is the whole argument for trying anyway: what blocked was a bar, and this is a
+        lone square. One press onto it either opens something, which the next frame shows, or
+        costs one bump.
+        """
+        # ⛔ COMMIT to one switch and walk to it. Measured: the shortlist is read off the frame,
+        # and standing on a switch REMOVES its door from the picture — so the switch stops looking
+        # like half of a pair and drops off the list, the next-best switch is chosen, its route
+        # starts by stepping back off, and the two states plan at each other forever. A goal that
+        # is re-chosen every frame from a picture the goal itself changes is not a goal.
+        self._seen.update(self._keys())
+        if self._goal is not None and self._goal not in self._opens:
+            plan = self._reach_plan(self._track, actions, self._goal)
+            if plan:
+                return plan, frozenset({self._goal})
+            if plan == [] and self._goal in self._track:
+                self._duds.add(self._goal)
+        # ⛔ NEAREST first, not lowest-numbered. Measured: taking them in board order sent the
+        # actors fourteen presses to the far corner past two switches three presses away, and the
+        # trip stranded one of them behind a door only the other could hold. Cheapest evidence
+        # first also keeps the pair close, which is the thing the level is finally about.
+        self._goal = None
+        best: tuple[int, Cell, list[int]] | None = None
+        for cell in sorted(self._seen):
+            if cell in self._opens or cell in self._duds:
+                continue
+            plan = self._reach_plan(self._track, actions, cell)
+            if plan and (best is None or len(plan) < best[0]):
+                best = (len(plan), cell, plan)
+        if best is None:
+            return None, frozenset()
+        self._goal = best[1]
+        return best[2], frozenset({best[1]})
+
+    def _reach_plan(self, start: tuple[Cell | None, ...], actions: list[int],
+                    goal: Cell) -> list[int] | None:
+        """Shortest press sequence that puts SOME actor on one named cell."""
+        if not actions:
+            return None
+        extra = frozenset({goal})
+        seen: dict[tuple[Cell | None, ...], list[int]] = {start: []}
+        queue: deque[tuple[Cell | None, ...]] = deque([start])
+        while queue and len(seen) < _MAX_STATES:
+            state = queue.popleft()
+            if goal in state:
+                return seen[state]
+            for action in actions:
+                nxt = self._apply(state, action, self._cache, False, extra)
+                if nxt is None or nxt in seen or all(p is None for p in nxt):
+                    continue
+                seen[nxt] = seen[state] + [action]
+                queue.append(nxt)
+        return None
 
     def _plan(self, start: tuple[Cell | None, ...], actions: list[int],
               strict: bool, extra: frozenset[Cell] = frozenset(),

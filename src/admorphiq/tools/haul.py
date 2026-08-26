@@ -39,6 +39,17 @@ records the refusal and stops offering that move.
 ⚠️ Chrome is masked at ONE pixel, not at `segment.edge_band`'s sixteenth of the frame: this board
 puts real furniture in the outermost cells, and a generous margin walls the carrier out of them.
 
+⛔ Not everything on the board is furniture — some of it WALKS, and the two must not be
+remembered alike. A cell that reads bare is a cell nothing was ever built on, which is how a
+mover's trail is unlearned while a barrier hidden under a piece is kept. Some of those movers are
+carrying pieces to the bays and are doing the work FOR the carrier; others carry them to a second
+destination, painted in the bays' own fill colour but unframed, and undo it. Facing one settles
+which: the kind that can be removed is redrawn with a ring the moment it is looked at, and the
+latch — aimed at an actor rather than at a piece — removes it.
+
+⛔ A bay holds ONE piece, so each loose piece is promised one, nearest pairing first. Sending every
+piece to the bay nearest IT sends them all to the same side of the board.
+
 ⛔ Some furniture stops the carrier but not the cargo. It is drawn with holes in it — background
 showing through pixels that are enclosed by the furniture's own colour — and a towed piece passes
 straight through it while the carrier cannot follow. That is what makes a hand-off possible on
@@ -184,6 +195,31 @@ def _has_enclosed_gap(mask: np.ndarray, cells: list[Cell]) -> bool:
     return bool((gap & ~seen).any())
 
 
+def _ground(tiles: dict[Cell, np.ndarray], standing: set[Cell]) -> Counter[int]:
+    """The floor colour: what surrounds the things that stand on the board.
+
+    ⚠️ One frame is not enough and the votes are kept: measured, a carrier standing in a one-cell
+    gap through a wall has nothing but WALL beside it, and that single frame read the wall as the
+    floor and every open cell on the board as an obstacle.
+
+    ⛔ NOT the commonest colour in the frame. Measured: one board draws a wall across the whole
+    top of the frame and another across the whole bottom, and between them they outnumber the
+    floor — so the commonest colour is a WALL, every empty cell then reads as an obstacle, and the
+    tool cannot find a single move. The pieces and the carrier are the one thing known to be
+    standing ON the floor, so the floor is what is next to them.
+    """
+    seen: Counter[int] = Counter()
+    for cell in standing:
+        for d in _DELTA.values():
+            tile = tiles.get((cell[0] + d[0], cell[1] + d[1]))
+            if tile is None:
+                continue
+            shades = set(tile.ravel().tolist())
+            if len(shades) == 1:
+                seen[int(next(iter(shades)))] += 1
+    return seen
+
+
 def _span(a: Cell, b: Cell) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
@@ -227,6 +263,10 @@ class HaulDeliveryTool:
         self._walls: set[Cell] = set()
         self._screens: set[Cell] = set()
         self._seen: dict[Cell, int] = {}
+        self._key = b""
+        self._zone: set[Cell] = set()
+        self._votes: Counter[int] = Counter()
+        self._aim: Cell | None = None
         self._roam: set[int] = set()
         self._friendly: set[int] = set()
         self._chase = 0
@@ -254,7 +294,10 @@ class HaulDeliveryTool:
         # ⛔ Which cells held something is a fact about THIS board; carrying it into the next
         # level makes every wall of the old board look like something that walked away.
         self._seen = {}
+        self._key = b""
+        self._zone = set()
         self._chase = 0
+        self._aim = None
         self._refused = Counter()
         self._pending = None
         self._offset = None
@@ -392,11 +435,18 @@ class HaulDeliveryTool:
             return None
         side, (oy, ox) = lat
         h, w = g.shape
-        bg = next(iter(background(g)))
-        # ⛔ The budget bar is pinned to the frame's edge and marches one pixel per action.
-        # It is chrome, not board, and reading it as content walls off the bottom row of cells.
+        # ⛔ The budget bar is pinned to the frame's edge and marches one pixel per action. It is
+        # chrome, not board, and reading it as content walls off the outermost row of cells. Paint
+        # it out with the FLOOR — known from every frame read so far, since the floor colour is a
+        # fact about the game and not about the frame.
+        # ⚠️ Painted, not smeared with the line behind it. Measured: smearing made an outermost
+        # tile UNIFORM, and a uniform tile cannot show which way the carrier is facing — so the
+        # moment the carrier stepped into the top row the whole board became unreadable and the
+        # tool gave the rest of the game up.
         gm = g.copy()
-        gm[0, :] = gm[-1, :] = gm[:, 0] = gm[:, -1] = bg
+        gm[0, :] = gm[-1, :] = gm[:, 0] = gm[:, -1] = (
+            self._votes.most_common(1)[0][0] if self._votes else next(iter(background(g)))
+        )
 
         board = _Board()
         board.side = side
@@ -429,7 +479,7 @@ class HaulDeliveryTool:
         tally = np.bincount(gm.ravel().astype(np.int64) - floor)
         carriers = []
         for cell, tile in tiles.items():
-            if glyphs[cell] is not None or not (tile != bg).any():
+            if glyphs[cell] is not None:
                 continue
             mark = _facing_of(tile)
             if mark is None:
@@ -444,10 +494,18 @@ class HaulDeliveryTool:
             return None
         board.carrier, (board.facing, body) = carriers[0]
         self._body = body
+        self._votes += _ground(tiles, board.cargo | {board.carrier})
+        bg = self._votes.most_common(1)[0][0] if self._votes else next(iter(background(gm)))
 
         # Terrain is everything that is not a piece. Pieces are drawn OVER the bay, so a bay is
         # only ever recognised while nothing stands on it — hence the running union.
-        terrain = gm != bg
+        # ⛔ "Furniture with background showing through" must be asked of the BARE frame, not of
+        # one with the pieces cut out of it. Measured: a piece standing in a corner of a painted
+        # region left a hole that the region's own colour closed off, and a solid wall thirty
+        # cells long was declared porous — after which every plan towed pieces straight through it
+        # and every one of those moves was refused.
+        bare = gm != bg
+        terrain = bare.copy()
         for cell in board.cargo | {board.carrier}:
             r, c = cell
             terrain[oy + r * side:oy + (r + 1) * side, ox + c * side:ox + (c + 1) * side] = False
@@ -465,7 +523,7 @@ class HaulDeliveryTool:
             if found is not None:
                 rects.append(found)
                 continue
-            if _has_enclosed_gap(terrain, cells):
+            if _has_enclosed_gap(bare, cells):
                 for y, x in cells:
                     screens[y, x] = True
                 continue
@@ -491,7 +549,12 @@ class HaulDeliveryTool:
         # ⛔ Judge a cell against the REMEMBERED bay, never against this frame's rectangle.
         # Measured: one delivered piece splits the bay's drawing in two, each half then reads as
         # furniture, and the carrier is walled into the corner it just delivered from.
-        prev, self._seen = self._seen, {}
+        # ⛔ Reading the same frame twice must not count as time passing. The harness asks a tool
+        # for its confidence as well as for its move, and both questions read the board — so what
+        # walked would appear to have stood still, and nothing would ever be learned to walk.
+        fresh = self._key != gm.tobytes()
+        prev = dict(self._seen)
+        seen_now: dict[Cell, int] = {}
         flats: dict[Cell, int] = {}
         for cell, tile in tiles.items():
             if cell == board.carrier:
@@ -510,7 +573,7 @@ class HaulDeliveryTool:
             if solid.any():
                 shades = set(tile.ravel().tolist())
                 flat = int(next(iter(shades))) if len(shades) == 1 else -1
-                self._seen[cell] = flat
+                seen_now[cell] = flat
                 flats[cell] = flat
                 # ⛔ A second destination, painted in the bays' own FILL colour but with no frame
                 # round it and standing where no bay stands, is where something on this board
@@ -519,8 +582,14 @@ class HaulDeliveryTool:
                 # the work rather than doing it. Read it CELL BY CELL: measured, the one on this
                 # board is drawn flush against a wall, and asked as a question about connected
                 # regions it comes back as part of the wall and says nothing.
-                if flat in fills:
-                    board.hostile = True
+                # ⛔ It is FLOOR, exactly as a bay is floor — it is paint under everything, not a
+                # thing standing on the board. Measured: read as furniture it walled the carrier
+                # out of the corner holding the last piece, and the level could not be finished.
+                if flat in fills or cell in self._zone:
+                    self._zone.add(cell)
+                    self._walls.discard(cell)
+                    self._screens.discard(cell)
+                    continue
                 self._walls.add(cell)
                 if screens[sl][solid].all():
                     self._screens.add(cell)
@@ -529,7 +598,7 @@ class HaulDeliveryTool:
                 # whole test: real furniture is drawn in every frame, so its colour never appears
                 # here, and a colour that does is one this board moves around by itself.
                 gone = prev.get(cell)
-                if gone is not None and gone >= 0:
+                if fresh and gone is not None and gone >= 0:
                     self._roam.add(gone)
                 # ⛔ Remembering furniture forever is only right for furniture. Some of what
                 # stands on these boards WALKS — measured, three of them, and every cell each one
@@ -545,6 +614,14 @@ class HaulDeliveryTool:
         # planner spent the rest of the level walking the carrier into a wall it could not enter.
         board.blocked |= self._walls
         board.porous |= self._screens
+        # ⛔ Sticky, because the warning can be STOOD ON. Measured: the second destination here is
+        # two cells, and with a piece dropped on one and the carrier standing on the other it
+        # vanishes from the frame — so the flag flickered off on exactly the turns the carrier was
+        # in position to act, and it walked away from a marked target three times.
+        if fresh:
+            self._seen = seen_now
+            self._key = gm.tobytes()
+        board.hostile = bool(self._zone)
         board.movers = {c: v for c, v in flats.items() if v in self._roam}
         # A glyph that is not cargo and not a bay is an actor the carrier is LOOKING AT: this
         # board redraws such an actor with a ring the moment it is faced, and that ring is the
@@ -713,6 +790,8 @@ class HaulDeliveryTool:
         """
         if self._chase > _MAX_CHASE:
             return None
+        prey = [c for c, kind in board.movers.items() if kind not in self._friendly]
+        ahead = None
         if board.facing is not None:
             d = _DELTA[board.facing]
             ahead = (carrier[0] + d[0], carrier[1] + d[1])
@@ -720,25 +799,40 @@ class HaulDeliveryTool:
                 return _LATCH
             if ahead in board.movers:
                 self._friendly.add(board.movers[ahead])
+                self._aim = None
                 return None
-        prey = [c for c, kind in board.movers.items() if kind not in self._friendly]
         if not prey:
+            self._aim = None
             return None
+        # ⛔ Do not follow it. Measured: both move in the same turn, so a carrier that turns to
+        # where the thing IS is looking at where it WAS, and the two danced from cell to cell for
+        # the rest of the level. Stand on the cell chosen and press the latch every turn instead:
+        # the press is judged BEFORE anything else moves, so the turn the quarry steps into the
+        # covered cell is the turn it is removed, and every other press costs nothing and — unlike
+        # any movement key — leaves the carrier still pointing the same way.
+        if (ahead is not None and self._aim == ahead and ahead not in board.cargo
+                and min(_span(p, carrier) for p in prey) <= 2):
+            self._chase += 1
+            return _LATCH
         walk = self._walk(board, carrier)
-        best: tuple[int, int] | None = None
+        best: tuple[int, int, Cell, Cell] | None = None
         for cell in prey:
             for act in _MOVES:
                 d = _DELTA[act]
                 stance = (cell[0] - d[0], cell[1] - d[1])
                 if stance not in walk:
                     continue
-                cost = len(walk[stance]) + (0 if stance == carrier else 1)
+                cost = len(walk[stance])
                 if best is None or cost < best[0]:
-                    best = (cost, act) if stance == carrier else (cost, walk[stance][0])
+                    best = (cost, act, stance, cell)
         if best is None:
             return None
         self._chase += 1
-        return best[1]
+        _, act, stance, cell = best
+        if stance != carrier:
+            return walk[stance][0]
+        self._aim = cell
+        return act if board.facing != act else _LATCH
 
     def _collect(self, board: _Board, carrier: Cell, targets: dict[Cell, Cell]) -> int | None:
         bays = self._open_bays(board, None)

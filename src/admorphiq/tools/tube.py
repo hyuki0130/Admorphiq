@@ -1,10 +1,10 @@
-"""Extendable-tube tool: a nozzle on a rail that must swallow tiles in a demanded order.
+"""Extendable-tube tool: nozzles on rails that must swallow tiles in a demanded order.
 
-The mechanic, recovered from one sample board and written here in the terms a frame can
-supply. A PANEL below the board shows a second tube already holding a run of coloured
-tiles; that run is the demand. On the board a NOZZLE sits one cell OUTSIDE the play
-rectangle, mounted on a rail, with a tube of segments running from it into the field.
-Four moves, and only four:
+The mechanic, recovered from the sample boards and written here in the terms a frame can
+supply. A PANEL below the board shows one or more tubes already holding a run of coloured
+tiles; each such run is a demand. On the board sits a NOZZLE per demand, one cell OUTSIDE
+the play rectangle, mounted on a rail, with a tube of segments running from it into the
+field. Four moves, and only four:
 
   * along the tube's own axis, away from the nozzle -> the tube EXTENDS one cell, pushing
     whatever stands in front of it;
@@ -14,14 +14,18 @@ Four moves, and only four:
     tiles, and refusing to move at all if any tile it would push is stuck.
 
 A tile pushed against something immovable while the tube advances onto it is swallowed:
-it stays where it is and the segment covers it. The tube's contents, read from the nozzle
-outward, must equal the panel's run. So the board is a rearrangement puzzle whose only
-verbs are push, drag and deposit — and the planner is a breadth-first search over exactly
-those, run on a simulator of the rule rather than on the live game.
+it stays where it is and the segment covers it. Each board tube's contents, read from its
+nozzle outward, must equal its panel partner's run — ALL of them at once.
 
-Everything is derived from the frame: the panel, the play rectangle, the lattice step, the
-rail's reach, which tube is the live one (it is drawn in the same two colours as the
-panel's tube), the tiles, and the walls. No coordinate and no colour is written down.
+Only ONE tube answers the keys at a time. A click on a nozzle hands the keys to that
+tube's pair, and every other tube on the board stands still and blocks like furniture. So
+the board is a rearrangement puzzle whose verbs are push, drag, deposit and hand-over, and
+the planner is a search over exactly those, run on a simulator of the rule rather than on
+the live game.
+
+Everything is derived from the frame: the panel, the play rectangle, the lattice step, each
+rail's reach, which tubes pair with which demand, the tiles, and the walls. No coordinate
+and no colour is written down.
 """
 
 from __future__ import annotations
@@ -34,19 +38,28 @@ import numpy as np
 
 from admorphiq.tools.base import Step, base_hash, has_frame, levels_completed
 
-__all__ = ["TubeOrderTool", "Board", "parse", "plan"]
+__all__ = ["TubeOrderTool", "Board", "Tube", "parse", "plan"]
 
 # Search ceiling. A board of this shape reaches a few hundred thousand arrangements;
 # past that the tool has no plan, and says so rather than guessing.
-_NODE_CAP = 300_000
+_NODE_CAP = 260_000
 # Level-order search is kept for boards small enough to finish it, so a shallow board gets
 # the shortest route; past this the search follows the arrangements that already spell most
 # of the demand. Measured on four boards: at this changeover the routes are unchanged and
 # the search costs a tenth of the time and memory of running level-order for longer.
-_BREADTH_CAP = 10_000
+_BREADTH_CAP = 12_000
+# What one unspelled slot of a demand is worth in moves, once the level-order sweep gives
+# out. See `plan`. Swept over 2, 4, 8, 16, 32, 64 and 200 against every board of the sample
+# game, and 16 is the ONLY one of the seven that solves all of them: under it two of the
+# middle boards are never found, over it the board where a single tile has to serve two
+# tubes at once is never found. It is a real optimum, not a floor — a bigger number is not
+# "more directed", it is a different failure. The routes it returns run 14 to 55 moves
+# against a level budget of about two hundred, so the depth is not bought with the budget.
+_SLOT_COST = 16
 _DIRS = ((0, -1), (0, 1), (-1, 0), (1, 0))
 # The family's keyboard convention. Corrected from observation if a board disagrees.
 _KEYS = {(0, -1): 1, (0, 1): 2, (-1, 0): 3, (1, 0): 4}
+_CLICK = 6
 
 
 def _neg(v: tuple[int, int]) -> tuple[int, int]:
@@ -68,36 +81,33 @@ def _settled(obs: Any) -> np.ndarray:
 
 # --- the board and its rule -------------------------------------------------
 
-class Board:
-    """A parsed board: geometry, the live tube, the tiles, and the demanded run."""
+class Tube:
+    """One tube on the board: where it is mounted, how far it reaches, what it owes."""
 
-    def __init__(
-        self,
-        pitch: int,
-        field: tuple[int, int, int, int],
-        head: tuple[int, int],
-        axis: tuple[int, int],
-        length: int,
-        tiles: dict[tuple[int, int], int],
-        walls: set[tuple[int, int]],
-        foreign: dict[tuple[int, int], tuple[int, int]],
-        rail: tuple[int, int],
-        demand: list[int],
-    ) -> None:
-        self.p = pitch
-        self.fx0, self.fy0, self.fx1, self.fy1 = field
+    __slots__ = ("head", "axis", "length", "group", "demand", "rail", "click")
+
+    def __init__(self, head: tuple[int, int], axis: tuple[int, int], length: int,
+                 group: frozenset[int]) -> None:
         self.head = head
         self.axis = axis
         self.length = length
+        self.group = group
+        self.demand: list[int] | None = None
+        self.rail: tuple[int, int] = (0, -1)
+        self.click: tuple[int, int] | None = None
+
+
+class Board:
+    """A parsed board: geometry, every board tube, the tiles, and the walls."""
+
+    def __init__(self, pitch: int, field: tuple[int, int, int, int],
+                 tubes: list[Tube], tiles: dict[tuple[int, int], int],
+                 walls: set[tuple[int, int]]) -> None:
+        self.p = pitch
+        self.fx0, self.fy0, self.fx1, self.fy1 = field
+        self.tubes = tubes
         self.tiles = tiles
         self.walls = walls
-        self.foreign = foreign          # cell -> that segment's own axis
-        self.rail = rail                # inclusive pixel span across the tube's axis
-        self.demand = demand
-
-    def cells(self, head: tuple[int, int], length: int) -> list[tuple[int, int]]:
-        ax, ay = self.axis
-        return [(head[0] + i * ax * self.p, head[1] + i * ay * self.p) for i in range(length)]
 
     def outside(self, cell: tuple[int, int]) -> bool:
         x, y = cell
@@ -107,172 +117,235 @@ class Board:
         dest = (cell[0] + move[0] * self.p, cell[1] + move[1] * self.p)
         return self.outside(dest) or dest in self.walls
 
-    def rail_ok(self, head: tuple[int, int], move: tuple[int, int]) -> bool:
+    def stuck(self, cell: tuple[int, int]) -> bool:
+        """Is this cell itself off the field? A nozzle's own cell always is."""
+        return self.outside(cell) or cell in self.walls
+
+    def rail_ok(self, idx: int, head: tuple[int, int], move: tuple[int, int]) -> bool:
         """The rail must reach half a cell beyond the nozzle's centre in the slide's sense."""
+        tube = self.tubes[idx]
         off = self.p // 2 - 1
         probe = (head[0] + off + move[0] * (self.p // 2), head[1] + off + move[1] * (self.p // 2))
-        across = probe[1] if self.axis[0] else probe[0]
-        return self.rail[0] <= across <= self.rail[1]
+        across = probe[1] if tube.axis[0] else probe[0]
+        return tube.rail[0] <= across <= tube.rail[1]
+
+    def selectable(self) -> list[int]:
+        """Tubes a click can hand the keys to: the ones with a partner in the panel."""
+        return [i for i, t in enumerate(self.tubes) if t.demand is not None and t.click]
 
 
-class Sim:
-    """One transition, faithful to the push / drag / deposit rule."""
+def cells_of(head: tuple[int, int], axis: tuple[int, int], length: int,
+             p: int) -> list[tuple[int, int]]:
+    return [(head[0] + i * axis[0] * p, head[1] + i * axis[1] * p) for i in range(length)]
 
-    def __init__(self, board: Board, head: tuple[int, int], length: int,
-                 tiles: dict[tuple[int, int], int]) -> None:
-        self.b = board
-        self.head = head
-        self.length = length
-        self.tiles = tiles
-        self.live = board.cells(head, length)
-        self.livepos = set(self.live)
 
-    def _crossing(self, cell: tuple[int, int], want_flat: bool,
-                  skip: tuple[int, int] | None) -> bool:
-        """Is there a segment at this cell lying along the axis asked for?
+def _step(board: Board, heads: tuple, lengths: tuple, tiles: dict, active: int,
+          move: tuple[int, int]):
+    """One key press on the active tube. Returns (heads, lengths, tiles) or None.
+
+    A faithful transcription of the rule: a segment advancing along its own axis onto a
+    tile that cannot give way SWALLOWS it (the tile stays, the segment covers it), while a
+    segment moving ACROSS its axis into a stuck tile refuses, and refuses for the whole
+    assembly. A tile is stopped dead by any segment lying across the direction it is asked
+    to go, in its own cell or the one it is aimed at — which is what makes a second tube
+    furniture rather than scenery.
+    """
+    p = board.p
+    tube = board.tubes[active]
+    axis = tube.axis
+    segs = cells_of(heads[active], axis, lengths[active], p)
+
+    occupied: dict[tuple[int, int], list[tuple[int, bool]]] = {}
+    for i, t in enumerate(board.tubes):
+        flat = t.axis[0] != 0
+        for c in cells_of(heads[i], t.axis, lengths[i], p):
+            occupied.setdefault(c, []).append((i, flat))
+
+    moved: set[tuple[str, int, tuple[int, int]]] = set()
+
+    def crossing(cell: tuple[int, int], want_flat: bool,
+                 skip: tuple[int, tuple[int, int]] | None) -> bool:
+        """Is a segment lying along the asked-for axis at this cell?
 
         `skip` excuses the segment doing the pushing, and ONLY that one. A cell can hold
-        two segments at once — the live tube standing where a dead one already crosses —
-        and excusing the whole cell was measured to make the tool believe it could drag a
-        tile out of a crossing tube. It cannot, and the two plans that follow from the two
-        beliefs are exact inverses, so the tool oscillated until the level's budget ran out.
+        two segments at once — one tube standing where another crosses — and excusing the
+        whole cell was measured to make the tool believe it could drag a tile out of a
+        crossing tube. It cannot, and the two plans that follow from the two beliefs are
+        exact inverses, so the tool oscillated until the level's budget ran out.
         """
-        if cell != skip and cell in self.livepos and bool(self.b.axis[0]) == want_flat:
-            return True
-        other = self.b.foreign.get(cell)
-        return other is not None and bool(other[0]) == want_flat
+        for idx, flat in occupied.get(cell, ()):
+            if flat == want_flat and (idx, cell) != skip:
+                return True
+        return False
 
-    def _push(self, kind: str, cell: tuple[int, int], move: tuple[int, int],
-              moved: set[tuple[str, tuple[int, int]]],
-              parent: tuple[int, int] | None = None) -> bool:
-        key = (kind, cell)
+    def push(kind: str, owner: int, cell: tuple[int, int],
+             parent: tuple[int, tuple[int, int]] | None) -> bool:
+        key = (kind, owner, cell)
         if key in moved:
             return True
-        p = self.b.p
-        dest = (cell[0] + move[0] * p, cell[1] + move[1] * p)
-        if self.b.blocked(cell, move):
+        if board.blocked(cell, move):
             # A segment being drawn back toward its own nozzle, or one already standing
-            # outside the rectangle, is exempt: that is how the tube retracts off the edge.
-            exempt = kind == "seg" and (self.b.axis == _neg(move) or self.b.outside(cell))
+            # outside the rectangle, is exempt: that is how a tube retracts off the edge.
+            exempt = kind == "seg" and (board.tubes[owner].axis == _neg(move)
+                                        or board.stuck(cell))
             if not exempt:
                 return False
         if kind == "seg":
+            flat_axis = board.tubes[owner].axis[0] != 0
             for off in ((0, 0), move):
                 at = (cell[0] + off[0] * p, cell[1] + off[1] * p)
-                if at not in self.tiles:
+                if at not in tiles:
                     continue
-                if self._push("tile", at, move, moved, parent=cell):
-                    moved.add(("tile", at))
-                elif (self.b.axis[0] == 0) != (move[0] == 0):
-                    # Sliding sideways into a tile that cannot give way stops everything.
-                    # Advancing along the axis instead SWALLOWS it, which costs no state.
+                if not push("tile", -1, at, (owner, cell)) and flat_axis == (move[0] == 0):
+                    # Sliding across the axis into a tile that cannot give way stops
+                    # everything. Advancing ALONG the axis instead swallows it. The test
+                    # is whether the segment lies ACROSS the move, and it reads backwards:
+                    # a flat segment asked to go up or down is the crossing case.
                     return False
         else:
-            flat_move = move[0] != 0
+            want_flat = move[0] == 0
             for off in ((0, 0), move):
                 at = (cell[0] + off[0] * p, cell[1] + off[1] * p)
-                if self._crossing(at, not flat_move, parent):
+                if crossing(at, want_flat, parent):
                     return False
-            if dest in self.tiles and not self._push("tile", dest, move, moved):
+            dest = (cell[0] + move[0] * p, cell[1] + move[1] * p)
+            if dest in tiles and not push("tile", -1, dest, None):
                 return False
         moved.add(key)
         return True
 
-    def apply(self, move: tuple[int, int]) -> tuple[tuple[int, int], int, dict, bool]:
-        """(nozzle, length, tiles, did_anything_move) after this move."""
-        b, p = self.b, self.b.p
-        stay = (self.head, self.length, self.tiles, False)
-        moved: set[tuple[str, tuple[int, int]]] = set()
-        if move == b.axis:                                     # extend
-            if b.blocked(self.live[-1], move):
-                return stay
-            for c in self.live:
-                self._push("seg", c, move, moved)
-            new_head, new_len = self.head, self.length + 1
-        elif move == _neg(b.axis):                             # retract
-            if self.length == 1:
-                return stay
-            for c in self.live[1:]:
-                self._push("seg", c, move, moved)
-            new_head, new_len = self.head, self.length - 1
-        else:                                                  # slide along the rail
-            if not b.rail_ok(self.head, move):
-                return stay
-            for c in self.live:
-                if not self._push("seg", c, move, moved):
-                    return stay
-            new_head = (self.head[0] + move[0] * p, self.head[1] + move[1] * p)
-            new_len = self.length
-        if not moved:
-            return stay
-        shifted = {c for kind, c in moved if kind == "tile"}
-        tiles = {}
-        for cell, colour in self.tiles.items():
-            if cell in shifted:
-                tiles[(cell[0] + move[0] * p, cell[1] + move[1] * p)] = colour
-            else:
-                tiles[cell] = colour
-        return (new_head, new_len, tiles, True)
+    head, length = heads[active], lengths[active]
+    if move == axis:                                       # extend
+        if board.blocked(segs[-1], move):
+            return None
+        for c in segs:
+            push("seg", active, c, None)
+        length += 1
+    elif move == _neg(axis):                               # retract
+        if length == 1:
+            return None
+        for c in segs[1:]:
+            push("seg", active, c, None)
+        length -= 1
+    else:                                                  # slide along the rail
+        if not board.rail_ok(active, head, move):
+            return None
+        for c in segs:
+            if not push("seg", active, c, None):
+                return None
+        head = (head[0] + move[0] * p, head[1] + move[1] * p)
+
+    shifted = {c for kind, _, c in moved if kind == "tile"}
+    fresh = {}
+    for cell, colour in tiles.items():
+        if cell in shifted:
+            fresh[(cell[0] + move[0] * p, cell[1] + move[1] * p)] = colour
+        else:
+            fresh[cell] = colour
+    new_heads = heads[:active] + (head,) + heads[active + 1:]
+    new_lengths = lengths[:active] + (length,) + lengths[active + 1:]
+    return new_heads, new_lengths, fresh
 
 
-def _satisfied(board: Board, head: tuple[int, int], length: int, tiles: dict) -> bool:
-    got = [tiles[c] for c in board.cells(head, length) if c in tiles]
-    want = board.demand
-    return len(got) >= len(want) and got[: len(want)] == want
+def _held(board: Board, heads: tuple, lengths: tuple, tiles: dict, idx: int) -> list[int]:
+    tube = board.tubes[idx]
+    run = cells_of(heads[idx], tube.axis, lengths[idx], board.p)
+    return [tiles[c] for c in run if c in tiles]
 
 
-def _progress(board: Board, head: tuple[int, int], length: int, tiles: dict) -> tuple[int, int]:
-    """How near this arrangement is to the demand: (matching prefix, order kept)."""
-    got = [tiles[c] for c in board.cells(head, length) if c in tiles]
-    want = board.demand
-    pre = 0
-    while pre < len(want) and pre < len(got) and got[pre] == want[pre]:
-        pre += 1
-    # Longest run of the demand appearing in order anywhere under the tube: it separates
-    # an arrangement that has the right tiles in the right sequence but shifted along the
-    # tube from one that merely has the right tiles.
-    keep = 0
-    for colour in got:
-        if keep < len(want) and colour == want[keep]:
-            keep += 1
-    return pre, keep
+def _satisfied(board: Board, heads: tuple, lengths: tuple, tiles: dict) -> bool:
+    for i, tube in enumerate(board.tubes):
+        want = tube.demand
+        if want is None:
+            continue
+        got = _held(board, heads, lengths, tiles, i)
+        if len(got) < len(want) or got[: len(want)] != want:
+            return False
+    return True
 
 
-def plan(board: Board, cap: int = _NODE_CAP) -> list[tuple[int, int]] | None:
-    """Search (nozzle, length, tile arrangement) for the demanded run.
+def _progress(board: Board, heads: tuple, lengths: tuple,
+              tiles: dict) -> tuple[int, int, int]:
+    """How near this arrangement is: (tubes done, matching prefixes, order kept)."""
+    done = pre_total = keep_total = 0
+    for i, tube in enumerate(board.tubes):
+        want = tube.demand
+        if want is None:
+            continue
+        got = _held(board, heads, lengths, tiles, i)
+        pre = 0
+        while pre < len(want) and pre < len(got) and got[pre] == want[pre]:
+            pre += 1
+        if pre == len(want) and len(got) >= len(want):
+            done += 1
+        # Longest run of the demand appearing in order anywhere under the tube: it
+        # separates an arrangement that has the right tiles in the right sequence but
+        # shifted along the tube from one that merely has the right tiles.
+        keep = 0
+        for colour in got:
+            if keep < len(want) and colour == want[keep]:
+                keep += 1
+        pre_total += pre
+        keep_total += keep
+    return done, pre_total, keep_total
+
+
+Move = tuple[str, Any]
+
+
+def plan(board: Board, active: int, cap: int = _NODE_CAP) -> list[Move] | None:
+    """Search (which tube has the keys, every nozzle, every length, every tile).
 
     Breadth first while that is affordable, because a shallow board deserves the shortest
-    route; then best first on how much of the demand the arrangement already spells,
-    because a board with four tiles on a seven-by-seven field has more arrangements than a
-    level-order sweep will ever reach. States are flat tuples and the route is parent
-    links: carrying a path per queue entry is what runs this out of memory rather than out
-    of nodes.
+    route; then a weighted A* whose cost is the route so far and whose estimate is the
+    number of demanded slots still unspelled, priced at `_SLOT_COST` moves each.
+
+    The weight is the whole game, and it was MEASURED. Ordering the frontier purely by how
+    much of the demand an arrangement already spells — no route length in the score at all
+    — solves the crossing board in 291,000 states, and only from one of the two readings of
+    who holds the keys; the same board with the route length restored and each missing slot
+    priced at eight moves solves in 76,000, from either reading, in two seconds. Pure greed
+    wanders down long corridors that spell one more colour and never come back.
     """
-    if _satisfied(board, board.head, board.length, board.tiles):
+    heads0 = tuple(t.head for t in board.tubes)
+    lengths0 = tuple(t.length for t in board.tubes)
+    if _satisfied(board, heads0, lengths0, board.tiles):
         return []
-    start = (board.head, board.length, tuple(sorted(board.tiles.items())))
-    seen: dict[tuple, tuple[int, tuple[int, int] | None]] = {start: (-1, None)}
+    hands = board.selectable()
+    slots = sum(len(t.demand) for t in board.tubes if t.demand is not None)
+    start = (active, heads0, lengths0, tuple(sorted(board.tiles.items())))
+    seen: dict[tuple, tuple[int, Move | None, int]] = {start: (-1, None, 0)}
     order = [start]
 
-    def route_to(node: int) -> list[tuple[int, int]]:
-        out = []
+    def route_to(node: int) -> list[Move]:
+        out: list[Move] = []
         while node > 0:
-            back, mv = seen[order[node]]
+            back, mv, _ = seen[order[node]]
+            assert mv is not None
             out.append(mv)
             node = back
         return out[::-1]
 
     def expand(node: int) -> int | None:
         cur = order[node]
-        tiles = dict(cur[2])
-        for move in _DIRS:
-            nh, nl, nt, changed = Sim(board, cur[0], cur[1], tiles).apply(move)
-            if not changed:
-                continue
-            key = (nh, nl, tuple(sorted(nt.items())))
+        who, heads, lengths = cur[0], cur[1], cur[2]
+        tiles = dict(cur[3])
+        depth = seen[cur][2] + 1
+        options: list[Move] = [("mv", d) for d in _DIRS]
+        options += [("sel", k) for k in hands if k != who]
+        for mv in options:
+            if mv[0] == "sel":
+                key = (mv[1], heads, lengths, cur[3])
+                nh, nl, nt = heads, lengths, tiles
+            else:
+                out = _step(board, heads, lengths, tiles, who, mv[1])
+                if out is None:
+                    continue
+                nh, nl, nt = out
+                key = (who, nh, nl, tuple(sorted(nt.items())))
             if key in seen:
                 continue
-            seen[key] = (node, move)
+            seen[key] = (node, mv, depth)
             order.append(key)
             if _satisfied(board, nh, nl, nt):
                 return len(order) - 1
@@ -286,19 +359,24 @@ def plan(board: Board, cap: int = _NODE_CAP) -> list[tuple[int, int]] | None:
             return route_to(hit)
         i += 1
     if i < len(order):
-        pool: list[tuple[int, int, int]] = []
+        pool: list[tuple[int, int]] = []
+
+        def offer(node: int) -> None:
+            st = order[node]
+            _, pre, keep = _progress(board, st[1], st[2], dict(st[3]))
+            cost = seen[st][2] + _SLOT_COST * (slots - pre) - keep
+            heapq.heappush(pool, (cost, node))
+
         for node in range(i, len(order)):
-            pre, keep = _progress(board, order[node][0], order[node][1], dict(order[node][2]))
-            heapq.heappush(pool, (-pre, -keep, node))
+            offer(node)
         while pool and len(seen) < cap:
-            _, _, node = heapq.heappop(pool)
+            node = heapq.heappop(pool)[1]
             frontier = len(order)
             hit = expand(node)
             if hit is not None:
                 return route_to(hit)
             for fresh in range(frontier, len(order)):
-                pre, keep = _progress(board, order[fresh][0], order[fresh][1], dict(order[fresh][2]))
-                heapq.heappush(pool, (-pre, -keep, fresh))
+                offer(fresh)
     return None
 
 
@@ -307,13 +385,16 @@ def plan(board: Board, cap: int = _NODE_CAP) -> list[tuple[int, int]] | None:
 def _strip_top(g: np.ndarray, bg: int, panel: int) -> int:
     """First row of the demand panel.
 
-    The panel is the band at the bottom that the background never shows through. A coverage
-    vote finds the wrong edge of it, because a busy panel row is mostly its own contents.
-    Any single-colour rule between the band and the board is chrome, and is peeled off.
+    The band at the bottom is the run of rows the panel's own colour OWNS. Reading it as
+    "the rows the background never shows through" is what an earlier version did, and it
+    fails the moment a fixture down there is DRAWN in the background colour: measured on a
+    board whose two panel nozzles are, which put the band's edge eight rows too low and
+    lost every demand on it. Any single-colour rule between the band and the board is
+    chrome, and is peeled off.
     """
     h = g.shape[0]
     y = h - 1
-    while y >= 0 and not (g[y] == bg).any():
+    while y >= 0 and Counter(int(v) for v in g[y]).most_common(1)[0][0] == panel:
         y -= 1
     top = y + 1
     while top < h and len(set(int(v) for v in g[top])) <= 2 \
@@ -325,7 +406,7 @@ def _strip_top(g: np.ndarray, bg: int, panel: int) -> int:
 def _field_rect(g: np.ndarray, panel: int, limit: int) -> tuple[int, int, int, int] | None:
     """The play rectangle: where the panel colour is laid down thickly above the band.
 
-    A projection, not a component: the tube can cut the rectangle's colour clean in two
+    A projection, not a component: a tube can cut the rectangle's colour clean in two
     across its whole width, and a component would then report half a board.
     """
     area = g[:limit] == panel
@@ -441,19 +522,75 @@ def _tile_at(g: np.ndarray, cell: tuple[int, int], p: int, bg: int, panel: int) 
     return colour
 
 
-def _rail_span(g: np.ndarray, head: tuple[int, int], axis: tuple[int, int], p: int,
-               bg: int, rect: tuple[int, int, int, int], top: int) -> tuple[int, int]:
-    """How far the nozzle's track reaches across its own lane.
+def _signature(g: np.ndarray, cell: tuple[int, int], p: int) -> tuple:
+    """A rotation-blind fingerprint of a nozzle's casing.
 
-    Read only inside the nozzle's lane. Another fixture parked outside the rectangle would
-    otherwise be counted as track and offer a slide that does not exist. The nozzle hides
-    the stretch of track it stands on, so its own centre is seeded into the span; without
-    that the track reads short at whichever end the nozzle happens to be resting.
+    Which nozzle on the board owes which run in the panel is not written anywhere: the two
+    are simply DRAWN as the same fixture, and one of them may be turned on its side. A
+    colour census of the cell survives that quarter turn where a pixel comparison does not.
+    """
+    x, y = cell
+    patch = g[y:y + p, x:x + p]
+    return tuple(sorted(Counter(int(v) for v in patch.ravel()).items()))
+
+
+def _chains(g: np.ndarray, top: int, p: int) -> list[tuple[list[tuple[int, int]], tuple[int, int]]]:
+    """Every run of flat segments in the panel band, at any lattice phase.
+
+    The panel's own lattice need not share the board's phase, so it is scanned at every
+    offset; a run that has no nozzle at either end is an alias of a real one read half a
+    cell over, and is dropped by the caller.
+    """
+    found = []
+    for x in range(g.shape[1] - p + 1):
+        for y in range(top, g.shape[0] - p + 1):
+            e = _seg_edges(g, x, y, p)
+            if not e or _seg_edges(g, x - p, y, p) == e:
+                continue
+            chain = [(x, y)]
+            nxt = (x + p, y)
+            while _seg_edges(g, nxt[0], nxt[1], p) == e:
+                chain.append(nxt)
+                nxt = (nxt[0] + p, nxt[1])
+            found.append((chain, e))
+    return found
+
+
+def _chrome(g: np.ndarray, bg: int, top: int) -> tuple[set[int], set[int]]:
+    """Rows and columns above the panel that the background never shows through.
+
+    This game draws its remaining budget as a bar pinned across one whole row, and the bar
+    is TWO colours with a moving boundary — which is a nozzle's lip exactly. Measured: at
+    the moment the bar had drained to the right column, a phantom tube appeared in the
+    corner beside the field and the route was thrown away mid-level. A counter is not board
+    content, and the thing that separates it from board content is that the board's own
+    background never appears in its lane.
+    """
+    rows = {y for y in range(top) if not (g[y] == bg).any()}
+    cols = {x for x in range(g.shape[1]) if not (g[:top, x] == bg).any()}
+    return rows, cols
+
+
+def _rail_span(g: np.ndarray, head: tuple[int, int], axis: tuple[int, int], p: int,
+               bg: int, rect: tuple[int, int, int, int], top: int,
+               occupied: set[tuple[int, int]],
+               chrome: tuple[set[int], set[int]]) -> tuple[int, int]:
+    """How far this nozzle's track reaches across its own lane.
+
+    Read only inside the nozzle's lane, and only for pixels no tube already explains. A
+    SECOND tube parked in the same lane is otherwise counted as track and offers a slide
+    that does not exist — measured on a board whose two nozzles share the top edge, where
+    the tool then planned a sideways move the game refuses. The nozzle hides the stretch of
+    track it stands on, so its own centre is seeded into the span; without that the track
+    reads short at whichever end the nozzle happens to be resting.
     """
     fx0, fy0, fx1, fy1 = rect
     o = p // 2 - 1
-    chrome_rows = {y for y in range(top) if not (g[y] == bg).any()}
-    chrome_cols = {x for x in range(g.shape[1]) if not (g[:top, x] == bg).any()}
+    chrome_rows, chrome_cols = chrome
+
+    def lattice(x: int, y: int) -> tuple[int, int]:
+        return (fx0 + p * ((x - fx0) // p), fy0 + p * ((y - fy0) // p))
+
     if axis[0]:
         lo, hi = head[1] + o, head[1] + o + 1
         for y in range(top):
@@ -461,6 +598,8 @@ def _rail_span(g: np.ndarray, head: tuple[int, int], axis: tuple[int, int], p: i
                 continue
             for x in range(head[0], min(head[0] + p, g.shape[1])):
                 if int(g[y, x]) == bg or (fx0 <= x < fx1 and fy0 <= y < fy1):
+                    continue
+                if lattice(x, y) in occupied:
                     continue
                 lo, hi = min(lo, y), max(hi, y)
     else:
@@ -471,8 +610,22 @@ def _rail_span(g: np.ndarray, head: tuple[int, int], axis: tuple[int, int], p: i
             for y in range(head[1], min(head[1] + p, top)):
                 if int(g[y, x]) == bg or (fx0 <= x < fx1 and fy0 <= y < fy1):
                     continue
+                if lattice(x, y) in occupied:
+                    continue
                 lo, hi = min(lo, x), max(hi, x)
     return lo, hi
+
+
+def _walk(g: np.ndarray, head: tuple[int, int], axis: tuple[int, int], p: int,
+          pair: tuple[int, int]) -> list[tuple[int, int]]:
+    reader = _seg_edges if axis[0] else _seg_edges_v
+    step = (axis[0] * p, axis[1] * p)
+    run = [head]
+    nxt = (head[0] + step[0], head[1] + step[1])
+    while reader(g, nxt[0], nxt[1], p) == pair:
+        run.append(nxt)
+        nxt = (nxt[0] + step[0], nxt[1] + step[1])
+    return run
 
 
 def parse(g: np.ndarray) -> Board | None:
@@ -501,65 +654,91 @@ def parse(g: np.ndarray) -> Board | None:
     if (fx1 - fx0) % p or (fy1 - fy0) % p:
         return None
 
-    # The panel's own lattice need not share the board's phase, so it is scanned at every
-    # offset. Exactly ONE chain may live down there: two chains are two demands, and this
-    # tool plans for one tube.
-    chains: list[tuple[list[tuple[int, int]], tuple[int, int]]] = []
-    for x in range(g.shape[1] - p + 1):
-        for y in range(top, g.shape[0] - p + 1):
+    # --- the demands, one flat run per nozzle in the panel band
+    demands: list[tuple[tuple, list[int], tuple[int, int], frozenset[int]]] = []
+    for chain, pair in _chains(g, top, p):
+        mouth = None
+        for cand in ((chain[0][0] - p, chain[0][1]), (chain[-1][0] + p, chain[-1][1])):
+            for axis in ((1, 0), (-1, 0)):
+                if _is_mouth(g, cand[0], cand[1], p, pair, axis):
+                    if mouth is not None and mouth != cand:
+                        return None
+                    mouth = cand
+        if mouth is None:
+            continue
+        run = sorted(set(chain) | {mouth})
+        if run[0] != mouth:
+            run = run[::-1]
+        want = [c for c in (_tile_at(g, q, p, bg, panel) for q in run) if c is not None]
+        want = want[: len(run) - 1]
+        if not want:
+            return None
+        centre = (mouth[0] + p // 2, mouth[1] + p // 2)
+        demands.append((_signature(g, mouth, p), want, centre, frozenset(pair)))
+    if not demands:
+        return None
+    if len({d[0] for d in demands}) != len(demands):
+        return None                      # two runs owed to fixtures we cannot tell apart
+
+    # --- the tubes on the board, whatever colours they wear
+    lattice_x = list(range(fx0 - p, fx1 + p, p))
+    lattice_y = list(range(fy0 - p, min(fy1 + p, top), p))
+    pairs_h: set[tuple[int, int]] = set()
+    pairs_v: set[tuple[int, int]] = set()
+    for x in lattice_x:
+        for y in lattice_y:
             e = _seg_edges(g, x, y, p)
-            if not e or _seg_edges(g, x - p, y, p) == e:
-                continue
-            chain = [(x, y)]
-            nxt = (x + p, y)
-            while _seg_edges(g, nxt[0], nxt[1], p) == e:
-                chain.append(nxt)
-                nxt = (nxt[0] + p, nxt[1])
-            chains.append((chain, e))
-    if len(chains) != 1:
-        return None
-    ref, pair = chains[0]
-
-    ref_head = None
-    for cand in ((ref[0][0] - p, ref[0][1]), (ref[-1][0] + p, ref[-1][1])):
-        if _is_mouth(g, cand[0], cand[1], p, pair, (1, 0)) \
-                or _is_mouth(g, cand[0], cand[1], p, pair, (-1, 0)):
-            if ref_head is not None:
-                return None
-            ref_head = cand
-    if ref_head is None:
-        return None
-    ref_cells = sorted(set(ref) | {ref_head})
-    if ref_cells[0] != ref_head:
-        ref_cells = ref_cells[::-1]
-    demand = [c for c in (_tile_at(g, q, p, bg, panel) for q in ref_cells) if c is not None]
-    demand = demand[: len(ref_cells) - 1]
-    if not demand:
+            if e:
+                pairs_h.add(e)
+            e = _seg_edges_v(g, x, y, p)
+            if e:
+                pairs_v.add(e)
+    for _, _, _, group in demands:
+        for a, b in ((min(group), max(group)), (max(group), min(group))):
+            pairs_h.add((a, b))
+            pairs_v.add((a, b))
+    if len(pairs_h) > 4 or len(pairs_v) > 4:
         return None
 
-    found = []
-    for x in range(fx0 - p, fx1 + p, p):
-        for y in range(fy0 - p, min(fy1 + p, top), p):
+    chrome = _chrome(g, bg, top)
+    tubes: list[Tube] = []
+    for x in lattice_x:
+        for y in lattice_y:
             cell = (x, y)
             if not (x < fx0 or x + p > fx1 or y < fy0 or y + p > fy1):
                 continue
+            if any(r in chrome[0] for r in range(y, y + p)) \
+                    or any(c in chrome[1] for c in range(x, x + p)):
+                continue
+            hit = None
             for axis in _DIRS:
-                if _is_mouth(g, x, y, p, pair, axis):
-                    found.append((cell, axis))
-    if len(found) != 1:
+                for pair in (pairs_h if axis[0] else pairs_v):
+                    if _is_mouth(g, x, y, p, pair, axis):
+                        if hit is not None:
+                            return None  # a cell that reads as two nozzles at once
+                        hit = (axis, pair)
+            if hit is None:
+                continue
+            axis, pair = hit
+            run = _walk(g, cell, axis, p, pair)
+            tube = Tube(cell, axis, len(run), frozenset(pair))
+            tubes.append(tube)
+    if not tubes or len(tubes) < len(demands):
         return None
-    head, axis = found[0]
-    reader = _seg_edges if axis[0] else _seg_edges_v
-    step = (axis[0] * p, axis[1] * p)
-    cells = [head]
-    nxt = (head[0] + step[0], head[1] + step[1])
-    while reader(g, nxt[0], nxt[1], p) == pair:
-        cells.append(nxt)
-        nxt = (nxt[0] + step[0], nxt[1] + step[1])
 
+    for tube in tubes:
+        sig = _signature(g, tube.head, p)
+        for owed_sig, want, centre, _ in demands:
+            if owed_sig == sig:
+                if tube.demand is not None:
+                    return None
+                tube.demand, tube.click = want, centre
+    if sum(1 for t in tubes if t.demand is not None) != len(demands):
+        return None
+
+    # --- the field: a tile, a hole in the floor, or nothing
     tiles: dict[tuple[int, int], int] = {}
     walls: set[tuple[int, int]] = set()
-    foreign: dict[tuple[int, int], tuple[int, int]] = {}
     for x in range(fx0, fx1, p):
         for y in range(fy0, fy1, p):
             colour = _tile_at(g, (x, y), p, bg, panel)
@@ -567,25 +746,41 @@ def parse(g: np.ndarray) -> Board | None:
                 tiles[(x, y)] = colour
             elif np.all(g[y:y + p, x:x + p] == bg):
                 walls.add((x, y))
-    for x in range(fx0 - p, fx1 + p, p):
-        for y in range(fy0 - p, min(fy1 + p, top), p):
-            if (x, y) in cells:
-                continue
-            if _seg_edges(g, x, y, p) is not None:
-                foreign[(x, y)] = (1, 0)
-            elif _seg_edges_v(g, x, y, p) is not None:
-                foreign[(x, y)] = (0, 1)
-
-    lo, hi = _rail_span(g, head, axis, p, bg, rect, top)
-    if lo > hi:
+    if not tiles:
         return None
-    return Board(p, rect, head, axis, len(cells), tiles, walls, foreign, (lo, hi), demand)
+
+    occupied: set[tuple[int, int]] = set()
+    for tube in tubes:
+        occupied.update(cells_of(tube.head, tube.axis, tube.length, p))
+    for tube in tubes:
+        lo, hi = _rail_span(g, tube.head, tube.axis, p, bg, rect, top, occupied, chrome)
+        if lo > hi:
+            return None
+        tube.rail = (lo, hi)
+    return Board(p, rect, tubes, tiles, walls)
+
+
+def _candidates(board: Board) -> list[int]:
+    """Which tube might be holding the keys right now.
+
+    Only one pair on the board answers the keys, and it is drawn in its own two colours
+    while every other tube wears the shared pair. So a colour group carrying TWO board
+    tubes cannot be the live one, which on the crowded boards leaves exactly one answer;
+    where two groups each carry one tube the frame does not say, and both are offered. A
+    route that opens with a hand-over is right under either reading, so the tool prefers
+    one; when no such route exists the board itself settles it in a single action.
+    """
+    by_group: dict[frozenset[int], list[int]] = {}
+    for i, tube in enumerate(board.tubes):
+        by_group.setdefault(tube.group, []).append(i)
+    out = [members[0] for members in by_group.values() if len(members) == 1]
+    return out or list(range(len(board.tubes)))
 
 
 # --- the tool ---------------------------------------------------------------
 
 class TubeOrderTool:
-    """Plan a tube board to its demanded run, or stand down.
+    """Plan a tube board to its demanded runs, or stand down.
 
     `detect` bids only when a board parses AND the search has found a route through it, so
     a board this tool merely resembles costs the run nothing. The route is planned once and
@@ -602,11 +797,14 @@ class TubeOrderTool:
         self.reset()
 
     def reset(self) -> None:
-        self._route: list[tuple[int, int]] = []
+        self._route: list[Move] = []
         self._board: Board | None = None
         self._key: str | None = None
-        self._expect: tuple | None = None
+        self._at: tuple | None = None
         self._pending: tuple[Board, tuple[int, int], int] | None = None
+        self._active = 0
+        self._ruled_out: set[int] = set()
+        self._issued = 0
         self._level = -1
         # One failed search per level is enough. The tool takes no action when it has no
         # route, so nothing it does can change the board into a solvable one, and the
@@ -615,7 +813,9 @@ class TubeOrderTool:
 
     @staticmethod
     def _state(board: Board) -> tuple:
-        return (board.head, board.length, tuple(sorted(board.tiles.items())))
+        return (tuple(t.head for t in board.tubes),
+                tuple(t.length for t in board.tubes),
+                tuple(sorted(board.tiles.items())))
 
     def _rebind(self, board: Board) -> None:
         """Bind a key to the direction it actually produced.
@@ -628,16 +828,47 @@ class TubeOrderTool:
         assert self._pending is not None
         before, move, aid = self._pending
         self._pending = None
+        if len(before.tubes) != len(board.tubes):
+            return
         actual = self._state(board)
+        heads = tuple(t.head for t in before.tubes)
+        lengths = tuple(t.length for t in before.tubes)
         matches = []
         for cand in _DIRS:
-            nh, nl, nt, _ = Sim(before, before.head, before.length, before.tiles).apply(cand)
-            if (nh, nl, tuple(sorted(nt.items()))) == actual:
+            out = _step(before, heads, lengths, before.tiles, self._active, cand)
+            if out is None:
+                continue
+            if (out[0], out[1], tuple(sorted(out[2].items()))) == actual:
                 matches.append(cand)
         if len(matches) != 1 or matches[0] == move:
             return
         truth = matches[0]
         self._keys[move], self._keys[truth] = self._keys[truth], aid
+
+    def _search(self, board: Board) -> bool:
+        """Plan under every reading of who holds the keys, and keep the safest route."""
+        best: tuple[int, int, list[Move], int] | None = None
+        reading = _candidates(board)
+        # An opening hand-over makes the route right under EVERY reading, and is worth its
+        # one action only when the frame leaves more than one reading open.
+        unsure = len(reading) > 1
+        for guess in reading:
+            if guess in self._ruled_out:
+                continue
+            route = plan(board, guess)
+            if route is None:
+                continue
+            if route and route[0][0] != "sel" and board.tubes[guess].click and unsure:
+                route = [("sel", guess)] + route
+            blind = 0 if (route and route[0][0] == "sel") else 1
+            rank = (blind, len(route), route, guess)
+            if best is None or rank[:2] < best[:2]:
+                best = rank
+        if best is None:
+            return False
+        _, _, self._route, self._active = best
+        self._board = board
+        return True
 
     def _study(self, obs: Any) -> bool:
         if not has_frame(obs):
@@ -648,10 +879,20 @@ class TubeOrderTool:
             self._level = done
             self._route, self._board, self._key = [], None, None
             self._expect, self._pending = None, None
+            self._ruled_out = set()
             self._surrendered = False
         digest = base_hash(g)
         if digest == self._key:
-            return bool(self._route)
+            # A hand-over leaves the board untouched, so an unchanged frame is exactly what
+            # it looks like and the route must carry on. A MOVE that changes nothing is a
+            # different animal — the rule was misread — and the only tell is that the board
+            # has now ignored two actions running. Count actions issued, not frames looked
+            # at: the harness studies the same frame twice per turn, and counting looks
+            # made the tool throw away a good route after one free hand-over.
+            if self._issued < 2:
+                return bool(self._route)
+            self._route, self._at = [], None
+        self._issued = 0
         self._key = digest
         board = parse(g)
         if board is None:
@@ -661,23 +902,25 @@ class TubeOrderTool:
         if self._pending is not None:
             self._rebind(board)
         state = self._state(board)
-        if self._route and state == self._expect:
-            self._board = board
-            self._route = self._route[1:]
-            self._expect = None
-            if self._route:
-                return True
+        if self._at is not None:
+            if state == self._at:
+                self._board, self._at = board, None
+                if self._route:
+                    return True
+            else:
+                # The board did not do what the route said it would, so the reading of who
+                # holds the keys was wrong. Drop that reading rather than the whole board.
+                self._ruled_out.add(self._active)
+                self._route, self._at = [], None
         if self._surrendered or digest in self._dead:
             self._route, self._board = [], None
             return False
-        route = plan(board)
-        if route is None:
+        if not self._search(board):
             self._dead.add(digest)
             self._surrendered = True
             self._route, self._board = [], None
             return False
-        self._board, self._route = board, route
-        return bool(route)
+        return bool(self._route)
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         return 0.95 if self._study(obs) else 0.0
@@ -690,9 +933,23 @@ class TubeOrderTool:
             return []
         board = self._board
         assert board is not None
-        move = self._route[0]
-        key = self._keys[move]
-        nh, nl, nt, _ = Sim(board, board.head, board.length, board.tiles).apply(move)
-        self._expect = (nh, nl, tuple(sorted(nt.items())))
-        self._pending = (board, move, key)
+        kind, arg = self._route[0]
+        heads = tuple(t.head for t in board.tubes)
+        lengths = tuple(t.length for t in board.tubes)
+        if kind == "sel":
+            self._active = arg
+            self._at = (heads, lengths, tuple(sorted(board.tiles.items())))
+            self._pending = None
+            self._route = self._route[1:]
+            self._issued += 1
+            return [(_CLICK, board.tubes[arg].click)]
+        key = self._keys[arg]
+        out = _step(board, heads, lengths, board.tiles, self._active, arg)
+        if out is None:
+            self._route = []
+            return []
+        self._at = (out[0], out[1], tuple(sorted(out[2].items())))
+        self._pending = (board, arg, key)
+        self._route = self._route[1:]
+        self._issued += 1
         return [(key, None)]
