@@ -1,47 +1,59 @@
 """Drag tethered weights until each cluster's balance point sits on its own marker.
 
 The mechanic this recovers, in frame terms only. A board carries three kinds of small
-diamond-family glyph, all built on the same lattice: a WEIGHT (a solid diamond whose body
-is one flat colour around a single differently-coloured pip), a BODY (a larger solid diamond
-carrying several colours), and a MARKER (a hollow diamond ring, one size larger again, drawn
-in the very colours some body carries). Clicking a weight picks it up; clicking anywhere else
-drops the held weight so its pip lands on the clicked cell. Nothing else on the board responds
-to a click.
+diamond-family glyph, all built on the same lattice: a WEIGHT (a solid diamond whose body is
+one flat colour around a single differently-coloured pip), a DISK (a solid diamond one size
+larger, carrying several colours), and a MARKER (a hollow diamond ring one size larger again).
+Clicking a weight picks it up; clicking anywhere else drops the held weight so its pip lands
+on the clicked cell. Nothing else on the board responds to a click.
 
-The BODY is not clickable and never dragged. It is pinned to the arithmetic mean of the pips
-of the weights that belong to it, floor-divided, and it re-pins the instant one of them lands.
-So the whole board is a set of independent little levers: to put a body on its marker, place
-its weights so their mean is the marker's centre. That relation is also how the grouping is
-recovered — a body's cell IS the floored mean of its own weights and of no other set, so the
-partition is read off the board rather than guessed, and a board where no partition satisfies
-it is a board carrying some other mechanic and is declined.
+Some disks are BODIES: strung to a set of weights by drawn strokes, pinned to the arithmetic
+mean of their pips, floor-divided, and re-pinned the instant one of them lands. They are not
+clickable and are never dragged. The whole board is therefore a set of independent little
+levers, and to put a body on a marker its weights have to be placed so their mean is the
+marker's centre. The strokes say which weights belong to which body; the balance rule then
+has to reproduce the board exactly, and a board where it does not is carrying some other
+mechanic and is declined.
+
+The disks that no stroke reaches are TOKENS lying loose. A body that comes to rest touching
+one absorbs its colour permanently, and a marker is only satisfied by a body wearing exactly
+its colours — so on a board of blank bodies the plan is a route: collect these tokens, in this
+order, avoiding every other token on the way, and only then go to the marker.
 
 ⛔ Which marker belongs to which body is read from COLOUR, not from distance. Measured on the
 sample board: markers outnumber bodies almost two to one, the surplus ones are decoys parked
-closer to a body than its own marker is, and every real pairing has the marker's outer-arm
-colours equal to the body's colours minus its centre pip. Nearest-marker scores that board
-completely wrong; the colour identity scores it exactly.
+closer to a body than its own marker is, and every real pairing has the marker's colours equal
+to the body's. Nearest-marker scores that board completely wrong.
 
-⛔ The outer arms are the only part of a marker that may be read. A body that has arrived
-covers a marker's inner ring — the four cells the two shapes share — so a colour set taken
-from the whole marker changes the moment the level is won, and a plan that re-reads the board
-each turn would stop recognising the thing it had just solved. Only cells the body cannot
-reach are used.
+⛔ And on a board of blank bodies, colour alone still leaves a choice, so the assignment kept
+is the one that CONSUMES THE MOST TOKENS. Measured: a blank body can satisfy a one-colour
+decoy marker by taking a single token, which looks like a solution and quietly strands a real
+two-colour marker whose second token has just been eaten. Maximising tokens used picks the
+arrangement in which every piece on the board has a job, which is the arrangement the board
+was built as.
+
+⛔ Only a marker's outer arms may be read. A body that has arrived covers the cells the two
+shapes share, so a colour set taken from the whole marker changes the moment the level is won,
+and the plan would stop recognising the thing it had just solved.
 
 ⛔ Two regions are hazardous and they are not the same hazard. The BOUNDARY (the colour that
-dominates the frame's outer ring) refuses a weight: a drop that would overlap it is swallowed
-and the action is spent for nothing. A large interior FIELD instead punishes a BODY that comes
-to rest inside it, and the sample board ends the level after five such rests, undoing each
-move as it goes. So a weight may be dropped in the field freely, while every resting place a
-body passes through — including the one it occupies between the first and second drop of a
-two-drop plan — has to be clear of it. Planning one drop at a time cannot see that; the plan
-is therefore solved for both drops at once.
+dominates the frame's outer ring) refuses a weight: a drop overlapping it is swallowed and the
+action is spent for nothing. A large interior FIELD instead punishes a BODY that comes to rest
+inside it, and the sample board undoes that move and ends the level after five of them. So a
+weight may be dropped in the field freely, while every resting place a body passes through —
+including the one between the first and second drop of a two-drop plan — has to be clear of
+it. Planning one drop at a time cannot see that, which is why the pair is solved together.
 
-Connector strokes are stripped before anything is segmented. The board draws a one-cell line
-from each weight to its body over the background, and 8-connectivity happily welds a weight,
-its line and its body into one blob, which is what makes a naive segmentation read this board
-as three enormous objects. A colour is a stroke when no cell of it has three same-coloured
-orthogonal neighbours and at least one of its runs is long and one cell thick.
+⛔ A destination inside ANY weight's box, not just this lever's own, picks that weight up
+instead of dropping the held one. Measured, and it cost a level: a drop aimed one cell from an
+unrelated group's weight selected it, the drop never happened, and every later click in the
+plan moved the wrong piece.
+
+Connector strokes are stripped before anything is segmented. Each stroke runs from a weight to
+its body over plain ground, and 8-connectivity happily welds weight, stroke and body into one
+blob — which is what makes a naive segmentation read this board as three enormous objects. A
+colour is a stroke when no cell of it has three same-coloured orthogonal neighbours and at
+least one of its runs is long and one cell thick.
 """
 
 from __future__ import annotations
@@ -535,18 +547,6 @@ def _centre(members: list[tuple[int, int]]) -> tuple[int, int]:
     return sum(m[0] for m in members) // n, sum(m[1] for m in members) // n
 
 
-def _rest_grid(base: tuple[int, int], n: int, rest: np.ndarray) -> np.ndarray:
-    """For every drop cell, whether the body's resulting rest is out of the field."""
-    h, w = rest.shape
-    ys = (base[0] + np.arange(h)) // n
-    xs = (base[1] + np.arange(w)) // n
-    good = np.zeros((h, w), dtype=bool)
-    inside = (ys >= 0) & (ys < h)
-    cols = (xs >= 0) & (xs < w)
-    good[np.ix_(inside, cols)] = rest[np.ix_(ys[inside], xs[cols])]
-    return good
-
-
 def _boxes(cells: list[tuple[int, int]], span: int, shape: tuple[int, int]) -> np.ndarray:
     """Mask of every cell inside one of these glyphs' click boxes."""
     out = np.zeros(shape, dtype=bool)
@@ -566,9 +566,13 @@ def _mirror(mask: np.ndarray, total: tuple[int, int]) -> np.ndarray:
 
 
 def _one(board: _Board, members: list[tuple[int, int]], goals: list[tuple[int, int]],
-         room: np.ndarray, rest: np.ndarray,
+         room: np.ndarray, _rest: np.ndarray,
          busy: list[tuple[int, int]]) -> list[tuple[tuple[int, int], tuple[int, int]]] | None:
-    """A single drop that lands the body on a goal cell."""
+    """A single drop that lands the body on a goal cell.
+
+    The rest it produces needs no separate check: the goals handed in have already been
+    filtered to places this body may safely come to rest.
+    """
     n = len(members)
     span = board.half
     total = (sum(m[0] for m in members), sum(m[1] for m in members))

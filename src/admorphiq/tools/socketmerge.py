@@ -48,12 +48,19 @@ _WELD = 1
 
 @dataclass(frozen=True)
 class _Piece:
-    """A solid square of a playable colour: x/y are its top-left cell, side its width."""
+    """A solid square of a playable colour: x/y are its top-left cell, side its width.
+
+    ``rank`` is the piece's position on the merge ladder, read off the header key rather
+    than guessed from ``side``: two pieces of rank r fuse into one of rank r+1, and an
+    enemy strike knocks one rank off. -1 means the board printed no key, in which case
+    size ordering stands in (the shallow boards carry a single size and never need it).
+    """
 
     x: int
     y: int
     side: int
     colour: int
+    rank: int = -1
 
     @property
     def cx(self) -> int:
@@ -108,6 +115,12 @@ class _Board:
     hazards: tuple[_Blob, ...]
     top: int  # first playable row
     bottom: int  # last playable row
+    # What the sockets are asked to hold, read off the header: how many pieces of each
+    # ladder rank, and how many strikers. Empty when the board printed no key, which is
+    # the shallow case where "one piece per socket" is the whole requirement.
+    want_rank: tuple[tuple[int, int], ...] = ()
+    want_strikers: int = 0
+    strikers: tuple[_Blob, ...] = ()  # strikers identified by colour, not by motion
 
 
 def _gap(px: int, py: int, x0: int, y0: int, x1: int, y1: int) -> float:
@@ -131,10 +144,17 @@ class SocketMergeTool:
         self._reach = 1
         self._reach_ceiling: int | None = None
         self._probing = True
+        # A vacuum spans TWO actions and the pair must not be split. This flag
+        # deliberately survives reset() — see propose().
+        self._settling = False
         self.reset()
 
     def reset(self) -> None:
         self._palette: frozenset[int] | None = None
+        self._ladder: list[int] = []
+        self._want_rank: tuple[int, ...] = ()
+        self._want_strikers = 0
+        self._striker_colours: set[int] = set()
         self._sockets: tuple[tuple[int, int], ...] = ()
         self._pending: tuple[np.ndarray, int] | None = None  # (frame at click, gap aimed at)
         self._last_hash: int | None = None
@@ -145,6 +165,69 @@ class SocketMergeTool:
         self._idle = 0
 
     # --- perception ---------------------------------------------------------
+
+    def _legend(self, g: np.ndarray, bg: set[int], top: int) -> None:
+        """Read the header: the merge ladder, and what the sockets are asked to hold.
+
+        The header prints TWO different things and they are told apart by the strip each
+        one sits on, not by where it is. A run of equal swatches on a BACKGROUND-coloured
+        strip is the KEY — the ladder, in order, one swatch per rank, so a piece's colour
+        names its rank outright. Everything on the CHROME field is a REQUIRED ITEM, drawn
+        as the very sprite it asks for; an item whose colour is on the key is a piece of
+        that rank, and one whose colour is not is a striker.
+
+        ⛔ MEASURED, and it is what stopped the tool at the fifth board: taking the palette
+        from the whole header (colours minus chrome minus background) swallows the striker
+        icon, so the striker ITSELF then reads as a handful of playable pieces. The tool
+        spent that board trying to fuse its attacker and lost on the step budget.
+        """
+        chrome = int(np.bincount(g[0].astype(int)).argmax())
+        field = bg | {chrome}
+        header = np.full_like(g, -9)
+        header[:top] = g[:top]
+        for c in field:
+            header[header == c] = -9
+
+        key: list[tuple[int, int]] = []  # (x0, colour)
+        want: list[tuple[int, int, int]] = []  # (colour, width, height)
+        # Welded, not 4-connected: a striker is drawn speckled, and counting its pieces
+        # instead of the striker made one required attacker read as six.
+        for cells in _weld({(y, x) for y, x in zip(*np.nonzero(header != -9))}):
+            y0 = min(c[0] for c in cells)
+            y1 = max(c[0] for c in cells)
+            x0 = min(c[1] for c in cells)
+            x1 = max(c[1] for c in cells)
+            colour = int(np.bincount([int(g[y][x]) for y, x in cells]).argmax())
+            ring = [
+                int(g[y, x])
+                for y in range(max(0, y0 - 1), min(top, y1 + 2))
+                for x in range(max(0, x0 - 1), min(g.shape[1], x1 + 2))
+                if not (y0 <= y <= y1 and x0 <= x <= x1)
+            ]
+            on_bg = sum(1 for c in ring if c in bg)
+            if ring and on_bg * 2 > len(ring):
+                key.append((x0, colour))
+            else:
+                want.append((colour, x1 - x0 + 1, y1 - y0 + 1))
+
+        ladder: list[int] = []
+        for _x, colour in sorted(key):
+            if colour not in ladder:
+                ladder.append(colour)
+        self._ladder = ladder
+        # With no key printed the icons are all the tool knows a piece can look like, so
+        # they carry the palette themselves — the shallow boards where rank never matters.
+        self._palette = frozenset(ladder) if ladder else frozenset(c for c, _w, _h in want)
+        ranks: list[int] = []
+        strikers = 0
+        for colour, _w, _h in want:
+            if colour in ladder:
+                ranks.append(ladder.index(colour))
+            elif ladder:
+                strikers += 1
+                self._striker_colours.add(colour)
+        self._want_rank = tuple(sorted(ranks))
+        self._want_strikers = strikers
 
     def _read(self, g: np.ndarray) -> _Board | None:
         """Cut the frame into playable squares and sockets, or return None if it is not one."""
@@ -157,9 +240,7 @@ class SocketMergeTool:
         bottom = h - 2
 
         if self._palette is None:
-            header = g[:top]
-            chrome = int(np.bincount(g[0].astype(int)).argmax())
-            self._palette = frozenset(int(c) for c in np.unique(header)) - {chrome} - bg
+            self._legend(g, bg, top)
         if not self._palette:
             return None
 
@@ -177,7 +258,9 @@ class SocketMergeTool:
             side = y1 - y0 + 1
             square = (x1 - x0 + 1) == side
             if square and comp["size"] == side * side and int(comp["color"]) in self._palette:
-                pieces.append(_Piece(x0, y0, side, int(comp["color"])))
+                colour = int(comp["color"])
+                rank = self._ladder.index(colour) if colour in self._ladder else -1
+                pieces.append(_Piece(x0, y0, side, colour, rank))
                 continue
             # A socket is printed as a disc: a square footprint with its corners cut away.
             # Solid is what separates it from decoration — one sample board parks a solid
@@ -199,7 +282,24 @@ class SocketMergeTool:
             self._sockets = tuple(sorted(sockets))
         if not self._sockets or not pieces:
             return None
-        return _Board(tuple(pieces), self._sockets, self._hazards(other), top, bottom)
+        # A striker names itself: its colour is on the header among the required items yet
+        # off the ladder, so it needs neither motion nor a guess to be picked out. That
+        # matters because the boards that ASK for a striker are also the ones where waiting
+        # to see it move costs steps the budget does not have.
+        strikers: list[_Blob] = []
+        if self._striker_colours:
+            hit = {c for c in other if int(g[c[0]][c[1]]) in self._striker_colours}
+            other = other - hit
+            for cells in _weld(hit):
+                ys = [c[0] for c in cells]
+                xs = [c[1] for c in cells]
+                strikers.append(_Blob(min(xs), min(ys), max(xs), max(ys)))
+        return _Board(
+            tuple(pieces), self._sockets, self._hazards(other), top, bottom,
+            tuple((r, self._want_rank.count(r)) for r in sorted(set(self._want_rank))),
+            self._want_strikers,
+            tuple(strikers),
+        )
 
     def _hazards(self, other: set[tuple[int, int]]) -> tuple[_Blob, ...]:
         """Whatever is neither piece nor socket AND has been seen to move.
@@ -346,15 +446,165 @@ class SocketMergeTool:
         pieces = sorted(board.pieces, key=lambda p: (-p.side, p.x, p.y))
         n_sock = len(board.sockets)
 
-        work = None
-        if len(pieces) > n_sock:
-            work = self._fuse(board, pieces, w, h)
-        if work is None:
-            work = self._deliver(board, pieces, w, h)
+        if board.want_rank or board.want_strikers:
+            work = self._plan_spec(board, pieces, w, h)
+        else:
+            work = None
+            if len(pieces) > n_sock:
+                work = self._fuse(board, pieces, w, h)
+            if work is None:
+                work = self._deliver(board, pieces, w, h)
         shove = self._shove(board, w, h)
         if shove is None or (work is not None and self._escapes(board, work, w, h)):
             return work
         return shove
+
+    # --- planning against the printed requirement ---------------------------
+
+    @staticmethod
+    def _shortfall(have: dict[int, int], want: tuple[tuple[int, int], ...]) -> tuple[str, int] | None:
+        """The next rank change the board still owes, or None when it owes nothing.
+
+        Returns ("merge", r) — fuse two pieces of rank r — or ("strike", r) — walk a
+        striker into the rank-r piece to knock it down one. The two are inverses, which
+        is the whole shape of the deep boards: they hand out ONE oversized piece and a
+        striker, so the only way down the ladder is to be hit on purpose.
+        """
+        free = dict(have)
+
+        def take(r: int) -> tuple[str, int] | None:
+            if free.get(r, 0) > 0:
+                free[r] -= 1
+                return None
+            above = [d for d in free if d > r and free[d] > 0]
+            if above:
+                return "strike", min(above)
+            if r <= 0:
+                return None  # nothing below rank 0 to build from
+            if free.get(r - 1, 0) >= 2:
+                return "merge", r - 1
+            for _ in range(2):  # two of the rank below are needed; make them first
+                step = take(r - 1)
+                if step is not None:
+                    return step
+            return "merge", r - 1  # both now accounted for, so the fuse is the next move
+
+        for rank, count in sorted(want, reverse=True):
+            for _ in range(count):
+                step = take(rank)
+                if step is not None:
+                    return step
+        return None
+
+    def _plan_spec(
+        self, board: _Board, pieces: list[_Piece], w: int, h: int
+    ) -> tuple[int, int] | None:
+        """Produce exactly the printed items, then park them."""
+        have: dict[int, int] = {}
+        for p in pieces:
+            have[p.rank] = have.get(p.rank, 0) + 1
+        step = self._shortfall(have, board.want_rank)
+        if step is not None:
+            kind, rank = step
+            if kind == "strike":
+                group = [p for p in pieces if p.rank == rank]
+                if group:
+                    move = self._strike(board, group[0], w, h)
+                    if move is not None:
+                        return move
+            # WHETHER to fuse is the requirement's call; WHICH pair is a cost question,
+            # and the answer is the nearest one, exactly as on the shallow boards. Naming
+            # the rank here as well was MEASURED to cost eight actions on the board that
+            # asks for two ranks at once: the requirement asks for the low rank first
+            # while a high pair sits touching, and walking the low pair together is the
+            # more expensive of two moves that both had to happen anyway.
+            move = self._fuse(board, pieces, w, h)
+            if move is not None:
+                return move
+        return self._deliver_spec(board, pieces, w, h)
+
+    def _strike(
+        self, board: _Board, victim: _Piece, w: int, h: int
+    ) -> tuple[int, int] | None:
+        """One vacuum that puts a striker on top of `victim`, knocking it down a rank.
+
+        Clicking the victim's OWN centre is the whole trick: the victim is at zero gap
+        from it and so re-lands exactly where it already stands, while the striker — swept
+        by the same vacuum — is dragged onto the same cell and lands the hit. When the
+        striker is too far for that, it is walked in first.
+        """
+        if not board.strikers:
+            return None
+        z = min(board.strikers,
+                key=lambda b: (b.cx - victim.cx) ** 2 + (b.cy - victim.cy) ** 2)
+        cx, cy = victim.cx, victim.cy
+        if _gap(cx, cy, z.x0, z.y0, z.x1, z.y1) <= self._reach and board.top <= cy <= board.bottom:
+            # No OTHER piece may ride along: two pieces landing together either fuse or
+            # are rejected, and both undo the rank this move exists to change.
+            if not [p for p in self._sweep(board, cx, cy, self._reach) if (p.x, p.y) != (victim.x, victim.y)]:
+                return cx, cy
+        return self._walk_blob(board, z, (cx, cy), w, h)
+
+    def _walk_blob(
+        self, board: _Board, z: _Blob, target: tuple[int, int], w: int, h: int
+    ) -> tuple[int, int] | None:
+        """One vacuum that drags a striker as close to `target` as the reach allows."""
+        best_d = (z.cx - target[0]) ** 2 + (z.cy - target[1]) ** 2
+        best: tuple[int, int] | None = None
+        span = self._reach + 4
+        for px in range(max(0, z.cx - span), min(w, z.cx + span + 1)):
+            for py in range(max(board.top, z.cy - span), min(board.bottom + 1, z.cy + span + 1)):
+                if _gap(px, py, z.x0, z.y0, z.x1, z.y1) > self._reach:
+                    continue
+                if self._sweep(board, px, py, self._reach):
+                    continue  # never drag a piece along with the striker
+                d = (px - target[0]) ** 2 + (py - target[1]) ** 2
+                if d < best_d:
+                    best_d, best = d, (px, py)
+        return best
+
+    def _deliver_spec(
+        self, board: _Board, pieces: list[_Piece], w: int, h: int
+    ) -> tuple[int, int] | None:
+        """Park exactly one piece per required rank, and the strikers LAST.
+
+        Order is not cosmetic: a striker parked early walks straight back out again, since
+        it resumes hunting the moment it is not mid-strike. The pieces are settled first
+        so the striker's arrival is the move that completes the board.
+        """
+        free = list(board.sockets)
+        chosen: list[_Piece] = []
+        pool = list(pieces)
+        for rank, count in sorted(board.want_rank, reverse=True):
+            for _ in range(count):
+                same = [p for p in pool if p.rank == rank]
+                if not same:
+                    continue
+                pick = min(same, key=lambda p: min(
+                    (s[0] - p.cx) ** 2 + (s[1] - p.cy) ** 2 for s in board.sockets))
+                pool.remove(pick)
+                chosen.append(pick)
+        for p in chosen:
+            if not free:
+                break
+            sx, sy = min(free, key=lambda s: (s[0] - p.cx) ** 2 + (s[1] - p.cy) ** 2)
+            free.remove((sx, sy))
+            if (p.cx, p.cy) == (sx, sy):
+                continue
+            move = self._walk(board, p, (sx, sy), w, h)
+            if move is not None:
+                return move
+        for z in board.strikers[:board.want_strikers]:
+            if not free:
+                break
+            sx, sy = min(free, key=lambda s: (s[0] - z.cx) ** 2 + (s[1] - z.cy) ** 2)
+            free.remove((sx, sy))
+            if (z.cx, z.cy) == (sx, sy):
+                continue
+            move = self._walk_blob(board, z, (sx, sy), w, h)
+            if move is not None:
+                return move
+        return None
 
     def _escapes(self, board: _Board, click: tuple[int, int], w: int, h: int) -> bool:
         """Would the useful move ITSELF carry the threatened piece out of danger?
@@ -472,8 +722,11 @@ class SocketMergeTool:
         g = frame_2d(obs)
         if g.ndim != 2 or g.shape[0] != g.shape[1]:
             return 0.0
-        keep = (self._palette, self._sockets, self._ever, self._marks, self._haz_step)
+        keep = (self._palette, self._sockets, self._ever, self._marks, self._haz_step,
+                self._ladder, self._want_rank, self._want_strikers, self._striker_colours)
         self._palette, self._sockets, self._ever, self._marks = None, (), None, []
+        self._ladder, self._want_rank, self._want_strikers = [], (), 0
+        self._striker_colours = set()
         try:
             board = self._read(g)
             if board is None or len(board.pieces) < 1:
@@ -481,12 +734,20 @@ class SocketMergeTool:
             h, w = g.shape
             if self._plan(board, w, h) is None:
                 return 0.0
-            # Distinct sizes on the board mean a ladder is in play, which is this family's
-            # signature; a single size could be any click game and scores lower.
+            # Both branches bid HIGH on purpose. Sweeping all 25 sample games, first frame
+            # plus three probe clicks each, this returns 0.00 on 24 of them — the clauses
+            # above are a conjunction, not a guess, so a board that reaches here is this
+            # family's. The harness treats a bid below 0.7 as a tool that does not own its
+            # game and may retire it mid-level on a stall; understating a measured-selective
+            # detect is what costs the deeper levels, so it is not understated.
+            # Distinct sizes on the board mean the merge ladder is in play, which is the
+            # family's sharpest tell, so that board scores higher still.
             sizes = {p.side for p in board.pieces}
-            return 0.9 if len(board.pieces) > len(board.sockets) or len(sizes) > 1 else 0.6
+            return 0.95 if len(board.pieces) > len(board.sockets) or len(sizes) > 1 else 0.85
         finally:
-            (self._palette, self._sockets, self._ever, self._marks, self._haz_step) = keep
+            (self._palette, self._sockets, self._ever, self._marks, self._haz_step,
+             self._ladder, self._want_rank, self._want_strikers,
+             self._striker_colours) = keep
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Nothing is learned here: the reach test needs the SETTLED board, which arrives
@@ -495,6 +756,18 @@ class SocketMergeTool:
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if not has_frame(obs):
             return []
+        # The second half of a vacuum, and it is STATE rather than a queued step.
+        # MEASURED 2026-08-27: emitting the pair as one two-step list works when the
+        # tool is driven directly and FAILS inside the harness, which empties its
+        # action queue the moment the level counter moves — and that counter moves
+        # DURING the win animation, one action before the next board is drawn. The
+        # discarded filler was replaced by a re-plan on the animating frame, which
+        # aims a real click at a board that no longer exists; on the sample board that
+        # click wedged the game and cost the remaining 380 actions. Holding the pair
+        # here instead means nothing outside the tool can come between the two halves.
+        if self._settling:
+            self._settling = False
+            return [(6, (0, 0))]
         g = frame_2d(obs)
         digest = hash(g.tobytes())
         if digest == self._last_hash:
@@ -541,4 +814,5 @@ class SocketMergeTool:
             self._blocked.clear()
             return [(6, (0, 0))]
         self._pending = (g.copy(), gap)
-        return [(6, move), (6, (0, 0))]
+        self._settling = True
+        return [(6, move)]

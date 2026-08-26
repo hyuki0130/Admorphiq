@@ -14,10 +14,12 @@ ends. There is no exploration budget here to spend. The tool instead recovers th
 rule, runs it as a SIMULATOR over candidate placements, and commits only to a placement its own
 model says wins.
 
-⛔ Nothing is assumed about which way is down. Gravity is DERIVED — a cup's mouth opens against
-the flow, so the direction from a mouth into its own body is the flow direction, cross-checked
-against each emitter's droplet sitting one cell downstream of it. Two of the six boards render
-rotated, and a tool that assumed "down" would drive every piece the wrong way on them.
+⛔ Nothing is assumed about which way is down. Two of the six boards render rotated — and the
+CONTROLS rotate with them, so the display always reads naturally — but the flow direction still
+has to be recovered. It comes from the EMITTERS: each is a lone cell against the board's rim with
+its first droplet one step inside, and that pair names the direction outright. Cups only vote,
+because a cup can be turned to face any side: one board has cups opening up, left and right at
+once, so a majority of mouths points the wrong way.
 
 ⛔ A wrong commit is not free: the board keeps its layout but the attempt counter does not reset,
 and the game ENDS on the fifth. So the tool commits only on a predicted win, and a commit that
@@ -124,6 +126,8 @@ def _blocks(px: np.ndarray, n: int, s: int, off: int) -> tuple[np.ndarray, float
 
 def _lattice(px: np.ndarray) -> tuple[int, int, int] | None:
     """Cell size and letterbox offset, coarsest first."""
+    if px.ndim != 2 or px.shape[0] != px.shape[1]:
+        return None
     h = px.shape[0]
     for s in range(8, 1, -1):
         for off in (0, 1, 2, 3, 4):
@@ -357,12 +361,15 @@ def _spill(board: Board, layout: tuple[Cell, ...]) -> tuple[bool, int, int, froz
     grav = board.grav
     back = (-grav[0], -grav[1])
     left, right = _axis(grav)
+    # Per travel direction: the two cells the flow is pushed aside into, and the two turns an
+    # elbow can impose. Which pair counts as "aside" depends on the AXIS, not on the heading —
+    # a flow moving along the gravity axis is pushed left/right whichever way it runs.
     flat = {}
-    for step in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        p1, p2 = (left, right) if step in (grav, back) else (back, grav)
-        flat[step[0] * span + step[1]] = (
+    for move in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        p1, p2 = (left, right) if move in (grav, back) else (back, grav)
+        flat[move[0] * span + move[1]] = (
             p1[0] * span + p1[1], p2[0] * span + p2[1],
-            -step[1] * span + step[0], step[1] * span - step[0],
+            -move[1] * span + move[0], move[1] * span - move[0],
         )
     down = grav[0] * span + grav[1]
 
@@ -388,15 +395,15 @@ def _spill(board: Board, layout: tuple[Cell, ...]) -> tuple[bool, int, int, froz
         nxt: list[tuple[int, int]] = []
         for pos, d in front:
             p1, p2, turn_a, turn_b = flat[d]
-            step = pos + d
-            k = kind[step]
+            ahead = pos + d
+            k = kind[ahead]
             if k == _EMPTY:
-                kind[step] = _WATER
-                wet.add(step)
-                nxt.append((step, d))
+                kind[ahead] = _WATER
+                wet.add(ahead)
+                nxt.append((ahead, d))
                 continue
             if k == _WATER:
-                nxt.append((step, d))
+                nxt.append((ahead, d))
                 continue
             if k == _LETHAL:
                 doomed += 1
@@ -406,13 +413,13 @@ def _spill(board: Board, layout: tuple[Cell, ...]) -> tuple[bool, int, int, froz
             side_a, side_b = pos + p1, pos + p2
             k1, k2 = kind[side_a], kind[side_b]
             if k == _CUP:
-                if k1 == _CUP and k2 == _CUP and owner[side_a] == owner[step] \
-                        and owner[side_b] == owner[step]:
-                    filled.add(owner[step])
+                if k1 == _CUP and k2 == _CUP and owner[side_a] == owner[ahead] \
+                        and owner[side_b] == owner[ahead]:
+                    filled.add(owner[ahead])
                     continue
             elif k == _ELBOW:
-                flank_a = k1 == _ELBOW and owner[side_a] == owner[step]
-                flank_b = k2 == _ELBOW and owner[side_b] == owner[step]
+                flank_a = k1 == _ELBOW and owner[side_a] == owner[ahead]
+                flank_b = k2 == _ELBOW and owner[side_b] == owner[ahead]
                 if flank_a and k2 == _EMPTY:
                     tgt = pos + turn_a
                     kind[tgt] = _WATER

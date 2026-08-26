@@ -625,6 +625,40 @@ class JigsawAssembleTool:
         return None
 
     def _execute(self, board: np.ndarray) -> list[Step]:
+        """Hand back a NON-EMPTY move list for as long as the plan still owes work.
+
+        ⛔ An empty proposal is not free — it is DESTRUCTIVE. MEASURED in the real harness on the
+        game this was built for: a piece that is already standing on its target owes no slide, so
+        the per-piece call returned `[]`; the loop answers an empty proposal by substituting a
+        probe action, and on this board the first simple action SLIDES the selected piece. The
+        plan's own arrangement was pushed one cell off by the harness, the level then refused,
+        and the tool spent the rest of the budget re-costing tilings against a board that no
+        longer matched its bookkeeping — one level in the harness against six in isolation.
+        So a piece that owes nothing is skipped HERE, in the same call, and the tool never hands
+        the loop a turn it did not ask for.
+        """
+        steps: list[Step] = []
+        # Each pass retires one piece from the plan, so this cannot outrun the plan's length.
+        for _ in range(len(self._plan) + 2):
+            steps = self._next_moves(board)
+            if steps or self._dead:
+                break
+        if steps or self._dead:
+            return steps
+        # Nothing left to move and the level has not turned over: idle on a cell no piece owns,
+        # which selects nothing and moves nothing, rather than letting the loop pick for us.
+        return [self._click(self._vacant())]
+
+    def _vacant(self) -> Cell:
+        """A coarse cell no piece stands on — clicking it is the cheapest action that is inert."""
+        taken = self._taken()
+        for y in range(self._cells):
+            for x in range(self._cells):
+                if (x, y) not in taken:
+                    return (x, y)
+        return (0, 0)
+
+    def _next_moves(self, board: np.ndarray) -> list[Step]:
         """One piece per call: first its form and its selection, then its slide."""
         if self._sliding is not None:
             idx, form, tgt = self._sliding
@@ -656,7 +690,7 @@ class JigsawAssembleTool:
                 best = (stranded, order, (idx, form, tgt))
         if best is None:
             if all(idx in self._done for idx, _, _ in self._plan) and self._attempt():
-                return self._execute(board)
+                return self._next_moves(board)
             self._dead = True
             return []
 

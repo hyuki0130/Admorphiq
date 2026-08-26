@@ -37,13 +37,13 @@ retried inside the SAME action until the piece is gone, so the three sizes are t
 death, not three lives. A walk that treats the other pieces as scenery loses on the first touch,
 and that is exactly how the first version of this tool died four actions into its second board.
 
-The other pieces come in two behaviours and the board draws them identically, so the behaviour is
-LEARNED rather than assumed: a piece whose colour class moved on the last action PATROLS — it
-advances one node along its facing every action and turns round at a wall — and a piece whose
+The other pieces come in three behaviours and the board draws them identically, so the behaviour is
+LEARNED rather than assumed: a piece whose colour class moved on the very first action PATROLS —
+it advances one node along its facing every action and turns round at a wall — and a piece whose
 class did not move LIES IN WAIT, striking only the one node directly in front of it. So the plan
 is made in TIME, not on the map: the patrols are simulated forward and the walk is a shortest path
 through (node, tick) that is never where a patrol will be, and never on the node a waiting piece
-faces.
+faces. The third behaviour is below.
 
 ⛔ THE PIECES ARE REMOVABLE, and that is the level design, not a bonus. Measured 2026-08-27: on
 the third board every route to the door runs through a node a waiting piece faces, so a walk that
@@ -67,23 +67,25 @@ tick already spent has to be recomputed under the new reading, and a carried pos
 The picture is then only a check — every piece it shows must be somewhere the replay put one —
 and the first failure is evidence, not noise: something moved that was not expected to.
 
-⛔ A third behaviour exists and is not worth modelling: a piece that FOLLOWS. It wakes when the
+⛔ The third behaviour is a piece that FOLLOWS, and it is not worth modelling. It wakes when the
 player stands two nodes in front of it and then repeats the player's own moves a couple of ticks
 behind, which no forward simulation of ours reproduces — and a wrong prediction about a piece is
-worse than no prediction, because the walk steps confidently into it. So a class is marked erratic
-the moment it TURNS in a way the patrol rule does not explain — a patrol turns only when it is
-blocked, so a free turn is the tell, and it arrives one tick BEFORE the piece arrives on top of
-the player, which a position-mismatch test does not. Such a piece is then handled REACTIVELY
-rather than predicted: it may be anywhere adjacent to where it stands by the next tick, so no node
-beside it is entered — but its OWN node
-still is, because the engine settles the player before it settles the pieces, so walking INTO a
-follower destroys it and walking beside one gets the player destroyed.
+worse than no prediction, because the walk steps confidently into it. WHEN a class started moving
+is what tells it apart: a patrol is in motion from the first tick of the board, so a class that
+stood still for several ticks and then set off was WOKEN. Such a piece is handled REACTIVELY
+rather than predicted — it may be anywhere beside where it stands by the next tick, so no node
+adjacent to it is entered, but its OWN node still is, because the engine settles the player before
+it settles the pieces, so walking INTO a follower destroys it and walking beside one gets the
+player destroyed.
 
-⛔ And a failed check must never be repaired by re-reading the picture. Measured the same day: a
-class was found to patrol while one of its members was hidden under another piece, the model was
-re-seeded from what could be SEEN, the hidden piece was dropped from the world, and it killed the
-walk four actions later. A re-seed keeps everything already modelled and only ADDS what cannot be
-accounted for.
+⛔ And a failed check must never be repaired by re-reading the picture — except for a follower,
+where it must. Measured the same day, both halves: a class was found to patrol while one of its
+members was hidden under another piece, the model was re-seeded from what could be SEEN, the
+hidden piece was dropped from the world, and it killed the walk four actions later; then the
+opposite, a follower strays from the model every single tick, so a re-seed that keeps what it
+modelled left a copy of it on every node it had ever stood on until eight phantoms had the walk
+cornered. A re-seed keeps what it modelled and ADDS what it cannot account for — but a class known
+to follow is re-read whole.
 
 ⛔ THE DOOR CAN BE STOOD ON. Measured 2026-08-27: a patrol walked over the exit, the one flat
 odd-coloured node vanished from the frame, and a parser that insists on seeing it declared the
@@ -507,7 +509,14 @@ class LatticeMazeTool:
                 self._blocked.add((cell, (cell[0] + eff[0], cell[1] + eff[1])))
 
     def _adopt_mover(self, board: _Board) -> bool:
-        """The piece that answered the control takes the identity from the one that did not."""
+        """The piece that answered the control takes the identity from the one that did not.
+
+        ⛔ Only a piece of a class that has NEVER been seen to move on its own may take the
+        identity, and only when it is the single such candidate. Everything on this board moves
+        every tick, so "something moved the way I asked" is satisfied by a patrol going about its
+        route — handing it the identity would leave the walk steering a piece it does not control
+        while the real one stands still.
+        """
         if self._prev_action is None or self._prev_cell is None:
             return False
         eff = self._effect.get(self._prev_action)
@@ -517,14 +526,18 @@ class LatticeMazeTool:
             eff = _DIRS[idx] if idx is not None else None
         if eff is None:
             return False
+        claim = []
         for cell, (body, mark) in board.pieces.items():
             back = (cell[0] - eff[0], cell[1] - eff[1])
-            if body == self._body:
+            if body == self._body or self._mobile.get(body) is True \
+                    or body in self._erratic:
                 continue
             if back in board.nodes and cell != self._prev_cell:
-                self._body, self._mark = body, mark
-                return True
-        return False
+                claim.append((body, mark))
+        if len(claim) != 1:
+            return False
+        self._body, self._mark = claim[0]
+        return True
 
     # -- tool contract --------------------------------------------------------
 
@@ -646,19 +659,35 @@ class LatticeMazeTool:
             if not stray:
                 return pieces
             # A piece is somewhere the replay did not put one. First reading: its class moves.
+            # ⛔ WHEN it started moving says WHICH kind of moving it is. A patrol is in motion
+            # from the first tick of the board; a class that stood still for several ticks and
+            # then set off was WOKEN, and a woken piece follows the player rather than a route
+            # of its own. Measured 2026-08-27: modelled as a patrol, a woken follower was
+            # predicted to carry on the way it was pointing, the walk stepped into the node it
+            # actually entered, and the board was lost on the ninth action.
             for cell in stray:
-                self._mobile[watched[cell][0]] = True
+                body = watched[cell][0]
+                if self._mobile.get(body) is not True and len(self._hist) > 2:
+                    self._erratic.add(body)
+                self._mobile[body] = True
             pieces = self._replay(board)
-        live = {p[0] for p in pieces if p[3]}
         # Still unaccounted for: the board is not the one we opened on (a restart, or a piece
         # that was hidden when we first looked). Keep every piece already modelled — dropping a
         # hidden one is how the model loses a killer — and add what the picture shows on top.
+        #
+        # ⛔ EXCEPT for a class already known erratic, which is re-read wholesale. Measured
+        # 2026-08-27: a follower is unpredictable, so it strays every single tick, so a re-seed
+        # that keeps what it modelled leaves a copy of it on every node it has ever stood on.
+        # The board filled with eight phantom followers, every route was refused, and the walk
+        # was cornered by pieces that did not exist.
+        kept = [p for p in pieces if p[3] and p[2] not in self._erratic]
+        live = {p[0] for p in kept}
         for cell, val in watched.items():
-            if cell not in live:
+            if cell not in live and val[0] not in self._erratic:
                 self._erratic.add(val[0])
-        self._seed = [[p[0], p[1], p[2]] for p in pieces if p[3]]
+        self._seed = [[p[0], p[1], p[2]] for p in kept]
         self._seed += [[c, facing_of(board, c), v[0]] for c, v in watched.items()
-                       if c not in live]
+                       if c not in live or v[0] in self._erratic]
         self._hist = [me]
         return self._replay(board)
 
@@ -695,7 +724,8 @@ class LatticeMazeTool:
 
     def _search(self, board: _Board, start: Cell,
                 pieces: list[tuple[Cell, Cell | None, int]],
-                tracks: list[list[Cell]], horizon: int, keep_asleep: bool) -> list[Cell] | None:
+                tracks: list[list[Cell]], horizon: int, keep_asleep: bool,
+                visible: set[Cell]) -> list[Cell] | None:
         """Shortest walk to the door over (node, surviving pieces, tick).
 
         ``keep_asleep`` additionally refuses the node TWO in front of a waiting piece, which is
@@ -721,7 +751,7 @@ class LatticeMazeTool:
             for nxt in board.adj.get(cell, ()):
                 alive = mask
                 for i in range(len(pieces)):
-                    if alive >> i & 1 and tracks[i][t] == nxt:
+                    if alive >> i & 1 and tracks[i][t] == nxt and (t or nxt in visible):
                         alive &= ~(1 << i)
                 dead = False
                 for i, (_, face, kind) in enumerate(pieces):
@@ -777,17 +807,23 @@ class LatticeMazeTool:
             if b in board.adj.get(a, ()):
                 board.adj[a] = [n for n in board.adj[a] if n != b]
         pieces = self._pieces(board)
+        # ⛔ Removing a piece is only ever planned against a piece the picture SHOWS. Measured
+        # 2026-08-27: when a class turns out to move, everything the model believed about its
+        # members is recomputed, and a member that was hidden at the time can be left standing on
+        # a node it never occupied. Charging that phantom walked the player into the node the real
+        # one was about to enter. A model good enough to dodge is not good enough to attack.
+        visible = {c for c in board.pieces if c != cell}
         horizon = min(_HORIZON, 3 * len(board.nodes) + 6)
         tracks = self._track(board, pieces, horizon + 1)
         for keep_asleep in (True, False):
-            path = self._search(board, cell, pieces, tracks, horizon, keep_asleep)
+            path = self._search(board, cell, pieces, tracks, horizon, keep_asleep, visible)
             if path:
                 return path
-        return self._edge_out(board, cell, pieces, tracks)
+        return self._edge_out(board, cell, pieces, tracks, visible)
 
     def _edge_out(self, board: _Board, cell: Cell,
                   pieces: list[tuple[Cell, Cell | None, int]],
-                  tracks: list[list[Cell]]) -> list[Cell]:
+                  tracks: list[list[Cell]], visible: set[Cell]) -> list[Cell]:
         """No route survives the whole way: take the least bad step that shortens the walk.
 
         ⛔ Never the shortest path. Measured 2026-08-27: falling back to a route that ignores the
@@ -801,7 +837,7 @@ class LatticeMazeTool:
         assert board.exit is not None
         best: tuple[int, int, Cell] | None = None
         for nxt in board.adj.get(cell, ()):
-            strike = any(track[0] == nxt for track in tracks)
+            strike = nxt in visible and any(track[0] == nxt for track in tracks)
             risk, doomed = 0, False
             for i, (_, face, kind) in enumerate(pieces):
                 if strike or tracks[i][0] == nxt:

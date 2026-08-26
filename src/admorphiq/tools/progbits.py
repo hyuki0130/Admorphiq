@@ -53,6 +53,9 @@ _MAX_PIECE = 20
 # Probing costs a run each; two is the ceiling before the plan is worth more than the knowledge.
 _MAX_PROBE_RUNS = 2
 _MAX_ATTEMPTS = 8
+# One instruction moves a piece by one tile or resizes it by one step; twice that in summed corner
+# distance is generous. Anything further away is a different object.
+_LEAP = 16
 
 Box = tuple[int, int, int, int]  # (x0, y0, x1, y1) inclusive
 Pattern = tuple[int, ...]  # the colour of each bit of one instruction cell
@@ -71,7 +74,11 @@ class Bar:
 
     @property
     def top(self) -> int:
-        return min(self.rows) - 2
+        # The glyph sits at the middle of a three-row patch, so the row's own top edge is one above
+        # its first centre. Taking two was off by a row, and that row is the last row of the board:
+        # a piece standing on it was clipped, stopped matching the socket's opening, and the whole
+        # board read as unrecognisable.
+        return min(self.rows) - 1
 
     def read(self, g: np.ndarray) -> list[Pattern]:
         return [tuple(int(g[y][x]) for y in self.rows) for x in self.cols]
@@ -100,6 +107,7 @@ class Board:
     region: Box
     demo_region: Box | None
     walls: np.ndarray
+    tokens: np.ndarray
 
 
 # --- geometry ---------------------------------------------------------------
@@ -199,19 +207,34 @@ def _straight_triples(g: np.ndarray) -> list[tuple[int, int, int]]:
     return out
 
 
-def _uniform_runs(values: list[int], min_len: int) -> list[list[int]]:
-    """Maximal stretches of a sorted list whose consecutive gaps are all equal."""
+def _lattices(values: list[int], min_len: int) -> list[list[int]]:
+    """Every maximal evenly-stepped series in a set of coordinates.
+
+    Membership, not adjacency. Walking the sorted list and cutting wherever the gap changes was
+    the first version, and one stray mark elsewhere in the frame — a hazard that happens to be
+    drawn as a three-cell bar — lands between two cells of a real row and truncates it. The last
+    instruction cell was silently dropped that way, so the tool wrote a five-instruction word into
+    a six-instruction row and left whatever the sixth cell already held on the end of it.
+    """
+    present = set(values)
     runs: list[list[int]] = []
-    i = 0
-    while i < len(values) - 1:
-        step = values[i + 1] - values[i]
-        j = i + 1
-        while j < len(values) - 1 and values[j + 1] - values[j] == step:
-            j += 1
-        if j - i + 1 >= min_len:
-            runs.append(values[i : j + 1])
-        i = j
-    return runs
+    for pitch in sorted({b - a for a in values for b in values if 0 < b - a <= 16}):
+        for start in values:
+            if start - pitch in present:
+                continue
+            run = []
+            v = start
+            while v in present:
+                run.append(v)
+                v += pitch
+            if len(run) >= min_len:
+                runs.append(run)
+    runs.sort(key=len, reverse=True)
+    out: list[list[int]] = []
+    for run in runs:
+        if not any(set(run) <= set(kept) for kept in out):
+            out.append(run)
+    return out
 
 
 def _find_bars(g: np.ndarray) -> tuple[list[Bar], tuple[int, int] | None]:
@@ -222,10 +245,10 @@ def _find_bars(g: np.ndarray) -> tuple[list[Bar], tuple[int, int] | None]:
     at = {(cx, cy): colour for cx, cy, colour in marks}
     bars: list[Bar] = []
     claimed: set[tuple[int, ...]] = set()
-    for cols in _uniform_runs(sorted({cx for cx, _, _ in marks}), _MIN_COLS):
+    for cols in _lattices(sorted({cx for cx, _, _ in marks}), _MIN_COLS):
         rows_all = sorted({cy for cx, cy, _ in marks if cx in cols})
         full = [cy for cy in rows_all if all((cx, cy) in at for cx in cols)]
-        for rows in _uniform_runs(full, _MIN_ROWS):
+        for rows in _lattices(full, _MIN_ROWS):
             key = tuple(cols)
             if key not in claimed:
                 claimed.add(key)
@@ -284,7 +307,7 @@ def _cavity(g: np.ndarray, box: Box, colour: int) -> Box | None:
     return (min(xs), min(ys), max(xs), max(ys))
 
 
-def _plug_and_socket(g: np.ndarray, region: Box) -> tuple[Box, int, Box, Box, int] | None:
+def _plug_and_socket(g: np.ndarray, region: Box) -> tuple[Any, ...] | None:
     """(piece, its colour, the opening, the socket, the socket's colour).
 
     A plug and a socket, and they need NOT share a colour — one board hands the piece in one colour
@@ -304,7 +327,7 @@ def _plug_and_socket(g: np.ndarray, region: Box) -> tuple[Box, int, Box, Box, in
             if w < 2 or h < 2 or max(w, h) > _MAX_PIECE or len(cells) < 4:
                 continue
             parts.append((box, colour, len(cells) / (w * h)))
-    best: tuple[float, Box, int, Box, Box, int] | None = None
+    best: tuple[Any, ...] | None = None
     for socket, s_colour, s_fill in parts:
         hole = _cavity(g, socket, s_colour)
         if hole is None:
@@ -321,18 +344,47 @@ def _plug_and_socket(g: np.ndarray, region: Box) -> tuple[Box, int, Box, Box, in
                 continue
             if p_fill - s_fill < 0.15:
                 continue
+            base = (min(pw, hw), min(ph, hh))
+            shape = _sample(g, piece, base, p_colour, True)
+            keyed = _sample(g, hole, base, s_colour, False)
+            # The pair has to KEY: the socket's inner tabs are the negative of the piece's own
+            # notch, so some quarter turn of the piece fills the opening exactly. Without this a
+            # solid wall block wins the pairing on a maze board — it is the fullest body there and
+            # so the biggest contrast against the socket — and the real piece is never found.
+            if not any(_turn(shape, k) == keyed for k in range(4)):
+                continue
             if best is None or p_fill - s_fill > best[0]:
-                best = (p_fill - s_fill, piece, p_colour, hole, socket, s_colour)
+                best = (p_fill - s_fill, piece, p_colour, hole, socket, s_colour, base, shape, keyed)
     if best is None:
         return None
-    return best[1], best[2], best[3], best[4], best[5]
+    return best[1:]
 
 
-def _paving(g: np.ndarray, region: Box) -> set[int]:
-    """The two colours the play area is tiled with — the floor an obstacle map must forgive."""
+def _paving(g: np.ndarray, region: Box, tile: int, phase: tuple[int, int]) -> set[int]:
+    """The two colours the play area is TILED with — the floor an obstacle map must forgive.
+
+    Found by parity, not by how much of the panel each colour covers. "The two commonest" is right
+    only until a level is mostly wall: on the maze board the wall colour outnumbers half the floor,
+    and calling it floor inverts the map — every corridor becomes a wall and the level reads as
+    having no route at all. What actually distinguishes the floor is that it is a CHEQUER, so each
+    of its two colours lands on tiles of one parity and never the other, while a wall painted over
+    the board lands on both.
+    """
     x0, y0, x1, y1 = region
-    counts = Counter(int(g[y][x]) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
-    return {c for c, _ in counts.most_common(2)}
+    parity: dict[int, list[int]] = {}
+    for j, y in enumerate(range(y0 + (phase[1] - y0) % tile, y1 - tile + 2, tile)):
+        for i, x in enumerate(range(x0 + (phase[0] - x0) % tile, x1 - tile + 2, tile)):
+            block = Counter(int(g[y + a][x + b]) for a in range(tile) for b in range(tile))
+            colour, n = block.most_common(1)[0]
+            if n < tile * tile:
+                continue
+            parity.setdefault(colour, [0, 0])[(i + j) % 2] += 1
+    chequer = [(sum(v), c) for c, v in parity.items() if min(v) <= 0.15 * sum(v)]
+    if len(chequer) < 2:
+        counts = Counter(int(g[y][x]) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
+        return {c for c, _ in counts.most_common(2)}
+    chequer.sort(reverse=True)
+    return {c for _, c in chequer[:2]}
 
 
 def _bulk(g: np.ndarray, region: Box) -> set[int]:
@@ -347,28 +399,39 @@ def _bulk(g: np.ndarray, region: Box) -> set[int]:
     out: set[int] = set()
     x0, y0, x1, y1 = region
     for colour in {int(g[y][x]) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)}:
-        boxes = _boxes(_colour_components(g, colour, region))
+        # Only bodies count. A hazard is painted as a dither of the piece's own colour against the
+        # floor, which under 4-connectivity is a scatter of single cells; counting those made the
+        # piece's colour look like scenery and the board unreadable.
+        boxes = _boxes([c for c in _colour_components(g, colour, region) if len(c) >= 4])
         if len(boxes) > 4 or any(max(_span(b)) > _MAX_PIECE for b in boxes):
             out.add(colour)
     return out
 
 
-def _obstacles(g: np.ndarray, region: Box, spare: set[int]) -> np.ndarray:
+def _prefix(mask: np.ndarray) -> np.ndarray:
+    return mask.cumsum(0).cumsum(1)
+
+
+def _obstacles(g: np.ndarray, region: Box, keep: tuple[Box, Box], floor: set[int],
+               spare: np.ndarray) -> np.ndarray:
     """A prefix-summed map of everything in the play area a piece cannot stand on.
 
-    The floor is a chequer of two colours, so anything else that is neither the piece nor the
-    socket is furniture — a wall, a barrier, the panel's own frame. Reading it off the frame is
-    what lets the first run be the winning one; learning each wall by walking into it costs a run
-    apiece out of a budget that empties.
+    The floor is a chequer of two colours; the piece and the socket are exempt by POSITION, and
+    everything else is furniture — walls, barriers, the panel frame, and the blinking hazards that
+    are painted in the piece's own colour and would otherwise be exempt by colour and walked
+    straight into. Reading all of it off the frame is what lets the first run be the winning one;
+    learning each wall by walking into it costs a run apiece out of a budget that empties.
     """
     x0, y0, x1, y1 = region
-    floor = _paving(g, region) | spare
     mask = np.zeros((66, 66), dtype=np.int32)
     for y in range(y0, y1 + 1):
         for x in range(x0, x1 + 1):
-            if int(g[y][x]) not in floor:
-                mask[y + 1][x + 1] = 1
-    return mask.cumsum(0).cumsum(1)
+            if int(g[y][x]) in floor or spare[y + 1][x + 1]:
+                continue
+            if any(b[0] <= x <= b[2] and b[1] <= y <= b[3] for b in keep):
+                continue
+            mask[y + 1][x + 1] = 1
+    return _prefix(mask)
 
 
 def _hits(prefix: np.ndarray, box: Box) -> bool:
@@ -383,17 +446,53 @@ def _hits(prefix: np.ndarray, box: Box) -> bool:
 # --- planning ---------------------------------------------------------------
 
 
+def _distance(board: Board, moves: list[tuple[Pattern, Effect]],
+              bad: set[tuple[int, int]]) -> dict[tuple[int, int], int]:
+    """Moves-to-the-socket from anywhere on the board, walked backwards from the socket.
+
+    Needed because a checkpoint has to be chosen by whether it is PROGRESS, and on a maze board
+    straight-line distance is not progress — the token that opens the only corridor upward is no
+    nearer the socket as the crow flies than the piece already was, so a straight-line test threw
+    away the one leg of the journey that was available.
+    """
+    w, h = _span(board.piece)
+    steps = [(e[0], e[1]) for _, e in moves if e[2] == e[3] == e[4] == 0 and e[5] < 0 and (e[0] or e[1])]
+    out = {(board.goal[0], board.goal[1]): 0}
+    queue = [(board.goal[0], board.goal[1])]
+    head = 0
+    while head < len(queue):
+        x, y = queue[head]
+        head += 1
+        for dx, dy in steps:
+            px, py = x - dx, y - dy
+            if (px, py) in out or (px, py) in bad:
+                continue
+            box = (px, py, px + w - 1, py + h - 1)
+            if (px < board.region[0] or py < board.region[1]
+                    or box[2] > board.region[2] or box[3] > board.region[3]):
+                continue
+            if _hits(board.walls, box):
+                continue
+            out[(px, py)] = out[(x, y)] + 1
+            queue.append((px, py))
+    return out
+
+
 def _plan_path(board: Board, vocab: dict[Pattern, Effect],
                bad: set[tuple[int, int]]) -> list[Pattern] | None:
-    """The shortest word that lands the piece in the socket, or None.
+    """The shortest word that lands the piece in the socket — or, failing that, the word that
+    reaches the best CHECKPOINT it can get to.
 
     A breadth-first walk over piece states rather than a sum over instruction counts. Counting was
-    the first version and it is right only while the board is empty: the moment a level puts a wall
+    the first version and is right only while the board is empty: the moment a level puts a wall
     in, the same multiset wins or loses depending on the ORDER, and a plan that cannot be reordered
-    has nothing to try after a failed run.
+    has nothing to try after a failed run. A state is where the piece is, how big it is, which way
+    round it is and what colour it is, because all four are in the win condition.
 
-    A state is where the piece is, how big it is, which way round it is and what colour it is,
-    because all four are in the win condition.
+    Checkpoints are what makes the late boards possible at all. A word is only as long as the row,
+    and the maze board's socket is further away than the row is long — but a program that ENDS on
+    one of the tokens scattered about the board moves the piece's home there, so the next word
+    starts from the token. The journey is a relay, and each run buys one leg of it.
     """
     slots = len(board.bar.cols)
     start = (board.piece, 0, board.piece_colour)
@@ -407,8 +506,15 @@ def _plan_path(board: Board, vocab: dict[Pattern, Effect],
         return (box == board.goal and colour == board.socket_colour
                 and _turn(board.shape, turns) == board.keyed)
 
+    far = len(board.bar.cols) * 64
+    dist = _distance(board, moves, bad)
+
+    def reach(box: Box) -> int:
+        return dist.get((box[0], box[1]), far)
+
     if landed(start):
         return []
+    rest: tuple[int, list[Pattern]] | None = None
     while head < len(queue):
         cur = queue[head]
         head += 1
@@ -417,22 +523,32 @@ def _plan_path(board: Board, vocab: dict[Pattern, Effect],
             continue
         box, turns, colour = cur
         for pattern, (dx, dy, dw, dh, dr, newc) in moves:
-            nxt_box = (box[0] + dx, box[1] + dy, box[2] + dx + dw, box[3] + dy + dh)
-            state = (nxt_box, (turns + dr) % 4, newc if newc >= 0 else colour)
-            if state in seen or (nxt_box[0], nxt_box[1]) in bad:
+            nxt = (box[0] + dx, box[1] + dy, box[2] + dx + dw, box[3] + dy + dh)
+            state = (nxt, (turns + dr) % 4, newc if newc >= 0 else colour)
+            if state in seen or (nxt[0], nxt[1]) in bad:
                 continue
-            if nxt_box[2] < nxt_box[0] or nxt_box[3] < nxt_box[1]:
+            if nxt[2] < nxt[0] or nxt[3] < nxt[1]:
                 continue
-            if (nxt_box[0] < board.region[0] or nxt_box[1] < board.region[1]
-                    or nxt_box[2] > board.region[2] or nxt_box[3] > board.region[3]):
+            if (nxt[0] < board.region[0] or nxt[1] < board.region[1]
+                    or nxt[2] > board.region[2] or nxt[3] > board.region[3]):
                 continue
-            if nxt_box != board.goal and _hits(board.walls, nxt_box):
+            if nxt != board.goal and _hits(board.walls, nxt):
                 continue
             seen[state] = word + [pattern]
             if landed(state):
                 return seen[state]
+            # Any token will do, the nearest to the socket first. Requiring one to be strictly
+            # nearer than the piece already is was too strict twice over: on a maze the leg that
+            # opens the route is often no nearer by the map, and the tokens are consumed as they
+            # are used, so a leg that turns out not to help cannot be taken twice.
+            if (_hits(board.tokens, nxt) and _span(nxt) == _span(board.piece)
+                    and (rest is None or reach(nxt) < rest[0])):
+                # Only at the size the token is drawn at. A resized piece passes straight over one
+                # without picking it up, and the planner will happily scale up merely to overlap a
+                # token's cells if allowed to — a run that looks like it arrives and moves nothing.
+                rest = (reach(nxt), seen[state])
             queue.append(state)
-    return None
+    return None if rest is None else rest[1]
 
 
 class ProgramBitsTool:
@@ -441,10 +557,16 @@ class ProgramBitsTool:
     name = "progbits"
 
     def __init__(self) -> None:
+        # The alphabet belongs to the GAME, not to the level: the same bit patterns mean the same
+        # things on every board, and the demo buttons that teach them are not always all present
+        # later on. So it is built here and survives the per-level reset below — a later board
+        # arrives already able to plan, which is both cheaper in actions and the difference
+        # between planning with four moves and planning with two.
+        self._vocab: dict[Pattern, Effect] = {}
+        self._states: tuple[int, int] | None = None
         self.reset()
 
     def reset(self) -> None:
-        self._vocab: dict[Pattern, Effect] = {}
         self._plan: list[Step] = []
         self._run_step: Step | None = None
         self._pending: str | None = None
@@ -453,7 +575,7 @@ class ProgramBitsTool:
         self._bad: set[tuple[int, int]] = set()
         self._probe_runs = 0
         self._attempts = 0
-        self._states: tuple[int, int] | None = None
+        self._words: set[tuple[Pattern, ...]] = set()
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Learning happens in propose, where the whole animation stack is readable."""
@@ -497,8 +619,7 @@ class ProgramBitsTool:
         found = _plug_and_socket(g, region)
         if found is None:
             return None
-        piece, p_colour, goal, socket, s_colour = found
-        base = (min(_span(piece)[0], _span(goal)[0]), min(_span(piece)[1], _span(goal)[1]))
+        piece, p_colour, goal, socket, s_colour, base, shape, keyed = found
         demo_region = None
         if demo is not None:
             dp = demo.cols[1] - demo.cols[0]
@@ -515,21 +636,37 @@ class ProgramBitsTool:
                 continue
             if not any(abs(cx - a) + abs(cy - b) < 5 for a, b in sel):
                 sel.append((cx, cy))
+        # Tokens are drawn in the piece's own colour and are neither the piece nor the socket.
+        # They must be exempt from the wall map — they are the one thing on the board it is worth
+        # standing on — which is why the map takes them as an argument rather than deciding by
+        # colour, and why an earlier version walked the piece around them as if they were hazards.
+        tile = min(base)
+        tokens = np.zeros((66, 66), dtype=np.int32)
+        for y in range(region[1], region[3] + 1):
+            for x in range(region[0], region[2] + 1):
+                if int(g[y][x]) != p_colour:
+                    continue
+                if piece[0] <= x <= piece[2] and piece[1] <= y <= piece[3]:
+                    continue
+                if socket[0] <= x <= socket[2] and socket[1] <= y <= socket[3]:
+                    continue
+                tokens[y + 1][x + 1] = 1
         return Board(
             bar=bar, demo=demo, run_xy=run_xy, selectors=sel,
             piece=piece, piece_colour=p_colour, goal=goal,
             socket=socket, socket_colour=s_colour, base=base,
-            shape=_sample(g, piece, base, p_colour, True),
-            keyed=_sample(g, goal, base, s_colour, False),
+            shape=shape, keyed=keyed,
             states=states, region=region, demo_region=demo_region,
-            walls=_obstacles(g, region, {p_colour, s_colour}),
+            walls=_obstacles(g, region, (piece, socket),
+                             _paving(g, region, tile, (piece[0], piece[1])), tokens),
+            tokens=_prefix(tokens),
         )
 
     # -- learning ------------------------------------------------------------
 
     def _track(self, layers: np.ndarray, region: Box, start: Box, colour: int,
                base: tuple[int, int], avoid: Box | None,
-               floor: set[int]) -> list[tuple[Box, int, Mask]]:
+               floor: set[int]) -> list[tuple[Box, int, Mask, bool]]:
         """The piece frame by frame, followed by identity rather than by colour.
 
         Two reasons it cannot just watch one colour. The piece and its socket often share one, so
@@ -537,9 +674,9 @@ class ProgramBitsTool:
         one instruction REPAINTS the piece, after which watching its old colour watches nothing.
         Each frame keeps whichever small object, in any colour, is nearest what the piece was.
         """
-        shots = [(start, colour, _sample(layers[0], start, base, colour, True))]
+        shots = [(start, colour, _sample(layers[0], start, base, colour, True), True)]
         for layer in layers[1:]:
-            prev_box, prev_colour, _ = shots[-1]
+            prev_box, prev_colour, _, _ = shots[-1]
             best: tuple[int, Box, int] | None = None
             for c in {int(v) for row in layer for v in row} - floor:
                 for cells in _colour_components(layer, c, region):
@@ -551,10 +688,14 @@ class ProgramBitsTool:
                     cost = sum(abs(a - b) for a, b in zip(box, prev_box)) + (0 if c == prev_colour else 2)
                     if best is None or cost < best[0]:
                         best = (cost, box, c)
-            if best is None:
-                shots.append(shots[-1])
+            # A piece cannot teleport. Without this bound the nearest small object to where the
+            # piece WAS is picked up as if it were the piece, and the frame in which a hazard
+            # destroys it reads as the piece having moved somewhere odd instead of as a death —
+            # which is the one thing that run had to teach.
+            if best is None or best[0] > _LEAP:
+                shots.append((prev_box, prev_colour, shots[-1][2], False))
             else:
-                shots.append((best[1], best[2], _sample(layer, best[1], base, best[2], True)))
+                shots.append((best[1], best[2], _sample(layer, best[1], base, best[2], True), True))
         return shots
 
     def _absorb(self, layers: np.ndarray, region: Box, bar: Bar, start: Box, colour: int,
@@ -567,8 +708,15 @@ class ProgramBitsTool:
         for i, pattern in enumerate(bar.read(layers[-1])):
             if i + 1 >= len(shots):
                 break
-            (box_a, col_a, mask_a) = shots[i]
-            (box_b, col_b, mask_b) = shots[i + 1]
+            (box_a, col_a, mask_a, _) = shots[i]
+            (box_b, col_b, mask_b, alive) = shots[i + 1]
+            if not alive:
+                known = self._vocab.get(pattern)
+                if own and known is not None and (known[0] or known[1]):
+                    # The piece was destroyed arriving there. That square is fatal, and everything
+                    # after it in this trajectory is the aftermath, not evidence.
+                    self._bad.add((box_a[0] + known[0], box_a[1] + known[1]))
+                break
             dx, dy, dw, dh = _delta(box_a, box_b)
             turns = 0
             if (dx, dy, dw, dh) == (0, 0, 0, 0) and mask_a != mask_b:
@@ -641,7 +789,7 @@ class ProgramBitsTool:
 
         if board is not None:
             if self._pending == "demo" and board.demo is not None and board.demo_region is not None:
-                seed = self._demo_seed(layers[0], board)
+                seed = self._demo_seed(layers[0], board.demo_region)
                 if seed is not None:
                     self._absorb(layers, board.demo_region, board.demo, seed[0], seed[1],
                                  board.base, None, own=False)
@@ -661,13 +809,23 @@ class ProgramBitsTool:
 
         blank = tuple(board.states[1] for _ in board.bar.rows)
         self._vocab.setdefault(blank, _INERT)
+        # Only patterns of THIS row's bit height may be planned with. The alphabet is carried
+        # between boards and the first board's cells are two bits tall where later ones are six,
+        # so a two-bit pattern written into a six-bit cell sets the low bits and leaves the high
+        # ones as they were — the cell keeps whatever it held. Measured: a correct plan lost its
+        # last instruction that way and the board it should have won was not won.
+        known = {p: e for p, e in self._vocab.items() if len(p) == len(board.bar.rows)}
 
-        word = _plan_path(board, self._vocab, self._bad)
+        word = _plan_path(board, known, self._bad)
         if word is not None:
+            full = tuple(word + [blank] * (len(board.bar.cols) - len(word)))
             self._attempts += 1
-            if self._attempts > _MAX_ATTEMPTS:
-                return []
-            return self._launch(board, g, word + [blank] * (len(board.bar.cols) - len(word)))
+            # A word that has already been run and did not win will not win now either. Without
+            # this the tool spent the rest of a board pressing the disc on the same failed program,
+            # because the run taught it nothing new to route around.
+            if self._attempts <= _MAX_ATTEMPTS and full not in self._words:
+                self._words.add(full)
+                return self._launch(board, g, list(full))
 
         untried = [s for s in board.selectors if s not in self._tried]
         if board.demo is not None and untried:
@@ -680,13 +838,12 @@ class ProgramBitsTool:
             return self._launch(board, g, self._probe_word(board))
         return []
 
-    def _demo_seed(self, first: np.ndarray, board: Board) -> tuple[Box, int] | None:
+    def _demo_seed(self, first: np.ndarray, region: Box) -> tuple[Box, int] | None:
         """The one small object in the demo panel, which is the piece the demo is about."""
-        assert board.demo_region is not None
-        scenery = _bulk(first, board.demo_region)
+        scenery = _bulk(first, region)
         best: tuple[int, Box, int] | None = None
         for colour in {int(v) for row in first for v in row} - scenery:
-            comps = [c for c in _colour_components(first, colour, board.demo_region) if len(c) >= 4]
+            comps = [c for c in _colour_components(first, colour, region) if len(c) >= 4]
             if len(comps) != 1:
                 continue
             box = _boxes(comps)[0]

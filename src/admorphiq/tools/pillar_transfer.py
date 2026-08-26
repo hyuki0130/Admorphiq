@@ -3,8 +3,10 @@
 The mechanic, recovered from the frame alone and named in frame terms:
 
 * A board is cut into **lanes** by thin **channels** that run the full depth of the board.
-* Each lane holds one **pillar** — a solid column that settles against one end of the depth
-  axis (the *settle end*). Its other end is its **face**.
+* A lane holds a **pillar** — a solid column that settles against one end of the depth axis
+  (the *settle end*). Its other end is its **face**. A **ledge** walling a lane across its
+  full width cuts it into stretches, each holding its own pillar with its own controls, so a
+  lane does not always hold exactly one.
 * **Riders** sit on a pillar's face and travel with it. Every rider carries a coloured mark.
 * **Sockets** are coloured marks embedded in a channel. A rider is satisfied when its own
   mark lines up, along the depth axis, with the same-coloured socket on a channel that
@@ -20,12 +22,14 @@ The mechanic, recovered from the frame alone and named in frame terms:
 
 So the whole board is a small integer system: a vector of pillar heights in units, plus a
 map of which pillar each rider is riding. A press moves one unit between two neighbours, a
-gate swaps two riders sets, and the goal is a set of admissible heights per pillar. That is
-searched exactly rather than explored, which matters because these boards END when their
-own step allowance runs out.
+gate swaps two riders' sets, and the goal is a set of admissible heights per pillar. That is
+searched exactly rather than explored, which matters because these boards END when their own
+step allowance runs out — every level here is planned whole and executed without probing.
 
-⛔ The shrinking bar along one board edge is the step allowance, not board content — the
-outer band is excluded from perception via ``segment.edge_band``.
+⛔ The shrinking bar along one board edge is the step allowance, not board content. It is
+located through ``segment.edge_band`` and overwritten from just inside, rather than masked
+off: masking the whole outer band clips a pillar and a stepper by a pixel, and a stepper
+measured 4x3 stops looking like the square it is.
 """
 
 from __future__ import annotations
@@ -54,7 +58,7 @@ _SETTLE_TICKS = 200
 # Weighting it keeps the planner from spending a swap it does not need.
 _GATE_COST = 10
 # Bound on the exact search so a misread board cannot spin.
-_SEARCH_NODES = 60000
+_SEARCH_NODES = 400000
 
 
 @dataclass
@@ -86,6 +90,7 @@ class _Rider:
     mark: int
     pillar: int
     mark_lo: int
+    room: int   # clearance it needs under a ledge: its own depth, plus a cell of margin
 
 
 @dataclass
@@ -293,8 +298,8 @@ def _read(raw: np.ndarray) -> _Board | None:
     _, _, chan_colour, axis, channels = max(ranked)
     # Reach is what the channel physically spans, so a gate parked inside it counts too.
     channel_pieces = [
-        q for (c, o), group in strips.items() for q in group
-        if o == axis and _inside_any(_span(q, 1 - axis), channels)
+        q for (_, orient), group in strips.items() for q in group
+        if orient == axis and _inside_any(_span(q, 1 - axis), channels)
     ]
     lane = 1 - axis
 
@@ -314,8 +319,8 @@ def _read(raw: np.ndarray) -> _Board | None:
         return None
     pil_colour = touching.most_common(1)[0][0]
 
-    # Re-component the pillar colour with the stepper cells folded in: a control sitting
-    # inside a pillar must not cut that pillar into two.
+    # Every region of that colour, however a control or a marker happens to break it up —
+    # a pillar's extent is measured later by a full-width scan, not from these regions.
     blocked = set(range(int(grid.max()) + 2)) - {pil_colour}
     pillar_pieces = [q for q in _pieces(grid, blocked) if len(q.cells) > unit]
     if not pillar_pieces:
@@ -369,9 +374,6 @@ def _read(raw: np.ndarray) -> _Board | None:
             else max(_span(q, axis)[1] for q in members)
         )
         reach.append(abs(settle - far) + 1)
-    for i, pil in enumerate(board.pillars):
-        board.pillars[i].cap = _cap(pil, channels, reach, depth_end, board.sign)
-
     leftovers = [
         p for p in pieces
         if p.colour not in (step_colour, chan_colour, pil_colour) and p.colour not in bg
@@ -399,7 +401,9 @@ def _read(raw: np.ndarray) -> _Board | None:
         idx = _pillar_index(lane_span, sum(depth_span) // 2, board.pillars)
         if idx is None:
             continue
-        board.riders.append(_Rider(mark, idx, _span(piece, axis)[0]))
+        board.riders.append(
+            _Rider(mark, idx, _span(piece, axis)[0], depth_span[1] - depth_span[0] + 2)
+        )
     if not board.riders:
         return None
 
@@ -445,6 +449,13 @@ def _read(raw: np.ndarray) -> _Board | None:
                   ((p.r0 + p.r1) // 2, (p.c0 + p.c1) // 2))
         )
     board.sockets = [s for s in board.sockets if s.mark in {r.mark for r in board.riders}]
+    room: dict[int, int] = {}
+    for r in board.riders:
+        room[r.pillar] = max(room.get(r.pillar, 0), r.room)
+    for i, pil in enumerate(board.pillars):
+        board.pillars[i].cap = _cap(
+            pil, channels, reach, depth_end, board.sign, room.get(i, 0)
+        )
     return board
 
 
@@ -628,10 +639,21 @@ def _solve(board: _Board) -> list[tuple[int, int]] | None:
         return all(hs[st[i]] in want[i][st[i]] for i in range(len(st)))
 
     def lower(hs: tuple[int, ...], st: tuple[int, ...]) -> int:
+        """Cheapest finish per rider, counting a gate when it must change carriers.
+
+        Charging for the carrier change is what makes a board with several riders searchable:
+        without it every state that has not yet moved a rider looks equally promising, and the
+        search degenerates into breadth-first over a space of tens of thousands of states.
+        """
         gap = 0
         for i, seat in enumerate(st):
-            opts = want[i][seat]
-            gap += min((abs(hs[seat] - o) // unit for o in opts), default=1) if opts else 1
+            best = None
+            for pi, opts in enumerate(want[i]):
+                for o in opts:
+                    cost = abs(hs[pi] - o) // unit + (0 if pi == seat else _GATE_COST)
+                    if best is None or cost < best:
+                        best = cost
+            gap += best if best is not None else 1
         return gap
 
     start = (heights, seats)
@@ -676,6 +698,23 @@ def _solve(board: _Board) -> list[tuple[int, int]] | None:
     return None
 
 
+def _advance(board: _Board, state: tuple[Any, ...], move: tuple[int, int]) -> tuple[Any, ...]:
+    """Where the board should stand once this move has landed."""
+    heights, seats = state
+    kind, idx = move
+    if kind == 0:
+        stepper = board.steppers[idx]
+        nh = list(heights)
+        nh[stepper.src] -= board.unit
+        nh[stepper.dst] += board.unit
+        return (tuple(nh), seats)
+    gate = board.gates[idx]
+    swapped = tuple(
+        gate.high if s == gate.low else gate.low if s == gate.high else s for s in seats
+    )
+    return (heights, swapped)
+
+
 # --- tool -------------------------------------------------------------------
 
 class PillarTransferTool:
@@ -687,11 +726,15 @@ class PillarTransferTool:
         self._last: np.ndarray | None = None
         self._settling = 0
         self._nudge = 0
+        self._route: list[tuple[int, int]] = []
+        self._expect: tuple[Any, ...] | None = None
 
     def reset(self) -> None:
         self._last = None
         self._settling = 0
         self._nudge = 0
+        self._route = []
+        self._expect = None
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Nothing to learn here — the board states its own configuration every frame."""
@@ -723,7 +766,18 @@ class PillarTransferTool:
         board = _read(grid)
         if board is None:
             return []
-        plan = _solve(board)
+        now = (
+            tuple(p.height for p in board.pillars),
+            tuple(r.pillar for r in board.riders),
+        )
+        # Solving costs far more than reading, so the route is kept and only re-cut when the
+        # board is not where the last move said it would be.
+        if self._route and now == self._expect:
+            plan: list[tuple[int, int]] | None = self._route
+        else:
+            plan = _solve(board)
+            self._route = []
+            self._expect = None
         if plan is None:
             return []
         if not plan:
@@ -737,6 +791,8 @@ class PillarTransferTool:
             return [(6, self._empty(grid))]  # _empty reads the FULL frame, so no pad shift
         self._nudge = 0
         kind, idx = plan[0]
+        self._route = plan[1:]
+        self._expect = _advance(board, now, plan[0])
         if kind == 0:
             row, col = board.steppers[idx].click
             return [(6, (col + board.pad, row + board.pad))]
