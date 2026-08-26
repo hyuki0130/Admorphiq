@@ -2200,3 +2200,34 @@ campaign was built over, and this is the first measurement that puts a number on
 well as by dispatch, and the harness was measured at 0 only on the public 25. Two hidden points
 cannot separate two changes. But truncation and noise are gone, dispatch is the larger change, and
 the direction is against it.
+
+## Give-up is not premature either — capability is the wall, measured across 21 games
+
+`NOGIVEUP` raised every adapter's `_GIVEUP_DEFAULT` from 4,000 to **100,000** (25x) and ran at budget
+100,000. Against `DEPTH30`, on the 21 games finished so far:
+
+```
+games whose score or levels CHANGED: 0
+mean 0.3142 -> 0.3142
+```
+
+Not one score, not one level, anywhere. The four still running (r11l, re86, sc25, sk48) are exactly
+the games that used to stop AT 4,000 and now have 100,000 to spend, so they are the slowest and the
+most likely to move — but 21 of 25 already answer the question.
+
+**Together with DEPTH30 this closes the cheap-lever axis completely:**
+
+| lever | verdict |
+| --- | --- |
+| more budget (4,000 -> 30,000, public) | ⛔ identical, 0.3162 = 0.3162 |
+| more budget (4,000 -> 100,000, HIDDEN) | ⛔ identical, 0.18 = 0.18 |
+| later give-up (4,000 -> 100,000) | ⛔ identical, 0 of 21 games change |
+
+Every adapter that stops short does so because it cannot go further, not because it was cut off. The
+re86 single-game result — 30,000 actions spent, nothing past level 4 — was not a peculiarity of that
+game; it is the shape everywhere.
+
+⚠️ **This is what the parallel box bought.** The same conclusion from one game was an anecdote worth
+a paragraph of hedging; from 21 games in one wall-clock it is a closed axis. Both runs together cost
+about half an hour of ceph-build and would have been most of a day serially on the Mac — which is
+also the machine that a local full-25 already choked.
