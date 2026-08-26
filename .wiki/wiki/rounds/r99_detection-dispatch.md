@@ -1742,3 +1742,40 @@ does not score 6 of 6 on the planner's own inputs, the replay is wrong — not t
 ⚠️ Recorded rather than pushed through, because this round has already paid five times for a claim
 built on something read rather than measured. The lead itself (empty `static_blocked`) is still
 worth testing; it is simply not tested yet.
+
+## The control passed, and then the answer was clean: the two flow models disagree COMPLETELY
+
+The control named last entry — replay `simulate_flow` on the planner's OWN recorded arguments and
+its returned plan — was built and run. It passes on all three planner calls:
+
+```
+call 0  plan_len 5  pieces [48,48,80]     targets 3  -> replay 3/3   CONTROL OK
+call 1  plan_len 3  pieces [64,176,96]    targets 3  -> replay 3/3   CONTROL OK
+call 2  plan_len 3  pieces [64,80,96,96]  targets 3  -> replay 3/3   CONTROL OK
+```
+
+The replay reproduces the planner's verdict exactly, so the instrument is valid and its readings can
+be used. With that established, the same instrument scored the REAL spill against the planner's own
+targets, at the commit:
+
+```
+predicted   3 of 3 satisfied
+actual      0 of 3 — ZERO wetted cells in ANY target, on both commits (560 and 976 wetted overall)
+```
+
+**That is the finding.** Not hazards, not missing obstacles, not target counting: the kernel's flow
+model and the engine's flow disagree completely on this board. The simulator sends water into all
+three targets; the engine puts none in any of them.
+
+⚠️ **A correction to my own earlier reading, which the valid instrument exposed.** The "1 of 6
+targets" figure reported two entries ago came from `_detect_targets`, the SINGLE-piece path's
+finder, which returned six regions. `_build_multi_plan` sees the same board as three targets, and it
+is right to: `_downstream_regions` returns `[(11,80),(11,80),(11,80),(8,64),(8,80),(9,96)]` and
+`_piece_colors == {8, 9}` — a colour joins that set only after a click probe SAW the selected region
+jump onto it. So colours 8 and 9 are confirmed movable pieces, and `_detect_targets` was counting
+movable pieces as targets. The real target set is the three colour-11 regions, and the real spill
+wets none of them.
+
+**This is what R98's propagator was built for and measured against** — exact cell-for-cell on
+idx0/idx1/idx2, which includes this level. The fidelity gap is now established rather than
+hypothesised, and it is total on this board rather than marginal.
