@@ -2627,3 +2627,34 @@ this afternoon — now has a candidate cause that is not "the planner cannot han
 may be that the harness never selects the tool that could. vc33 is one measured instance of exactly
 that. ⛔ One instance is not the general case, and the test is to run `tool_alternatives.py` across
 the games that wall, not just the three it covered.
+
+## The tool sweep, and why its first reading was unusable
+
+Widening this morning's three-game `tool_alternatives` probe to 20 games x 5 tools on ceph-build. Two
+things went wrong before any result was legible, both mine.
+
+**1. The 60-core cap is LOAD, not job count.** Launched at `xargs -P 55`; each job is `uv run python`
+— a wrapper plus a python process — so 55 slots produced 80 processes and load average **60.97**, over
+the cap the operating rules had just stated. Caught by the user, stopped, load back to 53. 82 of 100
+combinations had already been written, so the partial survives.
+
+**2. The first reading of that partial was wrong, and the check that caught it took one command.**
+It said *"0 games where a non-graph tool beats graph"* — which would have vindicated
+`tool_selector.md`'s decision table. Counting completions per tool:
+
+```
+world_model 20/20   graph 20/20   dealias 20/20   paint 18/20   toggle 11/20
+```
+
+**`toggle` is the most incomplete, and vc33/toggle — the single case this whole question came from —
+is not among the eleven.** The sweep was killed exactly where it mattered. "0 games" was a statement
+about jobs that never ran.
+
+The 11 missing combinations are running at `-P 8` (load 23). ⛔ Until they land, nothing about the
+decision table is settled — this morning's `vc33/toggle levels=2` against `vc33/graph levels=1`
+stands as one measured observation, neither confirmed nor refuted.
+
+⚠️ This sweep is also NOT R98 work. It came from the harness tool-selection question and was launched
+while the tick asked for R98 — the flailing the user named. It is being finished and recorded because
+discarding a nearly-complete measurement is worse than finishing it, and then it stops here rather
+than spawning more.
