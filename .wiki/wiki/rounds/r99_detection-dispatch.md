@@ -2231,3 +2231,26 @@ game; it is the shape everywhere.
 a paragraph of hedging; from 21 games in one wall-clock it is a closed axis. Both runs together cost
 about half an hour of ceph-build and would have been most of a day serially on the Mac — which is
 also the machine that a local full-25 already choked.
+
+## The bail's own risk, named before it ships
+
+The threshold (1,000 actions with nothing cleared) comes from the public 25: the slowest DISPATCHED
+first clear is sc25 at 461, every other is <= 25, and the slower games run the fallback where the
+bail cannot reach. That makes it a measured no-op on everything visible.
+
+⚠️ **It is not a no-op on everything.** The same mechanic on an unseen board can be slower than its
+public instance — a bigger grid, more pieces, a longer approach — and a private game whose adapter
+would have cleared at, say, 1,200 actions now gets cut off at 1,000 and handed to a fallback that
+scores less. The bail converts an unbounded loss into a bounded one; it does not convert a loss into
+a gain, and it can turn a slow win into a loss.
+
+**The check that bounds that risk, and the reason it has not run yet**: the archived version hashes
+are the only boards available that are the same mechanic on a DIFFERENT render, and seven of them
+dispatch and clear. Measuring their first-clear action counts would say whether a re-render costs
+2x, 10x or nothing in time-to-first-clear, and 1,000 can then be defended or moved on evidence
+instead of on the public games alone. It has not run because both machines are busy — ceph-build is
+mid-`NOGIVEUP` with a patched tree and the Mac is verifying the bail itself — and running it on a
+loaded box would measure the load.
+
+⛔ Until that runs, the threshold is justified only on boards the detectors were tuned against,
+which is exactly the weakness this whole entry is about.
