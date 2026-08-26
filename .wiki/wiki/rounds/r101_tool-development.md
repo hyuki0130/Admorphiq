@@ -717,3 +717,29 @@ which thirteen are adapter-handled, and the eval is 110 PRIVATE ones. A tool tha
 from frames transfers by construction; an adapter that recognises a game does not. The card being
 unmoved is therefore the expected result of this round, not a disappointing one — but it is also
 not evidence the tool helps, and nothing here should be read as such until a hidden score moves.
+
+
+## ⛔ The whole probing method was the wrong one (2026-08-27, user-raised)
+
+Asked directly: "can't you work the sample games out from the DATA, without running them?" The
+answer is yes, and it always was.
+
+Each game is ONE python file holding its rules AND its data — a `sprites = {...}` table and a
+`levels = [...]` list. Two scripts now read them: `read_sample_games.py` (action dispatch, win
+and lose predicates) and `dump_sample_levels.py` (**all 25 games, 179 levels**, every sprite with
+tags/position/size and the level's own data dict). Neither starts the engine.
+
+**What that immediately retired from this very page:**
+
+* "ft09 level 5 is a WALL — its neighbourhood model self-contradicts, four tiles demanded in two
+  colours at once" -> the level's `cwU` palette has **three** colours and the model had two;
+* "three identical checkerboard tiles, not a stencil alphabet" -> they are `NTi` sprites, whose
+  mask is `[[0,0,0],[0,1,0],[0,0,0]]`: they toggle ONLY THEMSELVES;
+* "the action->direction map is NOT fixed and the rule is unidentified" (g50t) -> `ACTION1..4` are
+  up/down/left/right, and an action arriving while the avatar animates is swallowed;
+* "probing is free on all 25" -> **six games LOSE when an action budget runs out**, and ft09's is
+  in the data: 32, 32, 96, 96, 128, 128 per level.
+
+Twenty live measurements on one game, ten of them correcting an earlier reading, produced a worse
+answer than one command. The failures recorded above are real and the fixes stand, but the METHOD
+that generated them was the wrong one and is now written into `OPERATING_RULES.md`.

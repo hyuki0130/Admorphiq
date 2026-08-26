@@ -38,6 +38,33 @@ stall diagnostic measured (states in the hundreds, levels zero). ⛔ This also N
 claim on the r101 round page that "probing is free on all 25": twelve probes are free, a thousand
 are not.
 
+## The levels are DATA too — no run required
+
+`scripts/dump_sample_levels.py` imports each game module and walks its `levels` literal: every
+level, every sprite, its tags, position and size, plus the level's own `data` dict. **All 25
+games, 179 levels, statically.** The engine is never started and no action is spent.
+
+**Worked example — ft09, answered in one command after twenty live probes failed to:**
+
+```
+L0: data={'kCv': 32,  'cwU': [9, 8],     'elp': [[0,0,0],[0,1,0],[0,0,0]]}  Hkx:8  bsT:1
+L1: data={'kCv': 32,  'cwU': [9, 12],    ...}                                Hkx:13 bsT:2
+L2: data={'kCv': 96,  'cwU': [8, 12],    ...}                                Hkx:23 bsT:4
+L3: data={'kCv': 96,  'cwU': [9, 8, 12], ...}                                Hkx:18 bsT:3
+L4: data={'kCv': 128, 'cwU': [14, 15],   ...}          Hkx:27  bsT:8  NTi:3
+L5: data={'kCv': 128, 'cwU': [11, 14],   ...}          Hkx:0   bsT:4  NTi:22
+```
+
+* `kCv` is the **per-level action budget** — the on-screen counter;
+* `cwU` is the **per-level palette**, and **L3 has THREE colours**;
+* `elp` is the single-cell mask, i.e. what `NTi` sprites use;
+* `Hkx` toggles its 3x3 neighbourhood, `NTi` toggles only itself, `bsT` is the spec.
+
+⛔ This retires a "wall" recorded earlier on the r101 round page. "Level 5's neighbourhood model
+self-contradicts — four tiles demanded in two colours at once" was **a three-colour palette read
+by a two-state model**, and the "identical checkerboard tiles" were `NTi` sprites. Neither was a
+property of the game; both were the limits of black-box probing, and both were one command away.
+
 ## Per game
 
 | game | drives | what it is |
