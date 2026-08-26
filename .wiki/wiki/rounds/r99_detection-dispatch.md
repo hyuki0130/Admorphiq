@@ -1394,3 +1394,31 @@ through nearly or exactly intact.
 
 ⚠️ **Four ports have no archived version and are therefore UNMEASURED on transfer** — recorded as a
 gap in the evidence, not inferred from the seven that were.
+
+## re86's transfer loss is CAPABILITY, not budget — and it argues for the 4,000 cap
+
+re86 is the one port whose solver clearly does not follow its detector across a re-render (0.7273
+live, 0.2273 archived), so it is the one worth taking apart. Three measurements on the archived
+board `re86/4e57566e`, each a (value, budget, env) triple:
+
+```
+budget  5,000, giveup 4,000    4/8 levels, 0.2273, stopped at 4,015 actions
+budget 30,000, giveup 4,000    4/8 levels, 0.2273, stopped at 4,015 actions   <- give-up, not budget
+budget 30,000, giveup 30,000   4/8 levels, 0.2273, spent ALL 30,000 actions   <- capability, not give-up
+```
+
+The adapter spends thirty thousand actions on the archived board and clears nothing beyond level 4.
+Its live 7/8 comes from the same code in ~4,009 actions. So the loss is a genuine capability gap on
+that board's level 5 — not a budget artefact and not a give-up calibrated to the live board, which
+were the two cheap explanations and are now both excluded.
+
+**That is also the first evidence for the 4,000-action cap from something other than the public 25.**
+The cap was chosen on public-25 cumulative-action data with the gap stated openly — *a hidden game
+clearing at full score near 2,000 would be a real loss, and the public 25 cannot rule it out*. Here
+a transfer proxy says the extra 26,000 actions buy exactly zero. One board is not the hidden 110,
+but it is one real observation where the earlier decision could have been wrong and was not.
+
+⚠️ Recorded en route, twice: **`ARC_ENVIRONMENTS_DIR` is still unread** — a run with it set loaded
+`environment_files/re86/8af5384d` regardless, which is the trap CLAUDE.md already names. Version
+swaps must move the directory, and must restore it from a shell `trap` so a timeout cannot leave the
+repository holding an archived board.
