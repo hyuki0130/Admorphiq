@@ -1,0 +1,40 @@
+- [Dev/Test Environment (GCP Kaggle-matched)](project_dev_test_env.md) — GCP VM ewm-bench (96GB, asia-east1-a) = Kaggle-identical dev box; how to run score_efficiency + orchestrator_probe; gemma4-31b/gpt-oss-120b loaded; Mac is edit/lint only. KEEP CURRENT across sessions.
+- [Self-improving agent north-star](../../../../Workspace/Admorphiq/.wiki/wiki/architecture_self_improving_agent.md) — 3-layer harness: LLM=brain, Claude-built generic tools=hands, wiki=knowledge (tool_selector→perfect first pick); dev-time Claude multi-agent builds tools / runtime single model orchestrates; Duck/M1=baselines to BEAT not copy; goal 25/25
+- [Kaggle Hardware (corrected)](project_kaggle_hardware.md) — Eval machine is g4-standard-48 (RTX PRO 6000 Blackwell, 96GB VRAM, ~9h, ~32GB disk), NOT T4 16GB/6h; reopens model selection (R17)
+- [Kaggle Eval & Metric (corrected)](project_kaggle_eval_and_metric.md) — Eval = 110 PRIVATE unseen games; metric = efficiency SQUARED (brute-force≈0); leaderboard top 1.21 / random 0.18; we have 0 submissions; plan in docs/sprint_m1_architecture_20260625.md
+- [Development Loop Convention](feedback_dev_loop.md) — Failure → document → redesign → delegate → test → repeat
+- [Phase Commit Convention](feedback_phase_commit.md) — Commit per phase with docs update and code review
+- [Infinite Improvement Loop](feedback_infinite_loop.md) — All approaches in parallel, test→log→fix loop until all 25 games solved
+- [Never Stop Working](feedback_never_stop.md) — Never suggest pausing/stopping, keep loop running until user says stop
+- [Current Project State](project_current_state.md) — Verified 22/25 / 56 levels (30.77%), commits claim 25/25/69 (unverified)
+- [Verify Score via Regression](feedback_verify_via_regression.md) — Trust ensemble_results.json, not commit messages
+- [LLM Selection for Phase 8](project_llm_selection.md) — Qwen 3 8B + LoRA primary, Gemma 4 26B MoE alt, Claude Code unusable
+- [Phase 8 Wiki Pattern](project_phase8_wiki.md) — Karpathy LLM-Wiki (.wiki/ MD + backlinks) replaces RAG for offline Kaggle inference
+- [Wiki Writing Doctrine](feedback_wiki_doctrine.md) — Wiki must support LLM reasoning (concepts/lessons/debug/reasoning), not just state; history + cross-links mandatory
+- [Proactive Doc Sync](feedback_proactive_doc_sync.md) — Update CLAUDE.md without being asked when phase/state changes
+- [English-Only Artifacts](feedback_english_only_artifacts.md) — All repo files (docs, code, wiki, commits) in English; Korean only in chat
+- [Runner Budget Override Discipline](feedback_runner_budget_override.md) — Don't lower scripts/run_ensemble.py total_budget below class default; LF52/SK48 silent regression was purely budget starvation
+- [Preserve the Framework](feedback_preserve_framework.md) — Don't rewrite portable test framework to match local env; add a separate driver instead
+- [Game Analysis](project_game_analysis.md) — Per-game mechanic analysis, what works/doesn't, hypotheses for solving
+- [WikiAgent First Run](project_wiki_agent_first_run.md) — 2026-04-21 live-env bench: 15/40 envs, 36/290 lvl, classification 45% (vs cold-prompt 32%)
+- [Phase 8 Restart](project_phase8_restart.md) — Three-layer agent (Cognition/Memory/Action) + dev/Kaggle boundary + R1-R6 loop, arch doc at .wiki/wiki/architecture.md
+- [No Python Augmentation](feedback_no_python_augmentation.md) — Never patch LLM mistakes with Python post-processing; wiki enrichment is the only lever. Rounds 2-3 `_augment_*` helpers are violations to be rolled back.
+- [Stay Generic, Not Game-Specific](feedback_generic_not_game_specific.md) — Math/plan-fn additions must branch on frame observations or feature signatures, never game_title; title strings only in provenance comments.
+- [LLM Drives the Loop, Claude Code Helps](feedback_llm_drives_loop.md) — Qwen is the game-completion agent (comprehend/pick/execute/fix). Claude Code implements Qwen's proposed fixes, not its own unilateral redesigns.
+- [Karpathy LLM Wiki (reference)](reference_karpathy_llm_wiki.md) — Full Korean analysis archived at docs/llm_wiki_karpathy_analysis_ko.md; R23+ roadmap in CLAUDE.md absorbs the gap table (log.md / lint / ingest-ritual / query→page).
+- [BC Transfer Ceiling](project_bc_transfer_ceiling.md) — BC v6 (3.41%/15 games) trained on PUBLIC gold; eval=110 PRIVATE; 3.41% is in-sample proxy — held-out test (scripts/_transfer_test.sh) measures real transfer
+- [General Direction: World-Model](project_general_direction_worldmodel.md) — R27+ spine = object-centric perception + online (test-time) world model + search planning + RL; BC = warm-start, not destination; copy top-team's online learning, not public-gold BC
+- [RL Not Abandoned](feedback_rl_not_abandoned.md) — One bad RL run ≠ method verdict; keep-best-by-eval, validate versions, fix LR/KL/reward; deployment choice ≠ research verdict
+- [Online RL is the Spine](feedback_online_rl_is_the_spine.md) — The lever = TEST-TIME online CNN+RL (learn fresh per game, sparse level reward, off-policy replay, reset between levels); NOT sample-specific algorithms or offline-on-public RL (both 0% transfer). StochasticGoose recipe.
+- [Measurement Discipline](feedback_measurement_discipline.md) — Timestamp every output; measurements run as background shells (survive rate-limit), never inside agents; one LIVE SUMMARY.txt per round (scripts/rounds/RN/); never discard partial results — analyze & advance; don't be hasty.
+- [Unified Harness R53](project_unified_harness_r53.md) — self-improving retry loop over 6 from-scratch generic tools (graph/world_model/dealias/deadsig/paint/llm_goal); 6 measured bug fixes; graph clears 3/9 legacy games (vc33/m0r0/lp85); continuation = per-tool strengthening. KEEP CURRENT.
+- [Online-RL Baseline](project_online_rl_baseline.md) — Deployed card full-25 mean game_score 0.0051 (R17, 14/25 clear mostly L1); DEPTH is the ceiling (L1-only caps ~0.05/game); learner saturated to 7 exploration tweaks; gains need structure not tweaks.
+- [No Copying Winners](feedback_no_copying_winners.md) — Duck/winner code = REFERENCE-ONLY (user standing order 2026-07-14); extract facts to wiki, design our own better; verbatim lifts rejected
+- [First LB Score & Transfer Ratio](project_leaderboard_first_score.md) — v6 hidden publicScore 0.14 (2026-07-14); public-proxy→hidden transfer ~13%; LB top band 1.38–1.61 (supersedes "top 12.58%"); rank lever = hidden-game transfer
+- [Codex Review Gate](feedback_codex_review_gate.md) — ALL plans/designs/tests/ANALYSES get codex exec review before acting (user order 2026-07-14); always </dev/null when backgrounded
+- [User Decides Submissions + GPU Frugality](feedback_submission_user_decides.md) — no auto-submit (user order 2026-07-14); prepare candidates + recommendation, wait for go; CPU-only pushes for LLM-free kernels; batch GPU experiments
+- [R56-R58 State](project_r56_r58_state.md) — kernel library + script25 adapters (ft09 3/6 super-human via glyph decode, sb26 first live clear), R57 typology, R58 protocol/GoalLedger; Codex verdict docs list; VM r56-cpu (ewm-bench deleted). KEEP CURRENT.
+- [CPU Dev VM: ceph-build (GCP credits exhausted)](project_cpu_dev_vm_ceph_build.md) — GCP now costs real money; CPU work goes to ceph-build (ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build, 64c/251GB); GCP only for GPU with user awareness
+- [Never Idle Between Ticks](feedback_never_idle_between_ticks.md) — the cron is a watchdog, not a work queue; after a commit, start the next measurement in the same turn
+- [Submission Build Provenance](project_submission_not_reproducible.md) — CORRECTED: the 0.20 card IS rebuildable (solvers in world_model_agent.py, not adapters25); the BUILD procedure is what's missing; consult round pages before the filesystem
+- [Leaderboard 2026-08 + Card + Parallel Method](project_leaderboard_2026_08_and_method.md) — LB top 5.99, ours 0.20; CARD now 0.2771 via detection dispatch (was 0.0566), nine adapters ported by frame recognition; detectors ship only at 0/24 false positives; measure with --agent kaggle_detect and sync ARC-AGI-3-Agents/
