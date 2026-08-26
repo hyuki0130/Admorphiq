@@ -2364,3 +2364,44 @@ Two ways this protection could exist locally and be absent where it counts, both
 on a configuration that does not ship.** The same file already records the version of this that bit
 — the deployed `MAX_ACTIONS` cap lives on a wrapper local measurement never constructs, so cutting
 the budget was once "verified" against a mechanism that does not ship.
+
+## The generic path's problem is EFFICIENCY, not capability — and that redirects everything
+
+`GENERIC30` ran the path that plays every game no adapter claims — the one that decides our score on
+the private 110, where most games carry none of our thirteen mechanics. Full 25:
+
+```
+17 of 25 games clear at least one level.   Mean score: 0.0566.
+```
+
+Those two numbers do not sit together until you read the action counts:
+
+```
+cd82   6/6 levels   0.9463      108 actions
+su15   3/9          0.0935    8,429
+re86   2/8          0.0833    8,355
+ls20   1/7          0.0327    8,398
+lp85   1/8          0.0022    8,312
+m0r0   1/6          0.0000   13,321
+sp80   1/6          0.0000   10,571
+vc33   2/7          0.0000   15,524
+```
+
+**Games that CLEAR levels score 0.0000.** RHAE is `(human_actions / agent_actions)²`, so a level a
+human takes ~30 actions to finish, cleared in 13,000, scores `(30/13321)² = 5e-6` — zero to four
+places. m0r0, sp80, r11l, tu93 and vc33 all clear and all score nothing.
+
+⛔ **So the generic agent is not failing to solve these games. It is solving them by exhaustive
+search, and the squared metric annihilates that.** The adapters' advantage is not that they can and
+it cannot — ft09 is 4 actions against the generic path's 8,330; m0r0 is 19 against 13,321. Same
+outcome, three orders of magnitude apart in cost.
+
+**This redirects the general-agent work.** The target is not "clear more games" — 17 of 25 already
+clear something. It is "clear them in tens of actions rather than thousands", which means the lever
+is inference over the board rather than search through it. Every action spent probing is squared
+against us.
+
+⚠️ And it re-reads today's own numbers. The card's 5.6x came from replacing exhaustive search with
+mechanic-specific solvers on thirteen games. On the private set most games get the searcher, which
+scores ~0 whether or not it eventually clears — which is consistent with the hidden score barely
+moving while the public card multiplied.
