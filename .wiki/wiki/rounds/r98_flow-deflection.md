@@ -10184,3 +10184,33 @@ What the five ticks DID leave that the record did not have: the residual is loca
 walk along `piece1` on idx3, five specific fixes are measured and closed rather than untried, and the
 impossibility is now stated as "no reach exists" rather than "this reach is wrong". That is worth
 keeping, and it is much less than it cost.
+
+## `multi-piece placement` is ALSO a stale open item — it is implemented and it works
+
+The open list names it as *"the burden idx1 named — 3 pieces / 3 targets, so single-piece placement
+satisfies nothing and the sink shortlist comes back empty"*. Both halves are out of date:
+
+```
+idx1   3 pieces, 3 sinks   depth walk CLEARS it in 22 actions
+idx2   4 pieces, 3 sinks   CLEARS
+idx3   5 pieces, 3 sinks   the walk stops here (for the step-off reason, already closed)
+```
+
+And `compiler_flow` plans over every piece jointly, not one:
+
+```python
+placed = {i: board.pieces[i] for i in range(len(board.pieces))}
+... options[i], picks[i], offsets[i] ...
+```
+
+So the compiler carries multi-piece placement, and the level that named the burden clears with three
+pieces and three targets. **The shortlist half was already found stale earlier today** (the walk
+reaches idx1 and grounds it); this is the placement half.
+
+⛔ **That is the third stale item in this round's open list**, after the shortlist note and the
+"fourth target the schema cannot express" shorthand the round itself corrected. The list was accurate
+when written and the code moved past it. **An open list is a claim about the present and needs
+re-measuring before it directs work** — which is cheap here: each of these took one replay to check.
+
+**What remains genuinely open**: a second family member needing a scale-1 spill extractor. That is
+the only item on the list not measured stale.
