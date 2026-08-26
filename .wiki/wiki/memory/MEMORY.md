@@ -39,3 +39,5 @@
 - [Submission Build Provenance](project_submission_not_reproducible.md) — CORRECTED: the 0.20 card IS rebuildable (solvers in world_model_agent.py, not adapters25); the BUILD procedure is what's missing; consult round pages before the filesystem
 - [Leaderboard 2026-08 + Card + Parallel Method](project_leaderboard_2026_08_and_method.md) — LB top 5.99, ours 0.20; CARD now 0.2771 via detection dispatch (was 0.0566), nine adapters ported by frame recognition; detectors ship only at 0/24 false positives; measure with --agent kaggle_detect and sync ARC-AGI-3-Agents/
 - [Top policy: tools to 25/25, then the LLM](policy_two_stage_tools_then_llm.md) — I build the tools; the LLM patches them on hidden games; ceph verifies at width; Kaggle GPU measures hidden
+- [Stage 1 tool build](project_stage1_tool_build.md) — read the game DATA first; 13 of 25 games have per-level action budgets; generic tools 0.0230 vs card 0.3162; 16 of 25 clear nothing
+- [Measure the full 25 before keeping](feedback_measure_full_25.md) — a single-game probe cannot see a 20x net loss; selectivity beats solving; no Kaggle submission until the samples clear
