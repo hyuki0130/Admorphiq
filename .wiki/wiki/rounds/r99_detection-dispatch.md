@@ -1184,3 +1184,46 @@ because a threshold, not a conjunction, was the thing that failed.
 Card arithmetic 0.2772 -> ~0.3051; the full-25 re-measure (`scripts/rounds/R99CARD/run.sh`, the
 runner that unsets the three env overrides so the deployed configuration is what gets measured) is
 the number that counts.
+
+## The card MEASURED with lp85 in: 0.2772 -> 0.3051 (2026-08-26)
+
+Full 25 on the deployed agent, `scripts/rounds/R99CARD`:
+
+```
+ft09 1.0000  ls20 1.0000  m0r0 1.0000  cd82 0.9463  sb26 0.8460  re86 0.7273
+lp85 0.6992  su15 0.4368  tr87 0.2857  sk48 0.2778  r11l 0.2594  ar25 0.0833
+s5i5 0.0278  wa30 0.0222  tn36 0.0152  lf52 0.0001
+tu93 sp80 bp35 cn04 dc22 g50t ka59 sc25 vc33 all 0.0000
+
+CARD MEAN = 0.3051   (5.4x the 0.0566 the card scored before any port)
+```
+
+Game by game against the previous full-25, exactly **one** game moves: lp85, 0.002157 ->
+0.699156. Nothing else changed by so much as a digit — a tenth port with zero collateral.
+
+⚠️ **One flagged difference was my own printout, and one is real and tiny.** The ad-hoc
+comparison printed four decimals and labelled two equal-LOOKING rows REGRESSION. At full
+precision `lf52` is identical (0.000131 both) and `vc33` moved **2e-06 -> 0.0** — a real loss of
+two millionths, i.e. 8e-8 of card, and it belongs to the BUDGET cut (100,000 -> 4,000), not to any
+port; the determinism runs at 4,000 already returned vc33 0.0 twice. This is the fourth time in
+this round that a number formatted for reading was mistaken for a finding. ⛔ Print the raw value
+before a difference becomes a claim.
+
+## sp80 — a measured discriminator, port not yet written
+
+sp80 is the next-largest gap (0.1429). Two measurements, no port yet:
+
+* **First-frame layer count does NOT separate it.** The flow family's tell — a multi-layer
+  scripted consequence from one action (sp80 22 layers, tu93 8, re86 1) — is a consequence of
+  the COMMIT action, and every public game's first frame carries 1 layer except lf52 and bp35
+  (2). So the family tell is not a first-frame signal, and a probe that commits is destructive.
+* **Control scheme narrows to four, and R98's scale inference splits them.** `simple == {1,2,3,4,5}`
+  with click gives exactly `sp80 m0r0 cd82 cn04`, of which m0r0 is already ported by probe.
+  R98's `_infer_scale` then returns **sp80 = 4, m0r0 = 1, cn04 = 1, cd82 = 1**.
+
+That is a candidate conjunction, NOT a gate result: the 0/24 measurement across all 25 games has
+not been run, and a discriminator that separates four boards is not yet shown to separate 25.
+
+⛔ Also measured, and it closes a shortcut: **lp85 was the only adapter carrying its own
+solvability predicate.** All fourteen remaining unported adapters have no `_detect`, so each needs
+its conjunction written by hand rather than lifted.
