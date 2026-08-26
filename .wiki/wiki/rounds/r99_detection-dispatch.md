@@ -423,6 +423,24 @@ again; the number is the card's, not a draw from a distribution.
 be stochastic in themselves (several public ones carry a `nondeterminism` signature). The gap
 still needs a cause — it just cannot be dismissed as sampling.
 
+### ⚠️ Fixed BEFORE the second score: the budget cut may LOWER it
+
+The same runs show `cn04` clearing 0 levels at budget 4,000 where it cleared 1 at 100,000 (at
+56,048 actions). Score is 0.0000 either way — consistent with the "no score lost" measurement —
+but the LEVEL is gone.
+
+So if the hidden 110 contain cn04-shaped games — cleared very late, worth almost nothing on our
+scale — budget 4,000 drops them. ⛔ **The submission now running could therefore come in BELOW
+0.18**, and if it does the reading is fixed here, in advance:
+
+* **below 0.18** — late clears that score ~0 on the public 25 are worth MORE on the hidden set
+  than they are here. That is the risk flagged when the budget was chosen (*"a hidden game
+  clearing at full score near 2,000 would be a real loss, and the public 25 cannot rule it out"*),
+  and it would mean the cap needs raising, not that the ports are wrong.
+* **above 0.18** — truncation explained the first drop, and the budget cut is the fix.
+* **≈ 0.18** — neither truncation nor the cap matters, and all four explanations are then spent;
+  the cause is something not yet on the list.
+
 ### Misfiring, tested on the least familiar boards available
 
 The 0/24 gate measured false positives on the SAME 25 boards the detectors were written on, which
