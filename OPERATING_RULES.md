@@ -105,6 +105,17 @@ Fifteen score zero under all of them.
    of the HIDDEN set it completes.
 ```
 
+⛔ **Before improving any existing tool, decide whether it is the RIGHT tool.** Added 2026-08-26 after
+a measurement made the question unavoidable: `dead_signature` had learned **0 keys after 599 actions
+on ft09**, and nothing in the repository calls its `is_dead()` / `live_actions()`. The cause is not a
+bug — `loop.py:458` calls `observe` on the ACTIVE tool only, and this harness runs one tool at a time,
+while `dead_signature` is the kind of tool that must learn in the BACKGROUND while another works. The
+structure and the tool disagree. Wiring it up would make a possibly-wrong tool run better.
+
+So stage 1 begins by reading the sample games and deriving what tools they need, then judging the
+current six against that — is one-tool-at-a-time right, is anything missing — and only then writing
+code. The order is: understand the games → derive the tool set → judge the existing one → develop.
+
 ⛔ Steps 1 and 2 are different activities on different machines and must not be confused: authoring is
 local and per-game, verification is parallel and on ceph. Step 3 only starts when step 2 says the
 tools carry the sample set.
