@@ -327,6 +327,29 @@ say the mechanic families are narrow, not that mechanic detection is wrong.
 Whatever lands, ⛔ the local numbers do not move: card 0.2772, ceiling 0.3296, nine ports at
 0/24, five transfer-verified. Those were measured and are not up for revision by a hidden score.
 
+### The scales ARE comparable, so the range can be stated
+
+The r53 page settles it: v3's proxy was on the same percentage scale — *"cd82 = 6/6 @ 97.4858"*
+against our local 0.9463, *"su15 10.35"* against our 0.0935. So:
+
+```
+v3    local  5.83%  ->  hidden 0.20     transfer 3.4%
+ours  local 27.72%  ->  4.75x v3's local card
+```
+
+At the same transfer that would be **~0.94 hidden**, nearly five times the current 0.20. ⛔ But
+there is no ground for assuming the transfer rate carries, and it can move either way:
+
+* **higher** — v3's 5.83% was almost entirely ONE game (cd82 at 97.49). Ours is spread across
+  nine, and five of those were MEASURED to work on version hashes they were never written
+  against. That is a better transfer profile, not merely a bigger number.
+* **lower** — if the private 110 hold none of those nine mechanics, no detector fires and the
+  card falls back to 0.0566 (5.66%), which at 3.4% is ~0.19: indistinguishable from today.
+
+Those two ends are exactly the ">0.20" and "≈0.20" readings fixed above, now with numbers on
+them. ⚠️ The estimate assumes a transfer rate measured ONCE, on a different card, so it is a
+range to expect rather than a prediction.
+
 
 ## Instruments
 
