@@ -19,13 +19,20 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     ZERO respectively. A tool that is cheap to be wrong about belongs ahead of one that will
     always propose something.
     """
+    from admorphiq.tools.assemble import JigsawAssembleTool
+    from admorphiq.tools.cover_targets import CoverTargetsTool
     from admorphiq.tools.dead_signature import DeadSignatureTool
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
+    from admorphiq.tools.linkage import LinkageReachTool
     from admorphiq.tools.llm_goal import LLMGoalTool
     from admorphiq.tools.mirror import MirrorMergeTool
     from admorphiq.tools.paint_flood import PaintFloodTool
+    from admorphiq.tools.pattern_cast import PatternCastTool
+    from admorphiq.tools.rewrite import RuleRewriteTool
+    from admorphiq.tools.socketmerge import SocketMergeTool
     from admorphiq.tools.stencil import StencilTool
+    from admorphiq.tools.subroutine import SubroutineProgramTool
     from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.track import TrackAlignTool
     from admorphiq.tools.world_model import WorldModelTool
@@ -40,6 +47,13 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         StencilTool(),
         TrackAlignTool(),
         MirrorMergeTool(),
+        JigsawAssembleTool(),
+        CoverTargetsTool(),
+        LinkageReachTool(),
+        PatternCastTool(),
+        RuleRewriteTool(),
+        SocketMergeTool(),
+        SubroutineProgramTool(),
         graph,
         WorldModelTool(),
         PaintFloodTool(),
