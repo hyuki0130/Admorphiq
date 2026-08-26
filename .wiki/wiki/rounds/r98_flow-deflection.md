@@ -9879,3 +9879,35 @@ watching something flow. So the family's discovery necessarily includes one sacr
 this page already prices at **1 action** (*"ONE commit exposes the whole spill as 20 frame layers"*).
 The static shortlist does not remove that spill; it makes the shortlist survive a spill that
 **teaches nothing about targets**, which is the case that actually blocked idx1.
+
+## ⛔ The shortlist wiring was measured INERT and has been REVERTED — the measurement stands
+
+Wrapping `_static_sink_candidates` through a live depth walk:
+
+```
+[fallback] called 0 time(s); returned a shortlist 0 time(s)
+```
+
+**It never fires.** Not on idx0, idx1, idx2 or idx3. All four gates passed identically before and
+after precisely because the branch is unreachable on everything measurable here — the walk clears
+three levels and never lands on any of the three UNKNOWN paths the fallback was wired into.
+
+This repository's own implementation discipline decides it: *"Do not add fallback branches unless the
+task explicitly requires them. If you find yourself typing `if x is None: return default` as a 'just
+in case', stop and verify whether x can actually be None at runtime — if not, the branch is dead
+weight and obscures the real contract."* Two commits (`502d773`, `bc39a0a`) reverted.
+
+⚠️ **What was wrong was the wiring, not the finding.** The measurement stands and is worth keeping:
+the static notch shortlist names **20/20** grounded targets and matches **20/20 cell for cell** after
+`_by_mouth`, on all four levels. `static_shortlist_check.py` and the `R98_CAPTURE_REST` capture remain
+so it is reproducible.
+
+⚠️ And the idx1 burden this was aimed at is not what I took it for. The walk CLEARS idx1 in 22
+actions, so "the sink shortlist comes back empty" describes a state the current walk does not reach —
+it is banked from an earlier configuration. Wiring a fix for a state I could not produce was the
+error; the correct order is to produce the state first, then fix what it breaks.
+
+**Lesson, and it is one this page already carries in another form:** a guard measured at its own site
+can be inert at the consumer. Here it was worse — I measured the four GATES (all green) and read that
+as the change being safe, when green gates on an unreachable branch say nothing at all. The call that
+settled it took one wrapper and one walk.
