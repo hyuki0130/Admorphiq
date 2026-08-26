@@ -159,7 +159,7 @@ class UnifiedAgent:
 
     def _decide(self, sig: Signature) -> tuple[str, str | None]:
         """Ask the model for the next move -> (mode, tool_name)."""
-        ctx = build_context(sig, self.ctx_budget)
+        ctx = build_context(sig, self.ctx_budget, self._last_obs, self._recent_frames)
         available = [n for n in self.tools if n not in self._failed] or list(self.tools)
         failed = ", ".join(sorted(self._failed)) or "none"
         user = (

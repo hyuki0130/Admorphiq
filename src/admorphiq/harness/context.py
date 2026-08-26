@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -156,22 +157,55 @@ def _known_tool_names() -> list[str]:
     return sorted(set(names), key=len, reverse=True)
 
 
-def _relevant_tools(sig: Signature) -> list[str]:
-    """Order tool names by how well the signature matches their trigger."""
+def _relevant_tools(sig: Signature, obs: Any = None, frames: list[Any] | None = None) -> list[str]:
+    """Order tool names by how well they fit the board in front of us.
+
+    ⛔ This was a hand-written score over EIGHT literal names, so the eighteen rule-recovery tools
+    added on 2026-08-27 could never reach the model even after their blocks were written into
+    `tool_selector.md` — 26 blocks parsed, 8 ever shown. That is the second hardcoded menu found in
+    this file on the same day, and between them the model was structurally unable to name the tool
+    that clears a game 8/8.
+
+    A tool's OWN `detect` is the authority on whether it fits: it is the same number the signature
+    fallback routes on, so the model is now ranked by the evidence the harness already trusts.
+    Tools that decline (0.0) still appear, after the ones that bid — a menu the model cannot see is
+    worse than a long one.
+    """
     scored: list[tuple[float, str]] = []
-    scored.append((0.9 if sig.has_movement and sig.avatar_mobility >= 0.4 else 0.3, "graph"))
-    scored.append((0.9 if sig.nondeterminism >= 0.2 else 0.1, "dealias"))
-    scored.append((0.5, "deadsig"))  # efficiency aug — broadly useful
-    scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "paint"))
-    scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "toggle"))
-    scored.append((0.7 if sig.nondeterminism < 0.15 else 0.3, "world_model"))
-    scored.append((0.8 if (not sig.has_movement and sig.recolor_scale >= 40) else 0.3, "llm_goal"))
+    if obs is not None:
+        try:
+            from admorphiq.harness.registry import default_tools
+
+            for tool in default_tools():
+                try:
+                    scored.append((float(tool.detect(frames or [], obs)), tool.name))
+                except Exception:  # noqa: BLE001
+                    scored.append((0.0, tool.name))
+        except Exception:  # noqa: BLE001
+            scored = []
+    if not scored:
+        # No observation to judge by (context built before the first frame): fall back to the
+        # signature heuristics, which is all this function ever had.
+        scored.append((0.9 if sig.has_movement and sig.avatar_mobility >= 0.4 else 0.3, "graph"))
+        scored.append((0.9 if sig.nondeterminism >= 0.2 else 0.1, "dealias"))
+        scored.append((0.5, "deadsig"))
+        scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "paint"))
+        scored.append((0.8 if sig.click_fraction >= 0.5 else 0.2, "toggle"))
+        scored.append((0.7 if sig.nondeterminism < 0.15 else 0.3, "world_model"))
+        scored.append((0.8 if (not sig.has_movement and sig.recolor_scale >= 40) else 0.3, "llm_goal"))
     scored.append((0.6, "code"))  # the frontier fallback — always an option
-    scored.sort(reverse=True)
-    return [name for _, name in scored]
+    scored.sort(key=lambda kv: (-kv[0], kv[1]))
+    seen: set[str] = set()
+    out: list[str] = []
+    for _, name in scored:
+        if name not in seen:
+            seen.add(name)
+            out.append(name)
+    return out
 
 
-def build_context(sig: Signature, budget_chars: int = 6000) -> str:
+def build_context(sig: Signature, budget_chars: int = 6000, obs: Any = None,
+                  frames: list[Any] | None = None) -> str:
     """Assemble the minimal wiki slice for this signature, within ``budget_chars``.
 
     Always includes the decision header, then appends the most-relevant tool
@@ -184,7 +218,7 @@ def build_context(sig: Signature, budget_chars: int = 6000) -> str:
     header, blocks = _split_tool_blocks(text)
     out = [header.strip()]
     used = len(out[0])
-    for name in _relevant_tools(sig):
+    for name in _relevant_tools(sig, obs, frames):
         blk = blocks.get(name)
         if not blk:
             continue
