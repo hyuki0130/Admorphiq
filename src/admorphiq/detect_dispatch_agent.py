@@ -33,7 +33,7 @@ from admorphiq.adapters25.base import GameAdapter, available_action_ids, has_fra
 #: The probe is HORIZONTAL. Measured: a vertical probe leaves m0r0 and ka59
 #: indistinguishable, because both move their pieces the same way under ACTION1.
 _PROBE_ACTION_ID = 3
-_BAIL_ACTIONS = 1000
+_BAIL_ACTIONS = 2000
 _PROBE_ACTION = GameAction.ACTION3
 
 
@@ -48,11 +48,19 @@ class DetectDispatchAgent:
         # never runs. The public 25 cannot show this (every detector is gated to 0/24
         # there), and the hidden set says v3 scored 0.20 where dispatch scores 0.18.
         #
-        # MEASURED threshold: among the thirteen DISPATCHED public games, the slowest
-        # first clear is sc25 at 461 actions; every other is <= 25. lf52 (377), tu93
-        # (696) and vc33 (3656) are slower still but run the FALLBACK, so a dispatch bail
-        # cannot touch them. 1000 therefore leaves the public card byte-identical while
-        # capping what a wrong dispatch can cost on an unseen board.
+        # MEASURED threshold. Among the thirteen DISPATCHED public games the slowest
+        # first clear is sc25 at 461 actions and every other is <= 25; lf52 (377), tu93
+        # (696) and vc33 (3656) are slower but run the FALLBACK, which a dispatch bail
+        # cannot touch. On the archived RE-RENDERS first-clear counts are identical 7 of
+        # 7, so a different render of the same mechanic costs nothing in time.
+        #
+        # 2000, not 1000, and the difference is sc25. It is a frontier SEARCHER, and its
+        # per-level cost swings 150x: level 1 takes 461 actions, level 2 takes 9, level 3
+        # takes 1,379. A single level of a search-based adapter is therefore ALREADY
+        # measured above 1,000, so a private board of that kind needing >1,000 for its
+        # FIRST level is not hypothetical. 2000 still recovers half the 4,000 budget from
+        # a wrong dispatch, and no public game clears its first level between 461 and
+        # 2,000, so the card stays byte-identical either way.
         self._acted = 0
         self._bailed = False
         self._chosen: Any | None = None

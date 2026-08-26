@@ -361,3 +361,9 @@ def test_the_bail_threshold_clears_every_dispatched_public_game():
 
     slowest_dispatched_first_clear = 461  # sc25, measured in scripts/rounds/R99CARD4
     assert _BAIL_ACTIONS > slowest_dispatched_first_clear
+
+    # And above the most expensive SINGLE LEVEL a dispatched adapter is measured to need:
+    # sc25 is a frontier searcher whose per-level cost swings 150x (461, 9, 1379), so a
+    # threshold under 1,379 would be below a demonstrated single-level requirement.
+    costliest_dispatched_level = 1379  # sc25 level 3, same run
+    assert _BAIL_ACTIONS > costliest_dispatched_level

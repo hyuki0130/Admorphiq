@@ -2273,3 +2273,30 @@ this can be checked, and the bail's risk is bounded by evidence rather than by t
 ⚠️ The one gap that remains: **sc25 (461 actions, the slowest dispatched first clear) has no archived
 version**, so the game that comes closest to the threshold is the one this check cannot cover. The
 margin there is 2.2x on a single board, measured once.
+
+## The bail threshold was too low, and sc25 said so — 1,000 -> 2,000
+
+The gap named one entry ago (sc25 has no archived version, so the game nearest the threshold is the
+one the re-render check cannot cover) turned out to matter. Its per-level costs:
+
+```
+sc25   level 1   461 actions   vs human 36   score 0.006098
+       level 2     9 actions   vs human  6   score 0.444444
+       level 3 1,379 actions   vs human 32   score 0.000538
+```
+
+sc25 is a frontier SEARCHER, and its cost per level swings **150x**. Level 3 alone needs **1,379
+actions** — already above the 1,000 threshold. The bail does not fire there because two levels are
+already cleared, but the number is the point: **a single level of a search-based adapter is measured
+above 1,000**, so a private board of that kind needing more than 1,000 for its FIRST level is not
+hypothetical.
+
+⚠️ **This also corrects my own claim from the previous entry.** "A ~40x margin wherever it can be
+checked" was true of the seven archived games (slowest 25 actions) and false as a general statement —
+the seven are all planners, and the one searcher in the dispatched set needs fifty times what they
+do. A margin computed over the easy cases is not a margin.
+
+Raised to **2,000**. It still recovers half the 4,000 budget from a wrong dispatch, it clears sc25's
+demonstrated 1,379, and no public game clears its first level between 461 and 2,000 so the card stays
+byte-identical either way. The test now pins BOTH bounds — above the slowest first clear AND above
+the costliest single level — so lowering it back would fail on the second.
