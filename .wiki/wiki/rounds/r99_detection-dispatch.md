@@ -402,8 +402,31 @@ receives the seven games that score zero, and code changes inside a zero stay ze
 | explanation | status |
 |---|---|
 | ~~harness change~~ | ⛔ **excluded — contributes 0 on the public 25** |
-| detectors misfiring on private games | open |
+| detectors misfiring on private games | ⚠️ **weakened — 0 misfires on 15 unfamiliar boards** |
 | run truncated by the budget | open |
+
+### Misfiring, tested on the least familiar boards available
+
+The 0/24 gate measured false positives on the SAME 25 boards the detectors were written on, which
+cannot show behaviour on an unfamiliar one. `environment_files_archive/` holds an older version
+hash for fifteen games — boards no detector was tuned against — so every detector was asked about
+every one (`scripts/detector_falsepos_archive.py`):
+
+```
+archived r11l -> ['r11l']     archived re86 -> ['re86']
+archived sk48 -> ['sk48']     archived su15 -> ['su15']
+the other eleven             -> (none)
+
+0 misfires across 15 unfamiliar boards
+```
+
+Each detector fires on its own mechanic's other version and on nothing else. ⚠️ The archive is
+still the same 25 GAMES in different versions; the private 110 may be different games entirely,
+and that stays untestable. The precise statement is: **on the least familiar boards we can reach,
+misfiring does not happen.**
+
+The instrument validated itself in passing — four detectors firing on exactly their own game is
+the known-answer check that the recolour probe skipped.
 
 ⚠️ Zero on the PUBLIC 25 is not zero on the hidden 110: if the probe gives up more often there,
 the harness carries games it never carries here. But nothing in this data lets the harness explain
