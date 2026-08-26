@@ -91,6 +91,14 @@ that flags everything each pass a one-sided test.
 - **A checker is an instrument, and the last one anybody validates.** Run it on input whose
   verdict you already know, in both directions, before running it on the input you care about.
   Every checker this session built was wrong on its first run and right after one measurement.
+  ⛔ **2026-08-26 — this rule was ON THIS PAGE and I did not apply it.** A recolour probe was
+  written to ask whether four detectors read structure or palette, run straight at the four
+  whose answer was unknown, and its verdict reported: "ft09 and ls20 key on colour values, so
+  their footing is weaker." Only afterwards was it run against the five ports whose transfer is
+  already MEASURED — and three that FAIL recolouring (re86, su15, sk48) demonstrably fire on
+  archived version hashes and solve them. The probe is invalid as a transfer proxy and the
+  conclusion had to be withdrawn. **A recorded rule that is not applied costs exactly what a
+  missing rule costs**, and the order is the whole rule: validate FIRST, then read.
 - **Delete a probe when its question is answered.** Four of this session's nine diagnostics
   were retired the moment they had answered; keeping them hides the signal from the ones
   that still change with the code.
