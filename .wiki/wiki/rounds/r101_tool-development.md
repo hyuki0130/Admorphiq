@@ -743,3 +743,35 @@ tags/position/size and the level's own data dict). Neither starts the engine.
 Twenty live measurements on one game, ten of them correcting an earlier reading, produced a worse
 answer than one command. The failures recorded above are real and the fixes stand, but the METHOD
 that generated them was the wrong one and is now written into `OPERATING_RULES.md`.
+
+
+## The budget is READABLE from the frame — 9 of 13 recovered (2026-08-27)
+
+`src/admorphiq/tools/budget.py` (`BudgetReader`). Watch the outer band, find the single row or
+column where cells stop matching their initial value, fit the consumption rate along that line,
+and divide. Measured against the budgets declared in each game's own level data, after **eight
+actions**:
+
+| game | declared | estimated |
+|---|---|---|
+| tu93 | 50 | **50** |
+| vc33 | 50 | **50** |
+| s5i5 | 50 | **50** |
+| sp80 | 30 | 29 |
+| su15 | 32 | 33 |
+| re86 | 100 | 111 |
+| ka59 | 100 | 111 |
+| wa30 | 200 | 191 |
+| dc22 | 128 | 148 |
+| cn04 | 75 | 191 (over) |
+| ar25 / ft09 / lp85 | 64 / 32 / 13 | **None** |
+
+Nine of thirteen inside 30%, four of them essentially exact. The four misses return **None**
+rather than a guess, which is the required behaviour: a wrong budget either strangles a game that
+has none or licences overrun on one that does.
+
+⛔ The defect worth recording: the first version counted the WHOLE edge band and overestimated
+every budget by roughly fifteen times (768 where the game declares 50), because the static chrome
+around the border went into the numerator. The indicator is a segment; the rest of the edge is
+furniture. Pinned in `tests/test_budget_reader.py`, both directions — a board with no indicator
+must return None, and an oscillating border must too.
