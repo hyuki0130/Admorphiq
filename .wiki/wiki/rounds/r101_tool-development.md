@@ -422,3 +422,34 @@ left for the next session to re-derive:
 
 So the thing that consumes the five bits has not been found. That is the open question, and it
 is a question about the board, not about the strip.
+
+
+## ft09 level 5 is a WALL, and the wall cost levels before it was recognised (2026-08-27)
+
+Two facts measured here, in this order:
+
+1. **A wrong click on ft09 costs a LEVEL.** One click took the run from 4 cleared to 3; a run
+   that kept clicking through level 5 spent 130 actions and went **4 -> 0**. This game does not
+   merely waste an exploratory action, it spends the winnings.
+2. **The neighbourhood model contradicts itself on that board.** Collecting every stencil's
+   demand per tile found **4 tiles demanded in two colours at once**. So "each stencil
+   constrains its eight lattice neighbours" is not what level 5 is doing.
+
+Three fixes, each measured, two of which were wrong first:
+
+* **decorated tiles are not stencils** — level 5 carries three identical
+  `[[14,6,14],[6,14,6],[14,6,14]]` checkerboards. Read as stencils they taught the code two
+  inks no real stencil uses. The discriminator: a stencil's CENTRE colour appears exactly once
+  among its nine sample points, because a marker names one cell — itself;
+* **"the other colour" comes from the tiles, not the markers** — reading markers first looked
+  right for level 5 (all tiles start colour 14 while stencils name 14 and 15) and REGRESSED
+  level 4, whose two-colour palette already answers the question. Palette first, markers only
+  when the palette is a single colour;
+* **stop on a REVISITED tile map** — the first guard demanded the outstanding-demand count fall
+  on every click, which killed level 4: one click can retire one stencil's demand while breaking
+  a neighbour's, so a legitimate plateau reads as failure. ⛔ And the state hash must cover the
+  TILE MAP only — this game marches an action counter one pixel per action, so a whole-frame
+  hash is unique every step and the guard never fired at all.
+
+**Result: 4 levels in 60 actions, and level 5 now stops the tool instead of emptying it.** The
+tool ends a game holding what it won. Level 5's actual mechanic is open.

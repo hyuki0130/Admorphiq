@@ -18,9 +18,9 @@ sys.path.insert(0, "src")
 sys.path.insert(0, "scripts")
 
 from arc_agi import Arcade, OperationMode  # noqa: E402
+from glyph_stencil_probe import _pitch, all_tiles, tiles  # noqa: E402
 
 from admorphiq.adapters25.base import canonical_layer  # noqa: E402
-from glyph_stencil_probe import _pitch, all_tiles, tiles  # noqa: E402
 
 
 def main() -> None:

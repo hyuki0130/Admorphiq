@@ -11,9 +11,9 @@ import sys
 sys.path.insert(0, "src")
 
 from admorphiq.adapters25.base import canonical_layer  # noqa: E402
-from admorphiq.tools.stencil import all_tiles, pitch, plan, tiles  # noqa: E402
+from admorphiq.tools.stencil import StencilTool, all_tiles, pitch, plan, tiles  # noqa: E402
 
-__all__ = ["all_tiles", "pitch", "plan", "tiles"]
+__all__ = ["StencilTool", "all_tiles", "pitch", "plan", "tiles"]
 
 
 def main() -> None:
@@ -25,7 +25,7 @@ def main() -> None:
     info = next(i for i in arcade.get_environments() if (i.title or i.game_id).lower().startswith(title))
     env = arcade.make(info.game_id)
     obs = env.reset()
-    code: dict[int, bool] = {}
+    tool = StencilTool()
     done = 0
     acted = 0
     stale = 0
@@ -35,7 +35,9 @@ def main() -> None:
             break
         g = canonical_layer(obs)
         board = tiles(g)
-        clicks, code = plan(g, code)
+        steps = tool.propose([], obs)
+        code = tool._code
+        clicks = [(xy[1], xy[0]) for _, xy in steps if xy]
         if not clicks:
             if stale == 0:
                 side = next(iter(board.values()))["size"] if board else 0

@@ -118,3 +118,26 @@ def test_tool_declines_a_frame_with_no_lattice() -> None:
         frame = [[[BG] * 64 for _ in range(64)]]
 
     assert StencilTool().detect([], _Obs()) == 0.0
+
+
+def test_tool_stops_on_a_revisited_tile_map() -> None:
+    """Purpose: pin the cycle guard that protects levels already won.
+
+    On ft09 a wrong click costs a level — one run lost all four (4 -> 0) by clicking on through
+    a board its model did not fit. Passing means a board state the tool has already acted on
+    makes it withdraw. Failing means it can spend a game's remaining budget, and its winnings,
+    on a mechanic it has misread.
+
+    The guard hashes the TILE MAP rather than the frame: this game marches an action counter one
+    pixel per action, so a whole-frame hash is unique every step and detects nothing.
+    """
+    class _Obs:
+        levels_completed = 0
+
+        def __init__(self, grid: list[list[int]]) -> None:
+            self.frame = [grid]
+
+    tool = StencilTool()
+    scene = _scene()
+    assert tool.propose([], _Obs(scene)) != []
+    assert tool.propose([], _Obs(scene)) == []
