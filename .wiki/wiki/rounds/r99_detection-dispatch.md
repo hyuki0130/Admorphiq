@@ -329,6 +329,35 @@ prevent. It is also BELOW the range this round projected (0.19–0.94).
 WITHOUT the ports, submitted under the same budget — a controlled comparison this round never ran,
 because the ports and the fallback changed together.
 
+### The tempting reading, and why it does not hold
+
+`KaggleDetectAgent` is `DetectDispatchAgent(build_chained())`, and `build_chained()` is exactly
+what v3's `KaggleChainedAgent` wrapped — same budget too. So "ours = v3 plus dispatch, therefore
+0.20 → 0.18 isolates dispatch" is very tempting.
+
+⛔ **It is false.** Five commits touched the fallback path after v3 shipped on 2026-07-14, and one
+of them is not cosmetic:
+
+```
+ea3bf21  feat(R93): executable solver cores (toggle/paint) + click-xy transition fix
+         harness/loop.py, harness/context.py, harness/toolcall_agent.py
+```
+
+`chained_agent.py` and `world_model_agent.py` are untouched, but the chain's SECOND member — the
+`UnifiedAgent` harness — runs different code than it did in July. So:
+
+```
+v3    (Jul 14)  fallback = July harness   + July probe
+ours  (Aug 25)  fallback = CHANGED harness + same probe  + detection dispatch
+```
+
+**Two things moved at once.** The −0.02 could be misfiring detectors, the harness change, or a
+truncated run, and this comparison cannot tell them apart.
+
+⚠️ Worth recording that the false reading was one sentence from being written down as a
+controlled result. Checking `git log` on the fallback path took one command; asserting the
+comparison would have cost the round its main conclusion.
+
 ## How the submission will be read — fixed BEFORE the score arrives (2026-08-26)
 
 Submission `55774529` is pending. The reading is fixed now, the way R98 fixed its model-stage
