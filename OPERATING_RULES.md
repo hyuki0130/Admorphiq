@@ -143,6 +143,26 @@ adapters into the shipped card (no LLM in that path, and it conflicts with the n
 dual-scoreboard doctrine), and treating "the tools cannot clear these" as a verdict rather than as
 stage one's work list.
 
+## 7a. THE CURRENT AXIS — what a tick should find you doing (2026-08-27, user-set)
+
+**Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
+
+The generic tools score **0.0230** over the 25 while the adapter-assisted card scores 0.3162, and
+**16 of 25 games clear nothing**. Three games have a rule-recovery tool: ft09 (stencil), m0r0
+(mirror), lp85 (track). Each of those three plays at or above the human action count on the level
+it clears, which is the evidence that this shape of tool is the right one.
+
+**How the work runs now (user directive, "하나씩 개선할거야?"):** tool development goes in
+PARALLEL — one background agent per game, each owning its own new file under `src/admorphiq/tools/`
+and `scripts/`, never touching `registry.py`, `loop.py` or another tool. The parent integrates,
+runs the full 25 on ceph-build at PAR=25 (two minutes), and keeps the change only if no game
+regressed. Building one tool at a time leaves ceph idle and is not the plan.
+
+**Per tool, in order:** read the game's own source and level data first
+(`scripts/read_sample_games.py`, `scripts/dump_sample_levels.py`) → design against the mechanic and
+the DECLARED action budget → write a frame-only tool whose `detect` returns 0.0 without a plan →
+verify on that game → hand to the parent → full 25 → keep or revert.
+
 ## 7. The watchdog contract — what to do when a tick fires
 
 ⛔ **The wiki and this file are the single source of truth. The cron prompt must stay a POINTER**, not
