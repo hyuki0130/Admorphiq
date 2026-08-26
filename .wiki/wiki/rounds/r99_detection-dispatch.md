@@ -1479,3 +1479,44 @@ because measuring them with two runners is how a "shipped" measurement once sile
 
 This makes 0.3162 a submission candidate whose shipped behaviour is measured rather than inferred.
 ⛔ Submitting is the user's decision and one submission is already pending; nothing is pushed here.
+
+## The next lever, with its number: R98 already clears a level sp80's adapter cannot
+
+The dispatch campaign is down to +0.0134 total. The depth lever's first target is measured and it is
+bigger than every remaining port put together:
+
+```
+sp80 adapter (on the card)   2 of 6 levels, 4,000 actions SPENT, 0.142857
+     level 1   10 actions vs 39 human   score 1.0
+     level 2   16 actions vs 58 human   score 1.0
+     level 3   never cleared — the other 3,974 actions go here
+
+R98 depth_walk (same game)   idx0, idx1, idx2 all CLEARED, 107 actions total
+     idx2 (= level 3)        47 actions
+```
+
+The adapter is not giving up and is not budget-starved in the usual sense: it spends its entire
+allowance on level 3 and clears nothing, while R98's pipeline clears that same level in 47 actions.
+Both of the adapter's cleared levels are already SUPER-HUMAN, so this is a capability gap on one
+level, not a weak solver.
+
+**Worth**: level 3 at score 1.0 takes sp80 from 3/21 to 6/21 — `0.1429 -> 0.2857`, **card +0.0057**.
+That is more than four times the largest remaining port and about 40% of the entire remaining
+dispatch campaign.
+
+⛔ **The blocker is structural, not algorithmic.** R98's pipeline is 3,738 lines across five
+`hypothesis_select` modules (schema / grounding / propagate / verifier / compiler), and the
+quarantine lint lets an adapter import only `base` and `kernels`. The `board_scale` move showed the
+shape of the answer — relocate the pure part, keep one implementation — but three questions have to
+be settled first and none of them is a one-tick job:
+
+1. Which part is actually pure? `propagate_flow` is a simulator parameterised by a response table,
+   which is math; `grounding_flow` reads boards, which is perception; `compiler_flow` emits plans.
+2. Does the kernels' own doctrine admit it? That package says no game semantics travel with the
+   math — and a flow RESPONSE TABLE is a family model, not one game's constant, so this is arguable
+   in both directions and should be argued explicitly rather than assumed.
+3. `kernels` already carries an older, weaker flow set (`learn_flow_operators`, `simulate_flow`,
+   `plan_flow_coverage`) which sp80's adapter already imports. Two flow models in one library is the
+   duplication the `board_scale` move existed to prevent.
+
+Recorded so the next session starts from a decision instead of a survey.
