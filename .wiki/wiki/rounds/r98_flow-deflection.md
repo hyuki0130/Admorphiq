@@ -9820,10 +9820,29 @@ covers all three, which is the 4-connectivity merge `_by_mouth` already exists t
 standing side by side merge into a single region... a single merged target makes 'satisfy every
 target' mean 'satisfy the one blob'").
 
-⚠️ **What is closed and what is not.** Closed: targets ARE recoverable from static structure before
-any commit, so a pre-spill shortlist is available and item 3's premise holds. Not closed: this
-measures COVERAGE, and on idx3 exactness needs `_by_mouth` applied to the static set — which is a
-composition of two things already in the file, not new work, but it has not been measured that way.
+**And the exactness measurement ran too — `_by_mouth` applied to the static set, using the SHIPPED
+method rather than a reimplementation, so this measures the code that would run:**
+
+```
+idx0   grounded 2   static 2 -> after _by_mouth 2 regions   EXACT 2/2
+idx1   grounded 3   static 3 -> 3 regions                   EXACT 3/3
+idx2   grounded 3   static 3 -> 3 regions                   EXACT 3/3
+idx3   grounded 3   static 1 -> 3 regions                   EXACT 3/3   (x4 boards)
+
+20/20 NAMED statically; 20/20 match EXACTLY after _by_mouth
+```
+
+**The static shortlist does not merely cover the grounded targets — it reproduces them cell for
+cell**, on every captured board, and idx3's single merged region splits into exactly the right three.
+
+⛔ **Item 3 is closed.** A pre-spill shortlist is available and it is EXACT against the spill-grounded
+answer wherever that answer exists. The pieces were both already in this file; what was missing was
+the pairing (rest colours with grounded sinks) and the measurement.
+
+⚠️ Two limits worth carrying: the diagnostic reaches a private method (`_by_mouth`) and sets
+`_prev_cells` directly, which is acceptable for a check but means it is coupled to grounding
+internals; and "wherever that answer exists" is four levels of one game, so this is the flow family's
+answer, not a general one.
 
 ⚠️ The earlier 12/20 on this same check was its own blind spot: it read colours from the WALK
 captures, where idx0's grounded target cells carry the BACKGROUND colour (`{12: 5}` against background

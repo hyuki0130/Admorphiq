@@ -78,15 +78,28 @@ def main() -> int:
         r = json.load(open(rest))
         grounded = [frozenset(map(tuple, s)) for s in d["sinks"]]
         static = notch_regions(r["colours"], r["size"])
+        # Split merged regions with the SHIPPED `_by_mouth`, not a reimplementation, so this
+        # measures the code that would actually run. Targets standing side by side merge under
+        # 4-connectivity, and one merged target makes "satisfy every target" mean "satisfy the
+        # one blob" — which is why that method exists.
+        from admorphiq.hypothesis_select.grounding_flow import FlowGrounding
+        g = FlowGrounding()
+        g._prev_cells = {(int(k.split(",")[0]), int(k.split(",")[1])): v
+                         for k, v in r["colours"].items()}
+        split = [part for region in static for part in g._by_mouth(region)]
         # a grounded target is COVERED when some static region contains all its cells
-        covered = sum(1 for g in grounded if any(g <= s for s in static))
-        rows.append((os.path.basename(path), len(grounded), len(static), covered))
+        covered = sum(1 for gr in grounded if any(gr <= s for s in static))
+        exact = sum(1 for gr in grounded if any(gr == s for s in split))
+        rows.append((os.path.basename(path), len(grounded), len(static), covered, len(split), exact))
         print(f"{os.path.basename(path):20s} grounded {len(grounded)}  static {len(static)}  "
-              f"grounded-covered-by-static {covered}/{len(grounded)}")
+              f"covered {covered}/{len(grounded)}  | after _by_mouth: {len(split)} regions, "
+              f"exact matches {exact}/{len(grounded)}")
     if rows:
-        g = sum(r[1] for r in rows)
-        c = sum(r[3] for r in rows)
-        print(f"\nover {len(rows)} captured boards: {c}/{g} grounded targets are named statically")
+        tot = sum(r[1] for r in rows)
+        cov = sum(r[3] for r in rows)
+        exa = sum(r[5] for r in rows)
+        print(f"\nover {len(rows)} captured boards: {cov}/{tot} grounded targets are NAMED "
+              f"statically; {exa}/{tot} match EXACTLY after _by_mouth")
     return 0
 
 
