@@ -1595,6 +1595,19 @@ solvability predicate, so the remaining fourteen need theirs written by hand.
 blocked and all 25 launched at once. Throttle with `xargs -P`; skip games that already have a
 result so a killed run resumes rather than restarts.
 
+⛔ **A WRONG DISPATCH NO LONGER COSTS A WHOLE GAME (2026-08-26).** Dispatch was decided from one
+frame and never revisited, so a detector firing on an unseen private game spent that game's entire
+budget on a mechanic the board does not have while the fallback never ran. `DetectDispatchAgent` now
+BAILS: an adapter that has cleared no level within **1,000 actions** hands the rest of the budget
+back to the fallback, permanently.
+
+The threshold is MEASURED, not chosen: among the thirteen dispatched public games the slowest first
+clear is sc25 at 461 and every other is <= 25, and on the archived RE-RENDERS first-clear counts are
+**identical 7 of 7** (m0r0 19, su15 15, sk48 14, r11l 7, re86 25, sp80 10, tn36 7) — a re-render
+costs nothing in time-to-first-clear, so the margin is ~40x wherever it can be checked. Verified as a
+no-op: full 25 scores 0.3162 with the bail in, 0 of 25 games differing. ⚠️ sc25 has no archived
+version, so the game nearest the threshold is the one that check cannot cover.
+
 ⛔ **A detector ships only at 0/24 false positives** across the public games
 (`scripts/detector_falsepos.py`). The gate is a measurement, not a precaution: an sb26 detector at
 2/24 predicted an s5i5 regression and a full-25 run produced exactly it (0.0278 -> 0.0000).
