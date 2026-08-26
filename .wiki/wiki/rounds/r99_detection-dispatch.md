@@ -1314,3 +1314,31 @@ tn36's port carries the round's sharpest detector rule in a new place: it is wri
 mechanic's structure (>=2 opcode columns AND a run button AND a player/goal pair), **not** as
 "`_parse` returned something". A detector built on *my solver did not refuse* inherits the
 solver's permissiveness, which is measured here — sb26's parser accepted s5i5 and sc25.
+
+## wa30 — the gate blocked a port that would have cost 0.7273 (2026-08-26)
+
+wa30 is a pick-carry-drop delivery board, and its pair rule is the win condition itself: the level
+wins when EVERY box sits on a goal cell, so the pad must span at least as many logical cells as
+there are boxes. (`_pad_cells` caps at the box count but returns FEWER when the pad is too small,
+so demanding equality demands a pad that can actually hold them — the term is real, not a
+restatement.)
+
+Written that way it measured **1/24 — it fires on re86**. re86 is already ported, so shipping this
+would have put two detectors on one board, sent dispatch to the fallback, and **lost re86's
+0.7273** — nearly a fifth of the entire card, to gain 0.0445. The gate is the only reason that did
+not happen, and this is the second time in the round it has predicted a specific regression rather
+than merely expressing caution.
+
+The two mechanics differ exactly where a static frame is thinnest. re86's ACTION5 CYCLES which
+piece is selected — so its board must show a selection marker — while wa30's ACTION5 is a context
+INTERACT on a single worker, so there is nothing to select and no marker to show. That is a real
+discriminator and wa30 cannot use it: the selection colour is re86's, and the quarantine lint
+allows an adapter to import only `base` and `kernels`, never a sibling adapter. Hoisting a
+`_SELECTION_COLOR` into a shared kernel would make one game's palette constant into a library fact,
+which is the hardcoding this package exists to prevent.
+
+⛔ **PARKED, third kind.** lp85's park was a single-feature verdict over an expressible mechanism
+and came free; g50t's mechanism is a MOTION no static conjunction reaches; wa30's is expressible
+and static but **the discriminating evidence belongs to another adapter**. Naming which kind is
+what keeps a park re-examinable — this one reopens the moment the probe contract carries an
+ACTION5 transition, since select-versus-interact is exactly what one such press would show.
