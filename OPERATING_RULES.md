@@ -170,6 +170,14 @@ before the full-25 run revealed the change was a net loss.
    game and steals another's turn is a loss. A tool is kept only when no game regressed.
 5. **RECORD** the outcome in the round page and pull every artefact back off the box (rule 2).
 
+⛔ **FREEZE A SNAPSHOT, THEN VARY ONLY THE REGISTRY.** Measured 2026-08-27: six bisect runs
+chased a "regression" that did not exist. The baseline it was measured against came from a tarball
+taken while that game's own tool was mid-edit by its agent, and the intermediate version no longer
+exists — so the committed code was never the measured code, and three innocent tools were nearly
+reverted. Sync ONE snapshot to the box, then produce every variant by editing `registry.py` THERE.
+A comparison is only like-for-like when the tool FILES are identical and the registry is the only
+difference.
+
 ⛔ **While agents are running, NEVER `git add -A`.** Commit explicit paths only. Measured
 2026-08-27: a docs commit about one game swept in 393 lines of an agent's in-progress tool and its
 driver, under a message that mentions neither. The agents are writing into the same working tree,

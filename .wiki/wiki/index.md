@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 239.
+**Total pages**: 240.
 
 ## Games (25)
 
@@ -93,7 +93,7 @@ category, drill into specific pages.
 - [[concepts/swallowed_action.md]] — An action that arrives while the board is animating is CONSUMED WITHOUT EFFECT — it costs budget, changes nothing, and teaches a searcher a wall that is not there.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (45)
+## Lessons (engineering wisdom from past incidents) (46)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -120,6 +120,7 @@ category, drill into specific pages.
 - [[lessons/ka59_v2_action6_semantic_20260423.md]] — The `ka59-9f096b4a` (v1) → `ka59-38d34dbb` (v2) hash rotation
 - [[lessons/lb_top_team_research_20260714.md]] — M1 top-3 all use offline LLM brains (Gemma-4-31B ×2, Qwen 3.6 27B); the untried lever for us is vision-LLM-as-policy; our model pick and brittle-purge direction are independently validated.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
+- [[lessons/moving_target_measurement_20260827.md]] — Six bisect runs chased a regression that did not exist, because the number they were measured against came from a tarball taken while that game's own tool was mid-edit.
 - [[lessons/prefix_aware_navigation_20260423.md]] — `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
 - [[lessons/probe_validity_20260715.md]] — Three separate R56 adapters were misled by probes that LOOKED conclusive
 - [[lessons/prompt_notation_misparse_20260723.md]] — gemma4-31b deterministically misread the histogram notation
@@ -163,7 +164,7 @@ category, drill into specific pages.
 
 ## Top-level dispatch (architecture, selector, log, schema) (115)
 
-- [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
+- [[memory/MEMORY.md]] — (no description)
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
 - [[rounds/r07_deploy-online-rl.md]] — Decided to deploy online-RL solo (not world-model, not ensemble) — world-model is sample-specific and ensemble is metric-negative under squared efficiency.

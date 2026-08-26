@@ -40,6 +40,11 @@ keywords: [parallel, agents, integration, tool-build, selectivity, ceph, stage-1
   edge-pinned counter is not board content. An unbriefed agent re-learns each of these at the
   same cost they were first learned at.
 
+⛔ **Freeze the snapshot before measuring.** Agents write into the same tree, so a tarball taken
+mid-fan-out can capture a file its author is still editing — and the committed code is then not the
+measured code. Sync once, vary only `registry.py` on the box. See
+[[lessons/moving_target_measurement_20260827]].
+
 ## Related
 
 - [[rounds/r101_tool-development]] — the round this protocol came out of.
