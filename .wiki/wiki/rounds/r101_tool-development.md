@@ -525,3 +525,23 @@ probe order along one edge line, which no rule of a board does. After the fix:
 justification for a guard is a CLAIM about the data, and it decays. This one had been written
 down, believed, and never re-measured. Pinned in both directions now — a sweep that is all
 counter reports zero, and a real block response survives with its counter pixel stripped.
+
+
+## Where a click does something, across all 25 (2026-08-27, counter-filtered)
+
+`scripts/induce_sweep.py` — 64 probes per game at stride 8, HUD counters removed.
+
+| shape | games | reading |
+|---|---|---|
+| **uniform footprint** — every response flips the same count | ft09 [36], cd82 [94], cn04 [135], s5i5 [10], lp85 [293] | a single operator: toggle / parity / paint. The stencil family's shape |
+| two footprints | sc25 [3,9], sb26 [12,24], dc22 [48,128] | two operators, or one operator and a selector |
+| many footprints | su15 (32 responders), r11l (49), bp35 (8), lf52 (9), tn36 (5) | position-dependent effect — a richer state, not one rule |
+| **no response found** | ar25, g50t, ka59, ls20, m0r0, re86, sk48, sp80, tr87, tu93, vc33, wa30 | move-driven, or answering somewhere this sweep does not look |
+
+⛔ The last row is about the SWEEP, not the games — it reads one layer and probes stride 8.
+sp80 sits in it and is known to answer a placement with a twenty-layer spill. Recorded on the
+script itself so the number is not quoted later as "these games ignore clicks".
+
+**Next tool target on this evidence: cn04** — four responders, a single 135-cell footprint, pitch
+8. That is the cleanest uniform operator left after ft09, and cn04 is one of the games the
+generic path has never taken past level 1.
