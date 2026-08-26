@@ -103,7 +103,7 @@ def _split_tool_blocks(text: str) -> tuple[str, dict[str, str]]:
     such heading is the shared decision header.
     """
     lines = text.splitlines(keepends=True)
-    tool_names = ["graph", "dealias", "deadsig", "paint", "toggle", "world_model", "llm_goal", "code"]
+    tool_names = _known_tool_names()
     blocks: dict[str, str] = {}
     header: list[str] = []
     cur_name: str | None = None
@@ -133,6 +133,27 @@ def _split_tool_blocks(text: str) -> tuple[str, dict[str, str]]:
             cur.append(ln)
     _flush()
     return "".join(header), blocks
+
+
+def _known_tool_names() -> list[str]:
+    """Every registered tool's name, plus the code path.
+
+    ⛔ This was a HARDCODED list of eight. Measured 2026-08-27: eighteen rule-recovery tools were
+    built and registered that day, and the model was never told any of them existed — so on a game
+    one of them clears 8/8 the model picked the general searcher and the code path, and scored one
+    level. The signature fallback found the right tool; the LLM could not, because its menu was
+    frozen in the source. A tool that is registered must be nameable.
+    """
+    try:
+        from admorphiq.harness.registry import default_tools
+
+        names = [t.name for t in default_tools()]
+    except Exception:  # noqa: BLE001
+        names = ["graph", "dealias", "deadsig", "paint", "toggle", "world_model", "llm_goal"]
+    if "code" not in names:
+        names.append("code")
+    # Longest first, so a heading naming "world_model" is not claimed by a tool called "model".
+    return sorted(set(names), key=len, reverse=True)
 
 
 def _relevant_tools(sig: Signature) -> list[str]:

@@ -98,7 +98,17 @@ def ollama_llm(
     def _call(messages: list[dict[str, str]]) -> str:
         body = {
             "model": model, "stream": False, "think": False, "messages": messages,
-            "options": {"temperature": 0.0, "num_ctx": num_ctx, "num_predict": num_predict},
+            # ⛔ `num_thread` is capped from the environment because the CPU box this runs on is
+            # SHARED: measured 2026-08-27, one 26B model at full tilt took 3743% CPU (~37 cores)
+            # and pushed the load average to 96 alongside other tenants' workloads. Unset means
+            # ollama's own default, i.e. unchanged behaviour on a machine that is ours alone.
+            "options": {
+                "temperature": 0.0,
+                "num_ctx": num_ctx,
+                "num_predict": num_predict,
+                **({"num_thread": int(os.environ["OLLAMA_NUM_THREAD"])}
+                   if os.environ.get("OLLAMA_NUM_THREAD") else {}),
+            },
         }
         req = urllib.request.Request(
             f"{host}/api/chat", data=json.dumps(body).encode(),

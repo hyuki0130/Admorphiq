@@ -158,3 +158,244 @@ Measured the full toolkit + LLM orchestration:
   tools. Next lever = full LLM code-agent (extend llm_policy into a Tufa-style REPL where the
   model writes+executes game-specific Python), NOT more fixed tools.
 Do NOT keep adding fixed tools for the frontier transform games; they need LLM-authored code.
+
+## Rule-recovery tools (round R101, 2026-08-27)
+
+Each recovers ONE mechanic from the frame and then acts, instead of searching. Together they
+took the generic path from 0.0200 to 0.2143 over the 25 sample games. Pick by the observable
+signature. Naming the wrong one costs a turn, not a game: every one of them declines a board
+it cannot plan.
+
+### assemble
+
+**Observable Signature.** Assemble tool — loose pieces carrying seam marks, moved and re-formed until the seams meet.
+
+The mechanic, recovered from frames: the board holds a handful of rigid pieces. One is SELECTED at a time; a click on a piece selects it, the four simple actions slide the selected piece one cell, and the fifth RE-FORMS it. Every piece carries a few MARKER cells — lone cells of a colour the
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### cover_targets
+
+**Observable Signature.** Slide skeleton pieces until their arms cover a board's pinned target marks.
+
+The family this reads: the board carries a handful of small MARKS, each a 3x3 ring of one flat colour with a differently-coloured pip at its middle, and PIECES — thin skeletal shapes (a cross, an X, a bar, a rectangle outline) drawn in the pip colours. The level is won when
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### haul
+
+**Observable Signature.** Haul tool — take hold of a cargo piece, drag it into its bay, and let go.
+
+The mechanic, recovered from the frames: one carrier under the four move keys walks a lattice; a fifth key LATCHES whatever sits in the cell the carrier faces and LETS GO of it again. A latched piece keeps its offset from the carrier, so it is towed rather than pushed, and it may be towed in
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### keymaze
+
+**Observable Signature.** Keyed-lock maze: walk an avatar to a lock whose KEY the avatar must first mint.
+
+The family this tool recovers, stated only in what a frame shows: * the board is a lattice of equal square cells; most are one flat colour (floor or wall), and the avatar occupies exactly one and translates one whole cell per action;
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### ledge
+
+**Observable Signature.** Ledge tool — a side-view faller: two lateral controls, gravity, and a click that edits terrain.
+
+Recovered from frames alone. The mechanic, in the order the tool has to derive it: * the board is a lattice of equal square cells, one sprite drawn per cell; * control is LATERAL ONLY — exactly two of the four movement actions exist, and that is what
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### linkage
+
+**Observable Signature.** Reach a ring marker with a dot marker by driving framed two-way controls.
+
+The mechanic this recovers, stated in frame terms only. A board carries two kinds of small marker in one rare colour: a LONE CELL (the thing that moves) and a DIAMOND of four cells around an empty centre (the place it must reach). Elsewhere sit framed widgets — a rectangle
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### maze
+
+**Observable Signature.** Maze tool — walk a body to a marked exit, and recruit a replay clone when a plate gates it.
+
+of states on these boards and clears nothing, because the games END on their own timer. A walk planned on a map read from the frame costs the length of the path and nothing else. The board grammar this tool recovers, all of it from pixels:
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### mirror
+
+**Observable Signature.** Mirror tool — two coupled actors under shared controls, brought together.
+
+The mechanic, recovered from frames: a small number of identical actors sit in mirrored halves of the board; the simple actions move ALL of them at once, one cell per press, with the horizontal sense MIRRORED between halves; the level clears when they meet.
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### pattern_cast
+
+**Observable Signature.** Reproduce a pattern the board is SHOWING you, then walk the avatar to its exit.
+
+The mechanic, recovered frame-only: a compact panel carries a complete k x k lattice of equal square cells. Most sit at one neutral colour; a minority are painted in a second. That minority is not decoration — it is an INSTRUCTION. Clicking each painted cell arms
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### phase_grid
+
+**Observable Signature.** Phase tool — an avatar walked to its marker over terrain that PANEL BUTTONS re-phase.
+
+The mechanic, recovered from frames. A board sits beside a side panel of buttons. One small square is the avatar (the simple actions move it one lattice step), another square of the same size is its destination, and the level clears when the avatar's cell IS the destination cell.
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### reflect_cover
+
+**Observable Signature.** Cover a stencil of goal cells with a shape and its MIRROR IMAGES.
+
+The family this fires on draws a board on which a few movable shapes are reflected through one or two full-span mirror lines, and asks that every goal cell be covered by the shape or by one of its reflections. The board renders three things the tool needs and nothing else:
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### rule_rewrite
+
+**Observable Signature.** Read a rewrite grammar off the board and spell the translated string.
+
+The mechanic, recovered from the frame alone (verified against the sample board this was built on, 2026-08-27): * Every piece on the board is a FRAMED TILE: a solid square of one colour with a
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### slotlaunch
+
+**Observable Signature.** Slot-launch tool — park every loose piece inside the outline cut for it.
+
+The mechanic, recovered from the frames and confirmed against the engine's own dispatch: * The board carries **outlines** — closed rings of one colour whose hollow interior is exactly the shape of one piece, inset by a single cell. A level clears when EVERY outline holds its piece.
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### socketmerge
+
+**Observable Signature.** Vacuum-merge boards: pull like pieces together, then park them in the sockets.
+
+RECOVERED MECHANIC (measured on a live sample board, 2026-08-27). A click inside the playfield opens a short vacuum: every piece whose bounding box lies within a fixed reach of the click is dragged so that its CENTRE lands exactly on the clicked cell. Pieces that
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### stencil
+
+**Observable Signature.** Stencil tool — paint a small instruction glyph onto a lattice of equal tiles.
+
+Recovered from frames alone in round r101 and measured on ft09 (levels 1-4, 62 actions, zero game constants). The mechanic: * the board is a lattice of equal square tiles, all one colour to begin with;
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### subroutine
+
+**Observable Signature.** Subroutine tool — assemble a program out of loose tokens, then run it once.
+
+The mechanic, recovered from frames on one sample game: the top strip is a row of hollow boxes whose OUTLINE colour spells a target sequence; the middle of the board holds one or more wide rectangles, each a numbered strip of equally-spaced square slots; the bottom holds a tray of loose
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### track
+
+**Observable Signature.** Track tool — bring the marked item to the marked slot on a rotating track.
+
+The mechanic, recovered from frames: a closed loop of equal square tiles, each a flat colour; a STATIC marker drawn beside one slot; and controls that rotate the whole loop one slot per press. The level is won when the tile whose colour matches the marker sits in the marked slot.
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
+
+### tube_order
+
+**Observable Signature.** Extendable-tube tool: a nozzle on a rail that must swallow tiles in a demanded order.
+
+The mechanic, recovered from one sample board and written here in the terms a frame can supply. A PANEL below the board shows a second tube already holding a run of coloured tiles; that run is the demand. On the board a NOZZLE sits one cell OUTSIDE the play
+
+**Falsification Signature.** It proposes nothing here — `detect` returns 0.0 unless its
+own mechanic is present AND it has a plan for this board.
+
+**Tunable Parameters.** None at runtime; every constant it uses is derived from the frame.
+
+**Next-Best.** `graph`, the general searcher, when no rule-recovery tool claims the board.
