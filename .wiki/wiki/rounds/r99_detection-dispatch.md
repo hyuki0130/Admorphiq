@@ -2097,3 +2097,36 @@ still standing, which is a reason to test it and not a reason to believe it.
 worth **+0.0057** of card. The diagnostic chain has been the valuable part — six instrument faults
 caught, several of them after they had produced a confident conclusion — but the sp80 level-3 clear
 itself is a small prize, and continuing is a choice rather than an obligation.
+
+## Budget is NOT the constraint anywhere — 25 games at 30,000, measured in parallel (2026-08-26)
+
+First run on ceph-build with the 60-core cap in place, 25 games at once, budget **30,000** against
+the deployed **4,000**:
+
+```
+CARD MEAN 0.3162   —   identical to the 4,000 run, to four decimals
+Not one game gains a single level.
+```
+
+And no game spends the budget. Every one stops at its own give-up:
+
+```
+~4,000 actions    re86 su15 sk48 r11l sp80 sc25      (adapter _GIVEUP_DEFAULT = 4000)
+~8,300-9,600      ar25 s5i5 wa30 lf52 tu93 ka59 g50t dc22 cn04 bp35
+ 15,524           vc33
+   88-503         ft09 m0r0 ls20 cd82 sb26 lp85 tr87 tn36   (they finish)
+```
+
+Three things follow, all of them useful:
+
+* **The 4,000-action cap costs nothing**, now confirmed at a second scale across all 25 games rather
+  than argued from cumulative-action data on one. The earlier caveat — *a hidden game clearing at
+  full score near 2,000 would be a real loss and the public 25 cannot rule it out* — survives for
+  the private set, but on everything we can measure the cap is free.
+* **Depth is not budget-reachable.** Every unfinished game gives up on its own long before the
+  ceiling, so "run it longer" is not an available lever on any of the twelve games stuck below 0.15.
+* **What blocks depth is give-up logic and capability**, which is where effort has to go if the
+  adapter ceilings are to move at all.
+
+⚠️ This is what the parallel box is for: 25 games, one wall-clock, a clean negative that would have
+taken hours serially and was worth having before another day was spent on budget-shaped ideas.
