@@ -1548,6 +1548,34 @@ detection (--agent detect) 0.2756      every port lands EXACTLY on its ceiling (
 adapter ceiling          0.3296
 ```
 
+⛔ **THE CARD IS A PROXY AND IT IS NOT TRACKING THE SCORE (measured 2026-08-26).** Read this before
+spending another day on ports.
+
+```
+card 0.0566 -> 0.3162   (5.6x, thirteen ports, all measured full-25)
+hidden       0.20 -> 0.18   (v3 -> detection dispatch)
+```
+
+The one calibration point available: card **0.2772** produced hidden **0.18**, a ratio of ~0.65. On
+that ratio today's 0.3162 lands near **0.205** — i.e. back to where v3 already was. **A 5.6x gain on
+the proxy bought approximately nothing on the leaderboard**, and that is the single most important
+fact about this axis.
+
+WHY, stated so it is not re-learned: the 25 public games are DEV-ONLY; the eval is **110 PRIVATE**
+games. Each ported adapter is a per-mechanic solver that fires only when its mechanic is visible in
+the frame. A private game carrying none of our thirteen mechanics gets the generic fallback, exactly
+as before. Raising the public card raises the count of public mechanics we solve, which is not the
+quantity being scored.
+
+⚠️ The transfer evidence collected for the ports (7/7 archived version hashes gain, mean 0.0274 ->
+0.3496) is transfer across a **re-render of the SAME game**. That is much weaker than transfer to a
+DIFFERENT game, and it was recorded without drawing the strategic consequence — which is this entry.
+
+**Remaining port campaign is worth +0.0134 of card**, therefore roughly +0.009 of hidden. Anything
+that needs the score to multiply has to come from a GENERAL agent that learns an unseen game at test
+time, not from a fourteenth mechanic-specific solver. Leaderboard for scale: top 5.99, 12th 2.66,
+ours ~0.2 — 13x to 30x away.
+
 **CARD NOW 0.3108 (2026-08-26)** — 0.0566 -> 0.2772 (9 ports) -> 0.3051 (+lp85) -> 0.3108 (+sp80),
 each measured full-25 on `--agent kaggle_detect`, each moving EXACTLY the one game it ported.
 
