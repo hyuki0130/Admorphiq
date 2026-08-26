@@ -23,6 +23,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.llm_goal import LLMGoalTool
+    from admorphiq.tools.mirror import MirrorMergeTool
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.stencil import StencilTool
     from admorphiq.tools.toggle import ToggleTool
@@ -38,6 +39,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     return [
         StencilTool(),
         TrackAlignTool(),
+        MirrorMergeTool(),
         graph,
         WorldModelTool(),
         PaintFloodTool(),
