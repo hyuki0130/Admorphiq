@@ -26,6 +26,7 @@ board this was built against:
 from __future__ import annotations
 
 from collections import Counter
+from heapq import heappop, heappush
 from typing import Any
 
 import numpy as np
@@ -73,6 +74,10 @@ class CoverTargetsTool:
         self._odd: list[Cell] = []
         self._probes = 0
         self._edge = 0
+        self._paint: dict[Cell, int] = {}
+        self._legs: tuple[Any, list[tuple[int, int]], Any] = (None, [], None)
+        self._pairing: dict[int, int] = {}
+        self._handover = True
         self._idle = 0
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
@@ -92,6 +97,8 @@ class CoverTargetsTool:
         blobs = self._blobs_of(grid, spec)
         pips = {p[2] for p in spec[1]}
         if not pips <= set(blobs):
+            return 0.0
+        if any(_solid(frozenset(blobs[colour])) for colour in pips):
             return 0.0
         for colour in pips:
             want = [(r, c) for r, c, v in spec[1] if v == colour]
@@ -123,6 +130,8 @@ class CoverTargetsTool:
                     continue
                 ringc = ring.pop()
                 if ringc == pip or ringc in bg:
+                    continue
+                if not _standing_clear(grid, r, c, bg):
                     continue
                 found.setdefault(ringc, []).append((r, c, pip))
         if not found:
@@ -182,6 +191,8 @@ class CoverTargetsTool:
         if action is None or prev is None:
             return
         moved = _moved(before, blobs, self._effect.get(action))
+        if moved is not None and not self._shifted(moved[1], blobs):
+            moved = None
         if moved is not None:
             cells, vec = moved
             self._effect[action] = vec
@@ -192,11 +203,28 @@ class CoverTargetsTool:
         if board_changed(prev, grid):
             if action not in self._effect:
                 self._select = action
+            if action == self._select:
+                self._handover = True
             self._wheel = None
             self._noeffect[action] = 0
             self._idle = 0
             return
         self._noeffect[action] += 1
+
+    def _shifted(self, vec: tuple[int, int], blobs: dict[int, set[Cell]]) -> bool:
+        """Is the driven piece better explained one step along than where it was?
+
+        Not everything that changes the board is a move. A piece being repainted floods with
+        its new colour over several turns while standing perfectly still, and taken as motion
+        that flood grew a 53-cell cross into a 94-cell smear that could then reach nothing.
+        """
+        if self._wheel is None or self._wheel >= len(self._parts):
+            return True
+        mask = _mask(self._parts[self._wheel])
+        shown: set[Cell] = set()
+        for cells in blobs.values():
+            shown |= cells
+        return len({(y + vec[0], x + vec[1]) for y, x in mask} & shown) > len(mask & shown)
 
     def _attribute(self, cells: set[Cell], vec: tuple[int, int]) -> None:
         """File the cells that just moved against a known piece, or open a new one.
@@ -222,7 +250,15 @@ class CoverTargetsTool:
                 if all(abs(a - b) <= _MARK for a, b in zip(box, seat)):
                     target = i
                     break
+        if target is not None:
+            self._handover = False
+        if target is None and not self._handover and self._parts:
+            # A piece the controls were never passed to cannot be the one that moved. Without
+            # this, the flood of a repaint read as motion by nobody in particular and opened a
+            # phantom piece, after which the tool believed marks were covered that were not.
+            return
         if target is None:
+            self._handover = False
             anchor = (min(c[0] for c in cells), min(c[1] for c in cells))
             self._parts.append({
                 "colour": None,
@@ -286,7 +322,7 @@ class CoverTargetsTool:
             # standing in for several: on a board of three same-coloured pieces the first one
             # found swallowed all three.
             return
-        fenced = _fat(grid)
+        fenced = set(self._paint)
         for colour, cells in blobs.items():
             mine = [p for p in self._parts if p["colour"] == colour]
             if len(mine) != 1:
@@ -318,6 +354,7 @@ class CoverTargetsTool:
             return []
         blobs = self._blobs_of(grid, spec)
         self._edge = grid.shape[0] - 1
+        self._paint = {c: int(grid[c]) for c in _fat(grid, {spec[0]})}
         self._learn(blobs, grid)
         self._recolour(blobs)
         self._grow(blobs, grid)
@@ -344,7 +381,7 @@ class CoverTargetsTool:
                 continue
             if self._wheel is not None and self._wheel != i:
                 return self._cycle()
-            return self._drive(vec)
+            return self._walk(i, vec)
         return []
 
     def _covered(self, r: int, c: int, colour: int) -> bool:
@@ -410,6 +447,17 @@ class CoverTargetsTool:
         if not reach:
             return None
 
+        held = [
+            (i, c, reach[(i, c)])
+            for i, c in sorted(self._pairing.items())
+            if (i, c) in reach
+        ]
+        if len(held) == len(wanted):
+            # Keep a pairing once made. Re-deciding it every turn flipped which piece was to
+            # take which colour between two neighbouring squares, and the piece paced between
+            # them: the cheapest pairing seen from here is not the cheapest seen from there.
+            return self._lay(held, blobs)
+
         best: tuple[int, list[tuple[int, int, tuple[int, int]]]] | None = None
 
         def walk(k: int, used: frozenset[int], cost: int,
@@ -432,8 +480,17 @@ class CoverTargetsTool:
         walk(0, frozenset(), 0, [])
         if best is None:
             return None
+        self._pairing = {i: colour for i, colour, _ in best[1]}
+        return self._lay(best[1], blobs)
+
+    def _lay(
+        self,
+        pairing: list[tuple[int, int, tuple[int, int]]],
+        blobs: dict[int, set[Cell]],
+    ) -> list[tuple[int, tuple[int, int]]] | None:
+        """Turn a settled piece-to-colour pairing into the moves that carry it out."""
         plan: list[tuple[int, tuple[int, int]]] = []
-        for i, colour, off in best[1]:
+        for i, colour, off in pairing:
             if self._parts[i]["colour"] == colour:
                 plan.append((i, off))
                 continue
@@ -453,16 +510,31 @@ class CoverTargetsTool:
         if not step or not _solid(patch):
             return None
         mask = _mask(self._parts[part])
-        best: tuple[int, tuple[int, int]] | None = None
+        best: tuple[int, int, tuple[int, int]] | None = None
         for sy, sx in patch:
             for my, mx in mask:
                 off = (_snap(sy - my, step), _snap(sx - mx, step))
-                cost = abs(off[0]) + abs(off[1])
-                if off == (0, 0) or (best is not None and cost >= best[0]):
+                rank = (self._stains(mask, off, colour), abs(off[0]) + abs(off[1]))
+                if off == (0, 0) or (best is not None and rank >= best[:2]):
+                    continue
+                if not _aboard(mask, off, self._edge + 1):
                     continue
                 if any((y + off[0], x + off[1]) in patch for y, x in mask):
-                    best = (cost, off)
-        return None if best is None else best[1]
+                    best = (*rank, off)
+        return None if best is None else best[2]
+
+    def _stains(self, mask: frozenset[Cell], vec: tuple[int, int], colour: int | None) -> int:
+        """How many cells of a foreign colour patch this move would put the piece onto.
+
+        Standing on a patch is how a piece is repainted, so a route across one is not free.
+        Measured: a piece taken to the colour it needed was repainted again on its very next
+        move, because the way out of the patch it had just used ran across its neighbour.
+        """
+        return sum(
+            1
+            for y, x in mask
+            if self._paint.get((y + vec[0], x + vec[1]), colour) != colour
+        )
 
     def _unmoved(self, blobs: dict[int, set[Cell]], colour: int) -> frozenset[Cell]:
         """Cells of this colour that no known piece accounts for; they stay where they are."""
@@ -564,15 +636,93 @@ class CoverTargetsTool:
         blind = [a for a in self._usable() if a not in self._effect]
         return self._emit(blind[0]) if blind else []
 
-    def _drive(self, want: tuple[int, int]) -> list[Step]:
+    def _walk(self, index: int, want: tuple[int, int]) -> list[Step]:
+        """Follow a route already committed to, or work one out and start it.
+
+        Recomputing the route every turn livelocks: from one square the cheapest way round a
+        patch begins by going down, and from the square that reaches, it begins by going back
+        up, so the piece paces between two squares forever. The route is therefore decided
+        once and followed, and thrown away only when the piece does not end up where the plan
+        said it would — which is how a move the game refused gets noticed.
+        """
+        part = self._parts[index]
+        here = part["anchor"]
+        goal = (here[0] + want[0], here[1] + want[1])
+        booked, legs, due = self._legs
+        if booked != (index, goal) or due != here or not legs:
+            legs = self._route(part, want)
+            if not legs:
+                return self._drive(want, part)
+        leg = legs[0]
+        for action, vec in self._effect.items():
+            if vec == leg and action in self._usable():
+                self._legs = ((index, goal), legs[1:], (here[0] + leg[0], here[1] + leg[1]))
+                return self._emit(action)
+        self._legs = (None, [], None)
+        return self._drive(want, part)
+
+    def _route(self, part: dict[str, Any], target: tuple[int, int]) -> list[tuple[int, int]]:
+        """The cheapest way to `target`, counting a repaint as expensive.
+
+        Stepping toward the goal one axis at a time is not enough on a board where standing
+        on a patch changes what you are: a piece that had just acquired the colour it needed
+        was repainted by its own first step away, then walked back for more, forever. Pricing
+        a repaint into a search over the positions the controls can reach lets it go round.
+        """
+        vecs = [v for a, v in self._effect.items() if a in self._usable()]
+        if not vecs or target == (0, 0):
+            return []
+        mask = _mask(part)
+        colour = part["colour"]
+        limit = self._edge + 1
+        dist: dict[Cell, int] = {(0, 0): 0}
+        came: dict[Cell, tuple[Cell, tuple[int, int]]] = {}
+        queue: list[tuple[int, Cell]] = [(0, (0, 0))]
+        while queue:
+            cost, pos = heappop(queue)
+            if pos == target:
+                break
+            if cost > dist.get(pos, cost + 1):
+                continue
+            for vec in vecs:
+                step = (pos[0] + vec[0], pos[1] + vec[1])
+                if abs(step[0]) > limit or abs(step[1]) > limit:
+                    continue
+                if not _aboard(mask, step, limit):
+                    continue
+                spoil = any(
+                    self._paint.get((y + step[0], x + step[1]), colour) != colour
+                    for y, x in mask
+                )
+                paid = cost + 1 + (_REPAINT if spoil else 0)
+                if paid < dist.get(step, paid + 1):
+                    dist[step] = paid
+                    came[step] = (pos, vec)
+                    heappush(queue, (paid, step))
+        if target not in came:
+            return []
+        legs: list[tuple[int, int]] = []
+        spot = target
+        while spot != (0, 0):
+            spot, vec = came[spot]
+            legs.append(vec)
+        legs.reverse()
+        return legs
+
+    def _drive(self, want: tuple[int, int], part: dict[str, Any] | None = None) -> list[Step]:
         """The action that pushes the wanted way, or the cheapest way to find one out."""
         dy, dx = want
-        for axis in ((dy, 0), (0, dx)):
+        mask = _mask(part) if part else frozenset()
+        colour = part["colour"] if part else None
+        ranked: list[tuple[int, int, int]] = []
+        for rank, axis in enumerate(((dy, 0), (0, dx))):
             if axis == (0, 0):
                 continue
             for action, vec in self._effect.items():
                 if action in self._usable() and _aligned(vec, axis):
-                    return self._emit(action)
+                    ranked.append((self._stains(mask, vec, colour), rank, action))
+        if ranked:
+            return self._emit(min(ranked)[2])
         blind = [a for a in self._usable() if a not in self._effect and a != self._select]
         if blind:
             return self._emit(blind[0])
@@ -709,6 +859,42 @@ def _cover(
     return found
 
 
+def _aboard(mask: frozenset[Cell], vec: tuple[int, int], limit: int) -> bool:
+    """Would the piece still have its middle on the board after this move?
+
+    A piece may hang over an edge — one winning placement on this board does — but a move
+    that would carry its middle off is simply refused, and a plan that ends there is a plan
+    the controls cannot carry out. Without this the tool chose a repaint spot beyond the top
+    edge and paced beneath it until the level's step budget ran out.
+    """
+    ys = [c[0] + vec[0] for c in mask]
+    xs = [c[1] + vec[1] for c in mask]
+    mid = ((min(ys) + max(ys)) // 2, (min(xs) + max(xs)) // 2)
+    return 0 <= mid[0] < limit and 0 <= mid[1] < limit
+
+
+def _standing_clear(grid: np.ndarray, r: int, c: int, bg: set[int]) -> bool:
+    """Is this ringed pip alone on the board, rather than a detail inside a bigger drawing?
+
+    A mark is placed on empty board, so the square just outside its ring is background. Without
+    this, ring-and-pip patterns occurring INSIDE another game's dense glyphs read as marks, and
+    the tool bid on a game it has no plan for.
+    """
+    h, w = grid.shape
+    clear = 0
+    edge = 0
+    for dy in (-2, -1, 0, 1, 2):
+        for dx in (-2, -1, 0, 1, 2):
+            if max(abs(dy), abs(dx)) != 2:
+                continue
+            y, x = r + dy, c + dx
+            if not (0 <= y < h and 0 <= x < w):
+                edge += 1
+            elif int(grid[y, x]) in bg:
+                clear += 1
+    return clear + edge >= 12
+
+
 def _chrome(grid: np.ndarray) -> set[Cell]:
     """Cells belonging to a counter pinned along an edge, and no others.
 
@@ -736,29 +922,45 @@ def _chrome(grid: np.ndarray) -> set[Cell]:
     return out
 
 
-def _fat(grid: np.ndarray) -> set[Cell]:
-    """Cells that are inside something solid, rather than on a one-cell-thin skeleton.
+def _fat(grid: np.ndarray, skip: set[int]) -> set[Cell]:
+    """Cells belonging to something filled in, rather than to a one-cell-thin skeleton.
 
-    A cell with all eight neighbours its own colour cannot be on a cross, an X or a bar — only
-    inside a filled patch. Those cells and their neighbours mark the patch out.
+    The pieces on these boards are skeletons — a cross, an X, a bar — so any same-coloured
+    region that fills its own box in both directions is furniture, and on this board that
+    means a patch of colour a piece is repainted by. Measured the wrong way first: asking for
+    a cell with all eight neighbours its own colour found NOTHING here, because each patch is
+    a small square set inside a frame of another colour and every one of its cells touches
+    that frame. With the test finding nothing, routes were priced as though standing on a
+    patch were free, and a piece walked back into one immediately after leaving it.
+
+    The marks' own rings are skipped: eight cells in a three-by-three box pass any fullness
+    test, and treating a mark as furniture made routes avoid the very cells a piece is being
+    sent to stand on.
     """
     h, w = grid.shape
-    core: set[Cell] = set()
-    for y in range(1, h - 1):
-        for x in range(1, w - 1):
-            here = int(grid[y, x])
-            if all(
-                int(grid[y + dy, x + dx]) == here
-                for dy in (-1, 0, 1)
-                for dx in (-1, 0, 1)
-            ):
-                core.add((y, x))
-    return {
-        (y + dy, x + dx)
-        for y, x in core
-        for dy in (-1, 0, 1)
-        for dx in (-1, 0, 1)
-    }
+    bg = background(grid.tolist())
+    seen = np.zeros(grid.shape, dtype=bool)
+    out: set[Cell] = set()
+    for y in range(h):
+        for x in range(w):
+            if seen[y, x] or int(grid[y, x]) in bg or int(grid[y, x]) in skip:
+                continue
+            colour = int(grid[y, x])
+            stack = [(y, x)]
+            seen[y, x] = True
+            blob: list[Cell] = []
+            while stack:
+                cy, cx = stack.pop()
+                blob.append((cy, cx))
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = cy + dy, cx + dx
+                    if 0 <= ny < h and 0 <= nx < w and not seen[ny, nx] \
+                            and int(grid[ny, nx]) == colour:
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+            if _solid(frozenset(blob)):
+                out |= set(blob)
+    return out
 
 
 def _solid(cells: frozenset[Cell]) -> bool:

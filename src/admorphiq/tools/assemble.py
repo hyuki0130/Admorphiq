@@ -154,6 +154,7 @@ class JigsawAssembleTool:
         self._turning = False
         self._prev: np.ndarray | None = None
         self._plan: list[tuple[int, int, Cell]] = []
+        self._layouts: list[dict[int, tuple[int, int, int]]] = []
         self._done: set[int] = set()
         self._sliding: tuple[int, int, Cell] | None = None
         self._idle = 0
@@ -349,13 +350,19 @@ class JigsawAssembleTool:
 
     # -- solving -------------------------------------------------------------
 
-    def _solve(self) -> list[tuple[int, int, Cell]] | None:
-        """Cheapest tiling: every marker paired, and nothing else sharing a cell."""
+    def _solve(self) -> list[dict[int, tuple[int, int, int]]]:
+        """Every tiling with the markers paired and nothing else shared, cheapest first."""
         n = len(self._forms)
         if n < 2:
-            return None
+            return []
         found: list[dict[int, tuple[int, int, int]]] = []
         budget = [_MAX_NODES]
+        # An orbit that bounces shows the same form twice; the search needs each shape once.
+        choices = [
+            [f for f in range(len(forms)) if all(not _same(forms[f], forms[g]) for g in range(f))]
+            for forms in self._forms
+        ]
+        most = [max(int(m.sum()) for m in marks) for marks in self._marks]
 
         def place(idx: int, f: int, dx: int, dy: int,
                   occ: dict[Cell, bool]) -> dict[Cell, bool] | None:
@@ -387,40 +394,55 @@ class JigsawAssembleTool:
                     found.append(dict(placed))
                 return
             if not placed:
-                for f in range(len(self._forms[0])):
+                for f in choices[0]:
                     nxt = place(0, f, 0, 0, occ)
                     if nxt is not None:
                         walk({0: (f, 0, 0)}, nxt)
                 return
             openings = [c for c, still in occ.items() if still]
+            if not openings:
+                return
+            # ⛔ Aim every candidate at ONE open seam, not at all of them. That seam has to be
+            # closed by SOMEBODY, so nothing is lost — and it collapses the n! ways of reaching
+            # the same arrangement into one. MEASURED on the 13-piece level: the whole space goes
+            # from 40 million nodes and ninety seconds to a fraction of a second.
+            spare = sum(most[idx] for idx in range(n) if idx not in placed)
+            if len(openings) > spare:
+                return
+            ox, oy = min(openings)
             tried: set[tuple[int, int, int, int]] = set()
             for idx in range(n):
                 if idx in placed:
                     continue
-                for f in range(len(self._forms[idx])):
+                for f in choices[idx]:
                     for my, mx in zip(*np.where(self._marks[idx][f])):
-                        for ox, oy in openings:
-                            key = (idx, f, ox - int(mx), oy - int(my))
-                            if key in tried:
-                                continue
-                            tried.add(key)
-                            nxt = place(idx, f, key[2], key[3], occ)
-                            if nxt is None:
-                                continue
-                            placed[idx] = (f, key[2], key[3])
-                            walk(placed, nxt)
-                            del placed[idx]
+                        key = (idx, f, ox - int(mx), oy - int(my))
+                        if key in tried:
+                            continue
+                        tried.add(key)
+                        nxt = place(idx, f, key[2], key[3], occ)
+                        if nxt is None:
+                            continue
+                        placed[idx] = (f, key[2], key[3])
+                        walk(placed, nxt)
+                        del placed[idx]
 
         walk({}, {})
-        scored = [got for got in (self._cost(lay) for lay in found) if got is not None]
-        if not scored:
-            return None
-        scored.sort(key=lambda z: z[0])
-        return scored[0][1]
+        scored = sorted(
+            ((got[0], lay) for lay, got in ((lay, self._cost(lay)) for lay in found) if got),
+            key=lambda z: z[0],
+        )
+        return [lay for _, lay in scored]
 
     def _presses(self, idx: int, form: int) -> int:
-        orbit = len(self._forms[idx])
-        return (form - self._cur[idx]) % orbit
+        """Fewest presses to show this shape — a bouncing orbit offers it at more than one step."""
+        forms = self._forms[idx]
+        orbit = len(forms)
+        return min(
+            (j - self._cur[idx]) % orbit
+            for j in range(orbit)
+            if _same(forms[j], forms[form])
+        )
 
     def _cost(self, layout: dict[int, tuple[int, int, int]]
               ) -> tuple[int, list[tuple[int, int, Cell]]] | None:
@@ -542,12 +564,28 @@ class JigsawAssembleTool:
             if not self._finalise():
                 self._dead = True
                 return []
-            plan = self._solve()
-            if not plan:
+            self._layouts = self._solve()
+            if not self._attempt():
                 self._dead = True
                 return []
-            self._plan = plan
         return self._execute(board)
+
+    def _attempt(self) -> bool:
+        """Take the next-cheapest tiling and cost it from wherever the pieces are NOW.
+
+        ⛔ One tiling is not one answer. MEASURED on the 13-piece level: half of the tilings that
+        satisfy the frame-visible test are still refused, because the two kinds of marker are
+        painted the same colour and a seam can pair the wrong two. So the tool executes the
+        cheapest, and on a board that does not advance it re-costs the next one from the
+        arrangement it just built rather than reading the level again.
+        """
+        while self._layouts:
+            got = self._cost(self._layouts.pop(0))
+            if got is not None and got[1]:
+                self._plan = got[1]
+                self._done = set()
+                return True
+        return False
 
     # -- the two loops -------------------------------------------------------
 
@@ -617,6 +655,8 @@ class JigsawAssembleTool:
             if best is None or (stranded, order) < (best[0], best[1]):
                 best = (stranded, order, (idx, form, tgt))
         if best is None:
+            if all(idx in self._done for idx, _, _ in self._plan) and self._attempt():
+                return self._execute(board)
             self._dead = True
             return []
 

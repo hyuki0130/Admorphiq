@@ -34,6 +34,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.pattern_cast import PatternCastTool
     from admorphiq.tools.phase import PhaseGridTool
+    from admorphiq.tools.reflect_cover import ReflectCoverTool
     from admorphiq.tools.rewrite import RuleRewriteTool
     from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.socketmerge import SocketMergeTool
@@ -58,6 +59,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         CoverTargetsTool(),
         LinkageReachTool(),
         PatternCastTool(),
+        ReflectCoverTool(),
         RuleRewriteTool(),
         SocketMergeTool(),
         SubroutineProgramTool(),

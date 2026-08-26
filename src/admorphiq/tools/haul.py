@@ -22,13 +22,22 @@ counts as a bay and what blocks a move are all DERIVED from one frame:
     is holding it, which is why the piece is keyed on its CORE and never on its ring;
   * the carrier is a square that is flat except for one edge line, and THAT LINE IS THE FACING —
     it moves to whichever side was last pressed, so the frame states the facing outright;
-  * a bay is a filled rectangle whose 1-pixel frame is a different colour from its fill, and bigger
-    than one cell. Nothing else on these boards is drawn that way; a solid block is not a bay, and
-    the single-cell look-alike is another actor, which is why the size floor is load-bearing.
+  * a bay is a filled rectangle whose 1-pixel frame is a different colour from its fill. A solid
+    block is not one. A rectangle SMALL enough to be a piece counts only when a rectangle too big
+    to be a piece shares its exact frame-and-fill colours, because the small ones are otherwise
+    indistinguishable from another actor being looked at — and dropping them outright leaves a
+    board with fewer bays than pieces, which this tool then refuses.
 
 ⛔ A bay is remembered, never re-derived alone. Cargo is drawn OVER the bay, so the moment a piece
 is delivered the bay stops looking like a filled rectangle. Bays therefore accumulate across the
-level and are only ever added to.
+level and are only ever added to; so does the furniture, for the same reason.
+
+⛔ A move the board refuses is learned. Furniture a piece is standing on is invisible from the
+level's first frame onward, so the only evidence it exists is the press that bounced — the tool
+records the refusal and stops offering that move.
+
+⚠️ Chrome is masked at ONE pixel, not at `segment.edge_band`'s sixteenth of the frame: this board
+puts real furniture in the outermost cells, and a generous margin walls the carrier out of them.
 
 ⛔ Some furniture stops the carrier but not the cargo. It is drawn with holes in it — background
 showing through pixels that are enclosed by the furniture's own colour — and a towed piece passes
@@ -216,6 +225,7 @@ class HaulDeliveryTool:
         self._dropped: Counter[Cell] = Counter()
         self._waits = 0
         self._nudges = 0
+        self._blinks = 0
         self._last_cargo: frozenset[Cell] = frozenset()
 
     # -- Tool protocol -------------------------------------------------------
@@ -236,6 +246,7 @@ class HaulDeliveryTool:
         self._dropped = Counter()
         self._waits = 0
         self._nudges = 0
+        self._blinks = 0
         self._last_cargo = frozenset()
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
@@ -275,6 +286,7 @@ class HaulDeliveryTool:
         board = self._read(frame_2d(obs))
         if board is None:
             return self._blind()
+        self._blinks = 0
         self._judge(board)
         held = self._offset
         action = self._decide(board)
@@ -316,9 +328,14 @@ class HaulDeliveryTool:
         self._refused[(frm, off, act)] += 1
 
     def _blind(self) -> list[Step]:
-        """A frame this tool cannot read: step once to get another, then stand down."""
-        self._nudges += 1
-        return [] if self._nudges > 3 else [(_MOVES[0], None)]
+        """A frame this tool cannot read: step a few times to get another, then stand down.
+
+        The frame that announces a level cleared still draws the finished board, and a finished
+        board can be unreadable — every bay covered by the pieces standing in it. Giving up there
+        would cost the whole rest of the game for want of one key press.
+        """
+        self._blinks += 1
+        return [] if self._blinks > 3 else [(_MOVES[0], None)]
 
     # -- reading -------------------------------------------------------------
 
