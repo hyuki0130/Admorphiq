@@ -56,6 +56,7 @@ _MAX_PROBES = 3
 _MAX_LOOSE = 6
 _MAX_PARKINGS = 5
 _MAX_PLACINGS = 40
+_MAX_WAIT = 2
 
 
 def _blobs(cells: set[Cell]) -> list[list[Cell]]:
@@ -143,6 +144,7 @@ class MirrorMergeTool:
     def __init__(self) -> None:
         self._level: int | None = None
         self._stale: np.ndarray | None = None
+        self._waited = 0
         self._clear()
 
     def _clear(self) -> None:
@@ -404,8 +406,19 @@ class MirrorMergeTool:
             if was is None or len(was) != len(corners) or sorted(was) == sorted(corners):
                 continue
             shifts = [(a[0] - b[0], a[1] - b[1]) for b, a in zip(was, sorted(corners))]
-            stride = max(abs(v) for shift in shifts for v in shift)
-            if not stride:
+            moves = [sh for sh in shifts if sh != (0, 0)]
+            # ⛔ ONE press moves a piece ONE cell along ONE axis, and it cannot move further than
+            # its own width. A comparison that spans a foreign action, or a board change, breaks
+            # both of those — and reading the result as a stride adopted a lattice four times too
+            # coarse with a diagonal control, on a board where neither exists. Refuse it and ask
+            # again rather than believe an impossible press.
+            if not moves or len({sh for sh in moves}) != 1:
+                continue
+            step = moves[0]
+            if step[0] and step[1]:
+                continue
+            stride = max(abs(v) for v in step)
+            if stride < side or stride > 2 * side:
                 continue
             self._settle(g, colour, stride if stride >= side else side, corners[0])
             grid = [((y - self._origin[0]) // self._pitch, (x - self._origin[1]) // self._pitch)
@@ -569,8 +582,10 @@ class MirrorMergeTool:
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if not has_frame(obs):
-            return []
+            return self._idle(False)
         g = frame_2d(obs)
+        simple, clickable = availability(obs)
+        legal = [a for a in _SIMPLE if a in simple]
         level = levels_completed(obs)
         if level != self._level:
             # ⛔ The frame that REPORTS a level change still draws the finished board, with the
@@ -582,17 +597,20 @@ class MirrorMergeTool:
             self._clear()
             self._stale = stale
         if self._stale is not None:
-            if not board_changed(self._stale, g):
-                return []
+            # ⛔ Bounded. Whether the turnover lands on the reporting frame or the one after it
+            # is the driver's business, not this tool's, and a wait with no end is a level spent
+            # doing nothing if the driver ever answers differently.
+            if self._waited < _MAX_WAIT and not board_changed(self._stale, g):
+                self._waited += 1
+                return self._idle(clickable)
             self._stale = None
-        simple, clickable = availability(obs)
-        legal = [a for a in _SIMPLE if a in simple]
+            self._waited = 0
         if not legal:
-            return []
+            return self._idle(clickable)
         if self._colour is None:
             asked = self._begin(g, legal)
             if asked is not None:
-                return asked
+                return asked or self._idle(clickable)
 
         raw = self._cells(g)
         self._prev, self._raw = self._raw, raw
@@ -603,7 +621,7 @@ class MirrorMergeTool:
                 return shifting
         now = self._read(raw)
         if len(now) < 2:
-            return []
+            return self._idle(clickable)
         if self._probing is not None:
             self._learn_probe(now)
         elif self._expect is not None:
@@ -637,8 +655,8 @@ class MirrorMergeTool:
         if plan is None:
             plan, goal = self._poke_plan(known)
         if not plan:
-            return []
-        return self._commit(plan[0], goal)
+            return self._idle(clickable)
+        return self._commit(plan[0], goal) or self._idle(clickable)
 
     def _begin(self, g: Any, legal: list[int]) -> list[Step] | None:
         """Before the actor is known: survey the board, then adopt it or ask which piece moves."""
@@ -879,6 +897,26 @@ class MirrorMergeTool:
         """What a search over piece placements depends on — re-running it unchanged is waste."""
         return (self._track, frozenset(self._block | self._guess), frozenset(self._fatal),
                 frozenset(self._free), tuple(self._pull), frozenset(self._opens))
+
+    def _idle(self, clickable: bool) -> list[Step]:
+        """Nothing to propose — say so with the cheapest action there is.
+
+        ⛔ Returning an EMPTY list does not mean "no action is taken". Measured against the real
+        harness: on an empty proposal it fires the first available simple action itself
+        (`loop.py:_probe`), which on this family is a MOVE, and it never says that it did. Two
+        things then break at once. The move is unattributed, so the next frame gets read as the
+        answer to the press this tool THOUGHT it had made — that misreading produced a diagonal
+        one-press displacement and a stride four times the board's, off a comparison that spanned
+        two different actions and a board change. And on a board that punishes a wrong step, a
+        move chosen for you is a move you cannot afford. So: forget every pending expectation,
+        and spend the turn on a click, which this family answers by doing nothing at all.
+        """
+        self._expect = None
+        self._probing = None
+        self._ident = None
+        self._pend = None
+        self._script = []
+        return [(6, (0, 0))] if clickable else []
 
     def _click(self, cell: Cell) -> list[Step]:
         oy, ox = self._origin

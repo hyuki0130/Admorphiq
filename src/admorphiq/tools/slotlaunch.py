@@ -53,6 +53,13 @@ _TIME_CAP = 30.0
 # low on crowded boards. Leaning on it is what makes a four-piece board finish at all; the cost is
 # a few extra presses, which is cheaper than not clearing the level.
 _LEAN = 3
+# How long to hold one waiting square before trying the next. The board's own clock is unknown, so
+# this is a small fixed count rather than anything derived.
+_HOLD = 8
+# ⛔ Waiting has to END. Loitering changes the board, so the harness's own stall detector never fires
+# and a tool that waits forever holds a game it is not going to finish. After this many presses with
+# no route to the goal, withdraw and let the next tool have the board.
+_ROAM_CAP = 80
 
 
 class Piece:
@@ -76,13 +83,17 @@ class Piece:
 class Board:
     """Everything the planner needs, all of it read off one frame."""
 
-    __slots__ = ("step", "pieces", "targets", "shapes", "walk_ok", "slide_ok", "on_glide", "rows", "held")
+    __slots__ = ("step", "pieces", "targets", "shapes", "walk_ok", "slide_ok", "on_glide",
+                 "rows", "held", "walls", "glide", "rings", "phase", "floor")
 
     def __init__(self) -> None:
         self.step = 0
         self.pieces: list[Piece] = []
         self.targets: list[Cell] = []
         self.shapes: list[frozenset[Cell]] = []
+        self.rings: list[tuple[int, frozenset[Cell]]] = []
+        self.phase: Cell = (0, 0)
+        self.floor = 0
         self.walk_ok: list[np.ndarray] = []
         self.slide_ok: list[np.ndarray] = []
         self.on_glide: list[np.ndarray] = []
@@ -202,6 +213,7 @@ def read_board(g: np.ndarray) -> Board | None:
     comps = _colour_components(g, rows, palette)
 
     outlines: list[tuple[frozenset[Cell], Cell, int, int]] = []
+    rings: list[tuple[int, frozenset[Cell]]] = []
     rest: list[tuple[int, list[Cell], set[Cell]]] = []
     fringe: Counter[int] = Counter()
     skin: set[Cell] = set()
@@ -221,6 +233,7 @@ def read_board(g: np.ndarray) -> Board | None:
                 outlines.append((hmask, hpos, hh, hw))
                 own = set(cells)
                 skin.update(own)
+                rings.append((colour, frozenset(own)))
                 for y in range(y0 - 1, y1 + 2):
                     for x in range(x0 - 1, x1 + 2):
                         edge = y in (y0 - 1, y1 + 1) or x in (x0 - 1, x1 + 1)
@@ -280,12 +293,55 @@ def read_board(g: np.ndarray) -> Board | None:
     board = Board()
     board.rows = rows
     board.step = step
+    board.phase = phase
+    board.floor = bg
+    board.walls = walls
+    board.glide = glide
+    board.rings = rings
     board.pieces = pieces
     board.targets = [hp for _, hp, _, _ in outlines]
     board.shapes = [m for m, _, _, _ in outlines]
     board.held = _held(pieces)
     _tables(board, walls, glide, width)
     return board
+
+
+def reread(board: Board, g: np.ndarray) -> Board | None:
+    """Re-read only what moves, keeping the level's static layer as first seen.
+
+    ⛔ Both halves of this are MEASURED failures, not caution. An outline is scenery drawn UNDER the
+    pieces: park a piece on its left rim while an obstacle covers its right and the ring is two
+    disconnected arcs — the goal disappears from a board that is one press from being solved. A glide
+    field is scenery too, and a piece standing on it hides the field underneath, after which the
+    planner walks a route across ground the board refuses.
+    """
+    rows, width = board.rows, board.walls.shape[1]
+    if g.shape[1] != width:
+        return None
+    skin = {c for colour, cells in board.rings for c in cells if int(g[c[0]][c[1]]) == colour}
+    loose = np.zeros((rows, width), dtype=bool)
+    for y in range(rows):
+        for x in range(width):
+            if (int(g[y][x]) != board.floor and not board.walls[y][x]
+                    and not board.glide[y][x] and (y, x) not in skin):
+                loose[y][x] = True
+    pieces = _objects(g, rows, width, loose, board.step, board.phase)
+    if not pieces:
+        return None
+    fresh = Board()
+    fresh.rows = rows
+    fresh.step = board.step
+    fresh.phase = board.phase
+    fresh.floor = board.floor
+    fresh.walls = board.walls
+    fresh.glide = board.glide
+    fresh.rings = board.rings
+    fresh.pieces = pieces
+    fresh.targets = board.targets
+    fresh.shapes = board.shapes
+    fresh.held = _held(pieces)
+    _tables(fresh, board.walls, board.glide, width)
+    return fresh
 
 
 def _aligned(pos: Cell, hh: int, hw: int, step: int, phase: Cell) -> bool:
@@ -584,6 +640,84 @@ def _fits(board: Board) -> bool:
     return all(any(p.mask == sh for p in board.pieces) for sh in board.shapes)
 
 
+def drift(board: Board, tried: set[Cell]) -> tuple[Cell | None, Step | None]:
+    """No route to the goal exists — so close on it as far as the board allows, and loiter there.
+
+    Purpose: the only move left when a board's own moving parts are the crossing. A glide field can
+    cut the board in two with the goal on the far side and nothing the held piece can push; what
+    carries it over is an object acting on its own, and being in the right place when that happens
+    is something a plan cannot ask for but a position can. Loitering at the closest reachable square
+    costs nothing, because the alternative is no action at all.
+    """
+    if board.held is None:
+        return (None, None)
+    model = _Model(board)
+    start = tuple(model.base)
+    want = [t for k, t in enumerate(board.targets)
+            if not any(start[i] == t for i in range(model.n) if board.pieces[i].mask == board.shapes[k])]
+    if not want:
+        return (None, None)
+    seen = {start[board.held]: None}
+    order = [start[board.held]]
+    first: dict[Cell, Step] = {}
+    head = 0
+    while head < len(order):
+        cur = order[head]
+        head += 1
+        for aid, d in _DIRS.items():
+            pos = list(start)
+            pos[board.held] = cur
+            nxt = model.move(tuple(pos), board.held, d)
+            if nxt is None or nxt[board.held] == cur or nxt[board.held] in seen:
+                continue
+            seen[nxt[board.held]] = cur
+            first[nxt[board.held]] = first.get(cur, (aid, None))
+            order.append(nxt[board.held])
+    # ⛔ Sweep the near-goal squares, closest first, and do not sit on one. MEASURED: parking on the
+    # single closest square pressed the same refused direction for the rest of the budget — the ride
+    # across leaves from a square three cells to the side, and standing still never reaches it.
+    fresh = [c for c in order if c not in tried] or order
+    best = min(fresh, key=lambda c: min(abs(c[0] - t[0]) + abs(c[1] - t[1]) for t in want))
+    return (best, first.get(best))
+
+
+def refused(board: Board) -> Step | None:
+    """A press the board will simply refuse — one action spent, nothing on the board moved."""
+    if board.held is None:
+        return None
+    model = _Model(board)
+    start = tuple(model.base)
+    for aid, d in _DIRS.items():
+        if model.move(start, board.held, d) is None:
+            return (aid, None)
+    return None
+
+
+def perturb(board: Board, avoid: int) -> Step | None:
+    """A press that changes WHEN we arrive rather than where.
+
+    Purpose: breaking a loop the plan cannot see. On a board carrying objects that act on their own
+    clock, a route that is right in space can be wrong in time forever — the piece is swept off the
+    goal square, walks back in the same number of presses, and is swept again. Spending a press
+    somewhere else slips our arrival against that clock, and two arrivals in three then land.
+
+    ⛔ A press the board REFUSES is the cheap version and it is not always available: the loop
+    measured here ran down an open corridor where every direction was legal, so the refused-press
+    version never fired once in a hundred presses. Any legal press off the plan does the job.
+    """
+    if board.held is None:
+        return None
+    model = _Model(board)
+    start = tuple(model.base)
+    for aid, d in _DIRS.items():
+        if model.move(start, board.held, d) is None:
+            return (aid, None)
+    for aid, d in _DIRS.items():
+        if aid != avoid and model.move(start, board.held, d) is not None:
+            return (aid, None)
+    return None
+
+
 def volatile(board: Board) -> bool:
     """Is anything on this board outside the model — an object that belongs in no slot?
 
@@ -731,6 +865,36 @@ class SlotLaunchTool:
         self._plan: list[Step] | None = None
         self._issued = False
         self._took: Cell | None = None
+        self._static: Board | None = None
+        self._seen: Counter[tuple[Cell, ...]] = Counter()
+        self._roamed: set[Cell] = set()
+        self._wait = 0
+        self._wandered = 0
+
+    def _loiter(self, board: Board) -> list[Step]:
+        """Stand where the crossing leaves from, and HOLD there long enough to catch it.
+
+        ⛔ Both halves are measured. Parking on one square and pressing into the wall forever missed
+        the ride by three cells; roaming instead of standing crossed the right square twice and was
+        moving on again before the thing that carries you fired. So: take the closest square that can
+        be HELD — one with a refused press available — hold it for a spell, then strike it off and
+        take the next. The board's own clock is unknown, so the spell is a small fixed count.
+        """
+        if self._wandered >= _ROAM_CAP:
+            return []
+        self._wandered += 1
+        spot, step = drift(board, self._roamed)
+        if spot is None:
+            return []
+        if step is None:
+            hold = refused(board)
+            if hold is not None and self._wait < _HOLD:
+                self._wait += 1
+                return [hold]
+            self._roamed.add(spot)
+            self._wait = 0
+            spot, step = drift(board, self._roamed)
+        return [step] if step is not None else []
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Confidence, which is zero unless the board really parses into outlines and their pieces."""
@@ -750,6 +914,11 @@ class SlotLaunchTool:
         self._plan = None
         self._issued = False
         self._took = None
+        self._static = None
+        self._seen = Counter()
+        self._roamed = set()
+        self._wait = 0
+        self._wandered = 0
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         return None
@@ -763,7 +932,12 @@ class SlotLaunchTool:
             self.reset()
         if self._issued:
             return []
-        board = read_board(current_frame(obs))
+        g = current_frame(obs)
+        if self._static is None:
+            self._static = read_board(g)
+            board = self._static
+        else:
+            board = reread(self._static, g)
         if board is None:
             return []
         if self._took is not None:
@@ -776,10 +950,23 @@ class SlotLaunchTool:
                     board.held = i
                     break
         steps = plan(board)
+        if steps is None and volatile(board):
+            steps = self._loiter(board)
         if not steps:
             return []
         if volatile(board):
             # Hand over ONE press and look again. The board still moves on its own here.
+            here = tuple(p.pos for p in board.pieces)
+            n = self._seen[here]
+            self._seen[here] = n + 1
+            if n % 2:
+                # ⛔ Seen this exact board before, so the plan that leaves it leads back to it.
+                # MEASURED: an obstacle that fires every third press sweeps the held piece off the
+                # goal square, the piece walks back in the same number of presses, and it is swept
+                # again — for the whole budget. One refused press slips the phase and it lands.
+                nudge = perturb(board, steps[0][0])
+                if nudge is not None:
+                    return [nudge]
             if steps[0][0] == 6 and steps[0][1] is not None:
                 self._took = steps[0][1]
             return steps[:1]

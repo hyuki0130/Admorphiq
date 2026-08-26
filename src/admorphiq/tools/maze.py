@@ -332,12 +332,20 @@ class MazeRunTool:
         if route:
             return self._commit(route, here)
 
+        far = self._distances(grid, scene, scene.exit)
+        coming = [d for d, p in self._gates.items() if p in self._deployed and d not in free]
+        ahead = plates or coming
+        aim = min(ahead, key=lambda c: far.get(c, len(far) + 1)) if ahead else scene.exit
+
         # ⛔ A latching plate costs no clone, but it still has to be PRESSED — and the rewind
-        # puts every door back the way the level started, latches included. If the door of a
-        # plate known to latch is shut again, going to stand on it is a WALK, not a clone.
+        # puts every door back the way the level started, latches included. Only go and press
+        # one whose door is ON THE ROAD being travelled, though: pressing every shut latch just
+        # because it is shut sent the body back and forth across the same plate eight times,
+        # and a clone replays every one of those moves.
+        wanted_road = set(self._route(here, {aim}, self._lattice(grid, scene, here, assume=True)))
         relight = {
             plate for door, plate in self._gates.items()
-            if plate in self._latched and not self._flip.get(door, False)
+            if plate in self._latched and not self._flip.get(door, False) and door in wanted_road
         }
         unseen = set() if self._gates else free - self._seen
         for targets in (plates, relight, unseen):
@@ -350,12 +358,8 @@ class MazeRunTool:
         # place buys the wait twice: measured at twelve wasted moves that then became twelve
         # extra moves of waiting after the following rewind, and the level died on its timer a
         # few actions short. Walking a road that has to be walked anyway costs nothing.
-        far = self._distances(grid, scene, scene.exit)
         # A door whose clone is on its way is the threshold to wait AT, not away from: the walk
         # there is the same walk the route needs once it opens.
-        coming = [d for d, p in self._gates.items() if p in self._deployed and d not in free]
-        ahead = plates or coming
-        aim = min(ahead, key=lambda c: far.get(c, len(far) + 1)) if ahead else scene.exit
         route = self._toward(here, self._distances(grid, scene, aim), free)
         if route:
             plan = self._walk(route[0], here)
@@ -529,6 +533,13 @@ class MazeRunTool:
         """
         far = len(dist) + 1
         plates = set(self._gates.values())
+        # ⛔ Marking time must not CROSS a latching plate, not merely avoid parking on one.
+        # Every crossing flips the door being waited for, and the tool spent twenty moves
+        # walking to the far side of the board, finding the door shut because it had shut it
+        # on the way past, and walking back to flip it again.
+        latching = {p for p in plates if p in self._latched}
+        if start not in latching:
+            free = free - latching
         prev: dict[Cell, Cell | None] = {start: None}
         queue: deque[Cell] = deque([start])
         best = start
