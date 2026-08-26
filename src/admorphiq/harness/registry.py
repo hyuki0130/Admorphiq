@@ -25,6 +25,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.haul import HaulDeliveryTool
+    from admorphiq.tools.hop import HopTool
     from admorphiq.tools.keymaze import KeyMazeTool
     from admorphiq.tools.lattice_maze import LatticeMazeTool
     from admorphiq.tools.ledge import LedgeTool
@@ -69,6 +70,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         RuleRewriteTool(),
         SocketMergeTool(),
         SubroutineProgramTool(),
+        HopTool(),
         LatticeMazeTool(),
         PillarTransferTool(),
         ProgramBitsTool(),
