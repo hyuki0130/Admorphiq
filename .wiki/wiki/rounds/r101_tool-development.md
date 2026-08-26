@@ -929,3 +929,39 @@ not of any one tool. No agent can see the cost its `detect` imposes on the other
 so no agent may decide whether its own work is kept.
 
 First fan-out: **nine games at once** — ls20, tr87, su15, sb26, g50t, cn04, s5i5, sc25, re86.
+
+
+## MILESTONE — all 25 sample games clear a level under the generic tools (2026-08-27)
+
+```
+generic tools alone, zero adapters, full 25 on ceph-build
+  start of day   0.0200   ·  9 of 25 clearing  ·  0 rule-recovery tools
+  end of day     0.2257   ·  25 of 25 clearing ·  19 rule-recovery tools
+  cumulative regressions: ZERO
+conquered: ar25 1.000 · sb26 1.000 · tr87 1.000
+```
+
+⛔ **"Clears" is not "conquered."** Six games — tn36 0.007, cd82 0.006, lf52 0.005, r11l 0.004,
+vc33 0.000, tu93 0.000, sp80 0.000 — clear a level and spend so many actions that
+`(human/agent)²` prices it at approximately nothing. The remaining work is not more tools; it is
+solving inside [[../concepts/action_budget]].
+
+## The last zero was a BID, not a solver (dc22)
+
+dc22 was the final game at 0.0000. Its tool, `phase`, had been clearing **3 levels in 170 actions**
+under its own probe the whole time. Traced through the harness: over 600 steps, `graph` took
+**every single one**. The tool's `detect` returned **0.35** on its own board and lost every
+comparison.
+
+Raised to 0.85, with the hard constraint verified independently by the integrator — **0.85 on
+dc22, 0.00 on all 24 other games** — the game went **0.0000 -> 0.2857** with nothing else
+regressing.
+
+This is the same lesson as [[../lessons/tool_selectivity_20260827]] read from the other side, and
+both halves are now in every agent brief:
+
+* bid too LOW on your own board and you never act — measured, one game at 0.0000 for a whole day;
+* bid ANYTHING on a board you cannot solve and you take the turn from the tool that could —
+  measured, 0.4762 -> 0.0476 on a game the offending tool never touched.
+
+**A tool's confidence is not self-expression. It is a claim on someone else's budget.**
