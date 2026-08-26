@@ -9745,3 +9745,43 @@ want the script that produced it.
 - [[../lessons/faithful_offline_simulator_20260715]] — learn an operator, then plan.
 - [[../lessons/instrument_validity_20260825]] — validate the instrument before the
   hypothesis; the four measurement failures this round paid for.
+
+
+## The static target shortlist this page asked for — measured 2026-08-26
+
+Open work item 3 on this page reads: *"a shortlist that can name targets from static structure and
+not only from satisfaction, is the next expansion."* That is measurable now, and the measurement came
+out of a detour on a different axis.
+
+`sink_candidates()` cannot run without `self._animations` — every one of its three sources (regions
+that changed appearance during a spill, regions repeating a named target's shape, regions the flow
+was obstructed by) needs a spill to have happened. So the shortlist is unavailable before the first
+commit, which is exactly the gap item 3 names.
+
+**`_mouths()` is already the static answer and is already in this file.** It is a pure shape
+predicate — a cell the region does not hold whose LEFT and RIGHT neighbours it does — and
+`_by_mouth`'s own docstring states the rule that makes it sufficient: *"A region with no notch is an
+OBSTACLE, not a target of this family, whichever source named it."* If a notch is necessary for
+targethood, notch-bearing regions ARE the static shortlist.
+
+MEASURED on the live sp80 board, read in CELLS at the inferred scale:
+
+```
+control scheme simple == {1,2,3,4,5} + click  ->  sp80, m0r0, cd82, cn04
+notched regions on the first frame           ->  sp80: 2      m0r0/cd82/cn04: 0
+```
+
+The conjunction identifies sp80's board with **0/24 false positives across the public games and 0
+misfires on 15 archived boards**, before any action is taken. ⚠️ Reading in cells is load-bearing:
+the same test made scale-free — any interior row gap, so a multi-pixel notch registers on raw pixels
+— fires on all four and separates nothing.
+
+⚠️ **What this does and does not establish.** It shows notches are recoverable statically and are
+discriminative at board level. It does NOT show the static shortlist names the SAME targets the
+spill-based one does — that comparison needs `sink_candidates()` run after a spill on a board where
+the static set was recorded first, and it has not been run. Item 3 is closer, not closed.
+
+⚠️ Provenance, since it matters for how much weight this carries: this was measured while porting
+sp80 into the detection-dispatch card — an axis that ships hand-written per-game code with no LLM in
+its path, and which `CLAUDE.md` now records as conflicting with the non-negotiable dual-scoreboard
+doctrine. The measurement stands on its own; the axis it came from is a separate question.
