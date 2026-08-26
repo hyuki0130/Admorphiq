@@ -26,11 +26,14 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.haul import HaulDeliveryTool
     from admorphiq.tools.keymaze import KeyMazeTool
+    from admorphiq.tools.ledge import LedgeTool
     from admorphiq.tools.linkage import LinkageReachTool
     from admorphiq.tools.llm_goal import LLMGoalTool
+    from admorphiq.tools.maze import MazeRunTool
     from admorphiq.tools.mirror import MirrorMergeTool
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.pattern_cast import PatternCastTool
+    from admorphiq.tools.phase import PhaseGridTool
     from admorphiq.tools.rewrite import RuleRewriteTool
     from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.socketmerge import SocketMergeTool
@@ -38,6 +41,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.subroutine import SubroutineProgramTool
     from admorphiq.tools.toggle import ToggleTool
     from admorphiq.tools.track import TrackAlignTool
+    from admorphiq.tools.tube import TubeOrderTool
     from admorphiq.tools.world_model import WorldModelTool
 
     graph = GraphSearchTool()
@@ -57,6 +61,10 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         RuleRewriteTool(),
         SocketMergeTool(),
         SubroutineProgramTool(),
+        LedgeTool(),
+        MazeRunTool(),
+        PhaseGridTool(),
+        TubeOrderTool(),
         HaulDeliveryTool(),
         KeyMazeTool(),
         SlotLaunchTool(),
