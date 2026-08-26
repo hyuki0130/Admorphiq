@@ -1,0 +1,63 @@
+---
+type: reasoning
+round: R101
+axis: stage 1 of the top policy — develop the generic tools until they clear all 25 sample games
+keywords: [tool-development, 25-of-25, stage-one, inert-actions, dead-signature, goal-inference, graph-search, stall-diagnosis, per-game]
+verdict: OPEN — the 25-game diagnosis is in and it splits the work into three named repairs.
+date: 2026-08-26
+---
+
+# R101 — stage 1: develop the tools to 25/25
+
+Per `OPERATING_RULES.md` rule 0: I build the generic tools until they clear all 25 sample games;
+only then does the LLM patch and combine them on hidden games. This round is stage 1.
+
+## The diagnosis, all 25 games
+
+`scripts/tool_stall_diag.py`, bare `UnifiedAgent`, 3000 actions each, run in parallel on ceph-build.
+⚠️ This is NOT the deployed generic path (`--agent chained` puts `WorldModelAgent` first, which is
+where cd82's 6/6 comes from), so these numbers compare with each other and never with GENERIC30's.
+
+```
+game    lv  states  trans  inert%  goal
+lp85     1      14   1054    99%   yes     |
+ft09     0      24   1610    99%   yes     |
+vc33     0      57   1841    97%   yes     |
+s5i5     0      59   2016    97%   yes     |  ELEVEN GAMES:
+sb26     0     122   1416    87%   yes     |  most actions change NOTHING
+dc22     0     101    812    86%   yes     |
+m0r0     0      96    686    81%   yes     |
+tn36     1     236   1550    76%   yes     |
+cd82     0     190    958    75%   yes     |
+sc25     0     161    991    73%   yes     |
+r11l     1     421   1763    72%   yes     |
+
+cn04     0    1079   2507    33%    NO     |  TWO GAMES: never draw a goal
+sp80     0     964   2354    15%    NO     |
+
+sk48 ar25 bp35 lf52 ka59 re86 tr87 wa30 tu93 su15 ls20 g50t
+                                           |  TWELVE GAMES: expand and aim, still 0
+```
+
+## Three repairs, not one
+
+**1. Inert actions — eleven games.** `ft09` tries 1,610 transitions and opens **24 states**: 1,586
+attempts changed nothing. `lp85` is 99% inert over 1,054. The tool is not failing to search; it is
+searching a space where almost every action it picks is a no-op. `dead_signature.py` exists in the
+tool set for exactly this and is plainly not biting.
+
+**2. No goal — two games.** `cn04` opens 1,079 states and `sp80` 964, both without ever drawing a
+target. They have somewhere to go and no idea where.
+
+**3. Expands, aims, still zero — twelve games.** `sk48` reaches 979 states with a goal and clears
+nothing; `ls20` is 8% inert over 1,462 transitions. Here the search and the aim both work and the
+plan does not.
+
+⛔ These need different fixes and must not be attacked as one problem. The first is action-space
+pruning, the second is goal inference, the third is planning.
+
+## Where to start
+
+Repair 1 is the largest group, has the sharpest signal, and already has a tool meant to do it. Start
+by measuring why `dead_signature` does not prune on `ft09` — the most extreme case at 99% inert with
+only 24 states opened.

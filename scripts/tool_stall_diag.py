@@ -10,7 +10,8 @@ script reports cd82 at 0 because it never runs that stage. Compare its numbers w
 never with GENERIC30's.
 
 Expected feedback: per game — distinct states reached, distinct transitions, how many of
-those are SELF-LOOPS (an action that changed nothing), and whether any goal was drawn. A game whose frontier dries with few
+those are SELF-LOOPS (an action that changed nothing), and whether any goal was drawn. A game whose
+frontier dries with few
 states has a perception/expansion problem; one with many states and no goal has a goal-inference
 problem; one that exhausts budget while still expanding has a search-efficiency problem. Those are
 three different repairs.
