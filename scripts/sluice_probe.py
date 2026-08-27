@@ -35,6 +35,17 @@ import time
 sys.path.insert(0, "src")
 
 
+def _registry_without_sluice(default_tools) -> list:
+    """The default registry with this tool taken OUT.
+
+    ⛔ Needed because the tool is registered. A `--baseline` that merely declines to ADD it would
+    measure the registry against itself and report a net effect of exactly zero — which is what
+    happened the first time this was run, and the two runs agreed to four decimal places for that
+    reason and no other.
+    """
+    return [t for t in default_tools() if getattr(t, "name", "") != "sluice"]
+
+
 def _score(costs: list[int], human: list[int]) -> float:
     """RHAE: per level min(human/ours, 1) squared, weighted by the level's own 1-based index."""
     if not human:
@@ -64,7 +75,7 @@ def _play(title: str, cap: int, rival: bool = False) -> None:
     obs = env.reset()
     if rival:
         from admorphiq.harness.registry import default_tools
-        tools = list(default_tools()) + [SluiceTool()]
+        tools = _registry_without_sluice(default_tools) + [SluiceTool()]
     else:
         tools = [SluiceTool()]
     agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
@@ -162,7 +173,7 @@ def _one_game(title: str, cap: int, rival: bool) -> tuple[str, int, float, float
     human = list(getattr(info, "baseline_actions", None) or [])
     env = arcade.make(info.game_id)
     obs = env.reset()
-    tools = list(default_tools()) + ([SluiceTool()] if rival else [])
+    tools = _registry_without_sluice(default_tools) + ([SluiceTool()] if rival else [])
     agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
     frames = [obs]
     costs: list[int] = []

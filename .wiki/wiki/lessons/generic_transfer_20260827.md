@@ -145,6 +145,31 @@ a board that cannot be told apart from a different one. See [[../concepts/frame_
 without transferring, and recovered when that tool was fixed. The two numbers are independent
 and only one of them is evidence about the private set.
 
+## Fifth measurement, at card 0.8540 — ratio 0.94
+
+```
+14 re-rendered games   live 0.9085   archive 0.8513   ratio 0.94   identical 12/14
+```
+
+The three conquests of the afternoon transfer INTACT at 1.0000 on the re-rendered boards:
+sp80, m0r0 and su15, alongside sc25, tn36, tr87, r11l, vc33, ar25, cn04 and sk48. re86 carries
+its 0.8350 across at 1.0x wall clock.
+
+Two losses, and only one of them is a loss:
+
+* **tu93** 1.0000 -> 0.2222, unchanged and already diagnosed — the boards are byte-identical on
+  the layer every tool reads, respond differently to the same script, and differ only in one
+  sprite's `layer` field. Not a detector problem and not a cost problem.
+* **s5i5** -0.0240, which is the same small residual as before and is the tail of a detector
+  that was fixed today, not a new failure. ⚠️ It is now **3.4x slower per action** on the
+  re-render, the only game above 1.5x — worth watching, since the last time a game showed that
+  signature (re86 at 23x) it was a genuine cost defect that a fix took to 1.0x.
+
+Ratio across the five runs: **0.91 -> 0.88 -> 0.92 -> 0.93 -> 0.94**, while the card went
+0.6733 -> 0.8540. The dip is where a tool gained on the card without transferring; the recovery
+is where that tool was fixed. The two numbers move independently and only one of them is
+evidence about the private set.
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run
