@@ -1593,3 +1593,33 @@ bp35), deaths (bp35 alone — five of eight games kill on a fixed clock and only
 deaths costs score), and held-while-silent (lf52 looked worst by double and measured worth
 exactly zero). Each sweep produced a count of bad events and each time the count was not a count
 of lost score. **Price it before assigning it** is the rule that came out of all three.
+
+### EVERY stuck level introduces element kinds the tool has never met (2026-08-27)
+
+Asked of ls20 after its tool had been iterated eight times without the level moving, then of the
+rest. `scripts/level_diff_probe.py` reads it off the level data with the engine never started:
+
+```
+game   last cleared -> first uncleared        new element kinds on the uncleared level
+ls20   L6           -> L7  (103 sprites, 18 kinds)   5, incl. a 1x29 bar with no analogue on L6
+wa30   L8  (50, 8)  -> L9  (73 sprites,  9 kinds)    4, incl. 22 copies of one 4x4
+dc22   L5  (37,25)  -> L6  (72 sprites, 28 kinds)    6, incl. 19 copies of one 4x4
+ka59   L6  ( 9, 7)  -> L7  (10 sprites,  9 kinds)    6, on a board of ten sprites
+g50t   L6  (33,20)  -> L7  (32 sprites, 23 kinds)    6, with FEWER sprites than L6
+s5i5   L6  (12,11)  -> L7  (20 sprites, 17 kinds)    6
+```
+
+**Not one of them is the same puzzle at greater depth.** Every stuck level asks the tool to read
+furniture it has never seen, and g50t is the sharpest case — its level 7 has FEWER sprites than
+level 6 and six kinds it has never met, so "harder" is the wrong word entirely.
+
+⚠️ This reframes a diagnosis I gave and several agents were working from. ls20's tool bids
+correctly, takes the board, and then produces 23 consecutive actions that change nothing; I read
+that as a planning problem. **Actions that change nothing are equally what a CORRECT plan
+produces when it is aimed at objects whose behaviour the model has wrong.** The two are
+indistinguishable from the outside, and the level data separates them in one command.
+
+⛔ It also corrects [[#final-levels-are-harder--asked-measured-and-no]], which found no
+structural jump in sprite COUNT and concluded there was no shared cause. There is one; it is in
+the KINDS, and counting sprites could not see it. The negative was right about what it measured
+and the question was asked one level too coarse.
