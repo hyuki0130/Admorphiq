@@ -206,6 +206,29 @@ one copy and hidden on the other.
 half the possible work. Both of the day's earlier transfer defects — a detector killed by two
 cells, and a cost that ran 23x — were found the slow way, by hand, before this existed.
 
+## Sixth measurement — transfer is essentially CLEAN (2026-08-27)
+
+```
+14 re-rendered games   live 0.9085   archive 0.9068   ratio 0.9981   identical 13/14
+```
+
+tu93 was the last real loss and it is gone: the archive board now scores 1.0000 in 187 actions,
+identical to live, after its tool learned to resolve an object one layer hides. The single
+remaining difference is **s5i5 at -0.0240 with the same level count on both boards** — the tail
+of a detector fixed earlier today, and measured benign.
+
+Ratio across the six runs, against the card that moved underneath it:
+
+```
+transfer   0.91   0.88   0.92   0.93   0.94   0.9981
+card     0.6733    ...                        0.8540
+```
+
+⛔ The shape of that sequence is the lesson, not the endpoint. The dip is a tool that gained on
+the card and carried nothing; every recovery is a tool being FIXED for the re-render specifically,
+and none of those fixes moved the card by a digit. **A card number cannot tell you which of these
+runs you are in.**
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run

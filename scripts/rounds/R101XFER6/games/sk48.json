@@ -1,0 +1,71 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 1.0,
+  "total_score_pct": 100.0,
+  "games": [
+    {
+      "game_id": "sk48-d8078629",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 70.74,
+      "total_actions": 270,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 14,
+          "human_actions": 61,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 30,
+          "human_actions": 177,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 34,
+          "human_actions": 101,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 27,
+          "human_actions": 103,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 41,
+          "human_actions": 230,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 56,
+          "human_actions": 181,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 41,
+          "human_actions": 125,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 27,
+          "human_actions": 92,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SK48"
+    }
+  ]
+}

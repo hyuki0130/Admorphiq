@@ -252,6 +252,11 @@ day: one tool cleared five levels where the incumbent cleared three and scored 0
 the incumbent's three sat at human parity. The same tool then kept the SAME five levels, made
 them cheaper, and gained **+0.0304**. Ask every agent for the per-level costs, not the depth.
 
+✅ **Transfer is essentially CLEAN: ratio 0.9981, 13 of 14 re-rendered games IDENTICAL**
+(`scripts/rounds/R101XFER6`). Re-run it whenever the card moves — the ratio went 0.91 -> 0.88
+-> 0.92 -> 0.93 -> 0.94 -> 0.9981 while the card went 0.6733 -> 0.8540, and NONE of the
+fixes that recovered it moved the card by a digit.
+
 ⚠️ **The card is not the property that matters, and one gain today proved it.** Re-run the
 archive transfer measurement (`scripts/rounds/R101XFER2`) whenever the card moves: `telescope`
 lifted s5i5 from 0.0833 to 0.4167 on the live board and scores **0.0000** on the re-render,
