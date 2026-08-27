@@ -40,6 +40,21 @@ Provenance: `environment_files/*/…` — the dispatch that resolves a press was
 numbers a search cannot guess: the launch runs FIVE cells, the beam reaches 3/6/9 in THREE stages,
 the fuse burns on every move press and on none of the clicks, and a piece stranded on the glide
 field keeps the velocity that put it there and is carried on by the next beam that touches it.
+
+MEASURED, 2026-08-27, both the live board and its archived re-render, identically:
+
+* the simulator is EXACT against the engine's own object positions — 7 boards x 12 random walks of
+  60 presses each, 84/84 with no divergence (`scripts/blastclock_probe.py validate`). That check is
+  the point: a board that fires on its own clock cannot be validated by "did the level clear", and
+  the first version of it compared against a RE-READ of the frame instead of the engine and blamed
+  the model for two mis-parses that were not model errors at all;
+* six of seven levels, each at a per-level score of 1.0 — clears at presses 12, 56, 89, 128, 152, 198;
+* the seventh is NOT solved, and the reason is measured rather than guessed: the piece that has to
+  reach the last outline sits in a room sealed by a glide field, no piece that can be held reaches a
+  single square behind it, and the only thing that can move it is a charge — which would have to be
+  LAUNCHED two hops into place first. This plans around charges where they stand; it does not plan
+  to RELOCATE one, and the guide gives the search no reason to try, because a charge belongs in no
+  outline and so contributes nothing to the estimate.
 """
 
 from __future__ import annotations
