@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
 from typing import Any, Callable
 
 import numpy as np
@@ -59,6 +60,21 @@ _TARGET_STALL_WINDOW = 300
 # A tool whose own frame-based detect() is at least this confident OWNS the game
 # (it is not retired on a stall) — its signature match is trusted over the swap.
 _PRIMARY_CONF = 0.7
+
+# Wall-clock ceiling for ONE GAME. MEASURED 2026-08-27 on an archived re86 board, same tool and
+# same code as the live one: 520 actions cost 3 seconds and reach 5/8, 900 actions cost 555
+# seconds and reach 6/8, 1400 did not finish in 600. The search cost explodes with depth on that
+# board while the live board's 1113 actions finish inside a four-minute 25-game round.
+#
+# ⛔ A per-CALL deadline does not bound this and was tried first: no single propose() exceeds 20
+# seconds, the cost is in their number. Diagnosing it as a hang was wrong — the harness only
+# prints when the picked tool CHANGES, so thirty quiet minutes at 100% CPU look identical to a
+# stuck process and are not one.
+#
+# The cap is 4x the slowest game ever measured across the full 25 (ka59, 252s; all 25 together
+# take 774s), so it cannot bite a healthy game. It exists because the eval is 110 games inside a
+# 9-hour cap, where one game like this is the whole budget. 0 disables it.
+_GAME_SECONDS = float(os.environ.get("HARNESS_GAME_SECONDS", "1000"))
 
 _DECIDE_SYS = (
     "You drive an ARC-AGI-3 agent. Given the observable game signature, a wiki "
@@ -134,6 +150,9 @@ class UnifiedAgent:
         # _reset_level, which also runs on death — a dying game would re-arm the budget
         # forever, which is the failure this is here to stop.
         self._last_clear_step = 0
+        # Game-scoped wall clock. Set once, never in _reset_level: a death or a level-up must
+        # not re-arm it, which is the failure mode it exists to bound.
+        self._started = time.monotonic()
         self._reset_level()
         # GAME-scoped code-tenure budget (must NOT live in _reset_level: death/
         # level resets would re-arm it — measured as unbounded tenures blowing
@@ -182,7 +201,9 @@ class UnifiedAgent:
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
         if state_name(latest_frame) == "WIN" or self._steps >= self.giveup:
             return True
-        return self._steps - self._last_clear_step >= self.no_progress
+        if self._steps - self._last_clear_step >= self.no_progress:
+            return True
+        return _GAME_SECONDS > 0 and time.monotonic() - self._started >= _GAME_SECONDS
 
     # -- decision -------------------------------------------------------------
 

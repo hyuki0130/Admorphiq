@@ -58,6 +58,40 @@ ka59                 4,000      1,381     866s -> 252s
 Fourteen games hit the bail. ka59 is the extreme: five levels cleared by action 173, then
 3,800 actions on the sixth with nothing to show.
 
+## Its blind spot: the bail is in ACTION space
+
+A game can burn wall-clock without burning actions. MEASURED 2026-08-27 on an ARCHIVED re86
+board — same tool, same code as the live one, which finishes 1113 actions inside a four-minute
+25-game round:
+
+```
+ 520 actions      3 seconds    5/8 levels
+ 900 actions    555 seconds    6/8 levels        <- 380 actions cost 552s, ~1.45 s/action
+1400 actions    did not finish in 600 seconds
+```
+
+The action-space bail cannot see this: the game is making progress, just enormously slowly, and
+its search cost explodes with depth. So `UnifiedAgent` also carries `_GAME_SECONDS`
+(`HARNESS_GAME_SECONDS`, default 1000s), checked in the same `is_done` and armed once per game.
+
+The cap is **4x the slowest game ever measured** across the full 25 (ka59 at 252s; all 25
+together take 774s), so it cannot bite a healthy game — verified, the full 25 scores 0.7459 with
+it in, not one game differing. It exists because the eval is 110 games inside a 9-hour cap,
+where one game like this is the entire budget. On the pathological board it stops at 123s
+holding 6/8 (0.4183), where unbounded it ran past thirty minutes and had to be killed.
+
+⛔ **It was first diagnosed as a HANG and that was wrong.** The harness prints only when the
+picked tool CHANGES, so thirty quiet minutes at 100% CPU look exactly like a stuck process. One
+`faulthandler` stack sample landed inside `propose()` and seemed to confirm it — a sample of a
+slow call is indistinguishable from a sample of a stuck one. A per-CALL deadline was built and
+did not help, because no single call exceeds 20 seconds; the cost is in their number. The
+per-call machinery was removed rather than kept as a safety net for a problem that turned out
+not to exist.
+
+⚠️ Worth keeping from that dead end: a deadline the guarded code can CATCH is not a deadline.
+The first version raised an `Exception` and the hanging tool's own `except Exception` swallowed
+it. `KeyboardInterrupt` derives from `BaseException` for the same reason.
+
 ## Falsification
 
 Wrong if a game at a larger budget clears a level more than 1200 actions after its previous
