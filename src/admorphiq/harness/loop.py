@@ -113,7 +113,7 @@ class UnifiedAgent:
         draw_llm: LLM | None = None,
         giveup: int = 8000,
         stall: int = 12,
-        no_progress: int = 1200,
+        no_progress: int = 500,
         ctx_budget: int = 6000,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
@@ -130,10 +130,17 @@ class UnifiedAgent:
         self.draw_llm = draw_llm or llm
         self.giveup = giveup
         self.stall = stall
-        # Stop a game that has stopped winning. MEASURED 2026-08-27 over the full 25:
-        # the most expensive level ANY game ever cleared cost 120 actions (wa30's fifth),
-        # so 1200 is a 10x margin over the worst observed clear and could not have cost a
-        # single measured level. Without it ka59 clears five levels by action 173 and then
+        # Stop a game that has stopped winning. MEASURED 2026-08-27 over the full 25, TWICE,
+        # and the second measurement is the point: the most expensive level any game ever
+        # CLEARED was 120 actions in the morning and 255 by the evening (s5i5), because the
+        # tools got deeper during the day. A margin fixed against the morning's number was 10x
+        # and had silently become 4.7x. 500 restores a deliberate 2.0x over 255.
+        # Gated at 300, 500 and 1200: all 25 scores IDENTICAL at every setting, so the choice is
+        # purely wall-clock against safety margin — 1200 costs 15,956 actions and 778s over the
+        # 25, 500 costs 10,310 and 621s, 300 costs 8,699 and 561s. 300 is only 1.2x the worst
+        # clear and is rejected for that reason, not for anything it was measured to lose.
+        #
+        # Without it ka59 clears five levels by action 173 and then
         # spends 3,800 more on the sixth without clearing anything — four minutes of
         # wall-clock becoming twenty, which at 110 games inside a 9-hour cap is the whole
         # budget. Swapping tools on a stall is NOT the fix here and is measured harmful

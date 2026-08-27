@@ -117,9 +117,15 @@ def _make_agent(name: str, game_id: str | None = None):
         # run to clear (measured: it clears m0r0/vc33 alone but was retired too
         # early inside the harness). Default 80; the bench can override.
         stall = int(os.environ.get("HARNESS_STALL", "80"))
+        # no_progress = actions since the last level-up before the game is abandoned. MEASURED
+        # 2026-08-27: every one of the seven games that stalls short spends ~1,200 actions on the
+        # level it cannot pass, which is 8,400 per full-25 run, and the most expensive level ANY
+        # game ever CLEARED cost 120. Exposed so the margin can be measured rather than assumed.
+        no_progress = int(os.environ.get("HARNESS_NOPROGRESS", "1200"))
         return UnifiedAgent(
             default_tools(),
             _llm(),
+            no_progress=no_progress,
             # Target draws use the probe-validated LLM params (the draw is
             # measured-sensitive to them; see rounds/r53).
             draw_llm=_llm(num_ctx=8192, num_predict=400),
