@@ -147,7 +147,12 @@ def solve_mode(cap: int) -> None:
         if now != levels:
             marks.append((now, step + 1))
             levels = now
+    tool = agent.tools["railpeg"]
     print(f"ALONE: {levels} levels in {step + 1} actions   clears at {marks}")
+    # ⛔ WHY a tier fired, not that it did. One run of this replaced an afternoon of hypotheses:
+    # a level that looked like a planning failure turned out to be 728 consecutive claimed WINS
+    # with the tier that would have gone looking never running once.
+    print(f"   tiers: {dict(tool._tiers)}")
 
 
 def bids_mode(steps: int) -> None:

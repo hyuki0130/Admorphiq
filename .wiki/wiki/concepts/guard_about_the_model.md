@@ -48,10 +48,38 @@ invalidation site rather than reasoning about them:
   is progressing at 1.45 seconds per action. That needed a second guard in wall-clock
   ([[no_progress_bail]]).
 
+## The sharpest instance: a tier gated on a condition that can never be false
+
+Measured on lf52's level 6 by logging which TIER produced each plan:
+
+```
+tiers DURING level 6: {'win': 728}
+```
+
+The travel tier fired **not once in 728 planning decisions**. Every one was a claimed WIN: the
+tool believed it was one plan from finishing the level, seven hundred and twenty-eight times,
+played it, the level did not end, and believed it again.
+
+Travel sat behind *"no capture is reachable"* — and on a PARTIAL map a local win is always
+reachable, so the tier that would have gone looking was unreachable **by construction**. Two
+rounds had been spent tuning a tier that was never running.
+
+⛔ **A guard can be permanently satisfied by the SHAPE of what it observes, not only by a stale
+model or a stale constant.** "No capture reachable" is a statement about the world and still
+never becomes true, because the map it is evaluated over only ever contains what has been seen.
+The tell is not the predicate's wording; it is that the branch behind it has never executed.
+**Count how often each branch runs before tuning any of them.**
+
+The fix used evidence already in the harness rather than new sensing: the harness resets a tool
+on a level-up, so *still being alive after the winning plan was played out* IS the refutation —
+a win that did not win is proof of pieces that cannot be seen. 728 planning decisions became 16.
+
 ## Detection heuristics
 
 Not frame-based — this is about instrumenting our own code:
 
+- **Count how often each branch RUNS, before tuning any branch.** A tier that never fires cannot
+  be improved by improving it, and it looks identical to a tier that fires and does nothing.
 - **Log why a guard fired, not that it fired.** On lf52 one run over level 6 gave `offscreen`
   377, `install` 42, everything else 0 — 90% of plan deaths were a single predicate, and the
   fix followed immediately. Counting reasons is cheap and it replaces a whole afternoon of

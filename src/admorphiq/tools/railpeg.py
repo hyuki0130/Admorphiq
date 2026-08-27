@@ -58,8 +58,8 @@ derived or learned. Two cost a measurement:
 capture found along the way — a capture is irreversible, so the shortest route to one is always
 worth taking. (2) When no capture is reachable, close the distance between two pieces of a colour;
 that is what the board is asking for and it stays well defined on a map this tool can only half
-see. (3) When a colour has only one piece left in view the map is INCOMPLETE, not the board
-unsolvable: move a piece toward where the map runs out, because a board wider than the screen only
+see. (3) Failing that, RIDE A CART SOMEWHERE NO PIECE HAS BEEN — a rail leaving the region you can
+see is itself the evidence that there is a region to go to, and a board wider than the screen only
 shows its far side once a piece is carried there. (4) Failing that, put a piece somewhere it has
 never stood. Three barren sweeps and this tool bids ZERO and hands the level on, which is how it
 takes the levels it can solve without holding the ones it cannot.
@@ -72,14 +72,14 @@ several sample games draw one.
 from __future__ import annotations
 
 import heapq
-from collections import Counter
+from collections import Counter, deque
 from typing import Any
 
 import numpy as np
 
 from admorphiq.tools.base import Step, availability, frame_2d, has_frame
 
-__all__ = ["RailPegTool", "Board", "read_board", "plan_level"]
+__all__ = ["RailPegTool", "Board", "read_board", "plan_level", "travel_moves"]
 
 Cell = tuple[int, int]           # (row, col) on the lattice
 Delta = tuple[int, int]
@@ -109,6 +109,9 @@ _NODE_CAP = 90_000
 # How many candidate captures to weigh before committing to one. Eight is what the deepest sample
 # board needs: its first seven cheapest captures are all dead ends.
 _LOOKAHEAD = 8
+# Plans in a row that take nothing before a board known to extend past the screen is treated as
+# locally finished and travel outranks another local plan.
+_LOCAL_PATIENCE = 3
 # Frames a cart may spend visibly between two cells after it is told to move.
 _SLIDE = 3
 
@@ -656,30 +659,54 @@ def approach_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
     return _path(parent, best[2])
 
 
-def reveal_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
-                 cost_cap: int = 26, node_cap: int = 45_000) -> list[Move]:
-    """Cheapest way to move a piece toward where the map runs out.
+def _novelty_field(m: Model, touched: set[Cell]) -> dict[Cell, int]:
+    """Every known cell, labelled by how far it is from anywhere a piece has already stood."""
+    known = m.known() | m.carts
+    field: dict[Cell, int] = {c: 0 for c in touched if c in known}
+    if not field:
+        return {}
+    queue = deque(field)
+    while queue:
+        c = queue.popleft()
+        for d in DIRS:
+            n = (c[0] + d[0], c[1] + d[1])
+            if n in known and n not in field:
+                field[n] = field[c] + 1
+                queue.append(n)
+    return field
 
-    A board wider than the screen only shows its far side once a piece is carried there, so "no
-    capture" on a partial map means "go and look", not "give up". The objective is generic:
-    maximise how much UNKNOWN territory sits next to some piece. Riding a cart scores on it for
-    free, which is the point — that is the move the camera follows.
+
+def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visited: set[Any],
+                 cost_cap: int = 40, node_cap: int = 60_000) -> list[Move]:
+    """Ride a cart to somewhere no piece has been.
+
+    ⛔ The objective here was WRONG for two rounds and the wrong version is instructive, because it
+    is the obvious one: "move a piece toward where the map runs out", scored as unknown cells near
+    a piece. That has its MAXIMUM AT A DEAD END — the tip of a spur is surrounded by nothing, so
+    every move away from it scores lower and the tool parks there and reports it has nothing left
+    to do. Measured at both ends of the same length of track, on two different boards.
+
+    What the board is really offering is a RAIL THAT LEAVES THE REGION YOU CAN SEE, and a rail
+    going somewhere is itself the evidence that there is a somewhere to go. So the objective is
+    distance from the cells pieces have ALREADY occupied, measured along the known lattice. A dead
+    end far from home scores above a dead end next to it, which is the ordering the previous metric
+    got backwards, and driving a cart with a piece aboard is the cheapest way to climb it — which
+    is exactly the move the camera follows, so it pays twice.
+
+    The budget is deliberately loose. A journey between regions is only expensive if the
+    alternative pays something; when the visible region is exhausted the alternative pays zero,
+    and forty drives against a six-hundred-action level is noise.
     """
-    known = m.known()
-    if not known:
+    field = _novelty_field(m, touched)
+    if not field:
         return []
     ground = _ground(m)
 
-    def frontier(state: Any) -> int:
-        best = 0
-        for cell, _v in state[0]:
-            near = sum(1 for dy in range(-2, 3) for dx in range(-2, 3)
-                       if (cell[0] + dy, cell[1] + dx) not in known)
-            best = max(best, near)
-        return best
+    def novelty(state: Any) -> int:
+        return max((field.get(cell, 0) for cell, _v in state[0]), default=0)
 
     start = m.state()
-    base = frontier(start)
+    base = novelty(start)
     cost_of: dict[Any, int] = {start: 0}
     parent: dict[Any, tuple[Any, Move]] = {}
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
@@ -690,7 +717,7 @@ def reveal_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
         if cost > cost_of.get(state, cost) or cost > cost_cap:
             continue
         if state != start and state not in visited:
-            score = frontier(state)
+            score = novelty(state)
             if best is None or (score, -cost) > (best[0], -best[1]):
                 best = (score, cost, state)
         if len(cost_of) > node_cap:
@@ -748,6 +775,7 @@ class RailPegTool:
     name = "railpeg"
 
     def __init__(self) -> None:
+        self._tiers: Counter[str] = Counter()
         self._dirmap: dict[Delta, int] = {}       # lattice direction -> simple action id
         self._excluded: dict[Delta, set[int]] = {}
         self._noncapture: frozenset[int] = frozenset()
@@ -769,7 +797,12 @@ class RailPegTool:
         self._barren = 0
         self._known = 0
         self._closest: int | None = None
+        self._claiming = False
+        self._elsewhere = False
+        self._npieces = 0
+        self._sincecapture = 0
         self._touched: set[Cell] = set()
+        self._ntouched = 0
         self._peaked = 0
         self._prev_seen: tuple[Any, ...] | None = None
         self._settles = 0
@@ -1008,9 +1041,31 @@ class RailPegTool:
         """Fill the queue of moves and report how strong the claim on this board is."""
         if self._plan:
             return 0.9
-        found = plan_level(m, self._noncapture)
+        # ⛔ A WIN THAT DID NOT WIN IS PROOF THE BOARD HAS PIECES THIS TOOL CANNOT SEE, and it is
+        # the only such proof available on a partial map. "Two captures remain and both are here"
+        # and "six remain and four are elsewhere" are the SAME OBSERVATION to a planner that counts
+        # what is on screen, so the planner declares a win, plays it, the level does not end, and
+        # it declares the same win again. Measured on the widest board: 728 planning decisions in a
+        # row, every one of them a claimed win, and the tier that would have gone looking never ran
+        # once — it sits behind "no capture is reachable", and a local win is always reachable.
+        # The harness resets this tool on a level-up, so still being here with the plan played out
+        # IS the refutation.
+        if self._claiming:
+            self._elsewhere = True
+            self._claiming = False
+        pieces = len(m.pieces)
+        if pieces < self._npieces:
+            self._sincecapture = 0
+        self._npieces = pieces
+        # Once the board is known to extend past the screen, a run of plans that takes nothing is
+        # not bad luck, it is the visible region being finished. Then travel outranks it.
+        stuck = self._elsewhere and self._sincecapture >= _LOCAL_PATIENCE
+        found = None if stuck else plan_level(m, self._noncapture)
         if found is not None and found[0]:
             self._plan = list(found[0])
+            self._claiming = found[1]
+            self._sincecapture += 1
+            self._tiers["win" if found[1] else "capture"] += 1
             return 0.95 if found[1] else 0.9
         # ⛔ Barren means NOTHING GOT BETTER, and there are two ways for something to get better on
         # a board this tool can only half see: it can learn more board, or it can bring a pair
@@ -1020,20 +1075,47 @@ class RailPegTool:
         near = _spread(m.state(), self._noncapture)
         gained = known > self._known
         closed = near is not None and (self._closest is None or near < self._closest)
-        if gained or closed:
+        # ⛔ And a THIRD way, which is the one a long haul across a wide board actually shows:
+        # a piece standing where no piece has stood before. Learning board and closing a pair are
+        # both invisible for the dozen actions it takes to ride a cart from one region to the next,
+        # so counting only those retires the tool MID-RIDE — measured twice, bidding zero with a
+        # perfectly good eight-drive plan already in hand.
+        stepped = len(self._touched) > self._ntouched
+        if gained or closed or stepped:
             self._known = max(known, self._known)
+            self._ntouched = max(self._ntouched, len(self._touched))
             if near is not None:
                 self._closest = near if self._closest is None else min(self._closest, near)
             self._barren = 0
-        if self._barren >= 3:
+        # ⛔ The barren cap exists so this tool hands a level it cannot solve to whatever comes
+        # next. That is the right instinct on a board it has SEEN ALL OF — and the wrong one on a
+        # board it has PROVED extends past the screen, where "nothing got better" describes the
+        # journey, not the position. Giving up there is giving up on pieces known to exist.
+        if self._barren >= 3 and not self._elsewhere:
             return 0.0
-        moves = approach_moves(m, self._noncapture, self._visited)
-        if not moves:
-            moves = reveal_moves(m, self._noncapture, self._visited)
+        # ⛔ ORDER, not just membership. Closing the distance between two pieces is a LOCAL
+        # objective, and once the board is known to extend past the screen a local objective is
+        # not evidence of progress — it is the tool tidying a region it has already finished.
+        # Measured: approach kept producing drive-only plans that moved no piece anywhere new,
+        # spending the whole barren budget, so travel was reached ONCE in a thousand actions and
+        # the four pieces off screen were never looked for. When the visible region is known to be
+        # insufficient, going to look outranks rearranging what is already here.
+        order = ["travel", "approach"] if self._elsewhere else ["approach", "travel"]
+        moves: list[Move] = []
+        tier = ""
+        for tier in order:
+            moves = (travel_moves(m, self._noncapture, self._touched, self._visited)
+                     if tier == "travel"
+                     else approach_moves(m, self._noncapture, self._visited))
+            if moves:
+                break
         if not moves:
             moves = probe_moves(m, self._noncapture, self._touched, self._visited)
+            tier = "probe"
         if not moves:
+            self._tiers["none"] += 1
             return 0.0
+        self._tiers[tier] += 1
         self._barren += 1
         state = m.state()
         ground = _ground(m)
@@ -1144,7 +1226,7 @@ class RailPegTool:
                 self._plan = []
                 if self._retried:
                     return []
-                moves = reveal_moves(m, self._noncapture, self._visited)
+                moves = travel_moves(m, self._noncapture, self._touched, self._visited)
                 if not moves:
                     return []
                 self._plan = list(moves)
