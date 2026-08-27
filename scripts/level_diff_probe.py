@@ -24,7 +24,14 @@ def kinds(L):
         px = np.array(s.pixels)
         c[(s.width, s.height, tuple(sorted(set(px.ravel().tolist()))))] += 1
     return c
-STUCK = {"wa30": 8, "dc22": 5, "ka59": 6, "g50t": 6, "s5i5": 6, "ls20": 6, "lf52": 5, "bp35": 5}
+# ⛔ REFRESH THIS FROM A CURRENT FULL-25, NEVER FROM MEMORY. On 2026-08-27 g50t sat here while
+# it was scoring 1.0000 -- an agent was directed at a level that clears in 42 actions, three
+# times, because this dict was written from a baseline the TREE had already moved past.
+#   uv run python -c "import json,glob,os; [print(os.path.basename(f)[:-5]) for f in
+#     glob.glob('scripts/rounds/<LATEST>/games/*.json') if json.load(open(f))['total_score']<0.999]"
+# Last refreshed: R101NOW, 2026-08-27, mean 0.8702, 16/25 at the cap.
+STUCK = {"wa30": 8, "dc22": 5, "ka59": 6, "s5i5": 6, "ls20": 6, "lf52": 5, "bp35": 5,
+         "lp85": 7, "re86": 7}
 
 _args = sys.argv[1:]
 _pairs = [(t, STUCK[t]) for t in _args] if _args else sorted(STUCK.items())
