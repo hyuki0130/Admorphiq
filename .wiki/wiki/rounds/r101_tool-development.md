@@ -1646,3 +1646,79 @@ iteration to reading the new kinds.
 Written up as [[../concepts/new_kinds_at_the_wall]]. ⛔ The first version of the claim said *every*
 stuck game — carried two games past the measurement, cut within the hour, and it is the same error
 [[../lessons/instrument_validity_20260825]] already records.
+
+## 0.8702, sixteen at the cap — and the work-list was behind the tree (2026-08-27)
+
+`R101NOW`, full-25 on ceph-build, current tree:
+
+```
+g50t   0.7500 -> 1.0000   +0.2500
+s5i5   0.4204 -> 0.4202   -0.0002
+MEAN   0.8602 -> 0.8702        16/25 at the cap
+```
+
+⛔ **The +0.25 was sitting UNCOMMITTED and nobody knew.** Five agents held 846 lines of in-flight
+work across five tools; one of them (`clonewalk`) had already solved g50t 7/7 — L7 in **42 actions
+against a human's 67** — while the recorded baseline still said 0.75 and I sent that agent **three**
+messages about the level as if it were a wall. It was found by an agent's probe, not by the record.
+
+**The failure is not staleness by age. The TREE WAS AHEAD OF THE RECORD**, which is the opposite of
+the contamination this round has been guarding against all day (a measurement running against code
+the repository does not have). Both are the same invariant broken in opposite directions, and only
+one of them had a guard.
+
+Two fixes landed:
+
+* the tree was banked as measured (`89eb4f0f`), jointly attributed by construction with the riders
+  recorded — see the RIDERS step added to `gate_tool.sh` the same hour, which is what surfaced the
+  five dirty tools in the first place;
+* the stuck-list at its source (`level_diff_probe.py`) now carries the refresh command inline and a
+  ⛔ against working from memory. **A hardcoded work-list is a cached measurement**, and it decays
+  exactly like any other.
+
+### One run is not a rate — and a probe that is not the runner is not the scorer
+
+The same agent's next row reported **ka59 7/7 WIN**. Five independent runs of `score_efficiency` on
+the same tree returned **0.7500 five times out of five** — deterministic, `(1+…+6)/(1+…+7)`, six of
+seven. So the divergence is not nondeterminism; the probe's own stepping loop over-reports clears.
+
+⚠️ This is the exact mirror of the trap already on
+[[../lessons/instrument_validity_20260825]]: *"using the runner is not the same as letting the
+runner build the agent"*. The inverse now has a measured instance — **letting the runner build the
+agent is not the same as using the runner's loop.** `run_game` does more than step.
+
+Held the remaining rows until the cause is found. ⛔ A probe that over-reports clears would have
+pulled agents off unfinished games — the same damage the g50t row prevented, in reverse.
+
+### What the click-truth instrument DID establish
+
+Its other half needs no clear count and is the strongest result of the day:
+
+```
+game   status         board-changing actions   clicks landing on nothing
+g50t   SOLVED  7/7            100%             no clicks at all
+ka59   6/7 deterministic       89.5%            0%
+s5i5   STUCK   6/8              7.6%           90.2%   (451 of 500)
+```
+
+Validity is airtight on the s5i5 row: of 37 board-changing clicks, **37 hit a sprite and 0 hit
+nothing**, so the coordinate space is sound and the misses are real misses. **The failing shape is
+aiming at objects that are not there** — position and existence wrong, not dynamics — and it appears
+only where a game is stuck, which is not a tautology: a stuck game could have shown 100% effective
+actions and a bad plan.
+
+And it moved s5i5's target off the level it is stuck on: **L6 is already CLEARED and scores 0.0212**
+— 261 actions against a human's 38, same disease at 11.5% — so up to 6/36 of that game's weight is
+recoverable **with no new capability at all**.
+
+### The refreshed list (0.0798 across nine games)
+
+```
+bp35 0.1648   lf52 0.2727   s5i5 0.4202   dc22 0.7143   ka59 0.7500
+ls20 0.7500   wa30 0.8000   lp85 0.8919   re86 0.9908
+```
+
+lp85 and re86 had gone unassigned all day because they were not on the stale list. Both are
+fully cleared and lose to efficiency on ONE level each — lp85 L4 (59 actions vs 16, worth 0.108 of
+its 0.108 gap) and re86 L2 (46 vs 42, worth 0.009). ka59 is the opposite: six levels all at the cap
+and a seventh never cleared, so its whole 0.25 is one clear.
