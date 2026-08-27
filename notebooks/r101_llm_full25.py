@@ -184,9 +184,11 @@ if ON_KAGGLE:
 # model. Calling `run_game` in-process here would be a second driver, and a driver
 # written for one arm is the classic way to measure the driver instead of the arm.
 #
-# `ARC_ENVIRONMENTS_DIR` is set explicitly. Leaving it unset is a MEASURED trap:
-# a GPU session once booted a healthy model server and then found zero games, which
-# reads exactly like a broken agent and is not one.
+# `ENVIRONMENTS_DIR` is set explicitly — that is the name the Arcade reads. Getting it
+# wrong is a MEASURED trap that has now fired twice: a GPU session boots a healthy model
+# server, scores 0/0 games, and prints a clean 0.00% that reads exactly like a broken
+# agent. The first run of THIS kernel set only `ARC_ENVIRONMENTS_DIR`, which is a
+# convention of the probe scripts and which this runner never reads.
 
 if ON_KAGGLE:
     repo = os.path.dirname(find_dir("admorphiq"))
@@ -208,7 +210,16 @@ out_path = os.path.join(KAGGLE_WORKING if ON_KAGGLE else ".", "r101_llm_full25.j
 def run_arm(label: str, model: str | None) -> dict:
     """One full-25 pass. `model=None` is the LLM-FREE fallback (signature routing)."""
     env = os.environ.copy()
+    # ENVIRONMENTS_DIR is the name the arc_agi Arcade actually reads. ARC_ENVIRONMENTS_DIR
+    # is a convention of the R97/R98 PROBE scripts, which read it themselves and pass it to
+    # Arcade(environments_dir=...); this runner does not, so it falls back to a cwd-relative
+    # "environment_files" and finds nothing. Both failures print the same thing — a healthy
+    # model server and "0/0 games scored" — which is why setting only the ARC_ name looks
+    # like a fix and is not. MEASURED: from a foreign cwd, unset scores 0 games, set scores
+    # 1.0000 on the same game. RECORDINGS_DIR is redirected because the mounts are read-only.
+    env["ENVIRONMENTS_DIR"] = envs_dir
     env["ARC_ENVIRONMENTS_DIR"] = envs_dir
+    env["RECORDINGS_DIR"] = os.path.join(KAGGLE_WORKING if ON_KAGGLE else ".", "recordings")
     env["PYTHONPATH"] = repo
     for var in ("HARNESS_LLM_BACKEND", "HARNESS_LLM_BASE_URL", "HARNESS_LLM_MODEL"):
         env.pop(var, None)
@@ -232,7 +243,13 @@ def run_arm(label: str, model: str | None) -> dict:
     subprocess.run(cmd, env=env, cwd=KAGGLE_WORKING if ON_KAGGLE else ".", check=False)
     print(f"[arm {label}] {time.monotonic() - started:.0f}s", flush=True)
     with open(out) as f:
-        return json.load(f)
+        data = json.load(f)
+    if not data.get("games"):
+        raise RuntimeError(
+            f"arm {label} scored 0 games — the arcade saw no environments under {envs_dir}. "
+            "This prints as a clean 0.00% and is not a result."
+        )
+    return data
 
 
 def preflight_llm(model: str) -> None:
