@@ -1294,3 +1294,27 @@ looking possible.
 Shipped from those five rounds: reason codes on every empty return in all four planners (off by
 default), so one run reports both which tier fired and why the others declined —
 [[../concepts/guard_about_the_model]]. Behaviour byte-identical, full-25 0.8540 both.
+
+### "Final levels are harder" — asked, measured, and NO (2026-08-27)
+
+Five games stall with exactly ONE level left and in every case it is the game's LAST level. That
+pattern invites a cross-game theory — that final levels are structurally different and there is a
+single lever behind all five. Read off the level data, engine never started:
+
+```
+game   last cleared -> first uncleared     sprites      distinct kinds
+dc22        5 -> 6                          37 -> 72       25 -> 28
+wa30        8 -> 9                          50 -> 73        8 ->  9
+ls20        6 -> 7                         102 -> 103      19 -> 18
+ka59        6 -> 7                           9 -> 10        7 ->  9
+g50t        6 -> 7                          33 -> 32       20 -> 23
+```
+
+Two roughly double their sprite count; three are flat, and one of those has FEWER sprites than
+the level before it. There is no shared structure, so there is no shared lever — the tools stop
+at the last level for game-specific reasons, and the per-game agent split is the right shape.
+
+⛔ Recorded as a NEGATIVE so it is not re-asked. The pattern that made it tempting is an artifact
+of how the work is ordered: an agent takes the deepest level it can reach, so "the level we are
+stuck on" is always the last one we have not cleared, and in a game we have nearly finished that
+is the final level by definition.
