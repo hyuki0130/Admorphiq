@@ -86,3 +86,29 @@ because it changes what a plan can afford:
   That is the game telling you the state is dead — cheaper than inferring it.
 
 Provenance: the lf52 tool author, 2026-08-27, from `environment_files/lf52/*/lf52.py`.
+
+## The budget is visible in the ATTEMPT PATTERN, not only on screen (2026-08-27)
+
+re86 scores 0.8349 while clearing all eight levels, and `attempt_probe.py where` puts the entire
+shortfall in one level:
+
+```
+L6: paid 545  won in 144  binned 401  human 139   [200x 201x 144c]
+every other level: binned 0, and five of the seven beat the human count outright
+```
+
+Two failed attempts of **200 and 201 actions**, then a win in 144. That regularity is not a
+coincidence and it is not a search failure — it is the shape of an overrun. Confirmed from the
+game's own source: `"StepCounter": 200` on three of its levels, with 250 on another.
+
+⛔ **A tool that does not know the allowance spends it and loses the level, and the score cannot
+tell you that happened** — a level cleared on the third try reads exactly like a level cleared
+slowly, because the engine restores the board and the score carries the actions already paid. So
+the attempt pattern is a SECOND way to detect a budget, available from a run rather than from the
+screen, and it is the one that showed up first here.
+
+`src/admorphiq/tools/budget.py` (`BudgetReader`) already recovers the on-screen allowance —
+measured at 9 of 13 within 30%, four exact. This is the case it was built for.
+
+Recovering those 401 actions takes re86 from 0.8349 to **0.9794**, the largest single recoverable
+amount in the set.
