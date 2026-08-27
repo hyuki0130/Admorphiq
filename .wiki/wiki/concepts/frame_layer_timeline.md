@@ -61,6 +61,38 @@ from action six onward. So no tool could have distinguished them by looking. The
 only recorded difference is one sprite's `layer` field (0 live, -1 archived), and in the
 rendered frame that difference appears **only on the last layer**.
 
+## tu93's transfer loss is PERCEPTION, and the proof is an action tape (2026-08-27)
+
+`scripts/twinboard_probe.py` settles the question a score cannot: record the harness's own action
+tape on one copy of a game and replay it, action for action, on the other.
+
+```
+tape recorded on the LIVE board -> replayed on the ARCHIVE board
+   9 levels, clears at 18, 28, 47, 64, 93, 121, 135, 158, 187 — IDENTICAL to the control
+```
+
+**The archive board is winnable by the exact moves the tool already knows.** It is the same game;
+the tool simply does not find them there. So the whole of tu93's 1.0000 -> 0.2222 is a perception
+failure, and no planning or search work is called for.
+
+`see` localises it to nine cells. A raw pixel diff would be noise — a re-render may permute the
+PALETTE and draw at a different OFFSET — so it searches for the shift and colour mapping that
+best explain one copy as the other and reports only what survives both:
+
+```
+tu93 level 5: 9 cells differ raw; after a shift of (0,0) and a palette map, 9 remain
+   rows 44-46, cols 51-53      live 000 / 000 / 000      archive 999 / 999 / 949
+```
+
+**One 3x3 object, present on the archive copy and absent on the live one** — the maze it stands
+on is drawn at a different LAYER in the two renders, so it is covered in exactly one of them.
+That is the same single `layer` field the level-data diff found this morning, reached
+independently from pixels.
+
+⛔ Note what this does NOT license. The fix is not "read a different layer index" — that was
+measured on the full 25 and regressed three games. It is that a tool on a multi-layer board must
+resolve an object that one layer hides, and only the tool that needs it should pay for that.
+
 ## Related
 
 - [[swallowed_action]] — the other half of the same phenomenon: an action arriving mid-animation
