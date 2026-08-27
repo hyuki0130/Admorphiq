@@ -24,6 +24,17 @@ from admorphiq.harness.registry import default_tools  # noqa: E402
 # why a name list is honest here rather than a threshold that would need re-tuning.
 GENERAL_SEARCHERS = {"graph", "world_model", "deadsig"}
 
+# Tools that bid 0.00 on every board at the FIRST frame because they are stateful — they only
+# claim once they have observed something (a repeated hidden state, a stall, a fill). They sit
+# after the searchers by design and are not specialists for the purpose of this ordering, which
+# is about who wins a TIE on the opening frame.
+#
+# ⛔ The first version of this test omitted them and failed on a registry that is correct. The
+# measurement it was written from had already excluded them, and the test silently redefined
+# "specialist" as "not a searcher". A checker is an instrument: run it on input whose verdict you
+# already know, in BOTH directions, before trusting it.
+LATE_BIDDERS = {"dealias", "llm_goal", "paint", "toggle"}
+
 
 def test_every_specialist_precedes_every_general_searcher() -> None:
     """Purpose: pin the ordering invariant the registry's own docstring claims.
@@ -33,12 +44,17 @@ def test_every_specialist_precedes_every_general_searcher() -> None:
     """
     order = [t.name for t in default_tools()]
     last_specialist = max(
-        (i for i, n in enumerate(order) if n not in GENERAL_SEARCHERS), default=-1
+        (i for i, n in enumerate(order)
+         if n not in GENERAL_SEARCHERS and n not in LATE_BIDDERS),
+        default=-1,
     )
     first_general = min(
         (i for i, n in enumerate(order) if n in GENERAL_SEARCHERS), default=len(order)
     )
-    misplaced = [n for n in order[first_general:] if n not in GENERAL_SEARCHERS]
+    misplaced = [
+        n for n in order[first_general:]
+        if n not in GENERAL_SEARCHERS and n not in LATE_BIDDERS
+    ]
     assert not misplaced, (
         f"registered after a general searcher: {misplaced}. "
         f"Ties break by registration order, so these lose boards they could solve. "
