@@ -83,3 +83,46 @@ inert, and the finding is excluded for that game.
 - [[action_budget]] — the other thing the level data holds that changed a diagnosis.
 - [[../lessons/instrument_validity_20260825]] — the blind-spot rule the first draft of this page broke.
 - [[../rounds/r101_tool-development]] — the round.
+
+## Two corrections, measured within the hour of the page being written
+
+**1. The overlay hypothesis is DEAD.** The page proposed that the near-full-screen elements
+(ka59 `65x61`, g50t `56x61`, s5i5 `70x51`) are coverings, and that the tools may be planning
+against a covering rather than the board. Measured directly from the sprite pixels: colour `-1`
+is a sentinel, not a colour, and those elements are **sparse**, not solid —
+
+```
+ka59 65x61  15% opaque      g50t 56x61  56%      s5i5 70x51  20%      ls20 64x64  11%
+```
+
+A 15%-opaque board-spanning sprite is a **structure** — track, wall network, maze — not a
+covering. Worse for the hypothesis: g50t, ka59 and ls20 already carry a board-spanning sparse
+sprite on the level they DO clear (`61x61` at 33%, `69x69` at 27%, the same `64x64` at 11%), so
+its presence cannot be what stops them. The one genuinely solid large sprite in the set is dc22's
+`32x64` at 100% opacity — and it is present on the cleared level too, at the same place. Nothing
+here is an overlay and the hypothesis was pushed to four agents before it was checked.
+
+**2. The kind counts were inflated by the probe's own key.** `level_diff_probe.py` keys a kind on
+`(width, height, colours)`, so a structure that merely RESIZES between levels registers as new.
+g50t's headline "six new kinds" includes `61x55 → 56x61`, which is one object breathing. Re-run
+with a size-blind key (`scratchpad/kinds_recheck.py`):
+
+| game | new kinds, size+colours | new kinds, **colours only** |
+|---|---|---|
+| dc22 | 20 | **17** |
+| s5i5 | 16 | **7** |
+| g50t | 9 | **4** |
+| ka59 | 6 | **2** |
+| ls20 | 5 | **4** |
+| wa30 | 4 | **3** |
+
+**The finding survives and the direction is unchanged** — every one of the six still introduces
+genuinely new colour-combinations at exactly the level where its tool stops, and g50t still does it
+while shrinking. But ka59 is 2, not 6, and dc22 is 17, not the 6 that were quoted to its agent
+(the original print showed only the top six of twenty). ⛔ Both errors are the same one this page
+already warns about in its own text: **a claim carried past what the measurement supports.** The
+first was written into the page, the second into five agents' instructions, inside an hour of
+writing the warning.
+
+The lesson for the probe specifically: **a kind key that includes size cannot tell a new object
+from a grown one**, and the difference is the whole finding. Report both keys or neither.
