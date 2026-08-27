@@ -223,19 +223,25 @@ decide whether its own work is kept.
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
 
-**Where it stands (re-measured 2026-08-27 at commit 96a4c9f, full 25 on ceph-build,
+**Where it stands (re-measured 2026-08-27 at commit 6dc51a2, full 25 on ceph-build,
 `--agent unified` @4000 — generic tools ALONE, zero adapters):**
 
 ```
-mean 0.7817 over ALL 25    TWELVE at 1.0000    FOURTEEN clear EVERY level    25/25 clear one
-1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 tn36 tr87 tu93 vc33
-0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.7500 ls20 6/7 · 0.7143 dc22 5/6, m0r0 5/6, sp80 5/6
-0.6222 wa30 7/9 · 0.5357 g50t 5/7 · 0.4882 su15 7/9 · 0.4532 ka59 5/7 · 0.4167 s5i5 5/8
-0.2727 lf52 5/10 · 0.1333 bp35 3/9
+mean 0.8224 over ALL 25   THIRTEEN at 1.0000   FIFTEEN clear EVERY level   25/25 clear one
+1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 su15 tn36 tr87 tu93 vc33
+0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.8000 wa30 8/9 · 0.7500 ka59 6/7, ls20 6/7
+0.7143 dc22 5/6, m0r0 5/6, sp80 5/6 · 0.5357 g50t 5/7 · 0.4167 s5i5 5/8
+0.2727 lf52 5/10 · 0.1648 bp35 5/9
 ```
 
-The adapter-assisted card is 0.3162, so the generic path is **2.47x past it** and transfers by
+The adapter-assisted card is 0.3162, so the generic path is **2.60x past it** and transfers by
 construction, which the adapters do not.
+
+⛔ **A report that gives only the LEVEL COUNT cannot be acted on.** Measured on bp35 the same
+day: one tool cleared five levels where the incumbent cleared three and scored 0.1344 against
+0.1333 — two extra levels worth **+0.0011**, because RHAE prices a level at `(human/ours)^2` and
+the incumbent's three sat at human parity. The same tool then kept the SAME five levels, made
+them cheaper, and gained **+0.0304**. Ask every agent for the per-level costs, not the depth.
 
 ⚠️ **The card is not the property that matters, and one gain today proved it.** Re-run the
 archive transfer measurement (`scripts/rounds/R101XFER2`) whenever the card moves: `telescope`
