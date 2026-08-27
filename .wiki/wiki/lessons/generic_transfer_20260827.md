@@ -81,6 +81,36 @@ cells is the whole margin a pixel census has. Returned to the tool's author with
 coordinates rather than loosened centrally, because the fix that merely makes it fire again is
 the one that destroys its discrimination.
 
+## Third measurement, and a second KIND of transfer failure (2026-08-27)
+
+Re-run at card 0.7817, after `telescope`'s detector was re-keyed on its mechanic:
+
+```
+13 scorable re-rendered games   live 0.8078   archive 0.7461   ratio 0.92   identical 11/13
+s5i5   FIXED   0.0000 -> 0.3926   (was the whole of the previous run's loss)
+tu93   still  1.0000 -> 0.2222    the physics case, diagnosed separately
+re86   EXCLUDED from the ratio — see below
+```
+
+**A tool can transfer its ANSWER and not its COST.** Per-action wall clock across all fifteen
+archived games is within a factor of 1.3 of the live board — except one:
+
+```
+re86    live 1113 actions in 56s      archive 880 actions in 1011s      23x slower per action
+every other game                                                        0.6x - 1.3x
+```
+
+re86's archive run scores 0.4183 against 0.8350 live, and that gap is **not the tool's ceiling
+— it is our own wall-clock cap**, which stopped the run at 1011s against a 1000s limit. Scoring
+it as a level loss would have been wrong, and the tell was one field: `elapsed_s`. The live
+board never comes near the cap (56s).
+
+So this is a real transfer defect of a kind the score cannot show: the same search that answers
+in 56 seconds on one rendering needs at least seventeen minutes on another. On the eval — 110
+games inside a 9-hour cap — a tool like that is not slow, it is fatal, and its score on the
+public 25 says nothing about it. ⛔ **Compare wall-clock per action across the two boards, not
+only the scores.**
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run

@@ -1,0 +1,47 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.222222,
+  "total_score_pct": 22.222,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 4,
+      "elapsed_s": 7.49,
+      "total_actions": 1288,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 19,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 10,
+          "human_actions": 16,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 19,
+          "human_actions": 34,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 17,
+          "human_actions": 42,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.222222,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93"
+    }
+  ]
+}
