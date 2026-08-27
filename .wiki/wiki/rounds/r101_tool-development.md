@@ -1512,3 +1512,36 @@ Two findings, and the second is a MECHANIC nobody had named:
 ⚠️ Note how differently the same run reads through the two instruments. `attempt_probe` prices
 what the deaths COST and says +0.1283; `deathcount_probe` says who took them and that
 three-quarters were free. Neither alone would have pointed at `crag`'s six.
+
+#### The clock is COMMON — and outside bp35 the deaths cost nothing
+
+Swept across the eight games with headroom:
+
+```
+game   deaths   costing score          periodic clock
+bp35     24      6  (all crag's)        65 actions
+s5i5      6      1  (telescope)        201 actions
+ls20     14      0                      -
+wa30     14      0                      71 actions
+g50t      9      0                     131 actions
+ka59      6      0                     201 actions
+lf52      1      0                      -
+dc22      1      0                      -
+```
+
+**Five of the eight kill on a fixed period**, each with its own: 65, 71, 131, 201, 201. So the
+clock is a family trait of these boards rather than a bp35 peculiarity, and a tool that plans a
+long leg on any of them is planning against a deadline it has not read.
+
+⛔ **But the deaths are only costing score in ONE game.** Seventy-four deaths across the other
+seven and exactly one of them lands on a level later cleared. Everywhere else the dying happens
+after the last clear, on levels never solved under any configuration — the same shape as wa30's
+1,217 binned actions and lf52's 664 held actions, both of which measured worth exactly zero.
+
+So the death axis, like the attempt axis and the held-while-silent axis before it, is **one game
+wide**: bp35, whose six `crag` deaths are the whole of its +0.1283. Three different instruments,
+three different counts, and each time the honest answer was that most of what they measure is
+free.
+
+⚠️ That is worth stating as a rule, because three sweeps in a row have gone the same way: **a
+count of bad events is not a count of lost score.** Price it before assigning it.
