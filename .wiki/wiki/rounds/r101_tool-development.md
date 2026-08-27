@@ -1431,3 +1431,36 @@ the value in s5i5 is levels 7 and 8.
 
 So the attempt axis is **two games — re86 and bp35, together +0.0109 of the card** — and both
 have a route that is already at human parity.
+
+#### re86: the overrun belongs to a DIFFERENT tool, and I guessed wrong twice before counting
+
+The largest recoverable amount in the set is re86's level 6 — 401 actions binned across
+`[200x 201x 144c]`, worth +0.1445. Two guesses were made about it before anyone counted, and
+both were wrong:
+
+1. **"the route is slow"** — refuted by the attempt split: the winning run is 144 against a human
+   139, and five of the other seven levels beat the human count outright.
+2. **"it is `reforge`'s overrun"** — reforge is the tool that was working the game and the one
+   its author had been improving, so it was the obvious target. Wrong.
+
+Logging the acting tool per action, split on the level counter and on GAME_OVER:
+
+```
+level 6, actions by tool, per attempt
+   attempt 1:  200 actions  {cover_targets: 200}
+   attempt 2:  201 actions  {cover_targets: 201}
+   attempt 3:   71 actions  {cover_targets: 14, reforge: 57}
+```
+
+**Both overruns are entirely `cover_targets`.** `reforge` only enters on the third attempt and
+wins. So an author was sent to fix a tool that is not in the failing window, and a change to it
+measured byte-identical — which is exactly what should have happened and is why the change was
+not kept.
+
+⚠️ `cover_targets` is not removable either, and that was the next obvious thought: taken out of
+the registry, re86 scores **0.0278 with one level** instead of 0.8350 with eight. It carries
+levels 1 through 5. The tool that is losing level 6 is the tool that wins the other seven.
+
+⛔ Three guesses, three measurements, three corrections — and every correction cost one command.
+The rule this round keeps re-learning is not "instrument when stuck", it is **instrument BEFORE
+naming a cause**, because a plausible cause is what gets sent to an agent as instruction.
