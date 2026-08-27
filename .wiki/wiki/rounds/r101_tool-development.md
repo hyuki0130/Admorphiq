@@ -1116,5 +1116,12 @@ score is unaffected (0.4532 either way), but at width it is the difference betwe
 costing four minutes and twenty. A tool that cannot make progress needs to say so, which is
 the same rule as "a tool with no plan must bid zero" applied one step later in the loop.
 
+**FIXED and gated the same hour** — [[../concepts/no_progress_bail]]. And ka59 was not the
+problem, only its loudest case: **fourteen of the twenty-five games** were spending most of
+their budget after their last level-up. The threshold is measured, not chosen — across all
+25, the most expensive level anyone ever CLEARED cost 120 actions, so 1200 is a 10x margin
+that could not have cost a measured clear. Full-25 gate: **every one of the 25 scores
+identical**, total actions 57,885 -> 21,382, wall-clock 1,882s -> 774s.
+
 Open work is DEPTH on the four weakest — s5i5, g50t, lf52, bp35 — plus lp85 and re86, all six
 running as parallel per-game agents under [[../parallel_build_protocol]].

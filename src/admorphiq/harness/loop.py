@@ -92,6 +92,7 @@ class UnifiedAgent:
         draw_llm: LLM | None = None,
         giveup: int = 8000,
         stall: int = 12,
+        no_progress: int = 1200,
         ctx_budget: int = 6000,
     ) -> None:
         from admorphiq.adapter import AdmorphiqAdapter
@@ -108,12 +109,26 @@ class UnifiedAgent:
         self.draw_llm = draw_llm or llm
         self.giveup = giveup
         self.stall = stall
+        # Stop a game that has stopped winning. MEASURED 2026-08-27 over the full 25:
+        # the most expensive level ANY game ever cleared cost 120 actions (wa30's fifth),
+        # so 1200 is a 10x margin over the worst observed clear and could not have cost a
+        # single measured level. Without it ka59 clears five levels by action 173 and then
+        # spends 3,800 more on the sixth without clearing anything — four minutes of
+        # wall-clock becoming twenty, which at 110 games inside a 9-hour cap is the whole
+        # budget. Swapping tools on a stall is NOT the fix here and is measured harmful
+        # (see _better_alternative_exists): when nothing better exists the right move is to
+        # stop, not to hand the board to a weaker tool.
+        self.no_progress = no_progress
         self.ctx_budget = ctx_budget
         # CROSS-LEVEL CLEAR EVIDENCE: the board captured at each level-up —
         # what "solved" actually looked like. Game-scoped (never reset per
         # level): later levels' target draws cite it as an analogy example,
         # attacking the measured wall (goal-INFERENCE accuracy).
         self._clear_frames: list[np.ndarray] = []
+        # Game-scoped: the step index of the last level-up. Must not live in
+        # _reset_level, which also runs on death — a dying game would re-arm the budget
+        # forever, which is the failure this is here to stop.
+        self._last_clear_step = 0
         self._reset_level()
         # GAME-scoped code-tenure budget (must NOT live in _reset_level: death/
         # level resets would re-arm it — measured as unbounded tenures blowing
@@ -160,7 +175,9 @@ class UnifiedAgent:
         self._feedback = "start of level"
 
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
-        return state_name(latest_frame) == "WIN" or self._steps >= self.giveup
+        if state_name(latest_frame) == "WIN" or self._steps >= self.giveup:
+            return True
+        return self._steps - self._last_clear_step >= self.no_progress
 
     # -- decision -------------------------------------------------------------
 
@@ -486,6 +503,7 @@ class UnifiedAgent:
                 self._clear_frames.append(self._prev_frame.copy())
             self._reset_level(keep_current=True)
             self._last_levels = levels
+            self._last_clear_step = self._steps
             self._feedback = f"cleared level {levels}"
 
         if state in ("GAME_OVER", "NOT_PLAYED") or not has_frame(obs):
