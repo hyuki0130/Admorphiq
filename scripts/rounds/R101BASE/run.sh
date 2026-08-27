@@ -45,6 +45,12 @@ BUDGET="${BUDGET:-4000}"
 AGENT="${AGENT:-unified}"
 
 export OUT BUDGET GAMES AGENT
+# ⛔ The resume-skip is a TRAP after a failed run. Measured 2026-08-27: a round launched against
+# a registry with a broken import wrote 25 result files each holding 0.0000 and an ERROR line;
+# every relaunch then SKIPPED all 25 and the gate compared that garbage twice, reporting all
+# twenty-five games regressed. Delete the results before re-running a round that failed, and
+# VERIFY the delete — the cleanup ssh that was supposed to do it returned no output at all and
+# had not run, which is why the second attempt looked identical to the first.
 run_one() {
   [ -s "$OUT/games/$1.json" ] && { echo "$1 already measured — skipped"; return; }
   uv run python scripts/score_efficiency.py --agent "$AGENT" --titles "$1" \
