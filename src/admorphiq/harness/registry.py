@@ -37,6 +37,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.maze import MazeRunTool
     from admorphiq.tools.mirror import MirrorMergeTool
     from admorphiq.tools.paint_flood import PaintFloodTool
+    from admorphiq.tools.orderforge import OrderForgeTool
     from admorphiq.tools.pattern_cast import PatternCastTool
     from admorphiq.tools.pegjump import PegJumpTool
     from admorphiq.tools.gantry import GantryCraneTool
@@ -75,6 +76,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         BlastClockTool(),
         CloneWalkTool(),
         TelescopeArmTool(),
+        OrderForgeTool(),
         ShepherdRelayTool(),
         SigilGateTool(),
         RailPegTool(),
