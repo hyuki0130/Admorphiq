@@ -8,6 +8,12 @@ own report.
 
 Usage: `uv run python scripts/rounds/compare.py <new-round-dir> <old-round-dir>`
 
+⛔ Before trusting a verdict, check the deltas against the PREVIOUS round's. Measured 2026-08-27:
+a gate reported three regressions whose values matched a reverted experiment's to four decimals,
+because that experiment had been reverted in the tree and not on the measurement box. A tool that
+touches none of those games cannot reproduce another change's deltas exactly — identical deltas
+across unrelated changes mean the two runs share a cause, and the shared cause is the box.
+
 ⛔ It lived on the measurement box as an untracked file for a whole session, which is exactly what
 rule 2 forbids. It is in the repo now.
 """

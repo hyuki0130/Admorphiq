@@ -58,3 +58,25 @@ the baseline itself from the committed tree before attributing it to anything.
 - [[../parallel_build_protocol]] — the fan-out this happened inside.
 - [[instrument_validity_20260825]] — validate the instrument before the hypothesis; this is the
   same rule applied to the BASELINE.
+
+## Second instance, same day: the BOX kept a reverted experiment
+
+A `frame_2d` change was measured on the full 25, **regressed, and reverted** — in the working
+tree. It was never reverted on ceph-build, because the sync had been a targeted
+`tar czf … src/admorphiq/tools/base.py` rather than a full snapshot. The next tool's gate then
+ran against a box carrying a file the repository no longer had.
+
+The tell was free and should be looked for every time: the new round's regressions were
+**numerically identical** to the reverted experiment's — g50t -0.1071, ls20 -0.0317, m0r0
+-0.4286, re86 +0.0043, sc25 +0.0417, to four decimals. A tool that touches none of those
+games cannot reproduce another change's deltas exactly. Identical deltas across two unrelated
+changes mean the two runs share a cause, and the shared cause is the box.
+
+⛔ **A targeted sync is a mutation of the box that outlives the reason for it.** The rule
+already said "freeze the snapshot, vary only `registry.py`" — and varying only `registry.py`
+is not enough when a PREVIOUS experiment left something else varied. Either re-sync the whole
+tree before a gate, or revert on the box in the same breath as reverting in the tree.
+
+What it cost: one full-25 run, and very nearly a wrong verdict — the gate would have rejected
+a tool that turns out to be worth **+0.5580 on lp85**, blamed for three regressions it had
+nothing to do with.
