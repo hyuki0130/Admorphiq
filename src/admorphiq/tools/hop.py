@@ -91,6 +91,7 @@ class _Board:
         track: set[Cell],
         edges: dict[Cell, set[Cell]],
         carriage: Cell | None,
+        carriages: set[Cell] | None = None,
     ) -> None:
         self.origin = origin
         self.pitch = pitch
@@ -101,6 +102,8 @@ class _Board:
         self.track = track
         self.edges = edges
         self.carriage = carriage
+        # A board may run SEVERAL carriages, and one plain action drives every one of them.
+        self.carriages = set(carriages) if carriages else ({carriage} if carriage else set())
 
     @property
     def lead(self) -> int:
@@ -201,29 +204,40 @@ def read_board(g: np.ndarray) -> _Board | None:
                 middles[(c, r)] = middle
             colours = {int(v) for v in core.ravel()}
             if hole in colours and len(colours) == 2:
-                holes.add((c, r))
-                pieces[(c, r)] = int(next(iter(colours - {hole})))
+                glyph = int(next(iter(colours - {hole})))
+                # ⛔ An edge-pinned COUNTER is not board content. This frame draws a step counter
+                # along its top row in the HOLE's own colour, so a lattice position straddling it
+                # reads as {hole, background} — two colours, exactly like a piece — and invents a
+                # hole and a piece off the top of the board. It dragged the unexplored frontier
+                # upward and sent the tool driving at a wall. A piece's glyph is never the
+                # background, which is the difference an edge margin cannot express: the real
+                # board reaches the frame edge on this family, so masking the band loses a column.
+                if glyph not in ignore:
+                    holes.add((c, r))
+                    pieces[(c, r)] = glyph
 
     if len(holes) < _MIN_HOLES:
         return None
 
     track_colour = _track_colour(middles, holes, hole)
     track = {cell for cell, colour in middles.items() if colour == track_colour} if track_colour is not None else set()
-    carriage = _carriage(middles, track, holes, track_colour)
+    carriages = _carriages(middles, track, holes, track_colour)
+    carriage = carriages[0] if carriages else None
     passable = (g == track_colour) if track_colour is not None else np.zeros(g.shape, dtype=bool)
-    if carriage is not None:
-        track = track | {carriage}
-        cx, cy = (x0 + pitch * carriage[0] + off, y0 + pitch * carriage[1] + off)
+    if carriages:
+        track = track | set(carriages)
         blocked = ignore | {hole}
         if track_colour is not None:
             blocked = blocked | {track_colour}
-        passable = passable | _carriage_mask(g, blocked, (cy, cx))
+        for one in carriages:
+            cx, cy = (x0 + pitch * one[0] + off, y0 + pitch * one[1] + off)
+            passable = passable | _carriage_mask(g, blocked, (cy, cx))
     edges = _track_edges(g, (x0, y0), pitch, side, track, passable)
-    if carriage is not None:
-        rider = _rider(g, (x0, y0), pitch, side, carriage, set(pieces.values()))
+    for one in carriages:
+        rider = _rider(g, (x0, y0), pitch, side, one, set(pieces.values()))
         if rider is not None:
-            pieces[carriage] = rider
-    return _Board((x0, y0), pitch, side, hole, holes, pieces, track, edges, carriage)
+            pieces[one] = rider
+    return _Board((x0, y0), pitch, side, hole, holes, pieces, track, edges, carriage, set(carriages))
 
 
 def _rider(
@@ -260,24 +274,24 @@ def _track_colour(middles: dict[Cell, int], holes: set[Cell], hole: int) -> int 
     return colour if tally[colour] >= 3 else None
 
 
-def _carriage(
+def _carriages(
     middles: dict[Cell, int], track: set[Cell], holes: set[Cell], track_colour: int | None
-) -> Cell | None:
+) -> list[Cell]:
     """The one square standing ON the line whose middle is neither line nor hole.
 
     Scored by how much line it touches, so a stray square that merely brushes the track cannot
     be mistaken for the carriage that sits in the middle of it.
     """
     if track_colour is None:
-        return None
-    best: tuple[int, Cell] | None = None
+        return []
+    found: list[tuple[int, Cell]] = []
     for cell, colour in sorted(middles.items()):
         if cell in track or cell in holes or colour == track_colour:
             continue
         touching = sum(1 for d in _DIRS if (cell[0] + d[0], cell[1] + d[1]) in track)
-        if touching and (best is None or touching > best[0]):
-            best = (touching, cell)
-    return best[1] if best is not None else None
+        if touching:
+            found.append((touching, cell))
+    return [cell for _, cell in sorted(found, key=lambda t: (-t[0], t[1]))]
 
 
 def _carriage_mask(g: np.ndarray, board_colours: set[int], seed: tuple[int, int]) -> np.ndarray:
@@ -329,6 +343,155 @@ def _track_edges(
                 edges[cell].add(other)
                 edges[other].add(cell)
     return edges
+
+
+# --- boards larger than the window -----------------------------------------
+#
+# Measured: only the first two boards of this family fit inside the frame. Every later one is
+# wider or taller than 64 pixels (one is 168 wide), and the view is moved ONLY as a side effect
+# of driving a carriage that carries a piece. So from the third board on the tool is looking
+# through a moving window at something it has never seen whole, and a plan computed on what is
+# visible is a plan for a different position.
+#
+# The answer is a WORLD map in pixels. The scroll step is 8 pixels on a 6-pixel lattice, so a
+# scroll is not a whole number of cells and cell identity survives only by carrying the offset
+# in pixels and converting at the edges.
+
+
+def scroll_offset(prev: np.ndarray, cur: np.ndarray, span: int = 48) -> tuple[int, int]:
+    """How far the view moved between two settled frames, by pixel agreement.
+
+    Axis-aligned only, and the score is penalised by distance so a still frame reads as no
+    movement rather than as a large shift that happens to align a repetitive lattice.
+    """
+    best, best_score = (0, 0), -1
+    for dx in range(-span, span + 1):
+        for dy in ((0,) if dx else range(-span, span + 1)):
+            a = prev[max(0, dy):prev.shape[0] + min(0, dy), max(0, dx):prev.shape[1] + min(0, dx)]
+            b = cur[max(0, -dy):cur.shape[0] + min(0, -dy), max(0, -dx):cur.shape[1] + min(0, -dx)]
+            if a.size < prev.size // 3 or a.shape != b.shape:
+                continue
+            score = int((a == b).sum()) - abs(dx) - abs(dy)
+            if score > best_score:
+                best_score, best = score, (dx, dy)
+    return best
+
+
+def truncated(board: _Board, shape: tuple[int, int]) -> bool:
+    """Does the board run off the edge of the frame?
+
+    A hole whose lattice NEIGHBOUR would fall outside the frame proves nothing about what is
+    beyond it — the board may continue or may not. Only a board ringed by in-frame lattice
+    positions has been seen whole.
+    """
+    height, width = shape
+    x0, y0 = board.origin
+    for c, r in board.holes:
+        for d in _DIRS:
+            x = x0 + board.pitch * (c + d[0])
+            y = y0 + board.pitch * (r + d[1])
+            if x < 0 or y < 0 or x + board.side > width or y + board.side > height:
+                return True
+    return False
+
+
+class _World:
+    """Everything seen so far, in world cells, with the window's offset carried in pixels."""
+
+    def __init__(self, board: _Board, shape: tuple[int, int]) -> None:
+        self.origin = board.origin
+        self.pitch = board.pitch
+        self.side = board.side
+        self.shape = shape
+        self.holes: set[Cell] = set()
+        self.rail: set[Cell] = set()
+        self.seen: set[Cell] = set()
+        self.pieces: dict[Cell, int] = {}
+        self.carriages: set[Cell] = set()
+        self.cam: tuple[int, int] = (0, 0)
+        self.pan: tuple[int, int] | None = None
+        self.merge(board)
+
+    # -- geometry -------------------------------------------------------------
+
+    def screen(self, cell: Cell, cam: tuple[int, int] | None = None) -> tuple[int, int]:
+        cx, cy = self.cam if cam is None else cam
+        return self.origin[0] + self.pitch * cell[0] - cx, self.origin[1] + self.pitch * cell[1] - cy
+
+    def visible(self, cell: Cell, cam: tuple[int, int] | None = None) -> bool:
+        x, y = self.screen(cell, cam)
+        return x >= 0 and y >= 0 and x + self.side <= self.shape[1] and y + self.side <= self.shape[0]
+
+    def pixel(self, cell: Cell) -> tuple[int, int]:
+        x, y = self.screen(cell)
+        return x + self.side // 2, y + self.side // 2
+
+    def _to_world(self, cell: Cell) -> Cell:
+        """A cell index read off the current frame, expressed in the world's own indices."""
+        return (cell[0] + self.cam[0] // self.pitch, cell[1] + self.cam[1] // self.pitch)
+
+    # -- accumulation ---------------------------------------------------------
+
+    def merge(self, board: _Board) -> None:
+        """Fold one reading in. Terrain accumulates; pieces are only trusted where visible."""
+        shift = ((self.cam[0] - (self.origin[0] - board.origin[0])) // self.pitch,
+                 (self.cam[1] - (self.origin[1] - board.origin[1])) // self.pitch)
+        def w(cell: Cell) -> Cell:
+            return (cell[0] + shift[0], cell[1] + shift[1])
+
+        for cell in board.holes:
+            self.holes.add(w(cell))
+        for cell in board.track:
+            self.rail.add(w(cell))
+        # SEEN is every lattice position the window covers, not merely the occupied ones: an
+        # empty position that has been looked at is knowledge, and counting only occupied ones
+        # leaves every blank inside the window permanently "unexplored", which satisfies the
+        # frontier where it stands and asks for no scroll at all.
+        window = self.covered()
+        self.seen |= window
+        for cell in window:
+            self.pieces.pop(cell, None)
+        for cell, colour in board.pieces.items():
+            self.pieces[w(cell)] = colour
+        if board.carriages:
+            self.carriages = {c for c in self.carriages if not self.visible(c)}
+            self.carriages |= {w(c) for c in board.carriages}
+
+    def advance(self, offset: tuple[int, int]) -> None:
+        self.cam = (self.cam[0] + offset[0], self.cam[1] + offset[1])
+
+    @property
+    def lead(self) -> int:
+        if not self.pieces:
+            return -1
+        tally: dict[int, int] = {}
+        for colour in self.pieces.values():
+            tally[colour] = tally.get(colour, 0) + 1
+        return max(tally, key=lambda c: (tally[c], -c))
+
+    def covered(self, cam: tuple[int, int] | None = None) -> set[Cell]:
+        """Every lattice position wholly inside the window at this scroll."""
+        cx, cy = self.cam if cam is None else cam
+        x0, y0 = self.origin
+        height, width = self.shape
+        c_lo = -((x0 - cx) // self.pitch)
+        r_lo = -((y0 - cy) // self.pitch)
+        out: set[Cell] = set()
+        for c in range(c_lo - 1, c_lo + width // self.pitch + 2):
+            for r in range(r_lo - 1, r_lo + height // self.pitch + 2):
+                if self.visible((c, r), (cx, cy)):
+                    out.add((c, r))
+        return out
+
+    def frontier(self) -> set[Cell]:
+        """Lattice positions touching known board that the window has never covered."""
+        edge: set[Cell] = set()
+        for cell in self.holes | self.rail:
+            for d in _DIRS:
+                other = (cell[0] + d[0], cell[1] + d[1])
+                if other not in self.seen:
+                    edge.add(other)
+        return edge
 
 
 # --- the plan ---------------------------------------------------------------
@@ -445,6 +608,122 @@ def reachable_track(board: _Board) -> set[Cell]:
     return seen
 
 
+def _world_steps(w: "_World", pieces: dict[Cell, int], carts: frozenset[Cell],
+                 cam: tuple[int, int]) -> list[tuple[int, dict[Cell, int], frozenset[Cell],
+                                                     tuple[int, int], Move]]:
+    """Every legal action from a world state, with the window and the scroll obeyed."""
+    out = []
+    for a, colour in pieces.items():
+        if not w.visible(a, cam):
+            continue                      # a piece off the window cannot be clicked
+        for d in _DIRS:
+            mid = (a[0] + d[0], a[1] + d[1])
+            land = (mid[0] + d[0], mid[1] + d[1])
+            if mid not in pieces or land in pieces:
+                continue
+            if land not in w.holes and land not in carts:
+                continue
+            if not w.visible(land, cam):
+                continue                  # nor can its landing mark be clicked
+            nxt = dict(pieces)
+            del nxt[a]
+            if nxt.get(mid) == colour:
+                del nxt[mid]
+            nxt[land] = colour
+            out.append((2, nxt, carts, cam, ("leap", a, d)))
+    lead = w.lead
+    for d in _DIRS:
+        nxt, seats, moved, panned = dict(pieces), set(carts), False, False
+        order = sorted(carts, key=lambda c: c[0] * d[0] + c[1] * d[1], reverse=True)
+        ncam = cam
+        for cart in order:
+            tgt = (cart[0] + d[0], cart[1] + d[1])
+            if tgt in seats or tgt not in w.rail:
+                continue
+            laden = nxt.get(cart) == lead
+            seats.discard(cart)
+            seats.add(tgt)
+            moved = True
+            if cart in nxt:
+                nxt[tgt] = nxt.pop(cart)
+            if laden and not panned and w.pan is not None:
+                panned = True
+                step = (ncam[0] + w.pan[0] * d[0], ncam[1] + w.pan[1] * d[1])
+                if step[0] < 0 or step[1] < 0:
+                    # The view is already home; the engine moves THIS carriage, refuses the
+                    # scroll and abandons the rest of the action.
+                    break
+                ncam = step
+        if moved:
+            out.append((1, nxt, frozenset(seats), ncam, ("roll", None, d)))
+    return out
+
+
+def solve_world(w: "_World", goal: str, node_cap: int = 200_000) -> list[Move] | None:
+    """Cheapest run of actions that either finishes the board or shows it something new."""
+    lead = w.lead
+    if lead < 0:
+        return None
+    edge = w.frontier() if goal == "reveal" else set()
+    if goal == "reveal" and not edge:
+        return None
+    if goal == "laden" and not w.carriages:
+        return None
+
+    def done(pieces: dict[Cell, int], carts: frozenset[Cell], cam: tuple[int, int]) -> bool:
+        if goal == "win":
+            return sum(1 for c in pieces.values() if c == lead) == 1
+        if goal == "laden":
+            return any(pieces.get(seat) == lead for seat in carts)
+        return any(w.visible(cell, cam) for cell in edge)
+
+    def hint(pieces: dict[Cell, int]) -> int:
+        if goal != "win":
+            return 0
+        return 2 * max(0, sum(1 for c in pieces.values() if c == lead) - 1)
+
+    start_pieces, start_carts, start_cam = dict(w.pieces), frozenset(w.carriages), w.cam
+    if done(start_pieces, start_carts, start_cam):
+        return []
+    start = (tuple(sorted(start_pieces.items())), start_carts, start_cam)
+    seen: dict[Any, int] = {start: 0}
+    came: dict[Any, tuple[Any, Move]] = {}
+    heap = [(hint(start_pieces), 0, start, start_pieces, start_carts, start_cam)]
+    expanded = 0
+    while heap and expanded < node_cap:
+        _, cost, state, pieces, carts, cam = heapq.heappop(heap)
+        if cost > seen.get(state, cost):
+            continue
+        expanded += 1
+        if done(pieces, carts, cam):
+            plan: list[Move] = []
+            while state in came:
+                state, move = came[state]
+                plan.append(move)
+            return plan[::-1]
+        for step, nxt, seats, ncam, move in _world_steps(w, pieces, carts, cam):
+            key = (tuple(sorted(nxt.items())), seats, ncam)
+            if cost + step < seen.get(key, 1 << 30):
+                seen[key] = cost + step
+                came[key] = (state, move)
+                heapq.heappush(heap, (cost + step + hint(nxt), cost + step, key, nxt, seats, ncam))
+    return None
+
+
+def _toward(w: "_World") -> Cell | None:
+    """The way the board continues: from what is known toward what has never been in view."""
+    edge = w.frontier()
+    known = w.holes | w.rail
+    if not edge or not known:
+        return None
+    kc = sum(c for c, _ in known) / len(known), sum(r for _, r in known) / len(known)
+    ec = sum(c for c, _ in edge) / len(edge), sum(r for _, r in edge) / len(edge)
+    dx, dy = ec[0] - kc[0], ec[1] - kc[1]
+    if abs(dx) >= abs(dy):
+        return (1, 0) if dx > 0 else (-1, 0)
+    return (0, 1) if dy > 0 else (0, -1)
+
+
 class HopTool:
     """Plans a whole board of leaps before the first click, then drives the carriage."""
 
@@ -457,6 +736,9 @@ class HopTool:
         self._tried: dict[Cell | None, set[int]] = {}
         self._probe: tuple[int, Cell | None] | None = None
         self._failed: set[tuple[Any, ...]] = set()
+        self._world: _World | None = None
+        self._prev: np.ndarray | None = None
+        self._rolled: tuple[int, frozenset[Cell]] | None = None
 
     # --- lifecycle ---------------------------------------------------------
 
@@ -480,6 +762,9 @@ class HopTool:
         self._tried = {}
         self._probe = None
         self._failed = set()
+        self._world = None
+        self._prev = None
+        self._rolled = None
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Nothing is learnt here.
@@ -492,9 +777,12 @@ class HopTool:
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if not has_frame(obs):
             return []
-        board = read_board(settled(obs))
+        frame = settled(obs)
+        board = read_board(frame)
         if board is None:
             return []
+        if self._world is not None or truncated(board, frame.shape):
+            return self._through_window(board, frame)
         self._learn_drive(board)
 
         key = board.key()
@@ -525,6 +813,87 @@ class HopTool:
         self._at = None
         self._probe = (action, board.carriage)
         return [(action, None)]
+
+    # --- boards larger than the window -------------------------------------
+
+    def _through_window(self, board: _Board, frame: np.ndarray) -> list[Step]:
+        """Carry a map across the scroll, because this board is never on screen whole."""
+        if self._world is None:
+            self._world = _World(board, frame.shape)
+        else:
+            assert self._prev is not None
+            moved = scroll_offset(self._prev, frame)
+            self._world.advance(moved)
+            # Merge BEFORE reading the lesson: the carriages have to be where the frame says
+            # they now are, or the comparison is the old set against itself and teaches nothing.
+            self._world.merge(board)
+            self._learn_scroll(moved)
+        self._prev = frame
+
+        w = self._world
+        plan = solve_world(w, "win")
+        if plan is None and w.pan is None:
+            # The scroll cannot be planned before it has been SEEN. Put a piece on a carriage,
+            # drive it at the unexplored side once, and measure what the view does.
+            if any(w.pieces.get(seat) == w.lead for seat in w.carriages):
+                d = _toward(w)
+                action = self._roll_action(d) if d else None
+                if action is not None:
+                    self._rolled = (action, frozenset(w.carriages))
+                    return [(action, None)]
+            else:
+                plan = solve_world(w, "laden")
+        if plan is None:
+            plan = solve_world(w, "reveal")
+        if not plan:
+            return []
+        move = plan[0]
+        if move[0] == "leap":
+            cell, d = move[1], move[2]
+            land = (cell[0] + 2 * d[0], cell[1] + 2 * d[1])
+            return [(6, w.pixel(cell)), (6, w.pixel(land))]
+        action = self._roll_action(move[2])
+        if action is None:
+            return []
+        self._rolled = (action, frozenset(w.carriages))
+        return [(action, None)]
+
+    def _learn_scroll(self, moved: tuple[int, int]) -> None:
+        """Name the direction the last plain action drove the carriages, and what it scrolled.
+
+        Both lessons come from the SAME transition: how far the carriages stepped names the
+        action's direction, and how far the view slid names the scroll that riding one costs.
+        """
+        assert self._world is not None
+        if self._rolled is None:
+            return
+        action, before = self._rolled
+        self._rolled = None
+        after = self._world.carriages
+        if len(before) != len(after) or before == after:
+            self._tried.setdefault(None, set()).add(action)
+            return
+        shifts = {(b[0] - a[0], b[1] - a[1])
+                  for a, b in zip(sorted(before), sorted(after), strict=False)}
+        if len(shifts) != 1:
+            return
+        step = next(iter(shifts))
+        if step not in _DIRS:
+            return
+        self._drive[action] = step
+        if moved != (0, 0) and self._world.pan is None:
+            self._world.pan = (moved[0] // step[0] if step[0] else 0,
+                               moved[1] // step[1] if step[1] else 0)
+
+    def _roll_action(self, d: Cell) -> int | None:
+        for action, step in sorted(self._drive.items()):
+            if step == d:
+                return action
+        spent = self._tried.get(None, set())
+        for action in (1, 2, 3, 4):
+            if action not in self._drive and action not in spent:
+                return action
+        return None
 
     # --- driving the carriage ---------------------------------------------
 

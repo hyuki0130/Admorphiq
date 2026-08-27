@@ -894,11 +894,10 @@ class LinkageReachTool:
         for bi, p in enumerate(self._pieces):
             box = seen.get(bi)
             if box is None:
-                # ⛔ A piece that cannot be found again is dropped from the model rather than
-                # guessed at. The pieces that go missing are the ones beside a place, where a
-                # marker arriving or leaving re-cuts the structure under it; calling them
-                # stationary instead was MEASURED and is worse, because a wrong obstacle makes
-                # the planner search a board that is not there.
+                # ⛔ A piece that cannot be found again is dropped rather than guessed at.
+                # Calling every lost piece stationary was MEASURED and is worse: a wrong obstacle
+                # makes the planner search a board that is not there, and a level that finished
+                # in 36 actions stopped finishing.
                 self._unread.add(bi)
                 continue
             edge = tuple((b - a) * turn for a, b in zip(p.rect, box))

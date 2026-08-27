@@ -1,42 +1,66 @@
-"""Drive the track tool against a live game and report how deep it gets."""
+"""Drive the track tool against a live game and report how deep it gets.
+
+`--level N` starts at a later board, which is dev-time only: it reaches into the environment to
+skip ahead so a deep board can be read without paying for the ones before it. The tool itself
+never sees anything but the frame.
+"""
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 sys.path.insert(0, "src")
 
 from admorphiq.adapters25.base import canonical_layer  # noqa: E402
-from admorphiq.tools.track import TrackAlignTool, loop_order, tiles_of  # noqa: E402
+from admorphiq.tools.track import (  # noqa: E402
+    TrackAlignTool,
+    controls_on,
+    markers_on,
+    read_board,
+)
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("title", nargs="?", default="lp85")
+    ap.add_argument("--cap", type=int, default=400)
+    ap.add_argument("--level", type=int, default=0)
+    ap.add_argument("--quiet", action="store_true")
+    args = ap.parse_args()
+
     from arc_agi import Arcade, OperationMode
     from arcengine import GameAction
 
-    title = sys.argv[1] if len(sys.argv) > 1 else "lp85"
-    cap = int(sys.argv[2]) if len(sys.argv) > 2 else 120
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
-    info = next(i for i in arcade.get_environments() if (i.title or i.game_id).lower().startswith(title))
+    info = next(i for i in arcade.get_environments()
+                if (i.title or i.game_id).lower().startswith(args.title))
     env = arcade.make(info.game_id)
     obs = env.reset()
+    if args.level:
+        env._game.set_level(args.level)
+        obs = env.step(GameAction.ACTION6, data={"x": 0, "y": 0})
+
     tool = TrackAlignTool()
-    done = 0
+    g = canonical_layer(obs)
+    board = read_board(g)
+    if board is None:
+        print(f"  read: not a tile board  detect={tool.detect([], obs):.2f}")
+    else:
+        tiles, side, pitch = board
+        print(f"  read: {len(tiles)} tiles side={side} pitch={pitch} "
+              f"marks={len(markers_on(g, tiles, side))} "
+              f"controls={len(controls_on(g, tiles, side))} "
+              f"detect={tool.detect([], obs):.2f}")
+
+    done = int(getattr(obs, "levels_completed", 0) or 0)
+    base = done
     acted = 0
     idle = 0
-    g = canonical_layer(obs)
-    blocks, side = tiles_of(g)
-    print(f"  read: {len(blocks)} blocks side={side} loop={'yes' if blocks and loop_order(list(blocks), 6) else '?'} "
-          f"detect={tool.detect([], obs):.2f}")
-    while acted < cap and idle < 3:
+    while acted < args.cap and idle < 4:
         steps = tool.propose([], obs)
         if not steps:
             idle += 1
-            if idle >= 3:
-                print(f"     no proposal at level {done} after {acted} actions")
-                break
-            # The frame following a level-up still shows the board just finished, so a tool that
-            # reads it correctly reports "already aligned". One action moves it on.
             obs = env.step(GameAction.ACTION6, data={"x": 0, "y": 0})
             acted += 1
             continue
@@ -47,13 +71,13 @@ def main() -> None:
         new = int(getattr(obs, "levels_completed", done) or 0)
         state = str(getattr(obs, "state", ""))
         if new != done:
-            print(f"  level {new}: cleared at {acted} actions")
+            if not args.quiet:
+                print(f"  board {args.level + new - base}: cleared at {acted} actions")
             done = new
-            tool.reset()
         if "GAME_OVER" in state:
             print(f"     GAME_OVER at {acted} actions")
             break
-    print(f"{title} track: {done} levels in {acted} actions")
+    print(f"{args.title} track: {done - base} boards from level {args.level} in {acted} actions")
 
 
 if __name__ == "__main__":

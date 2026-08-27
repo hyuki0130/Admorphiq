@@ -24,8 +24,8 @@ def describe(obs) -> None:
     print(f"  axis={board.axis} sign={board.sign:+d} unit={board.unit}")
     print(f"  channels={board.channels}")
     for i, p in enumerate(board.pillars):
-        print(f"  pillar {i}: lane {p.lane_lo}-{p.lane_hi} "
-              f"height={p.height} base={p.base} cap={p.cap}")
+        print(f"  pillar {i}: lane {p.lane_lo}-{p.lane_hi} stretch {p.seg_lo}-{p.seg_hi} "
+              f"height={p.height} cap={p.cap}")
     for r in board.riders:
         print(f"  rider mark={r.mark} on pillar {r.pillar} mark_lo={r.mark_lo}")
     for s in board.sockets:
@@ -33,7 +33,7 @@ def describe(obs) -> None:
     for s in board.steppers:
         print(f"  stepper {s.src} -> {s.dst} click(row,col)={s.click}")
     for g in board.gates:
-        print(f"  gate {g.low}<->{g.high} at height {g.height} click={g.click}")
+        print(f"  gate {g.low}<->{g.high} at heights {g.at_low}/{g.at_high} click={g.click}")
     print(f"  plan={_solve(board)}")
 
 
@@ -89,15 +89,20 @@ def main() -> None:
             obs = env.step(GameAction.ACTION6, data={"x": xy[0], "y": xy[1]})
             acted += 1
             cur = frame_2d(obs)
-            tool.observe(prev, (6, xy), bool((prev != cur).any()))
-            prev = cur
+            if cur.shape == prev.shape:
+                tool.observe(prev, (6, xy), bool((prev != cur).any()))
+                prev = cur
         new = int(getattr(obs, "levels_completed", done) or 0)
         if new != done:
             print(f"  level {new}: cleared in {acted - mark} actions (total {acted})")
             mark = acted
             done = new
             tool.reset()
-        if "GAME_OVER" in str(getattr(obs, "state", "")):
+        state = str(getattr(obs, "state", ""))
+        if "WIN" in state:
+            print(f"     WIN at {acted}")
+            break
+        if "GAME_OVER" in state:
             print(f"     GAME_OVER at {acted}")
             break
     print(f"{args.title} pillar_transfer: {done} levels in {acted} actions")

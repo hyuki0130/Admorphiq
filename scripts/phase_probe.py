@@ -15,11 +15,28 @@ from admorphiq.tools.phase import PhaseGridTool  # noqa: E402
 
 
 def scan() -> None:
-    """Report the tool's first-frame bid on every sample game — the false-positive gate."""
-    from arc_agi import Arcade, OperationMode
+    """Max bid the tool produces on every sample game, over a whole run of frames.
 
+    Purpose: a tool that bids on a board it cannot solve steals the turn from one that can, so
+    the bid has to be checked on the frames the harness will actually show it — not only the
+    first. Each frame is offered to a FRESH tool, which is the strict reading: no accumulated
+    "this is not my mechanic" state is allowed to hide a bid the harness would have seen.
+
+    Expected feedback: the tool's own game reports a high bid; every other game must report
+    0.00. Anything above 0.00 elsewhere is a defect that blocks the tool.
+    """
+    from arc_agi import Arcade, OperationMode
+    from arcengine import GameAction
+
+    depth = 200
+    for arg in sys.argv:
+        if arg.startswith("--depth="):
+            depth = int(arg.split("=", 1)[1])
+    simple = {1: GameAction.ACTION1, 2: GameAction.ACTION2, 3: GameAction.ACTION3,
+              4: GameAction.ACTION4, 5: GameAction.ACTION5, 7: GameAction.ACTION7}
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
     seen: set[str] = set()
+    worst: dict[str, float] = {}
     for info in arcade.get_environments():
         key = (info.title or info.game_id).lower().split("-")[0][:4]
         if key in seen:
@@ -27,8 +44,34 @@ def scan() -> None:
         seen.add(key)
         env = arcade.make(info.game_id)
         obs = env.reset()
-        bid = PhaseGridTool().detect([], obs)
-        print(f"  {key}: detect={bid:.2f}")
+        top = PhaseGridTool().detect([], obs)
+        first = top
+        for i in range(depth):
+            legal = [a for a in getattr(obs, "available_actions", []) or []
+                     if getattr(a, "value", a) in simple]
+            try:
+                if i % 3 == 2:
+                    obs = env.step(GameAction.ACTION6,
+                                   data={"x": (i * 7) % 64, "y": (i * 13) % 64})
+                elif legal:
+                    obs = env.step(simple[getattr(legal[i % len(legal)], "value",
+                                                  legal[i % len(legal)])])
+                else:
+                    obs = env.step(GameAction.ACTION6,
+                                   data={"x": (i * 11) % 64, "y": (i * 5) % 64})
+            except Exception:
+                break
+            if "GAME_OVER" in str(getattr(obs, "state", "")):
+                obs = env.reset()
+            top = max(top, PhaseGridTool().detect([], obs))
+        worst[key] = top
+        print(f"  {key}: first={first:.2f} max_over_{depth}_frames={top:.2f}")
+    mine = max(worst, key=lambda k: worst[k])
+    others = {k: v for k, v in worst.items() if k != mine}
+    print(f"  highest bidder: {mine}={worst[mine]:.2f}; "
+          f"max over the other {len(others)}: {max(others.values()):.2f}")
+    hits = sorted(k for k, v in others.items() if v > 0.0)
+    print(f"  non-zero elsewhere: {hits or 'none'}")
 
 
 def main() -> None:
@@ -73,6 +116,21 @@ def main() -> None:
                     for row in range(max(0, here[0] - 8), min(b.shape[0], here[0] + 10)):
                         print("    %2d %s" % (row, "".join(
                             "." if v == 0 else format(int(v), "x") for v in b[row])))
+                    for gi, gr in enumerate(tool._groups):
+                        print(f"    group {gi} click={gr['click']} phase={gr['phase']} "
+                              f"next={gr['next']} cells={len(gr['cells'])}")
+                        for pi in range(len(gr["images"])):
+                            cfg = tuple(pi if j == gi else g2["phase"]
+                                        for j, g2 in enumerate(tool._groups))
+                            lay = tool._layout(b, cfg)
+                            print("      ph%d row12 %s" % (pi, "".join(
+                                "." if v == 0 else format(int(v), "x") for v in lay[12])))
+                    reach = tool._reachable(b, here, geom["bg"])
+                    rows = sorted({c[0] for c in reach})
+                    print(f"    reachable cells={len(reach)} rows={rows}")
+                    for row in rows:
+                        cols = sorted(c[1] for c in reach if c[0] == row)
+                        print(f"      row {row:2d}: cols {cols}")
                     for it in sorted(items):
                         got = tool._route(geom["board"], here, {it}, geom["bg"])
                         print(f"    -> {it}: {len(got) if got else 'unreachable'}")
@@ -85,7 +143,8 @@ def main() -> None:
                   f"avatar={tool._avatar} marker={tool._marker} "
                   f"groups={[(gr['click'], len(gr['images']), gr['phase']) for gr in tool._groups]} "
                   f"clicks={len(tool._settled_clicks)} plan={len(tool._plan)} "
-                  f"expect={tool._expect}")
+                  f"expect={tool._expect} notfloor={sorted(tool._not_floor)} "
+                  f"refused={ {c: len(v) for c, v in tool._refused.items()} }")
         for action, xy in steps:
             if action == 6:
                 obs = env.step(GameAction.ACTION6, data={"x": xy[0], "y": xy[1]})
@@ -101,6 +160,7 @@ def main() -> None:
         if "GAME_OVER" in state or "WIN" in state:
             print(f"  {state} at {acted}")
             break
+    print(f"  detect on withdrawal={tool.detect([], obs):.2f}")
     print(f"{title} phase: {done} levels in {acted} actions  marks={marks}")
 
 
