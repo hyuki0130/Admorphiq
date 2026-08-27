@@ -39,11 +39,17 @@ GAMES = [
     "lp85", "ls20", "m0r0", "r11l", "re86", "s5i5", "sb26", "sc25", "sk48",
     "sp80", "su15", "tn36", "tr87", "tu93", "vc33", "wa30",
 ]
-# 500 and not 4000: MEASURED on the first kernel run, the fallback arm scored 0.6733 at 500
-# actions — equal to the ceph-build baseline at 4000 to four decimals. Budget is not the lever
-# on this set (a separate full-25 at 8000 was also identical), so the smaller cap buys wall
-# clock on the arm that costs 18x, and costs nothing.
-MAX_ACTIONS = int(os.environ.get("MAX_ACTIONS", "500"))
+# 4000, matching the ceph rounds. ⛔ It was 500, justified by a real measurement — the fallback
+# arm scored 0.6733 at 500 actions, equal to the ceph baseline at 4000 to four decimals — and
+# that justification EXPIRED without anyone rechecking it. As tools got deeper they got longer:
+# re86 now needs 1113 actions for 8/8 and wa30 needs 1783, so at 500 the kernel reported 0.4074
+# and 0.6222, which are their scores from before those tools existed. The routing comparison was
+# still valid because both arms were truncated identically, but the MEAN was not comparable to
+# anything, and it was quoted next to numbers it could not be compared with.
+#
+# A budget justified by "the scores match at both caps" has to be re-checked whenever the tools
+# change, which on this axis is every hour.
+MAX_ACTIONS = int(os.environ.get("MAX_ACTIONS", "4000"))
 # A subset for smoke-testing the plumbing off-Kaggle. Empty means all 25, which is what
 # the kernel runs. The plumbing is validated on one game locally before a push, because
 # every failure this kernel can have — a mount path, a stale dataset, a missing framework

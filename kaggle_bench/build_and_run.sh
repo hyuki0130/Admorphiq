@@ -28,9 +28,16 @@ trap 'rm -rf "$STAGE"' EXIT
 # The package must arrive as a real directory, so `--dir-mode zip` — the DEFAULT is `skip`,
 # which ignores directories and once produced an EMPTY dataset and a ModuleNotFoundError.
 # zip strips the top level, hence staging under src/.
+# ⛔ `git archive`, NOT `cp -R`. MEASURED 2026-08-27: `cp -R` copies the WORKING TREE, so a
+# background agent's half-finished tool shipped in the dataset and the kernel measured a tree
+# that exists in no commit — g50t came back at 0.7500 where the committed tree measures 0.5357.
+# A kernel run costs a GPU session; it must measure a COMMIT or it is not attributable. This is
+# the same moving-target trap that cost a full-25 run twice today, reached from a third
+# direction.
 mkdir -p "$STAGE/src" "$STAGE/scripts"
-cp -R src/admorphiq "$STAGE/src/"
-cp scripts/score_efficiency.py "$STAGE/scripts/"
+git archive HEAD src/admorphiq | tar -x -C "$STAGE" --strip-components=1
+mkdir -p "$STAGE/src" && mv "$STAGE/admorphiq" "$STAGE/src/" 2>/dev/null || true
+git archive HEAD scripts/score_efficiency.py | tar -x -C "$STAGE"
 find "$STAGE" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 echo "$COMMIT" > "$STAGE/COMMIT.txt"
 cat > "$STAGE/dataset-metadata.json" <<JSON
