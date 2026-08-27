@@ -22,6 +22,10 @@ graph, world_model, deadsig              25 of 25   general searchers, correctly
 dealias, llm_goal, paint, toggle          0 of 25   stateful; they bid only mid-game
 ```
 
+Re-measured the same evening after nine more tools landed: **38 specialists, the same three
+generalists, and still nothing in between.** The split is not an artifact of how many tools
+existed when it was first found — it survived a 30% increase in the set.
+
 Nothing in between. The tool set is not a spectrum of confidence — it is a set of specialists
 plus three generalists, and `detect` separates them cleanly.
 

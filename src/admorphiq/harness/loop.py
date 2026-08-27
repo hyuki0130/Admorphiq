@@ -71,8 +71,12 @@ _PRIMARY_CONF = 0.7
 # prints when the picked tool CHANGES, so thirty quiet minutes at 100% CPU look identical to a
 # stuck process and are not one.
 #
-# The cap is 4x the slowest game ever measured across the full 25 (ka59, 252s; all 25 together
-# take 774s), so it cannot bite a healthy game. It exists because the eval is 110 games inside a
+# The cap was set at 4x the slowest game then measured across the full 25 (ka59, 252s; all 25
+# together 774s). ⚠️ RE-MEASURED 2026-08-27 evening: the slowest is now ka59 at 100s and all 25
+# take 621s, so the same 1000 is a 10x margin — this one decayed in the SAFE direction, unlike
+# the no-progress bail below, which decayed the other way over the same afternoon. Both are
+# recorded rather than adjusted: a constant whose stated basis no longer holds is a constant
+# nobody can reason about, and the direction of the drift is not knowable without re-measuring. It exists because the eval is 110 games inside a
 # 9-hour cap, where one game like this is the whole budget. 0 disables it.
 _GAME_SECONDS = float(os.environ.get("HARNESS_GAME_SECONDS", "1000"))
 
@@ -235,7 +239,8 @@ class UnifiedAgent:
         # mechanic-recovery tools first precisely because they are the selective ones, so
         # registration order encodes "specialist before general searcher" — while the
         # alphabet encodes nothing. MEASURED 2026-08-27 across the 25 boards: twenty-nine
-        # tools bid on EXACTLY ONE board each; only graph, world_model and deadsig bid on
+        # tools bid on EXACTLY ONE board each (THIRTY-EIGHT by that evening — the split stayed clean,
+        # nothing has ever landed in between); only graph, world_model and deadsig bid on
         # all 25. Exactly one board has a tied top bid — cn04, at 0.45 between `assemble`
         # (claims 1 board) and `graph` (claims 25) — and it is the one game the LLM path
         # lost. Preferring the specialist picks `assemble`, which scores 1.0000 where graph
