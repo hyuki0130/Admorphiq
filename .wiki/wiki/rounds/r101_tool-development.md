@@ -1318,3 +1318,28 @@ at the last level for game-specific reasons, and the per-game agent split is the
 of how the work is ordered: an agent takes the deepest level it can reach, so "the level we are
 stuck on" is always the last one we have not cleared, and in a game we have nearly finished that
 is the final level by definition.
+
+### Every stuck game is DETERMINISTIC — retries buy nothing (2026-08-27)
+
+All eight games with headroom left, run twice each at @4000 (`scripts/rounds/R101DET`):
+
+```
+bp35 (0.1648, 5, 1508)   dc22 (0.7143, 5, 1626)   g50t (0.7500, 6, 1462)   ka59 (0.7500, 6, 1404)
+lf52 (0.2727, 5, 1520)   ls20 (0.7500, 6, 1629)   s5i5 (0.4204, 6, 1622)   wa30 (0.8000, 8, 1801)
+```
+
+Score, level count and total actions are **identical across both runs of all eight**, and so are
+the per-level action counts. Not one is stochastic.
+
+Two consequences, and both save work:
+
+* **No retry, resample or budget change can help any of these.** A stochastic failure is worth
+  re-running; a deterministic one is a fact about the tool and only a code change moves it. That
+  closes an axis for eight agents at once.
+* **Every measurement of a stuck game is reproducible to the action.** A tool author can compare
+  a change against an exact prior trace rather than a distribution, which is why single-run
+  before/after numbers have been trustworthy all round — this measures the assumption they rested
+  on rather than assuming it.
+
+⚠️ It also means a fix that "sometimes works" is not a fix here: if a change makes a level clear,
+it will clear every time, and if it does not, no amount of running will surface it.
