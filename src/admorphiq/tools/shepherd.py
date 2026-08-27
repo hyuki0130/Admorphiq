@@ -59,25 +59,55 @@ walks, and taking those over cost 13 and 21 extra actions apiece for nothing. Wi
 first seven levels are cleared in exactly the incumbent's own action counts, to the action.
 
 ⛔ PARKED, with what would refute it — the FINAL board of this game is not cleared. Nine pieces,
-70 actions declared, and the counts say why: the carrier and the helper deliver four each on a
-good run — eight of nine, seven on a bad one — and the ninth never lands. One of the two helpers
-is sealed behind a band the carrier cannot walk on and MOVES ZERO CELLS IN SEVENTY ACTIONS, so the
-board really has one helper, not two. Of
-the 70 actions, 9 are latches, 20 are towing, 6 are turns-or-refusals and 45 are the carrier
-walking to the next piece; only about two of those are recoverable. Measured against it and
-beaten by none: five ranking rules (cheapest plan, farthest-from-a-mover, chain-the-drop,
-cost-to-finish at four weights, hand-off to a helper at four caps), 300 randomised target orders,
-and a beam search over whole deliveries using EXACT engine state rather than frames.
+70 actions declared. One of the two helpers is sealed behind a band the carrier cannot walk on and
+MOVES ZERO CELLS IN SEVENTY ACTIONS, so the board has one helper, not two. Counted by who put each
+piece in its bay:
+
+    carrier does nothing          carrier 0  helper 3
+    carrier polices, never hauls  carrier 0  helper 4
+    carrier hauls, never polices  carrier 2  helper 4
+    carrier does both             carrier 3  helper 5   = 8 of 9
+
+⚠️ Read the third column, not the first: the carrier's hauling is worth FOUR to the board and only
+three of those are its own — taking the far pieces leaves the one working helper a nearer one every
+time, which is what carries it from four to five. That is the rule below doing its job, and it is
+why weighting the bias instead of applying it lexicographically scores SEVEN at every one of eight
+weights tried. Of the 70 actions, 9 are latches, 20 are towing, 6 are turns-or-refusals and 45 are
+the carrier walking to the next piece; about two are recoverable.
+
+Beaten by none of: five ranking rules, eight weightings of that bias, four drop-cell rules, five
+bay-choice rules, five hand-off caps, 300 randomised target orders, and four beam searches over
+whole deliveries using EXACT engine state rather than frames.
 
 ⚠️ It is a THROUGHPUT claim, not a reachability one, and the difference was nearly banked wrongly:
 twice the beam reported "no further deliveries possible" and twice that was false — the ninth
 piece was loose, grippable from all four sides, with free bays to tow it into. The plan for it
 simply cost 16 actions with 7 left, because a schedule ranked on "most delivered soonest" spends
 the budget on near pieces and strands the far one. So what refutes this park is any schedule that
-banks eight with sixteen actions to spare, or any mechanism that lifts the working helper past
-four deliveries in seventy. Two are untested here: reading the budget the board DRAWS (see
-`tools/budget.py`) so the carrier can decline a plan it cannot finish and stand still instead, and
-standing in a helper's way to push it onto a nearer piece.
+banks eight with sixteen actions to spare, or any mechanism that lifts the pair past eight. One is
+still untested: reading the budget the board DRAWS (see `tools/budget.py`) so the carrier can
+decline a plan it cannot finish and stand still instead. Steering the helper by standing in its way
+is NOT untested any more and is the weaker idea it first looked: the carrier already moves the
+helper from three to five just by choosing far pieces, so what is left to steer is small.
+
+⛔ The final board's NEW elements were checked against what this tool believes them to be, and the
+model is right about all three. Its hazard band reads blocked-and-porous, and the engine forbids
+the carrier there while letting a towed piece ride over — the same rule. Its two bay shapes read as
+bays. Its thief region reads as the second destination. The only thing the reader misses is two
+goal cells sealed in a pocket above the hazard, and those are exactly the two of thirteen that no
+carrier can deliver into, so the reader's eleven usable bays is the right number for nine pieces.
+The second helper is sealed in that same pocket: the carrier cannot reach even a cell beside it,
+which is why it moves zero cells in seventy actions.
+
+⚠️ So "the plan stalls" is not what happens here, and it is worth saying because the two look alike
+from outside: of the 70 actions this tool spends on that board, 55 move the carrier and 9 are latches
+that all do something — four grips, four releases and one kill. Six change nothing and most of those
+are turns. The tool acts on nearly every action it has and still finishes a piece short.
+
+⚠️ One instrument had to be fixed before any of this could be read. Counting delivery EVENTS
+credited the helper with five on a board where three of its pieces were still in a bay — the thief
+takes a delivered piece back out and the same piece is delivered twice. Count distinct pieces
+RESTING in a bay at the end, credited to whoever last held them.
 
 ⛔ Frame-only, and the pixel reading is NOT re-derived here. Which tile is a piece, which is the
 carrier and which way it faces, which rectangle is a bay, what blocks a move and what is porous
@@ -291,6 +321,7 @@ class ShepherdRelayTool:
             self._blinks += 1
             return [] if self._blinks > 3 else [(_MOVES[0], None)]
         self._blinks = 0
+        self._unsee(board, grid)
         self._judge(board)
         held = self._offset
         action = self._decide(board)
@@ -328,6 +359,40 @@ class ShepherdRelayTool:
         if nxt not in board.blocked:
             return True
         return held is not None and nxt == (board.carrier[0] + held[0], board.carrier[1] + held[1])
+
+    def _unsee(self, board: _Board, grid: np.ndarray) -> None:
+        """Take back the porosity of any cell whose own tile has NOTHING to see through.
+
+        ⛔ Porosity is what lets a piece be towed through furniture the carrier cannot follow into,
+        and the reader decides it per REGION: furniture is porous when its own colour seals a pocket
+        of background. A wall that happens to CLOSE OFF a pocket satisfies that as surely as a
+        barrier with holes punched in it. Measured on the final board of this game — where a
+        vertical wall touches a hazard band and together they seal a corner — eight of the fifty
+        wall cells came back porous, and the planner believed it could hand a piece straight
+        through solid wall into a sealed pocket.
+
+        A cell can only be seen through if its OWN tile shows some floor: a solid wall tile is
+        sixteen pixels of one colour with nothing behind it, while the hazard tile that IS porous
+        here is drawn with the floor showing between its marks. That test keeps all six real ones
+        and drops all eight false ones.
+
+        ⚠️ Measured NEUTRAL, on the final board and on every level before it — the plans that
+        routed through those cells were not ones the carrier had time to take anyway. Kept because
+        it is a wrong belief about a solid object rather than a tuning choice, and the next board
+        it meets may not be so forgiving.
+        """
+        side = board.side
+        if not side or not board.porous:
+            return
+        oy, ox = board.origin
+        floor = self._floor(grid)
+        bogus = set()
+        for (r, c) in board.porous:
+            tile = grid[oy + r * side:oy + (r + 1) * side, ox + c * side:ox + (c + 1) * side]
+            if not (tile == floor).any():
+                bogus.add((r, c))
+        board.porous -= bogus
+        self._eyes._screens -= bogus
 
     def _sight(self, board: _Board, grid: np.ndarray) -> None:
         """Which colours WALK, and where every actor of one is standing — bays included.

@@ -291,6 +291,152 @@ def harness(title: str, cap: int, drop: list[str]) -> int:
     return 0
 
 
+def overlay(path: str, levels: list[int]) -> int:
+    """Is the board this tool reads the board the engine has? Layers, then a geometric binding.
+
+    ⛔ Why this exists. A level that introduces elements the SIZE OF THE SCREEN reads like an overlay,
+    and "a plan is produced, actions are spent, nothing that matters moves" is exactly what a correct
+    plan aimed at an overlay would look like. It is also exactly what a correct plan aimed at the real
+    board looks like when the model of one object is wrong — the two are indistinguishable from
+    outside the tool. This separates them: it prints the layer count on entry, then binds every piece
+    the tool parsed to the sprite standing exactly where it is. A piece that binds to no sprite is a
+    phantom the tool invented; a screen-sized sprite that never becomes a piece is scenery, correctly
+    ignored.
+    """
+    from admorphiq.tools.blastclock import charges_of, fuse_pieces
+    from admorphiq.tools.slotlaunch import read_board
+
+    for level in levels:
+        game = _load_game(path)
+        game.set_level(level)
+        g = np.asarray(game.camera.render(game.current_level.get_sprites())).astype(np.int64)
+        board = read_board(g)
+        # ⛔ Bind BEFORE spending an action. The first version measured the layer count first, and
+        # that press moved a piece, so every binding compared a pre-press parse against a post-press
+        # board and reported the tool as inventing phantoms on levels it clears.
+        print(f"level {level}: grid {game.current_level.grid_size} frame {g.shape}")
+        if board is None:
+            print("    board does not parse")
+            continue
+        board = fuse_pieces(board, g)
+        charges = charges_of(board, g)
+        sprites = list(game.current_level.get_sprites())
+        try:
+            bound, off = _bind(game, board)
+        except SystemExit as exc:
+            print(f"    BINDING FAILED: {exc}")
+            continue
+        print(f"    camera offset {off}; {len(board.pieces)} pieces all bound to distinct sprites")
+        for p, s in zip(board.pieces, bound, strict=True):
+            role = "charge" if any(c.idx == i and True for i, c in charges.items()
+                                   if board.pieces[i] is p) else "piece"
+            print(f"      {role:<7} {p.h}x{p.w} at {p.pos}  <- sprite {s.height}x{s.width}")
+        big = [s for s in sprites if s.height * s.width >= g.shape[0] * g.shape[1] // 2]
+        for s in big:
+            print(f"      scenery {s.height}x{s.width} at (y={s.y}, x={s.x}) — not a piece")
+        print(f"      outlines {[(max(y for y, x in m) + 1, max(x for y, x in m) + 1) for m in board.shapes]}"
+              f" at {board.targets}")
+        print(f"      layers rendered by one press: {_entry_layers(game)}")
+    return 0
+
+
+def _entry_layers(game: Any) -> int:
+    """How many frames one action renders on this board — an animation's own timeline."""
+    from arcengine.enums import ActionInput, GameAction
+    fd = game.perform_action(ActionInput(id=GameAction.ACTION1, data={}))
+    return int(np.asarray(fd.frame).shape[0])
+
+
+def walls(path: str, levels: list[int]) -> int:
+    """Does the read resolve the board's wall network into corridors, one blob, or nothing?
+
+    ⛔ The question this answers is upstream of every planner change, so it is asked of the read
+    itself rather than inferred from a score. A board-spanning wall sprite drawn at 15% opacity is
+    exactly the case where a connected-components pass keyed on opaque pixels would return ONE object
+    covering the whole field; a tool in that state plans straight through walls, spends its actions
+    and moves nothing — which is indistinguishable from a planning failure from outside the tool.
+
+    So this prints, per level: the wall colour, whether it is distinct from the floor, how many cells
+    it paints, how many components those cells form, and — the number that actually decides it — how
+    many DISCONNECTED regions the free space breaks into on the tool's own lattice. One region means
+    the wall network is not being seen. More than one means it is, corridor by corridor.
+    """
+    from admorphiq.tools.blastclock import Sim, charges_of, fuse_pieces
+    from admorphiq.tools.slotlaunch import read_board
+
+    for level in levels:
+        game = _load_game(path)
+        game.set_level(level)
+        g = np.asarray(game.camera.render(game.current_level.get_sprites())).astype(np.int64)
+        board = read_board(g)
+        if board is None:
+            print(f"level {level}: board does not parse")
+            continue
+        board = fuse_pieces(board, g)
+        sim = Sim(board, charges_of(board, g))
+        big = max(game.current_level.get_sprites(),
+                  key=lambda s: s.height * s.width)
+        opaque = int((np.asarray(big.pixels) != -1).sum())
+        area = big.height * big.width
+        print(f"level {level}: biggest sprite {big.height}x{big.width} at (y={big.y}, x={big.x}), "
+              f"{opaque}/{area} = {100 * opaque / area:.0f}% opaque")
+        print(f"    floor colour {board.floor}; wall cells {int(board.walls.sum())} "
+              f"({'DISTINCT from floor' if board.walls.sum() else 'NONE — read as background'}); "
+              f"glide cells {int(board.glide.sum())}")
+        print(f"    wall mask forms {_regions(board.walls)} connected components")
+        for i, p in enumerate(board.pieces):
+            if not p.clickable:
+                continue
+            free, parts = _lattice_regions(sim, i)
+            print(f"    piece {i} {p.h}x{p.w}: {free} standable lattice squares in "
+                  f"{parts} DISCONNECTED region(s)")
+    return 0
+
+
+def _regions(mask: np.ndarray) -> int:
+    """How many 4-connected components a boolean mask has."""
+    seen = np.zeros_like(mask, dtype=bool)
+    h, w = mask.shape
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            if not mask[y][x] or seen[y][x]:
+                continue
+            n += 1
+            stack = [(y, x)]
+            seen[y][x] = True
+            while stack:
+                cy, cx = stack.pop()
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < h and 0 <= nx < w and mask[ny][nx] and not seen[ny][nx]:
+                        seen[ny][nx] = True
+                        stack.append((ny, nx))
+    return n
+
+
+def _lattice_regions(sim: Any, i: int) -> tuple[int, int]:
+    """(standable squares, how many disconnected regions they form) for one piece."""
+    from admorphiq.tools.blastclock import _DIRS
+    tab = sim.b.walk_ok[i]
+    s = sim.s
+    py, px = sim.base[i][0] % s, sim.base[i][1] % s
+    good = {(py + iy * s, px + ix * s)
+            for iy in range(tab.shape[0]) for ix in range(tab.shape[1]) if tab[iy][ix]}
+    left = set(good)
+    parts = 0
+    while left:
+        parts += 1
+        stack = [left.pop()]
+        while stack:
+            cur = stack.pop()
+            for dy, dx in _DIRS.values():
+                nb = (cur[0] + dy * s, cur[1] + dx * s)
+                if nb in left:
+                    left.discard(nb)
+                    stack.append(nb)
+    return len(good), parts
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print(__doc__)
@@ -305,6 +451,10 @@ def main() -> int:
         return validate(path, level, trials, presses, seed)
     if cmd == "play":
         return play(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 1500)
+    if cmd == "walls":
+        return walls(sys.argv[2], [int(v) for v in sys.argv[3].split(",")])
+    if cmd == "overlay":
+        return overlay(sys.argv[2], [int(v) for v in sys.argv[3].split(",")])
     if cmd == "harness":
         return harness(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 1500,
                        sys.argv[4].split(",") if len(sys.argv) > 4 else [])

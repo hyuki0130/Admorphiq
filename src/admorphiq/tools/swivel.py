@@ -39,7 +39,8 @@ configuration is carried in the model and only CHECKED against the frame.
 
 from __future__ import annotations
 
-from collections import deque
+import heapq
+from collections import Counter
 from dataclasses import dataclass, field
 from itertools import permutations
 from typing import Any
@@ -71,8 +72,15 @@ _MAX_PLAN = 60
 # Configurations to open before giving up. The reachable space is small — a handful of bars,
 # four orientations each and a short length range — so this is generous, not hopeful.
 _MAX_OPEN = 120_000
+# How hard the search leans on the distance estimate. A turn can carry a rider a long way, so
+# this is not admissible and the answer is not guaranteed shortest; at 2 it stays close.
+_WEIGHT = 2
 # Attempts to characterise one control before giving up on it for this level.
 _MAX_TRIES = 2
+# How many times a control that could not be read at all may be asked again later, once the
+# board has moved. Cheap: each attempt is one click, and a control that never answers is simply
+# left out of the move set.
+_MAX_RETRIES = 1
 
 
 # --- geometry ----------------------------------------------------------------
@@ -182,6 +190,8 @@ class _Model:
     turn_of: dict[int, int]                 # one-way control index -> colour it drives
     parent: list[int]                       # immediate parent bar, or -1
     wall: Any = None                        # rasterised immovable furniture, padded
+    illegal: set[Any] = field(default_factory=set)   # configurations the engine has refused
+    offblocked: set[Cell] = field(default_factory=set)   # cells OUTSIDE the grid known to be solid
     static: set[Cell] = field(default_factory=set)
     places: list[Cell] = field(default_factory=list)
     riders: list[int] = field(default_factory=list)     # bar indices that carry a rider
@@ -256,8 +266,26 @@ _PAD = 72
 
 
 def legal(model: _Model, cfg: Config) -> bool:
-    """No two moving boxes may overlap, and none may enter the immovable furniture."""
+    """No two moving boxes may overlap, none may enter the furniture, none may be refused.
+
+    ⛔ A REFUSED CONFIGURATION IS BANNED GLOBALLY, not the move that reached it. What the engine
+    tests is the shape of the whole board after the click, so a configuration it rejects is
+    rejected however it is reached — and banning the edge instead lets the search walk to the
+    same illegal place by another route and be refused again. Measured on the board framed by a
+    wall that extends OUTSIDE the visible grid: the model cannot see that furniture at all, so
+    77 of 189 planned actions came back refused until refusals were banked by configuration.
+    """
+    if cfg.key() in model.illegal:
+        return False
     boxes = [b for b, _e in cfg.bars] + list(cfg.freight)
+    if model.offblocked:
+        for y0, x0, y1, x1 in boxes:
+            if y0 >= 0 and x0 >= 0 and y1 <= 63 and x1 <= 63:
+                continue
+            for y in range(y0, y1 + 1):
+                for x in range(x0, x1 + 1):
+                    if (y < 0 or x < 0 or y > 63 or x > 63) and (y, x) in model.offblocked:
+                        return False
     for n, a in enumerate(boxes):
         if a[0] > a[2] or a[1] > a[3]:
             return False
@@ -317,35 +345,161 @@ def choose_pairing(model: _Model, cfg: Config) -> bool:
     return True
 
 
-def plan(model: _Model, start: Config, moves: list[tuple[str, int, int]]) -> list[int] | None:
-    """Shortest legal click sequence to a solved board, as indices into `moves`.
+def _distance(model: _Model, cfg: Config) -> int:
+    """Cells every rider still has to travel, under the pairing in force."""
+    if model.pairing is None:
+        return 0
+    total = 0
+    for place_i, bar in model.pairing:
+        here = rider_at(cfg, bar)
+        goal = model.places[place_i]
+        total += abs(goal[0] - here[0]) + abs(goal[1] - here[1])
+    return total
 
-    A breadth-first walk, and deliberately so. The reachable configuration space of a handful of
-    jointed bars is small — four orientations each and a short length range — so the shortest
-    answer is affordable outright, and shortest is exactly what the scoring wants.
+
+def touches(model: _Model, colour: int) -> frozenset[int]:
+    """Which riders a control of this colour can move at all."""
+    driven = model.of_colour(colour)
+    reach = set(driven)
+    for i in driven:
+        reach |= set(model.kids[i])
+    return frozenset(r for r in model.riders if r in reach)
+
+
+def _seek(model: _Model, start: Config, moves: list[tuple[str, int, int]],
+          allowed: list[int], place_i: int, bar: int,
+          banned: set[tuple[Any, int]] | None = None) -> tuple[list[int], Config] | None:
+    """Best-first for ONE rider onto ONE destination, using only the moves that can move it."""
+    goal = model.places[place_i]
+
+    def gap(cfg: Config) -> int:
+        here = rider_at(cfg, bar)
+        return abs(goal[0] - here[0]) + abs(goal[1] - here[1])
+
+    if gap(start) == 0:
+        return ([], start)
+    seen = {start.key(): 0}
+    heap: list[tuple[int, int, int, Config, list[int]]] = [(gap(start), 0, 0, start, [])]
+    tick = opened = 0
+    while heap:
+        _f, _d, _t, cfg, path = heapq.heappop(heap)
+        opened += 1
+        if opened > _MAX_OPEN or len(path) >= _MAX_PLAN:
+            continue
+        for n in allowed:
+            if banned and (cfg.key(), n) in banned:
+                continue
+            kind, colour, step = moves[n]
+            nxt = grow(model, cfg, colour, step) if kind == "grow" else swivel(model, cfg, colour)
+            if nxt is None:
+                continue
+            key = nxt.key()
+            cost = len(path) + 1
+            if seen.get(key, 1 << 30) <= cost or not legal(model, nxt):
+                continue
+            if gap(nxt) == 0:
+                return ([*path, n], nxt)
+            seen[key] = cost
+            tick += 1
+            heapq.heappush(heap, (cost + _WEIGHT * gap(nxt), cost, tick, nxt, [*path, n]))
+    return None
+
+
+def plan(model: _Model, start: Config, moves: list[tuple[str, int, int]],
+         banned: set[tuple[Any, int]] | None = None) -> list[int] | None:
+    """A click sequence to a solved board.
+
+    ⛔ SOLVE THE RIDERS ONE AT A TIME WHERE THE CONTROLS ALLOW IT. This began as a joint search
+    on the assumption that "a handful of jointed bars, four orientations each" is a small space;
+    MEASURED on the seventh board it is over 336,000 configurations and still growing when cut
+    off, from six bars and eleven controls, and no joint search gets near a state with BOTH
+    riders home.
+
+    But that board never needed a joint search: no control there moves more than one rider —
+    one control drives the first rider's arm and nothing else, five drive the second's. When
+    that holds, the riders are independent problems and a control used for one cannot disturb
+    the other, so they are solved in sequence and the plans concatenated. Legality is still
+    checked at every single step, so arms from different chains cannot pass through each other.
+    Order can matter when one chain parks across the other's route, so both orders are tried.
     """
     if solved(model, start):
         return []
-    seen = {start.key()}
-    queue: deque[tuple[Config, list[int]]] = deque([(start, [])])
-    opened = 0
-    while queue:
-        cfg, path = queue.popleft()
+    if not model.pairing:
+        return None
+    reach = [touches(model, colour) for _k, colour, _s in moves]
+    if len(model.pairing) > 1 and all(len(t) <= 1 for t in reach):
+        for order in permutations(model.pairing):
+            cfg = start
+            out: list[int] = []
+            for place_i, bar in order:
+                allowed = [n for n, t in enumerate(reach) if bar in t]
+                got = _seek(model, cfg, moves, allowed, place_i, bar, banned)
+                if got is None:
+                    break
+                out += got[0]
+                cfg = got[1]
+            else:
+                if solved(model, cfg):
+                    return out
+    allowed_all = list(range(len(moves)))
+    for place_i, bar in model.pairing:
+        got = _seek(model, start, moves, allowed_all, place_i, bar, banned)
+        if got is not None and solved(model, got[1]):
+            return got[0]
+    return _joint(model, start, moves, banned)
+
+
+def _joint(model: _Model, start: Config, moves: list[tuple[str, int, int]],
+           banned: set[tuple[Any, int]] | None = None) -> list[int] | None:
+    """Everything at once — the fallback for boards whose riders share a control."""
+    seen = {start.key(): 0}
+    heap: list[tuple[int, int, int, Config, list[int]]] = [
+        (_distance(model, start), 0, 0, start, [])]
+    tick = opened = 0
+    while heap:
+        _f, _d, _t, cfg, path = heapq.heappop(heap)
         opened += 1
         if opened > _MAX_OPEN or len(path) >= _MAX_PLAN:
             continue
         for n, (kind, colour, step) in enumerate(moves):
+            if banned and (cfg.key(), n) in banned:
+                continue
             nxt = grow(model, cfg, colour, step) if kind == "grow" else swivel(model, cfg, colour)
-            if nxt is None or nxt.key() in seen or not legal(model, nxt):
+            if nxt is None:
+                continue
+            key = nxt.key()
+            cost = len(path) + 1
+            if seen.get(key, 1 << 30) <= cost or not legal(model, nxt):
                 continue
             if solved(model, nxt):
                 return [*path, n]
-            seen.add(nxt.key())
-            queue.append((nxt, [*path, n]))
+            seen[key] = cost
+            tick += 1
+            heapq.heappush(heap, (cost + _WEIGHT * _distance(model, nxt), cost, tick,
+                                  nxt, [*path, n]))
     return None
 
 
 # --- building the model from the board ----------------------------------------
+
+
+def _widget_colour(g: np.ndarray, wd: Any) -> int | None:
+    """The bar colour a control names, read off its own artwork.
+
+    A one-way control is drawn as a cross and its centre cell IS the colour. A two-way control
+    carries the same colour as glyphs either side of its divider: inside the frame, drop the
+    border, the fill it repeats most, and the divider line, and what is left is the name.
+    """
+    y0, x0, y1, x1 = wd.box
+    if not wd.two_way:
+        return int(g[(y0 + y1) // 2][(x0 + x1) // 2])
+    inner = g[y0 + 1:y1, x0 + 1:x1]
+    counts = Counter(int(v) for v in inner.ravel())
+    if len(counts) < 3:
+        return None
+    ranked = [c for c, _n in counts.most_common()]
+    rest = ranked[2:]                     # the fill and the divider are the two commonest
+    return rest[0] if rest else None
 
 
 def _rasterise(cells: set[Cell]) -> Any:
@@ -389,18 +543,26 @@ def read_board(g: np.ndarray, widgets: list[Any], marker: int) -> _Reading | Non
     # (27,3)-(41,8) and (27,18)-(41,59), which makes every configuration illegal. Anything that
     # is not a rectangle is furniture until a probe proves otherwise.
     freight: list[Box] = []
-    fixed: set[Cell] = set()
     for j, p in enumerate(pieces):
         if j in owned or j in stripes:
             continue
         if p.rect:
             freight.append(p.box)
-        else:
-            fixed |= set(p.cells)
     marks = read_markers(g, marker)
     if marks is None:
         return None
     solid, _ = solid_cells(g, marker, boxes)
+    # ⛔ The immovable background is what is LEFT OVER, never what a classifier labelled. Sorting
+    # pieces into "rectangle, so it might be carried" and "not, so it is furniture" leaves a hole
+    # wherever the reading disagrees with itself — measured, 108 cells of one board's wall
+    # belonged to neither list and every reading of the next click was then rejected for failing
+    # to explain them. Subtracting what IS accounted for cannot leave a hole.
+    claimed: set[Cell] = set()
+    for box, _e in bars:
+        claimed |= _box_cells(box)
+    for box in freight:
+        claimed |= _box_cells(box)
+    fixed = solid - claimed
     return _Reading(bars, [pieces[i].colour for i, _e in found], freight,
                     list(marks.places), solid, fixed)
 
@@ -425,6 +587,8 @@ class SwivelArmTool:
         self._probe = 0
         self._fixed: set[Cell] = set()
         self._chrome: set[Cell] = set()
+        self._named: list[int | None] = []
+        self._banned: set[tuple[Any, int]] = set()
         self._tries: list[int] = []
         self._moved: dict[int, set[int]] = {}          # control index -> piece indices that moved
         self._driven: dict[int, int] = {}
@@ -504,6 +668,7 @@ class SwivelArmTool:
         if reading is None:
             return False
         self._controls = [("grow" if w.two_way else "turn", w) for w in self._widgets]
+        self._named = [_widget_colour(g, w) for w in self._widgets]
         self._tries = [0] * len(self._controls)
         self._cfg = Config(tuple(reading.bars), tuple(reading.freight))
         self._fixed = set(reading.fixed)
@@ -512,13 +677,23 @@ class SwivelArmTool:
             off[y0:y1 + 1, x0:x1 + 1] = True
         off[-1, :] = True
         self._chrome = {(int(y), int(x)) for y, x in zip(*np.where(off))}
+        # ⛔ Where a rider IS drawn it pins the choice for free, and ignoring that turns two
+        # candidates into thirty. The rule is the one measured for the telescoping tool on all
+        # sixteen boards of both serializations: a rider sits on the unit at its bar's far end.
+        # Where none is drawn — the archived re-render paints them under their bars — every bar
+        # is a candidate again and the board refutes the wrong ones.
+        marks = read_markers(g, self._marker)
+        drawn = set(marks.movers) if marks else set()
+        pinned = [i for i in range(len(reading.bars))
+                  if rider_at(self._cfg, i) in drawn]
+        riders = pinned if len(pinned) >= len(reading.places) else list(range(len(reading.bars)))
         self._model = _Model(colours=reading.colours,
                              kids=[[] for _ in reading.bars],
                              load=[[] for _ in reading.bars],
                              grow_of={}, turn_of={},
                              parent=[-1] * len(reading.bars),
                              places=reading.places,
-                             riders=list(range(len(reading.bars))))
+                             riders=riders)
         return True
 
     # -- probing: one click per control tells us what it carries -----------
@@ -530,10 +705,50 @@ class SwivelArmTool:
         ctrl, step, learning = self._pending
         self._pending = None
         if refused:
+            # ⛔ BAN THE REFUSED EDGE. Clearing the plan and re-planning from an unchanged board
+            # produces the same move and the same refusal — a loop that spends the level's whole
+            # budget without moving a single bar, which is what lost one board at exactly its
+            # 200-action limit. Whether the refusal means the model is wrong or merely
+            # incomplete, the edge is not available from here and the search must know it.
+            if not learning and self._cfg is not None and self._model is not None:
+                kind, colour, delta = self._moves[ctrl]
+                want = (grow(self._model, self._cfg, colour, delta) if kind == "grow"
+                        else swivel(self._model, self._cfg, colour))
+                if want is not None:
+                    self._model.illegal.add(want.key())
+                    # ⛔ A refusal the model did not see coming is EVIDENCE about the BOARD, not
+                    # just about this move. One level here is framed by a board-spanning wall
+                    # placed at (-3,-3) — three cells outside the visible grid on every side —
+                    # so the space past the edge is solid and a frame-only tool cannot see any
+                    # of it. If the refused move would have put a bar over the edge, that is the
+                    # explanation, and it holds everywhere. LEARNED, never assumed: the level
+                    # before this one swings a bar off the top edge and is ALLOWED to, so a tool
+                    # that blocks the margin by default loses that level instead.
+                    # ⛔ Learn the hidden furniture CELL BY CELL, not as "the margin is solid".
+                    # The geometry sprite is only about a fifth opaque, so most of the space
+                    # outside the grid is free; blocking all of it cuts refusals but makes the
+                    # level unsolvable. When a refusal cannot be explained on-board, at least
+                    # one of the cells the move would have occupied OUTSIDE the grid is solid,
+                    # so those are banked — a superset, but a learned and shrinking one.
+                    fresh = {(y, x)
+                             for b, _e in want.bars
+                             for y in range(b[0], b[2] + 1)
+                             for x in range(b[1], b[3] + 1)
+                             if y < 0 or x < 0 or y > 63 or x > 63}
+                    self._model.offblocked |= fresh
             self._plan = []
             return True
         if learning:
-            return self._identify(g, ctrl, step)
+            got = self._identify(g, ctrl, step)
+            if got:
+                # A newly readable control changes what is reachable, so the move set and every
+                # rider guess retired against the old one are both rebuilt.
+                self._moves = []
+                self._plan = []
+                if self._model is not None:
+                    self._model.pairing = None
+                    self._model.refuted.clear()
+            return True
         # ⛔ Verify by PREDICTION, never by re-reading the bars. A turn parks bars against each
         # other and the "exactly one anchor" reading then loses them; the model is the truth and
         # the frame only has to agree with it where it can be seen.
@@ -578,6 +793,11 @@ class SwivelArmTool:
                 # discarded for predicting nine cells above row zero.
                 cells = {c for c in self._cells(trial, keep_freight=False)
                          if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1]}
+                # ⛔ A bar can travel UNDER A WIDGET. The controls are drawn over the board, so
+                # any bar cell inside a widget's box is unobservable — and comparing it against
+                # what was rendered rejects the one reading that is right. Measured on this
+                # family's seventh board, where a turn puts a bar across the control panel.
+                cells -= self._chrome
                 if not cells <= (seen | marked):
                     continue
                 # ⛔ The test must be COLOUR-AWARE. Bars parked end to end make "this bar grew
@@ -588,7 +808,7 @@ class SwivelArmTool:
                 if not self._colours_fit(g, trial, marked):
                     continue
                 free, moved_f = self._fit_freight(cfg, trial, driven, kids, kind, step, seen, marked)
-                whole = cells | free | self._fixed
+                whole = (cells | free | self._fixed) - self._chrome
                 on = {c for c in whole if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1]}
                 if seen <= on and (on - seen) <= marked:
                     if winner is not None and winner[1] != driven:
@@ -693,6 +913,7 @@ class SwivelArmTool:
         for colour, cells in want.items():
             here = {(int(y), int(x)) for y, x in zip(*np.where(g == colour))}
             here -= self._chrome
+            cells = cells - self._chrome
             if not (cells - marked) <= here or not here <= cells:
                 return False
         return True
@@ -716,6 +937,7 @@ class SwivelArmTool:
             want |= {(y, x) for y in range(box[0], box[2] + 1) for x in range(box[1], box[3] + 1)}
         if model.wall is not None:
             want |= model.static
+        want -= self._chrome
         boxes = [w.box for w in self._widgets]
         seen, marked = solid_cells(g, self._marker or 0, boxes)
         on = {c for c in want if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1]}
@@ -739,12 +961,31 @@ class SwivelArmTool:
             self._dead = True
             return []
         if not self._plan and not self._replan():
+            # ⛔ A control that was JAMMED when first tried may be free now. Three of one board's
+            # nine were unreadable at probe time — their bars could not move from where they
+            # stood — and the rider that needs them then has no route at all. The board has
+            # moved since; ask them again before giving up. MEASURED: the other rider's whole
+            # answer is one click, so the level turns entirely on the controls that were skipped.
+            again = self._retry_unknown()
+            if again is not None:
+                return [again]
             self._dead = True
             return []
         n = self._plan.pop(0)
         kind, _colour, delta = self._moves[n]
         self._pending = (n, delta if kind == "grow" else 0, False)
         return [self._click(self._move_ctrl[n], delta if kind == "grow" else 1)]
+
+    def _retry_unknown(self) -> Step | None:
+        """Probe one control the first pass could not read, now that the board has changed."""
+        for ctrl in range(len(self._controls)):
+            if ctrl in self._moved or self._tries[ctrl] >= _MAX_RETRIES:
+                continue
+            step = 1 if self._tries[ctrl] % 2 == 0 else -1
+            self._tries[ctrl] += 1
+            self._pending = (ctrl, step, True)
+            return self._click(ctrl, step)
+        return None
 
     def _click(self, ctrl: int, step: int) -> Step:
         kind, wd = self._controls[ctrl]
@@ -770,9 +1011,35 @@ class SwivelArmTool:
         for ctrl, moved in self._moved.items():
             _ = moved
             driven[ctrl] = self._driven[ctrl]
-        if len(driven) != len(self._controls):
+        # ⛔ A control that could only ever be REFUSED still has a colour, and a bar's subtree is
+        # a property of the board rather than of whichever control revealed it. So a turn that
+        # is jammed everywhere it was tried is recovered from its own artwork: the colour names
+        # its bar, and what that bar carries is already known from any other control that drove
+        # it. MEASURED: three of one board's nine controls are refused at every attempt, they
+        # are all turns, and the rider that needs them has no route without this.
+        for ctrl in range(len(self._controls)):
+            if ctrl in driven:
+                continue
+            colour = self._named[ctrl] if ctrl < len(self._named) else None
+            if colour is None:
+                continue
+            owns = [i for i, c in enumerate(model.colours) if c == colour]
+            if len(owns) != 1:
+                continue
+            bar = owns[0]
+            if bar not in set(driven.values()):
+                continue                  # nothing has told us what this bar carries
+            driven[ctrl] = bar
+        if not driven:
             return False
+        # ⛔ A control the probe could not characterise is DROPPED, not fatal. Its bars can be
+        # jammed at the moment it is tried and a turn has no opposite click to retry with, so
+        # demanding all of them means one blocked control discards a board the rest could solve.
+        # Planning simply proceeds without it; if the answer needs it, no plan is found and the
+        # tool says so.
         for ctrl, bar in driven.items():
+            if ctrl not in self._moved:
+                continue                  # colour-recovered: its bar's subtree is already set
             subtree = sorted(i for i in self._moved[ctrl] if i < n and i != bar)
             model.kids[bar] = subtree
             model.load[bar] = sorted(i - n for i in self._moved[ctrl] if i >= n)
@@ -796,6 +1063,8 @@ class SwivelArmTool:
         self._moves = []
         self._move_ctrl = []
         for ctrl, (kind, _wd) in enumerate(self._controls):
+            if ctrl not in driven:
+                continue
             colour = model.colours[driven[ctrl]]
             if kind == "grow":
                 for step in (1, -1):
@@ -810,11 +1079,13 @@ class SwivelArmTool:
         """Find a click sequence, retiring rider guesses the board has already refuted."""
         model, cfg = self._model, self._cfg
         assert model is not None and cfg is not None
-        for _ in range(len(model.riders) + 1):
+        # Every pairing is worth one attempt, not just as many as there are riders.
+        attempts = max(1, len(model.riders) * max(1, len(model.places)))
+        for _ in range(attempts + 1):
             if not choose_pairing(model, cfg):
                 return False
             if not solved(model, cfg):
-                found = plan(model, cfg, self._moves)
+                found = plan(model, cfg, self._moves, self._banned)
                 if found:
                     self._plan = found
                     return True

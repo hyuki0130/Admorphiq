@@ -28,6 +28,19 @@ from collections import Counter
 sys.path.insert(0, "src")
 
 
+def _window() -> dict:
+    """Honour `HARNESS_NOPROGRESS` the way score_efficiency.py does.
+
+    ⛔ Without this the probe silently pinned the run to the built-in default,
+    so asking for the longer diagnostic window changed nothing and the two
+    measurements came back identical — which reads as "the window is not the
+    constraint" and is an artefact of the instrument, not a finding.
+    """
+    import os
+    val = os.environ.get("HARNESS_NOPROGRESS")
+    return {"no_progress": int(val)} if val else {}
+
+
 def _no_llm(*_a, **_k):
     raise RuntimeError("LLM-free: the signature fallback is what this measures")
 
@@ -78,7 +91,7 @@ def run_harness(title: str, cap: int, trace: bool, first: bool = False) -> None:
     # other order, which is the integrator's call to make, not this file's.
     mine = FogScoutTool()
     tools = [mine, *default_tools()] if first else [*default_tools(), mine]
-    agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+    agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000, **_window())
     frames = [obs]
     picks: dict[str, int] = {}
     marks: list[tuple[int, int]] = []
@@ -114,7 +127,7 @@ def run_solo(title: str, cap: int, trace: bool, after: int = 0) -> None:
 
     env, info = _env(title)
     obs = env.reset()
-    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000, **_window())
     frames = [obs]
     marks: list[tuple[int, int]] = []
     levels = 0
@@ -204,7 +217,7 @@ def run_bids(title: str, cap: int) -> None:
 
     env, info = _env(title)
     obs = env.reset()
-    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000, **_window())
     probe = FogScoutTool()
     frames = [obs]
     per_level: dict[int, float] = {}
@@ -250,7 +263,7 @@ def run_census(title: str, cap: int, after: int = 0) -> None:
 
     env, info = _env(title)
     obs = env.reset()
-    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000, **_window())
     frames = [obs]
     n = 0
     while n < cap:
@@ -342,6 +355,25 @@ def run_census(title: str, cap: int, after: int = 0) -> None:
         got = rules.get(sig)
         axis = "MIXED (no rule derived)" if got is None else f"{got[0]} permutation over {len(got[1])}"
         print(f"   mark {i}: {len(table):3d} observed pairs -> {axis}")
+    phase = None
+    if tool.anchor and tool.pitch:
+        phase = (tool.anchor[0] % tool.pitch, tool.anchor[1] % tool.pitch)
+    icon_sigs = {tool.mark.get(c) for c in tool.icon_seen} - {None}
+    dead = [c for c, k in tool.icon_seen.items()
+            if any(s in tool.inert for s in {tool.mark.get(c)} - {None})]
+    print(f"icon cells ever seen {len(tool.icon_seen)}; of their marks, "
+          f"{len([s for s in icon_sigs if s in tool.inert])} written off as INERT")
+    print(f"   icon cells whose mark is now inert: {dead}")
+    print(f"   icon cells: {sorted(tool.icon_seen)}")
+    print(f"   of those, currently in the live mark map: "
+          f"{sorted(c for c in tool.icon_seen if c in tool.mark)}")
+    print(f"   of those, ever stood on: {sorted(c for c in tool.icon_seen if c in tool.stood)}")
+    print(f"struck off (never reconsidered): {sorted(tool.give_up)}")
+    print(f"self-loop edges recorded: {sum(1 for k, v in tool.edges.items() if v == k[0])}")
+    print(f"what the walks aimed at: {dict(tool.aimed)}")
+    print(f"walks: ARRIVED {tool.arrived}, ABANDONED before arriving {tool.abandoned}")
+    print(f"lattice: pitch {tool.pitch}, anchor {tool.anchor}, phase {phase}, "
+          f"avatar template {None if tool.tpl is None else tool.tpl.shape}")
     print(f"wall colours learned {sorted(tool.wall_colors)}, floor {sorted(tool.floor_colors)}, "
           f"walls {len(tool.walls)}, icons ever seen {len(tool.icon_seen)}")
     print(f"goal cell known: {tool.goal}, avatar at {tool.pos}")
@@ -359,6 +391,46 @@ def run_census(title: str, cap: int, after: int = 0) -> None:
     longest = max((r for r in stalls), default=0)
     print(f"longest run with NO change to the tool's own state key: {longest} actions")
     print(f"deaths seen: {tool.census.get('lost', 0)} lost-avatar frames")
+    _kind_report(tool)
+
+
+def _kind_report(tool) -> None:
+    """What the model believes every element kind it has SEEN actually is.
+
+    ⛔ The point is to be refutable. A tool can be silently blind to a kind of
+    furniture, and no amount of planning refinement reaches a mechanic that is
+    not modelled — so the honest check is not "does the plan look right" but
+    "name every distinct thing on this board and say what you think it does".
+    Anything landing in UNLEARNED after a full attempt is a gap.
+    """
+    rules = tool._rules()
+    by_sig: dict = {}
+    for cell, sig in tool.mark.items():
+        by_sig.setdefault(sig, []).append(cell)
+    for sig in tool.sighted:
+        by_sig.setdefault(sig, [])
+    print("\nELEMENT KINDS THE MODEL HAS SEEN, and what it believes each one is")
+    for sig, cells in sorted(by_sig.items(), key=lambda kv: -len(kv[1])):
+        ys = [p[0] for p in sig] or [0]
+        xs = [p[1] for p in sig] or [0]
+        cols = sorted({p[2] for p in sig})
+        shape = f"{max(ys) - min(ys) + 1}x{max(xs) - min(xs) + 1}"
+        span = len(tool.lane.get(sig, ()))
+        if sig in tool.refill_marks:
+            belief = "REFILL — entering it refills the drawn budget"
+        elif sig in rules:
+            axis, table = rules[sig]
+            belief = (f"CHANGER — {axis} rule over {len(table)} values"
+                      + (", and it PATROLS" if span > 1 else ", static"))
+        elif sig in tool.inert:
+            belief = "INERT — stood on it, the token did not change"
+        else:
+            belief = "UNLEARNED — never stood on one"
+        goal = " <-- the TARGET" if tool.goal in cells else ""
+        print(f"  {shape:>5} colours {cols!s:<12} on {len(cells)} cell(s), "
+              f"seen across {max(span, 1)} position(s): {belief}{goal}")
+    print(f"  (walls are not marks: {len(tool.walls)} cells refused entry; "
+          f"wall colours {sorted(tool.wall_colors)}, floor {sorted(tool.floor_colors)})")
 
 
 def run_sweep(cap: int, own: str, dump: str | None = None) -> None:
@@ -380,7 +452,7 @@ def run_sweep(cap: int, own: str, dump: str | None = None) -> None:
         title = (info.title or info.game_id).lower()
         env = arcade.make(info.game_id)
         obs = env.reset()
-        agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+        agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000, **_window())
         probe = FogScoutTool()
         frames = [obs]
         best = 0.0

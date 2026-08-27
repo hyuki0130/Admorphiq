@@ -50,12 +50,13 @@ rather than assumed. Touching it ends the level, and so does standing under a do
 shuts, so no route is allowed to contain either move.
 
 ⛔ HOW THIS MODEL IS KEPT HONEST, and it is the only reason the deep boards work: it is
-differentially tested against the engine over random scripts that include rewinds
-(`scripts/clonewalk_probe.py` has the harness half; the fuzz driver is the other). Three
-defects surfaced that way and NONE of them were visible from a plan that happened to work —
-a stranger's REFUSED step being recorded as a move (which put every later undo one entry out),
-clones stacking past the tally instead of wrapping, and a door's closing not killing what stood
-under it. Levels without a stranger now agree with the engine on every step of every script.
+differentially tested against the engine over random scripts that INCLUDE REWINDS, rather than
+judged by whether some plan happened to work. Four defects surfaced that way and not one was
+visible from a working plan — a stranger's REFUSED step recorded as a move (putting every later
+undo one entry out), clones stacking past the tally instead of wrapping, a closing door not
+killing what stood under it, and a swap resolving at the wrong MOMENT of a rewind. The last of
+those was the whole of the hardest board: the plan was right and the model was wrong, which
+from outside the tool is indistinguishable from a planning failure.
 
 Execution is one action per call, each checked against where the body actually ended up. A
 disagreement retires the plan and falls back to a route drawn on the board as it is right now,
@@ -509,12 +510,24 @@ class _World:
         return (door.home[0] + door.slide[0] * self.b.stride,
                 door.home[1] + door.slide[1] * self.b.stride)
 
-    def _passable(self, cell: Cell) -> bool:
+    def _shadow(self) -> frozenset[Cell]:
+        """Where the doors physically ARE — which is where they were when the tick began.
+
+        ⛔ A door's state flips the instant its button is released, but the door itself takes
+        six frames to arrive, and every body that moves in that tick moves against the door's
+        OLD footprint. Measured: the unsteered body walks into a doorway that has already
+        logically shut, and is then crushed when the door lands on it. Judging the tick against
+        the new state instead turns that into a body that simply bounces — alive, in the wrong
+        place, and pressing nothing.
+        """
+        return frozenset(self._door_cell(i) for i in range(len(self.b.doors)))
+
+    def _passable(self, cell: Cell, shadow: frozenset[Cell] | None = None) -> bool:
         if cell not in self.b.walk:
             return False
-        return all(self._door_cell(i) != cell for i in range(len(self.b.doors)))
+        return cell not in (self._shadow() if shadow is None else shadow)
 
-    def _stranger_step(self, i: int) -> Cell | None:
+    def _stranger_step(self, i: int, shadow: frozenset[Cell]) -> Cell | None:
         """One step of a body this tool does not steer, by the rule its own motion shows.
 
         It keeps the heading it has, and when the heading is not available it prefers a turn,
@@ -537,7 +550,7 @@ class _World:
                 return None
             dy, dx = _HEADINGS[chosen]
             nxt = (cell[0] + dy * self.b.stride, cell[1] + dx * self.b.stride)
-            if self._passable(nxt):
+            if self._passable(nxt, shadow):
                 self.face[i] = facing
                 return nxt
             facing = (facing + 2) % 4
@@ -562,10 +575,22 @@ class _World:
                     self.open[idx] = not self.open[idx]
             else:
                 self.open[idx] = value
-        # A swap fires on the press while playing and on the release while rewinding — the
-        # board runs its wiring backwards along with everything else.
+        # A swap fires on the press while playing and on the release while rewinding — the board
+        # runs its wiring backwards along with everything else.
+        #
+        # ⛔ AND THE TWO RESOLVE AT DIFFERENT MOMENTS. Playing, the swap is an animation that
+        # lands once everything has moved. REWINDING, it happens THERE AND THEN, inside the
+        # release — so a body already relocated by it takes its own next backward step from the
+        # new place. Deferring it to the end of the step like the forward case leaves the body
+        # stepping back from where it no longer is: measured, the retrace stalled against a wall
+        # twice, the button that reopens a latch was never crossed, and the unsteered body spent
+        # the rest of the rewind shut behind that latch.
+        pairs = self.b.circuit_swaps.get(cid, ())
         if value != rewinding:
-            swaps.extend(self.b.circuit_swaps.get(cid, ()))
+            if rewinding:
+                self._apply_swaps(list(pairs))
+            else:
+                swaps.extend(pairs)
 
     def _settle(self, rewinding: bool) -> None:
         swaps: list[tuple[Cell, Cell]] = []
@@ -608,8 +633,9 @@ class _World:
         """One command. False when the board refuses it — and then NOTHING advances."""
         self.expansions += 1
         self.meter[0] += 1
+        shadow = self._shadow()
         dest = (self.pos[0] + step[0] * self.b.stride, self.pos[1] + step[1] * self.b.stride)
-        if not self._passable(dest):
+        if not self._passable(dest, shadow):
             return False
         before = self.snapshot()
         shut = list(self.open)
@@ -622,12 +648,12 @@ class _World:
             gstep = ghost[self.t]
             gdest = (self.gpos[i][0] + gstep[0] * self.b.stride,
                      self.gpos[i][1] + gstep[1] * self.b.stride)
-            if not self._passable(gdest):
+            if not self._passable(gdest, shadow):
                 continue
             self._fire(self.gpos[i], f"G{i}", False, swaps, False)
             self.gpos[i] = gdest
         for i in range(len(self.spos)):
-            nxt = None if self.dead[i] else self._stranger_step(i)
+            nxt = None if self.dead[i] else self._stranger_step(i, shadow)
             if nxt is None:
                 # ⛔ A step it could not take is NOT recorded. The board logs only the moves an
                 # unsteered body actually made, and the rewind walks that log back one entry per
@@ -679,6 +705,7 @@ class _World:
         while self.path:
             step = self.path.pop()
             idx = len(self.path)
+            shadow = self._shadow()
             swaps: list[tuple[Cell, Cell]] = []
             for i in range(len(self.spos)):
                 if idx >= len(self.slog[i]):
@@ -686,7 +713,7 @@ class _World:
                 sstep = self.slog[i].pop()
                 sdest = (self.spos[i][0] - sstep[0] * self.b.stride,
                          self.spos[i][1] - sstep[1] * self.b.stride)
-                if not self._passable(sdest):
+                if not self._passable(sdest, shadow):
                     continue
                 self._fire(self.spos[i], f"S{i}", False, swaps, True)
                 self.spos[i] = sdest
@@ -696,13 +723,13 @@ class _World:
                 gstep = ghost[idx]
                 gdest = (self.gpos[i][0] - gstep[0] * self.b.stride,
                          self.gpos[i][1] - gstep[1] * self.b.stride)
-                if not self._passable(gdest):
+                if not self._passable(gdest, shadow):
                     continue
                 self._fire(self.gpos[i], f"G{i}", False, swaps, True)
                 self.gpos[i] = gdest
             back = (self.pos[0] - step[0] * self.b.stride,
                     self.pos[1] - step[1] * self.b.stride)
-            if self._passable(back):
+            if self._passable(back, shadow):
                 self._fire(self.pos, "P", False, swaps, True)
                 self.pos = back
             self.t -= 1

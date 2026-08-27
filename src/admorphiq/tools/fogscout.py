@@ -446,6 +446,24 @@ def _motion_of(table: dict[Any, Any]) -> str | None:
     return fits[0] if len(fits) == 1 else None
 
 
+def _bar_runs(g: np.ndarray, flat: int) -> dict[int, int]:
+    """Longest horizontal run of each colour in the frame's bottom edge band."""
+    h, w = g.shape
+    depth = max(2, h // 16)
+    runs: dict[int, int] = {}
+    for y in range(h - depth, h):
+        run_c, run_n = -99, 0
+        for x in range(w + 1):
+            v = int(g[y, x]) if x < w else -99
+            if v == run_c:
+                run_n += 1
+                continue
+            if run_c >= 0 and run_c != flat:
+                runs[run_c] = max(runs.get(run_c, 0), run_n)
+            run_c, run_n = v, 1
+    return runs
+
+
 def _bar(g: np.ndarray, flat: int, color: int | None) -> tuple[int, int, int] | None:
     """(colour, filled length, WHOLE BAND length) of the drawn action budget.
 
@@ -559,6 +577,14 @@ class FogScoutTool:
         self._pursuit: tuple[str, int] = ("", 0)
         self._trod_at = -1
         self._plan_dist: int | None = None
+        # Where the current walk is headed, and how often a walk ever finishes.
+        # ⛔ A tool can look busy while completing nothing: every action starts a
+        # fresh walk to a fresh target and abandons the last one. Arrivals are
+        # the only honest measure of that, and they are one counter.
+        self._aim_cell: Cell | None = None
+        self.arrived = 0
+        self.abandoned = 0
+        self.aimed: Counter[str] = Counter()
         self.target: Tok | None = None
         self.goal: Cell | None = None
         self.icon_cells: dict[Cell, Tok] = {}
@@ -572,6 +598,8 @@ class FogScoutTool:
         self.bar_full: int = 0
         self.bar_drop: int = 0
         self.bar_len: int = 0
+        self._bar_seen = False
+        self._bar_hist: dict[int, list[int]] = {}
 
         self._prev: np.ndarray | None = None
         self._prev_action: int | None = None
@@ -741,18 +769,45 @@ class FogScoutTool:
                     self.icon_seen[c] = key
 
     def _read_bar(self, g: np.ndarray, flat: int) -> None:
+        """Track the drawn budget, identifying its colour by BEHAVIOUR.
+
+        ⛔ The strip has two colours — spent and remaining — and which of them is
+        the LONGER run depends entirely on how full it happens to be. Picking
+        the longer one locks onto the spent half whenever the tool arrives at a
+        low tank, and then every reading is INVERTED: it grows as actions are
+        spent and drops when a refill tops it up. Measured on a mid-level
+        handover, that one inversion filed every refill on the board as INERT —
+        permanently — so the tool had no fuel model at all on the one board that
+        needs one, and chased a changer for a third of its actions believing it
+        was fuel.
+
+        What identifies the budget is not its length, it is that it SHRINKS as
+        actions are spent. So both colours are watched for a few frames and the
+        one that falls is the one that is kept.
+        """
+        if self.bar_color is None:
+            for colour, length in _bar_runs(g, flat).items():
+                self._bar_hist.setdefault(colour, []).append(length)
+            best, drop = None, 0
+            for colour, hist in self._bar_hist.items():
+                if len(hist) < 4:
+                    continue
+                fall = hist[0] - hist[-1]
+                if fall > drop:
+                    best, drop = colour, fall
+            if best is None:
+                return
+            self.bar_color = best
         b = _bar(g, flat, self.bar_color)
         if b is None:
             return
-        color, length, band = b
-        self.bar_color = color
+        _colour, length, band = b
         self.bar_full = max(self.bar_full, band)
-        if not band and not self.bar_full:
-            return
         if self.bar_len and length < self.bar_len:
-            drop = self.bar_len - length
-            self.bar_drop = drop if not self.bar_drop else min(self.bar_drop, drop)
+            fall = self.bar_len - length
+            self.bar_drop = fall if not self.bar_drop else min(self.bar_drop, fall)
         self.bar_len = length
+        self._bar_seen = True
 
     def moves_left(self) -> int:
         if not self.bar_drop:
@@ -989,60 +1044,12 @@ class FogScoutTool:
                 q.append((nb, head))
         return out
 
-    def _dist_map(self, start: Cell, shape: tuple[int, int]) -> dict[Cell, int]:
-        """Step distance from ``start`` to every cell it can walk to."""
-        out = {start: 0}
-        q: deque[Cell] = deque([start])
-        acts = [a for a in self.dirs if a in _MOVE_IDS]
-        while q:
-            c = q.popleft()
-            for a in acts:
-                nb = self._step_to(c, a)
-                if nb == self.goal or nb in out or not self._passable(nb, shape):
-                    continue
-                out[nb] = out[c] + 1
-                q.append(nb)
-        return out
-
     def _walk(self, shape: tuple[int, int], want: Any) -> int | None:
-        """Walk toward the nearest wanted cell, REFUELLING ON THE WAY if it is
-        further than one tank.
-
-        ⛔ Straight-line walking cannot reach most of this board and the reason
-        is arithmetic, not search. A life is twenty-one moves; anything further
-        than that away is unreachable by walking at it, because the tool must
-        break off to refuel and the refuel resets its progress. Measured: handed
-        the level forty actions in rather than at its first frame, the tool spent
-        1545 actions with the frontier at 37% and refuelling at 37%, never once
-        completed a walk, and so never identified what the target cell even
-        demands. Routing THROUGH a refill turns a two-tank objective into two
-        one-tank legs, which is how the level is actually playable.
-        """
+        """Walk toward the nearest wanted cell, recording how far it is so the
+        caller can tell whether the tank covers it."""
         step, dist = self._walk_far(shape, want)
-        if step is None:
-            self._plan_dist = None
-            return None
-        left = self.moves_left()
-        if dist <= left:
-            self._plan_dist = dist
-            return step
-        live = {c for c, sig in self.mark.items() if sig in self.refill_marks}
-        best: tuple[int, int, int] | None = None      # (total, first action, leg)
-        for depot in live:
-            hop, near = self._walk_far(shape, lambda c, d=depot: c == d)
-            if hop is None or near > left:
-                continue
-            onward = self._dist_map(depot, shape)
-            rest = min((onward[c] for c in onward if want(c)), default=None)
-            if rest is None:
-                continue
-            if best is None or near + rest < best[0]:
-                best = (near + rest, hop, near)
-        if best is None:
-            self._plan_dist = dist
-            return step
-        self._plan_dist = best[2]
-        return best[1]
+        self._plan_dist = dist if step is not None else None
+        return step
 
     def _walk_far(self, shape: tuple[int, int], want: Any) -> tuple[int | None, int]:
         """Plain cell BFS: (first action, distance) to the nearest wanted cell."""
@@ -1059,6 +1066,7 @@ class FogScoutTool:
                     continue
                 head = a if first is None else first
                 if want(nb):
+                    self._aim_cell = nb
                     return head, d + 1
                 seen.add(nb)
                 q.append((nb, head, d + 1))
@@ -1138,7 +1146,10 @@ class FogScoutTool:
             if step is not None:
                 self._say(f"mark{sorted(fresh)}")
                 return step
-            self._say(f"mark-unreachable{sorted(fresh)}")
+            # Not an action — the walk failed and a later clause will produce
+            # one. Recording it as a decision inflated it to 286 of 354, which
+            # reads as the tool's dominant activity and is nothing of the kind.
+            self.reason = f"mark-unreachable{sorted(fresh)}"
         # ⛔ A cell that has been SEEN is not a cell that has been WALKED. The
         # map's passability is a prediction from colour, and this family breaks
         # it in one direction: a deflector cell sends the avatar somewhere else
@@ -1146,6 +1157,12 @@ class FogScoutTool:
         # step reaches. Measured: a third of this board — including the mark the
         # target demanded — sat behind exactly one such cell, mapped as open,
         # predicted reachable, and never once stepped on.
+        # ⛔ Treading is LOAD-BEARING and gating it on "the objective is already
+        # known" was measured to lose the level outright, from clearing to not
+        # reaching it at every handover. It is not idle wandering: a deflector
+        # cell lands the avatar somewhere the map does not predict, and one such
+        # cell is the only way into a third of this board. The route in is
+        # discovered by stepping on cells, not by looking at them.
         untrod = self._walk(shape, lambda c: c not in self.stood and c not in self.give_up)
         if untrod is not None:
             self._say("tread")
@@ -1357,7 +1374,18 @@ class FogScoutTool:
         if prev_pos is None or action is None or action not in self.dirs and prev_pos == here:
             self._prev_tok = self.tok
             return
-        refilled = self.bar_len > before_bar > 0
+        # ⛔ NOT `> before_bar > 0`. That extra clause excluded the very case a
+        # refill exists for: the tank is EMPTY. Measured on a mid-level handover
+        # where the tool is chronically at zero, every refill it stood on was
+        # filed INERT — permanently, since nothing re-examines that set — and it
+        # then had no fuel model at all on the one board that needs one.
+        # ⛔ Not `> before_bar > 0` either — that clause excluded the very case a
+        # refill exists for, an EMPTY tank, and on a mid-level handover where
+        # the tool is chronically at zero every refill it stood on was filed
+        # INERT, permanently, since nothing re-examines that set. What the
+        # clause was really guarding is the FIRST reading, where `before_bar` is
+        # a sentinel rather than a measurement; guard that directly.
+        refilled = self._bar_seen and self.bar_len > before_bar
         adjacent = abs(here[0] - prev_pos[0]) + abs(here[1] - prev_pos[1]) <= 1
         if refilled and not adjacent:
             # ⛔ A LIFE ENDED. The budget went back to full and the avatar is not
@@ -1378,8 +1406,19 @@ class FogScoutTool:
                 self.fails.pop((prev_pos, action), None)
             self._learn_dir(prev_pos, here, action)
             if mark is not None:
-                if refilled:
+                # ⛔ A refill RESETS the strip; it does not nudge it. Calling any
+                # upward tick a refill is how the model came to hold two kinds
+                # SWAPPED — measured on a mid-level handover, the refill ring
+                # filed as INERT and the colour changer filed as a REFILL. After
+                # that the tool chased the changer believing it was fuel (a
+                # third of every action), never refuelled, and never learned a
+                # changer at all, because a mark in `refill_marks` is read as
+                # leaving the token alone. One noisy frame-to-frame delta
+                # mislabelled the board and every later symptom followed from it.
+                jump = self.bar_len - before_bar
+                if refilled and jump >= max(2, self.bar_full // 4):
                     self.refill_marks.add(mark)
+                    self.inert.discard(mark)
                 elif prev_tok is not None and self.tok is not None and self.tok != prev_tok:
                     self.kind.setdefault(mark, {})[prev_tok] = self.tok
                     self.inert.discard(mark)
@@ -1499,8 +1538,25 @@ class FogScoutTool:
         # completed the walk to the target cell, and so never learned what the
         # target even demands. Given the same level from its first frame it
         # cleared it in 206 actions.
+        prev_aim = self._aim_cell
+        self._aim_cell = None
         self._plan_dist = None
         step = self._plan(g.shape)
+        if self._aim_cell is not None:
+            sig = self.mark.get(self._aim_cell)
+            if self._aim_cell in self.icon_seen:
+                self.aimed["icon"] += 1
+            elif sig is not None and sig in self.refill_marks:
+                self.aimed["refill"] += 1
+            elif self._aim_cell in self.seen or self._aim_cell in self.stood:
+                self.aimed["mapped cell"] += 1
+            else:
+                self.aimed["unseen cell"] += 1
+        if prev_aim is not None and prev_aim != self._aim_cell:
+            if self.pos == prev_aim:
+                self.arrived += 1
+            else:
+                self.abandoned += 1
         # Skip the tank only when the plan's target distance is KNOWN and within
         # reach; a plan whose cost is unknown gets the cautious branch.
         if step is None or self._plan_dist is None or self._plan_dist > self.moves_left():

@@ -30,6 +30,14 @@ so when a charge is needed and unread, this tool spends ONE press the board refu
 line that appears. Guessing the direction is not available: half the charges on these boards are
 square, and a square charge pointing up and one pointing down are the same pixels.
 
+⛔ A board-spanning element is not an overlay. Two of the last level's elements are the size of the
+screen or larger, which reads like a covering drawn over the board, and a plan aimed at a covering
+would spend actions and move nothing — indistinguishable from outside the tool from a plan aimed at
+a real board whose rules it has wrong. It was checked rather than argued (`blastclock_probe overlay`):
+the level renders ONE layer, every piece parsed binds to exactly one real object at the same
+geometry, and the screen-sized elements are the wall map and the glide field — structures the tool
+already reads as terrain. Same two roles the level before it has, at different sizes.
+
 ⛔ Frame-only. Nothing here knows which game it is. The lattice, the walls, the glide field, the
 outlines, the pieces and which piece can be held all come from the shared read in
 `tools/slotlaunch.py`; a charge is then any piece belonging to no outline whose body is a solid
@@ -48,13 +56,12 @@ MEASURED, 2026-08-27, both the live board and its archived re-render, identicall
   the point: a board that fires on its own clock cannot be validated by "did the level clear", and
   the first version of it compared against a RE-READ of the frame instead of the engine and blamed
   the model for two mis-parses that were not model errors at all;
-* six of seven levels, each at a per-level score of 1.0 — clears at presses 12, 56, 89, 128, 152, 198;
-* the seventh is NOT solved, and the reason is measured rather than guessed: the piece that has to
-  reach the last outline sits in a room sealed by a glide field, no piece that can be held reaches a
-  single square behind it, and the only thing that can move it is a charge — which would have to be
-  LAUNCHED two hops into place first. This plans around charges where they stand; it does not plan
-  to RELOCATE one, and the guide gives the search no reason to try, because a charge belongs in no
-  outline and so contributes nothing to the estimate.
+* all seven levels, every one of them at a per-level score of 1.0 — clears at presses 12, 56, 89,
+  128, 152, 198 and 294, against human counts of 28, 109, 51, 51, 33, 132 and 326;
+* the last level needs a charge CARRIED to where it is wanted before anything else can happen — see
+  `staging_goal`. Its stranded piece sits in a room sealed by a glide field, and of the 107 and the
+  120 squares the two holdable pieces can walk to, NOT ONE is behind it. Staging seats the charge in
+  37 presses; the ordinary pass then finishes the board in 57.
 """
 
 from __future__ import annotations
@@ -69,7 +76,8 @@ import numpy as np
 from admorphiq.tools.base import Step, availability, has_frame, levels_completed
 from admorphiq.tools.slotlaunch import Board, current_frame, read_board, reread
 
-__all__ = ["BlastClockTool", "Charge", "charges_of", "Sim", "plan_blast"]
+__all__ = ["BlastClockTool", "Charge", "charges_of", "Sim", "plan_blast", "plan_stage",
+           "staging_goal", "fuse_pieces", "read_growth"]
 
 Cell = tuple[int, int]
 _DIRS: dict[int, Cell] = {1: (-1, 0), 2: (1, 0), 3: (0, -1), 4: (0, 1)}
@@ -88,10 +96,17 @@ _TIME_CAP = 25.0
 # spent waiting on a fuse, so it reads low on a crowded board. Leaning on it is what makes these
 # finish; the cost is a few extra presses.
 _LEAN = 3
-# Seconds of search one level may cost. The harness allows a thousand for the whole game, so a
-# seven-level board can afford this and still finish; a level that is still searching when it runs
-# out withdraws rather than eating the game's clock.
-_PLAN_BUDGET = 60.0
+# Seconds of search one level may cost. The harness allows a thousand for the whole game, and every
+# level whose plan simply exists is found in well under a second — nearly all of this is spent on the
+# one level that has to carry a charge into place before anything else can happen.
+_PLAN_BUDGET = 150.0
+# The STAGING search alone is greedier, and it is measured on the board it exists for: at the
+# ordinary weight it reached the charge's last hop and stalled there through three million nodes; at
+# this weight it finishes in 2.3 million, in 42 seconds. ⛔ The weight does not carry over to the
+# ordinary plan that follows — there it finds nothing at all.
+_STAGE_LEAN = 12
+_STAGE_TIME = 75.0
+_STAGE_NODES = 2_500_000
 # Presses spent watching an unread charge before giving up on reading it.
 _PROBE_CAP = 12
 
@@ -372,6 +387,77 @@ class Sim:
         for c in self.live:
             self.period = _lcm(self.period, c.period)
         self.depth = self.n + 2
+        self._covered: list[np.ndarray] | None = None
+
+    # -- reach, for staging only ---------------------------------------------
+
+    def covered(self) -> list[np.ndarray]:
+        """For each piece that can be held, every cell it could ever stand on by walking.
+
+        ⛔ Used ONLY by the staging pass, and the restriction is measured. Feeding this into the
+        ordinary guide — refusing a launch edge unless something could really get behind the piece —
+        is the more honest graph and it took the tool from six levels to ONE: a piece launched across
+        a barrier opens a region this closure, computed from where the piece STARTS, cannot see, so
+        real routes were declared impossible. It is sound in the direction staging needs: when it
+        says nothing can get behind a piece, nothing can, and a charge has to be brought instead.
+        """
+        if self._covered is not None:
+            return self._covered
+        rows, width = self.b.rows, self.b.walls.shape[1]
+        out: list[np.ndarray] = []
+        for i in range(self.n):
+            grid = np.zeros((rows, width), dtype=bool)
+            if self.b.pieces[i].clickable:
+                seen = {self.base[i]}
+                stack = [self.base[i]]
+                while stack:
+                    cur = stack.pop()
+                    for dy, dx in _DIRS.values():
+                        nb = (cur[0] + dy * self.s, cur[1] + dx * self.s)
+                        if nb not in seen and self.walk_ok(i, nb):
+                            seen.add(nb)
+                            stack.append(nb)
+                for py, px in seen:
+                    for dy, dx in self.masks[i]:
+                        grid[py + dy][px + dx] = True
+            out.append(grid)
+        self._covered = out
+        return out
+
+    def launchable(self, i: int, pos: Cell, d: Cell) -> bool:
+        """Could anything actually get behind piece i at `pos` and shove it along d?"""
+        rows, width = self.b.rows, self.b.walls.shape[1]
+        cov = self.covered()
+        for dy, dx in self.masks[i]:
+            # A shover ends up ON this piece, so before its press it stands one whole lattice cell
+            # back along d — the footprint shifted by the STEP, not by one pixel.
+            y, x = pos[0] + dy - d[0] * self.s, pos[1] + dx - d[1] * self.s
+            if not (0 <= y < rows and 0 <= x < width):
+                continue
+            for j in range(self.n):
+                if j != i and cov[j][y][x]:
+                    return True
+        return False
+
+    def launch_closure(self, i: int) -> set[Cell]:
+        """Every square piece i could be launched to, hop after hop, other pieces wished away."""
+        seen = {self.base[i]}
+        stack = [self.base[i]]
+        while stack:
+            cur = stack.pop()
+            for d in _DIRS.values():
+                land, run = cur, 0
+                while run <= _MAX_SLIDE:
+                    if run >= _RUN and not self.on_glide(i, land):
+                        break
+                    nb = (land[0] + d[0] * self.s, land[1] + d[1] * self.s)
+                    if not self.slide_ok(i, nb):
+                        break
+                    land, run = nb, run + 1
+                if land != cur and land not in seen:
+                    seen.add(land)
+                    stack.append(land)
+        return seen
 
     # -- tables -------------------------------------------------------------
 
@@ -627,7 +713,7 @@ def _click_at(board: Board, i: int, pos: tuple[Cell, ...]) -> Cell:
 
 
 def plan_blast(board: Board, charges: dict[int, Charge], cap: int = _NODE_CAP,
-               limit: float = _TIME_CAP) -> list[Step] | None:
+               limit: float = _TIME_CAP, lean: int = _LEAN) -> list[Step] | None:
     """Search the model for a press sequence that fills every outline.
 
     ⛔ No piece is assigned to an outline up front, and a press the board REFUSES is a legal move
@@ -672,7 +758,7 @@ def plan_blast(board: Board, charges: dict[int, Charge], cap: int = _NODE_CAP,
             continue
         seen[key] = cost
         tock += 1
-        heapq.heappush(heap, (cost + _LEAN * heur(start), tock, start, h, zero, 0, acts))
+        heapq.heappush(heap, (cost + lean * heur(start), tock, start, h, zero, 0, acts))
     popped = 0
     stop = time.monotonic() + limit
     while heap and popped < cap:
@@ -705,20 +791,186 @@ def plan_blast(board: Board, charges: dict[int, Charge], cap: int = _NODE_CAP,
                 continue
             seen[key] = ng
             tock += 1
-            heapq.heappush(heap, (ng + _LEAN * h2, tock, npos, nheld, nvel, ntick, acts + (act,)))
+            heapq.heappush(heap, (ng + lean * h2, tock, npos, nheld, nvel, ntick, acts + (act,)))
     return None
 
 
-def refused_press(board: Board, charges: dict[int, Charge]) -> Step | None:
-    """A press the board will simply refuse — the free tick, and the probe that reads a fuse."""
-    if board.held is None:
-        return None
+def _gated_relaxed(sim: Sim, board: Board, target: Cell, i: int) -> dict[Cell, int]:
+    """`_relaxed`, but a launch counts only when something could really get behind the piece.
+
+    This is the honest graph, and it is used for exactly ONE question: is this outline out of reach
+    for good as the board stands? It is too strict to steer a search — see `Sim.covered`.
+    """
+    s = sim.s
+    tab = board.slide_ok[i]
+    ny, nx = tab.shape
+    py, px = sim.base[i][0] % s, sim.base[i][1] % s
+    back: dict[Cell, list[Cell]] = {}
+    clickable = board.pieces[i].clickable
+    for iy in range(ny):
+        for ix in range(nx):
+            if not tab[iy][ix]:
+                continue
+            here = (py + iy * s, px + ix * s)
+            for d in _DIRS.values():
+                step_to = (here[0] + d[0] * s, here[1] + d[1] * s)
+                if clickable and sim.walk_ok(i, here) and sim.walk_ok(i, step_to):
+                    back.setdefault(step_to, []).append(here)
+                if sim.launchable(i, here, d):
+                    land, run = here, 0
+                    while run <= _MAX_SLIDE:
+                        if run >= _RUN and not sim.on_glide(i, land):
+                            break
+                        nb = (land[0] + d[0] * s, land[1] + d[1] * s)
+                        if not sim.slide_ok(i, nb):
+                            break
+                        land, run = nb, run + 1
+                    if land != here:
+                        back.setdefault(land, []).append(here)
+            for c in sim.live:
+                land = _blast_landing(sim, i, here, c)
+                if land != here:
+                    back.setdefault(land, []).append(here)
+    dist = {target: 0}
+    q = deque([target])
+    while q:
+        cur = q.popleft()
+        for prev in back.get(cur, ()):
+            if prev not in dist:
+                dist[prev] = dist[cur] + 1
+                q.append(prev)
+    return dist
+
+
+def _blast_landing_at(sim: Sim, i: int, start: Cell, c: Charge, seat: Cell) -> Cell:
+    """Where a lone piece i standing at `start` ends up when charge c fires from `seat` instead."""
+    pos = list(sim.base)
+    pos[i] = start
+    d = c.direction
+    assert d is not None
+    for stage in range(1, _STAGES + 1):
+        box = sim.beam(c, seat, stage)
+        if i != c.idx and sim.in_beam(i, pos[i], box):
+            here = pos[i]
+            pos[i] = (here[0] + d[0] * sim.s, here[1] + d[1] * sim.s)
+            if not sim.slide_ok(i, pos[i]):
+                pos[i] = here
+    guard = 0
+    while sim.on_glide(i, pos[i]) and guard < _MAX_SLIDE:
+        guard += 1
+        here = pos[i]
+        pos[i] = (here[0] + d[0] * sim.s, here[1] + d[1] * sim.s)
+        if not sim.slide_ok(i, pos[i]):
+            pos[i] = here
+            break
+    return pos[i]
+
+
+def staging_goal(board: Board, charges: dict[int, Charge],
+                 tried: set[tuple[int, Cell]]) -> tuple[int, Cell] | None:
+    """Where a charge would have to be STOOD for a stranded outline to become reachable.
+
+    ⛔ Why a second kind of goal exists at all. A glide field can carve the board into rooms, and an
+    outline's piece can sit in a room nothing holdable ever enters — MEASURED on the board this was
+    written for: of the 107 and the 120 squares the two holdable pieces can walk to, NOT ONE is
+    behind the stranded piece. The only thing that can move it is a beam, and the charge that fires
+    the right way is in another room. So the move is to LAUNCH THE CHARGE into place first.
+
+    The ordinary guide will never find that, and the reason is structural rather than a shortage of
+    nodes: a charge belongs to no outline, contributes nothing to the estimate, and every press spent
+    moving one reads as pure loss. This names the placement as a goal in its own right; the ordinary
+    pass then takes over with the charge where it needs to be.
+    """
     sim = Sim(board, charges)
+    if not sim.live or not sim.click:
+        return None
+    owners = _owners(board)
+    best: tuple[int, int, Cell] | None = None
+    for k, target in enumerate(board.targets):
+        for i in owners[k]:
+            if sim.base[i] in _gated_relaxed(sim, board, target, i):
+                continue  # this outline is reachable as the board stands
+            open_dist = _relaxed(sim, board, target, i)
+            for c in sim.live:
+                if c.idx == i:
+                    continue
+                hops = _relaxed(sim, board, sim.base[c.idx], c.idx)
+                for seat in sim.launch_closure(c.idx):
+                    if seat == sim.base[c.idx] or (c.idx, seat) in tried:
+                        continue
+                    land = _blast_landing_at(sim, i, sim.base[i], c, seat)
+                    if land == sim.base[i] or land not in open_dist:
+                        continue
+                    score = hops.get(seat, 1 << 20) * 4 + open_dist[land]
+                    if best is None or score < best[0]:
+                        best = (score, c.idx, seat)
+    return (best[1], best[2]) if best is not None else None
+
+
+def plan_stage(board: Board, charges: dict[int, Charge], who: int, seat: Cell,
+               cap: int = _STAGE_NODES, limit: float = _STAGE_TIME) -> list[Step] | None:
+    """A press sequence that parks piece `who` on square `seat`, nothing else asked of the board.
+
+    ⛔ The path is held as parent links rather than as a sequence carried on every queue entry.
+    MEASURED: carrying them cost close to four million tuples of growing length for one search, which
+    is the difference between a tool that can run beside twenty-four others and one that cannot.
+    """
+    sim = Sim(board, charges)
+    if not sim.click:
+        return None
+    guide = _relaxed(sim, board, seat, who)
+    big = 1 << 20
     start = tuple(sim.base)
-    for aid, d in _DIRS.items():
-        nxt = (start[board.held][0] + d[0] * sim.s, start[board.held][1] + d[1] * sim.s)
-        if not sim.walk_ok(board.held, nxt):
-            return (aid, None)
+    if start[who] == seat:
+        return []
+    zero = tuple(0 for _ in range(sim.n))
+    seen: dict[Any, int] = {}
+    parent: dict[Any, tuple[Any, Step]] = {}
+    heap: list[tuple[int, int, Any]] = []
+    tock = 0
+    for h in sim.click:
+        key = (start, h, zero, 0)
+        cost = 0 if h == board.held else 1
+        if seen.get(key, big) <= cost:
+            continue
+        seen[key] = cost
+        if cost:
+            parent[key] = ((start, board.held, zero, 0), (6, _click_at(board, h, start)))
+        tock += 1
+        heapq.heappush(heap, (cost + _STAGE_LEAN * guide.get(start[who], big), tock, key))
+    popped = 0
+    stop = time.monotonic() + limit
+    while heap and popped < cap:
+        _, _, key = heapq.heappop(heap)
+        popped += 1
+        if not popped % 2048 and time.monotonic() > stop:
+            return None
+        pos, held, vel, tick = key
+        g = seen[key]
+        if pos[who] == seat:
+            out: list[Step] = []
+            cur = key
+            while cur in parent:
+                cur, act = parent[cur]
+                out.append(act)
+            out.reverse()
+            return out
+        moves: list[tuple[Step, Any]] = [
+            ((aid, None), sim.press(pos, held, vel, tick, (aid, None))) for aid in _DIRS
+        ]
+        moves += [((6, _click_at(board, j, pos)), (pos, j, vel, tick))
+                  for j in sim.click if j != held]
+        for act, nxt in moves:
+            ng = g + 1
+            if seen.get(nxt, big) <= ng:
+                continue
+            h2 = guide.get(nxt[0][who], big)
+            if h2 >= big:
+                continue
+            seen[nxt] = ng
+            parent[nxt] = (key, act)
+            tock += 1
+            heapq.heappush(heap, (ng + _STAGE_LEAN * h2, tock, nxt))
     return None
 
 
@@ -737,6 +989,7 @@ class BlastClockTool:
         self._spent = 0.0
         self._probes = 0
         self._needs_beam: bool | None = None
+        self._staged: set[tuple[int, Cell]] = set()
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Confidence, which is zero unless the board really parses into outlines and their pieces."""
@@ -761,6 +1014,7 @@ class BlastClockTool:
         self._spent = 0.0
         self._probes = 0
         self._needs_beam = None
+        self._staged = set()
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         return None
@@ -798,7 +1052,19 @@ class BlastClockTool:
             if probe is not None:
                 self._probes += 1
                 return [probe]
-        steps = self._search(board, charges, _TIME_CAP)
+        if self._staged:
+            # A board that has just had a charge carried across it is further from done than any
+            # board this tool plans from cold, so the search gets the long slice. ⛔ It does NOT get
+            # the greedy weight, and that is measured, not assumed: on the one board that reaches
+            # here, the ordinary weight finds a 57-press plan in 45 seconds and the greedy weight
+            # finds NOTHING in 48. Greedier is the intuitive knob and it was the wrong one.
+            steps = self._search(board, charges, _STAGE_TIME, cap=_STAGE_NODES)
+        else:
+            steps = self._search(board, charges, _TIME_CAP)
+        if steps is None:
+            # ⛔ Second kind of goal, reached ONLY when the ordinary plan does not exist. Whatever it
+            # does it cannot regress a board the first pass can solve, because on those it never runs.
+            steps = self._stage(board, charges)
         if not steps:
             return []
         for aid, xy in steps:
@@ -832,7 +1098,7 @@ class BlastClockTool:
         return fresh
 
     def _search(self, board: Board, charges: dict[int, Charge], limit: float,
-                cap: int = _NODE_CAP) -> list[Step] | None:
+                cap: int = _NODE_CAP, lean: int = _LEAN) -> list[Step] | None:
         """Plan, against a per-LEVEL time budget rather than a per-call one.
 
         ⛔ A per-call deadline does not bound the cost and the same mistake has been made one level
@@ -843,29 +1109,54 @@ class BlastClockTool:
         if left <= 0.5:
             return None
         began = time.monotonic()
-        out = plan_blast(board, charges, cap=cap, limit=min(limit, left))
+        out = plan_blast(board, charges, cap=cap, limit=min(limit, left), lean=lean)
         self._spent += time.monotonic() - began
         return out
 
-    def _probe(self, board: Board, charges: dict[int, Charge]) -> Step | None:
-        """One press whose only purpose is to make a fuse legible — refused if the board offers one.
+    def _stage(self, board: Board, charges: dict[int, Charge]) -> list[Step] | None:
+        """Carry a charge to where the board's stranded outline needs it; re-plan from there."""
+        left = _PLAN_BUDGET - self._spent
+        if left <= 0.5:
+            return None
+        seat = staging_goal(board, charges, self._staged)
+        if seat is None:
+            return None
+        self._staged.add(seat)
+        began = time.monotonic()
+        out = plan_stage(board, charges, seat[0], seat[1], limit=min(_STAGE_TIME, left))
+        self._spent += time.monotonic() - began
+        return out or None
 
-        ⛔ Only probe when the board actually needs the beam. A route that already exists without it
+    def _probe(self, board: Board, charges: dict[int, Charge]) -> Step | None:
+        """One press whose only purpose is to make a fuse legible.
+
+        ⛔ It does NOT need to know which piece the board is holding, and insisting that it did cost
+        a whole level: the board that most needs a fuse read offers TWO click targets and names
+        neither as held, so the probe declined to act, the charges stayed unread, and the tool then
+        planned a board whose beams it could not see. The fuse burns on EVERY move press whatever is
+        held — so prefer a direction the board would refuse for every piece it might be holding, and
+        failing that simply press.
+
+        ⛔ Only probe when the board actually needs the beam. A route that already exists without one
         is worth more than a tidy reading of a charge nothing is waiting on.
         """
         if self._needs_beam is None:
             self._needs_beam = self._search(board, {}, 6.0, cap=40_000) is None
         if not self._needs_beam:
             return None
-        probe = refused_press(board, charges)
-        if probe is not None:
-            return probe
-        # Nothing is refused, so read the fuse off any legal press instead.
-        if board.held is None:
-            return None
         sim = Sim(board, charges)
-        here = board.pieces[board.held].pos
+        holders = [board.held] if board.held is not None else sim.click
+        if not holders:
+            return None
+
+        def open_for(h: int, d: Cell) -> bool:
+            here = board.pieces[h].pos
+            return sim.walk_ok(h, (here[0] + d[0] * sim.s, here[1] + d[1] * sim.s))
+
         for aid, d in _DIRS.items():
-            if sim.walk_ok(board.held, (here[0] + d[0] * sim.s, here[1] + d[1] * sim.s)):
+            if not any(open_for(h, d) for h in holders):
+                return (aid, None)
+        for aid, d in _DIRS.items():
+            if any(open_for(h, d) for h in holders):
                 return (aid, None)
         return None
