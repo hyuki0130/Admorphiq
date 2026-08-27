@@ -58,6 +58,27 @@ second destination alone is not enough: two boards in this game have a thief and
 walks, and taking those over cost 13 and 21 extra actions apiece for nothing. With the gate in, the
 first seven levels are cleared in exactly the incumbent's own action counts, to the action.
 
+⛔ PARKED, with what would refute it — the FINAL board of this game is not cleared. Nine pieces,
+70 actions declared, and the counts say why: the carrier and the helper deliver four each on a
+good run — eight of nine, seven on a bad one — and the ninth never lands. One of the two helpers
+is sealed behind a band the carrier cannot walk on and MOVES ZERO CELLS IN SEVENTY ACTIONS, so the
+board really has one helper, not two. Of
+the 70 actions, 9 are latches, 20 are towing, 6 are turns-or-refusals and 45 are the carrier
+walking to the next piece; only about two of those are recoverable. Measured against it and
+beaten by none: five ranking rules (cheapest plan, farthest-from-a-mover, chain-the-drop,
+cost-to-finish at four weights, hand-off to a helper at four caps), 300 randomised target orders,
+and a beam search over whole deliveries using EXACT engine state rather than frames.
+
+⚠️ It is a THROUGHPUT claim, not a reachability one, and the difference was nearly banked wrongly:
+twice the beam reported "no further deliveries possible" and twice that was false — the ninth
+piece was loose, grippable from all four sides, with free bays to tow it into. The plan for it
+simply cost 16 actions with 7 left, because a schedule ranked on "most delivered soonest" spends
+the budget on near pieces and strands the far one. So what refutes this park is any schedule that
+banks eight with sixteen actions to spare, or any mechanism that lifts the working helper past
+four deliveries in seventy. Two are untested here: reading the budget the board DRAWS (see
+`tools/budget.py`) so the carrier can decline a plan it cannot finish and stand still instead, and
+standing in a helper's way to push it onto a nearer piece.
+
 ⛔ Frame-only, and the pixel reading is NOT re-derived here. Which tile is a piece, which is the
 carrier and which way it faces, which rectangle is a bay, what blocks a move and what is porous
 enough for cargo to pass through are all read by the reader `haul` already pins, driven here as an
