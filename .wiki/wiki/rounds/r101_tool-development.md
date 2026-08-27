@@ -1090,3 +1090,31 @@ The first GPU run still failed, and instructively:
 server was healthy and the preflight replied, because our own record named the wrong
 environment variable. An arm that scores no games now raises instead of averaging into a
 verdict.
+
+## Baseline at commit 3f66c4b — all 25, generic tools alone (2026-08-27)
+
+```
+mean 0.6733    ELEVEN at 1.0000    25 of 25 clear at least one level
+1.0000  ar25 cd82 cn04 ft09 r11l sb26 sk48 tn36 tr87 tu93 vc33
+0.7500 ls20 · 0.7143 m0r0, sp80 · 0.6222 wa30 · 0.4882 su15 · 0.4762 dc22
+0.4532 ka59 · 0.4345 sc25 · 0.4074 re86 · 0.3394 lp85
+0.1333 bp35 · 0.1091 lf52 · 0.1071 g50t · 0.0833 s5i5
+```
+
+Two measurement corrections came out of taking it, and both are cheap to repeat:
+
+**The measured tree was not a committed tree.** The tarball sent to ceph carried 407
+uncommitted lines in `hop.py`, so the number was attributable to nothing. Committed at
+3f66c4b. This is the same trap as [[../lessons/moving_target_measurement_20260827]], reached
+from the other direction — there a snapshot caught a file mid-edit, here it caught finished
+work that was never committed.
+
+**ka59 spends its whole budget after it has finished winning.** The harness probe shows five
+of seven levels cleared at actions 12, 56, 89, 128 and 173 — then 3,800 more actions on level
+six with no further clear. It is the only game in the set that burns its budget this way. The
+score is unaffected (0.4532 either way), but at width it is the difference between a game
+costing four minutes and twenty. A tool that cannot make progress needs to say so, which is
+the same rule as "a tool with no plan must bid zero" applied one step later in the loop.
+
+Open work is DEPTH on the four weakest — s5i5, g50t, lf52, bp35 — plus lp85 and re86, all six
+running as parallel per-game agents under [[../parallel_build_protocol]].

@@ -210,13 +210,14 @@ decide whether its own work is kept.
 `--agent unified` @4000 — generic tools ALONE, zero adapters):**
 
 ```
-mean 0.6825        ELEVEN games at 1.0000        25 of 25 clear at least one level
+mean 0.6733 over ALL 25    ELEVEN at 1.0000    25 of 25 clear at least one level
 1.0000  ar25 cd82 cn04 ft09 r11l sb26 sk48 tn36 tr87 tu93 vc33
-0.75 ls20 · 0.71 m0r0 sp80 · 0.62 wa30 · 0.49 su15 · 0.48 dc22 · 0.43 sc25
-0.41 re86 · 0.34 lp85 · 0.13 bp35 · 0.11 lf52 g50t · 0.08 s5i5
+0.7500 ls20 6/7 · 0.7143 m0r0 5/6, sp80 5/6 · 0.6222 wa30 7/9 · 0.4882 su15 7/9
+0.4762 dc22 4/6 · 0.4532 ka59 5/7 · 0.4345 sc25 4/6 · 0.4074 re86 5/8 · 0.3394 lp85 5/8
+0.1333 bp35 3/9 · 0.1091 lf52 3/10 · 0.1071 g50t 2/7 · 0.0833 s5i5 2/8
 ```
 
-The adapter-assisted card is 0.3162, so the generic path is now **2.16x past it** and
+The adapter-assisted card is 0.3162, so the generic path is now **2.13x past it** and
 transfers by construction, which the adapters do not.
 
 ⛔ The figures this block carried until 2026-08-27 — *"0.0230, 16 of 25 clear nothing"* — were
