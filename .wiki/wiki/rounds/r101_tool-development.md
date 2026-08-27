@@ -1232,3 +1232,36 @@ crag is NOT registered. Registering it ahead of `ledge` also does nothing on its
 breaks TIES, and `_signature_default` takes the argmax, so ledge's 0.6 beats crag's 0.5 wherever
 it is placed. An inert tool in the registry is a risk on boards nobody has seen and no gain on
 the ones we have.
+
+### lf52's level 6: churn eliminated, and it was not the blocker (2026-08-27)
+
+A worked example of instrumenting a guard instead of reasoning about it, and of reverting a fix
+that works. Its author instrumented every plan-invalidation site during level 6:
+
+```
+offscreen 377   install 42   everything else 0
+```
+
+**90% of plan deaths were one predicate**: a jump is played as TWO CLICKS so both cells must be
+on screen, while a drive is a button that never needs the screen. The planner, free to plan over
+the whole map, kept opening plans with jumps in regions that had scrolled away. Constraining only
+the FIRST move barely moved it (377 -> 339) because the plan dies MID-execution — every
+horizontal cart move with a piece aboard pans the view one column, so a jump playable when
+planned is off screen by the time the plan reaches it.
+
+Applying the window to every state **eliminates the churn: offscreen 339 -> 0, install 69 -> 9**,
+and the tool plays level 6 far deeper, taking the visible region from five pieces to two with
+real capture chains. ⛔ **It still does not clear, and it costs level 3 four actions** — 57 -> 61
+against a human 60, dropping that level 1.0 -> 0.967 and lf52 0.2727 -> 0.2710. Reverted:
+necessary, evidently not sufficient, and not free.
+
+**What is actually in the way is exploration policy.** With churn at zero the tool stops in
+exactly the same place — two greens left in the visible left region, four more in regions it has
+never seen, no route proposed. Those regions are reached by riding a cart along a rail while the
+camera follows; the tool HAS the piece on the cart and HAS the drives, and does not go. Its
+tiers run capture -> close-the-pair -> frontier -> untouched-cell, and the first two are
+satisfied locally while the last two are too weak to commit to a 15-drive journey on the chance
+of finding pieces.
+
+Two more model-invariant guards surfaced in the same pass; the pattern is now a concept page:
+[[../concepts/guard_about_the_model]].

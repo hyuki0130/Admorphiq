@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 249.
+**Total pages**: 250.
 
 ## Games (25)
 
@@ -77,7 +77,7 @@ category, drill into specific pages.
 
 - [[strategies/brittle/internal_method_call.md]] — Direct calls to obfuscated game-internal methods. Maximum v1 score, zero generalization. Do not recommend — document only for refactor visibility.
 
-## Concepts (cross-game domain entities) (16)
+## Concepts (cross-game domain entities) (17)
 
 - [[concepts/action_budget.md]] — A per-level cap on actions that ENDS THE GAME when exceeded — thirteen of the twenty-five sample games declare one, as low as 13 actions, and it is drawn on screen.
 - [[concepts/bit_encoding.md]] — A row of clickable cells encodes a binary number (or opcode) by their toggle state. A separate "play" button executes the encoded program, usually moving a cursor/player on another part of the frame.
@@ -85,6 +85,7 @@ category, drill into specific pages.
 - [[concepts/frame_layer_timeline.md]] — Nine of the twenty-five sample games return more than one frame layer, and on six of them
 - [[concepts/gf2_toggle_stencil.md]] — Any click-grid where each click flips a fixed cell subset is a linear system over GF(2); the solution is a click *subset* (`2^n` candidates), not an ordered sequence (`n!`). Measure the stencil `A` empirically, then solve `A·x = b`.
 - [[concepts/gravity.md]] — The player falls passively between actions unless supported by a solid block. Actions provide lateral movement and (sometimes) block destruction or upward motion. The core platformer primitive.
+- [[concepts/guard_about_the_model.md]] — Five instances in one day, in three different layers. Each one reads as obviously correct,
 - [[concepts/merge_mechanic.md]] — When two same-color sprites overlap, they combine into a single sprite of `color + 1`. Analogous to 2048. Higher colors take more merges to produce and are often the goal.
 - [[concepts/no_progress_bail.md]] — Fourteen of the twenty-five sample games spent most of their action budget AFTER their
 - [[concepts/probe_signature.md]] — The observable fingerprint of a game after 5-10 discovery actions.
