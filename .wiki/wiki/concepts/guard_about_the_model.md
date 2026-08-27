@@ -267,3 +267,47 @@ them is visible from the guard's own site.
 
 - [[new_kinds_at_the_wall]] — the same confusion from outside the tool: a correct plan over a wrong
   model is indistinguishable from a broken plan.
+
+## The fourth variant: the evidence for the missing thing is missing in the same way
+
+A guard can also be structurally blind — not wrong, not inert, but unable to see precisely the
+cases it exists for. lf52, 2026-08-27, and the measurement that produced it is the cleanest
+negative result of the round.
+
+The question was whether the board tells a tool that its map is INCOMPLETE — not which choice is
+fatal, only "I do not know everything yet, so do not spend something irreversible". A real,
+frame-derivable property was found, and it is true across every level in the game's data:
+
+> **every connected rail component holds at least one cart** — 24 components across 8 levels, zero empty.
+
+So a rail component with no cart on it is evidence of an unseen cart. Sound, non-obvious, and
+checkable from perception alone. Then it was measured **at the moment the tool must choose**:
+
+```
+level  carts known  components known  carts truly on board   verdict
+    4            1                 2                     3   INCOMPLETE — detectable
+    5            2                 1                     3   looks complete (IS NOT)
+    6            2                 1                     3   looks complete (IS NOT)
+```
+
+⛔ **It reports "complete" on the two levels where the map is incomplete, and fires on the one
+level that already clears at the cap.** Backwards on all three.
+
+The reason is structural rather than a bug to fix: **the missing cart's rail component is itself
+off-screen.** You cannot infer an unseen cart from an unseen rail component — the evidence for the
+missing thing is absent in exactly the way the thing is. Such a signal can only ever report the
+incompleteness it can already see, which is the kind that does not matter.
+
+**And the cost was not symmetric**, which is what made it a decision rather than a judgement call.
+Actions of slack before each cleared level falls off the 1.0 cap: `L1 +24, L2 +29, L3 +3, L4 +7,
+L5 +67`. A gate that fires on level 4 would spend **seven** actions of slack to chase a level it
+cannot see.
+
+The general form: **when a guard is meant to detect that something is missing, check whether its
+evidence survives the same absence.** Often it does not, and the guard then works only where it is
+not needed. The measurement that settles it is one table — what the guard says, next to the truth,
+at the moment of the decision — and it is worth building before the guard, not after.
+
+⚠️ The static property remains true and stays banked: if a future tool sees the far side of the
+board before spending irreversible moves, the same check becomes usable rather than blind. A
+blind signal and a useful one can be the same predicate under different information.
