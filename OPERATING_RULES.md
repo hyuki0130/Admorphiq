@@ -206,10 +206,31 @@ decide whether its own work is kept.
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
 
-The generic tools score **0.0230** over the 25 while the adapter-assisted card scores 0.3162, and
-**16 of 25 games clear nothing**. Three games have a rule-recovery tool: ft09 (stencil), m0r0
-(mirror), lp85 (track). Each of those three plays at or above the human action count on the level
-it clears, which is the evidence that this shape of tool is the right one.
+**Where it stands (re-measured 2026-08-27 at commit 3f66c4b, full 25 on ceph-build,
+`--agent unified` @4000 — generic tools ALONE, zero adapters):**
+
+```
+mean 0.6825        ELEVEN games at 1.0000        25 of 25 clear at least one level
+1.0000  ar25 cd82 cn04 ft09 r11l sb26 sk48 tn36 tr87 tu93 vc33
+0.75 ls20 · 0.71 m0r0 sp80 · 0.62 wa30 · 0.49 su15 · 0.48 dc22 · 0.43 sc25
+0.41 re86 · 0.34 lp85 · 0.13 bp35 · 0.11 lf52 g50t · 0.08 s5i5
+```
+
+The adapter-assisted card is 0.3162, so the generic path is now **2.16x past it** and
+transfers by construction, which the adapters do not.
+
+⛔ The figures this block carried until 2026-08-27 — *"0.0230, 16 of 25 clear nothing"* — were
+from the morning of the day the axis was set and were **30x stale by that evening**. An axis
+statement is read by every new session as the current position; when it goes stale it sends
+work at a problem that is already solved. Re-measure it whenever a round closes.
+
+⛔ **A round directory is not a baseline just because it is the newest.** `R101FAN6` reports
+ar25 at 0.0 — it is a FAN-OUT round carrying an agent's experimental registry. HEAD measures
+ar25 at 1.0000 in 268 actions. And the per-round aggregator prints LEVELS, not scores; reading
+its column as a score is the "a field means what it RECORDS" trap. Compute from `games/*.json`.
+
+**The work left is DEPTH, not efficiency** (measured, and got wrong once in the other
+direction): the weak games clear level 1 at or faster than the human count and then stop.
 
 **How the work runs now (user directive, "하나씩 개선할거야?"):** tool development goes in
 PARALLEL — one background agent per game, each owning its own new file under `src/admorphiq/tools/`
