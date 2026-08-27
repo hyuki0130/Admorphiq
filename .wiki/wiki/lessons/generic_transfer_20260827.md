@@ -179,6 +179,33 @@ Ratio across the five runs: **0.91 -> 0.88 -> 0.92 -> 0.93 -> 0.94**, while the 
 is where that tool was fixed. The two numbers move independently and only one of them is
 evidence about the private set.
 
+## The instrument that answers "board or picture?" in one command
+
+A score difference between a game and its re-render has exactly two causes and they call for
+opposite work: the BOARD differs, or the PICTURE differs and the board does not — in which case
+perception failed and the level is winnable by moves the tool already knows.
+
+`scripts/twinboard_probe.py` settles it by recording the harness's own action tape on one copy
+and replaying it action-for-action on the other. On tu93, the round's last transfer loss:
+
+```
+tape from the LIVE board, replayed on the ARCHIVE board
+   9 levels at 18, 28, 47, 64, 93, 121, 135, 158, 187 — IDENTICAL to the control
+```
+
+Same game. **The entire 1.0000 -> 0.2222 is perception**, and a score alone would have sent
+someone at planning and search.
+
+Its `see` mode then localises, and its design matters: a re-render may permute the PALETTE and
+draw at a different OFFSET, so a raw pixel diff is noise. It searches for the shift and colour
+mapping that best explain one copy as the other and reports only survivors —
+`rows 44-46, cols 51-53, live 000/000/000 against archive 999/999/949`, one 3x3 object present on
+one copy and hidden on the other.
+
+⛔ **Run `same` BEFORE theorising about a transfer loss.** It is one command and it eliminates
+half the possible work. Both of the day's earlier transfer defects — a detector killed by two
+cells, and a cost that ran 23x — were found the slow way, by hand, before this existed.
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run
