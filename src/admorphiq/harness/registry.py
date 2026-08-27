@@ -38,6 +38,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.pattern_cast import PatternCastTool
     from admorphiq.tools.pegjump import PegJumpTool
+    from admorphiq.tools.gantry import GantryCraneTool
     from admorphiq.tools.phase import PhaseGridTool
     from admorphiq.tools.pillar_transfer import PillarTransferTool
     from admorphiq.tools.progbits import ProgramBitsTool
@@ -93,6 +94,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         TetherCentroidTool(),
         LedgeTool(),
         MazeRunTool(),
+        GantryCraneTool(),
         PhaseGridTool(),
         TubeOrderTool(),
         HaulDeliveryTool(),
