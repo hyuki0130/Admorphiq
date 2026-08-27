@@ -45,6 +45,24 @@ mid-fan-out can capture a file its author is still editing — and the committed
 measured code. Sync once, vary only `registry.py` on the box. See
 [[lessons/moving_target_measurement_20260827]].
 
+## What a per-game agent is told, beyond the mechanic
+
+Four things earned on 2026-08-27 that change how an agent spends a round, and that every brief
+now carries:
+
+* **Count, do not reason.** Two tools were unblocked by a single number after rounds of
+  hypotheses — one showed 90% of plan deaths came from one predicate, another that a whole tier
+  had fired 0 times in 728 decisions. A third had its OWN written description of the bug refuted
+  by the counter. [[concepts/guard_about_the_model]]
+* **A guard whose condition can never be false is the commonest defect here** — five instances in
+  one day across three layers.
+* **Report per-level COSTS, not the level count.** Two extra levels bought +0.0011 on one board
+  because the incumbent's clears sat at human parity; the same levels made cheaper bought
+  +0.0304. And on another game all five clears were already past parity and capped, so cost work
+  there was worth exactly zero — measured in one command before a round was spent on it.
+* **Check the archived re-render.** A tool can gain on the card and carry nothing to a board it
+  has not seen, and only that run says so. [[lessons/generic_transfer_20260827]]
+
 ## Related
 
 - [[rounds/r101_tool-development]] — the round this protocol came out of.

@@ -10,6 +10,23 @@ date: 2026-08-25
 
 # R99 — detection dispatch: shipping the adapter depth
 
+> ⛔ **SUPERSEDED BY MEASUREMENT, 2026-08-27. The adapters this round shipped now COST the card
+> 0.31.** Same tree, same day, both at @4000: `--agent kaggle_detect` **0.5422** against
+> `--agent unified` **0.8540**. Twenty-two of twenty-five games are worse under the adapters —
+> sc25 0.0427 against a generic 1.0000, ar25 0.0833 against 1.0000, sp80 0.1429 against 1.0000,
+> wa30 0.0222 against 0.8000 — two tie, and **only `ls20` still beats the generic path**.
+>
+> Nothing here broke. Every number below is still what it was. The FALLBACK moved out from under
+> the adapters — 0.0566 to 0.8540 in one day of [[r101_tool-development]] — and both guards this
+> round designed were calibrated against the old one: the bail asks whether an adapter cleared
+> ANY level, and the false-positive gate asks only that a detector not fire on someone else's
+> board, never whether firing on its OWN board is still an improvement.
+>
+> **Before extending this axis, re-run the comparison** — it is two full-25 runs and about eight
+> minutes on ceph. Full measurement and both guard defects:
+> [[../lessons/adapters_now_cost_the_card_20260827]]. Dropping twelve adapters is worth ~+0.31
+> and is SUBMISSION-AFFECTING, so it is the user's call.
+
 > Two months of adapter work (R56–R84) reached 0.3296 on the script25 scoreboard while the
 > submission card sat at 0.0566, because `script25.py` selects an adapter by `game_id`
 > substring and the 110 private games carry no id we know. This round moves that depth onto

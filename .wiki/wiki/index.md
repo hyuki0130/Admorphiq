@@ -283,7 +283,7 @@ category, drill into specific pages.
 - [[rounds/r96_controlled-grid-dynamics.md]] — The proven R95 pipeline (family schema → grounding → verifier → compiler →
 - [[rounds/r97_self-extension.md]] — Can the offline model, facing a deliberately ablated enum vocabulary,
 - [[rounds/r98_flow-deflection.md]] — The third hypothesis family after R95 (cell-state) and R96 (movement). Its
-- [[rounds/r99_detection-dispatch.md]] — Two months of adapter work (R56–R84) reached 0.3296 on the script25 scoreboard while the
+- [[rounds/r99_detection-dispatch.md]] — ⛔ **SUPERSEDED BY MEASUREMENT, 2026-08-27. The adapters this round shipped now COST the card
 - [[memory/reference_karpathy_llm_wiki.md]] — Full Karpathy "LLM Wiki" (2026-04-02) analysis in Korean is saved at docs/llm_wiki_karpathy_analysis_ko.md; gap table maps missing pieces to R23+ sub-rounds
 - [[sample_games_mechanics.md]] — ⛔ **The method correction that produced this page.** `OPERATING_RULES.md` rule 0 says stage one
 - [[selector.md]] — Feature-driven dispatch rules the Hypothesis Engine LLM uses to pick
