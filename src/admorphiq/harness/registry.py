@@ -21,6 +21,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     """
     from admorphiq.tools.assemble import JigsawAssembleTool
     from admorphiq.tools.cover_targets import CoverTargetsTool
+    from admorphiq.tools.cyclepress import CyclePressTool
     from admorphiq.tools.dead_signature import DeadSignatureTool
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
@@ -61,6 +62,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     return [
         StencilTool(),
         TrackAlignTool(),
+        CyclePressTool(),
         MirrorMergeTool(),
         JigsawAssembleTool(),
         CoverTargetsTool(),
