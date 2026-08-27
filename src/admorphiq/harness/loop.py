@@ -69,12 +69,17 @@ _DECIDE_SYS = (
     "queues actions.\n\n"
     "HOW TO CHOOSE. Each tool is listed with its own FIT for this exact board — "
     "the tool's own report that its mechanic is present and that it has a plan. "
+    "A tool that has no plan for a board reports fit 0.00, so ANY fit above zero "
+    "is a real claim and only 0.00 means none. "
     "A CLAIMS THIS BOARD line names any tool reporting fit 0.60 or higher. "
     "If that line is present, pick the tool it names, unless that tool is in the "
-    "already-failed list. Those tools recover a specific mechanic and finish "
-    "games in tens of actions; the general searcher explores and is the right "
-    "answer only when NOTHING claims the board. "
-    "Choose code only when nothing claims the board and no tool's signature fits."
+    "already-failed list. "
+    "If it is absent but some tool reports a fit above 0.00, pick the FIRST tool "
+    "in the list that is not in the already-failed list — the list is ordered by "
+    "fit, highest first. Those tools recover a specific mechanic and finish games "
+    "in tens of actions. "
+    "The general searcher and writing code are for boards where EVERY fit is "
+    "0.00, and nothing else."
 )
 
 
@@ -201,9 +206,22 @@ class UnifiedAgent:
         available = sorted(available, key=lambda n: (-bids.get(n, 0.0), n))
         listed = ", ".join(f"{n} (fit {bids.get(n, 0.0):.2f})" for n in available)
         claimants = [n for n in available if bids.get(n, 0.0) >= 0.6]
+        # A partial claim is still a claim. MEASURED 2026-08-27 on a Kaggle GPU: the LLM
+        # path lost exactly ONE game of 25 against the LLM-free fallback, and it lost it
+        # here. cn04's best fits are 0.45 (two tools tied), so no CLAIMS line was emitted,
+        # the model read that as "nothing claims the board" — which the instruction then
+        # made a licence to write code — and scored 0.0000 where the fallback's plain
+        # argmax picks the right tool and scores 1.0000. The fallback has no 0.60
+        # threshold at all; the two paths could only ever diverge in the band
+        # 0 < fit < 0.60, and that band is exactly where they did.
+        best_bid = max((bids.get(n, 0.0) for n in available), default=0.0)
         claim_line = (
             f"CLAIMS THIS BOARD: {', '.join(claimants)} — these report their own mechanic is "
-            f"present AND they have a plan for it.\n" if claimants else ""
+            f"present AND they have a plan for it.\n" if claimants else
+            f"PARTIAL CLAIM: no tool reaches 0.60, but the highest fit is {best_bid:.2f}, "
+            f"which is above zero and therefore a real plan. Take the first listed tool.\n"
+            if best_bid > 0.0 else
+            "NOTHING CLAIMS THIS BOARD: every fit is 0.00.\n"
         )
         failed = ", ".join(sorted(self._failed)) or "none"
         user = (
