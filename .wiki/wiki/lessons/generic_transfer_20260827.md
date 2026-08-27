@@ -111,6 +111,18 @@ games inside a 9-hour cap — a tool like that is not slow, it is fatal, and its
 public 25 says nothing about it. ⛔ **Compare wall-clock per action across the two boards, not
 only the scores.**
 
+**FIXED the same day, and completely.** Handed to the tool's author with the stack sample and
+the instruction to diff the two boards' level data before assuming the archived one is harder:
+
+```
+before   880 actions in 1011s   6/8 levels   0.4183   (stopped by our 1000s cap)
+after   1107 actions in    5s   8/8 levels   0.8350   — equal to the live board
+```
+
+Two hundred times faster, and the transfer loss goes to ZERO. The public card did not move by a
+digit either way (0.7935 before and after), which is the whole point: this defect was invisible
+to the measurement everyone watches and fatal to the one that decides.
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run

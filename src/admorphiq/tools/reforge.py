@@ -39,6 +39,14 @@ level in turn, the three that were out of reach cost 50, 105 and 168 actions aga
 200, 300 and 400. The tool does NOT claim that game's second, third or fifth level and says so
 with a bid of zero; the incumbent keeps them, which is why nothing regressed.
 
+⛔ THE SAME BOARD, SERVED TWICE, IS THE ONLY TRANSFER EVIDENCE THERE IS — AND IT FOUND A DEFECT
+THE SCORE COULD NOT. An archived copy of this game, identical in every sprite, position, rotation
+and budget and differing ONLY in the ORDER its sprites are listed, ran **23x slower per action**
+and was cut off at 6 of 8 levels. The order decides which of two overlapping pieces is drawn on
+top, and two of the three faults below turned on exactly that. Fixed, both renderings now score
+**0.8350, 8 of 8, in 4.5 and 4.6 seconds** — from 15.1s and 1011s. A search that answers in one
+rendering and not in another is not slow, it is broken, and on a public board it looks perfect.
+
 ⛔ The pip is not always readable. A piece lying across a pin overwrites the pip, so the colour
 demanded there reads back as the piece's own. Such pips are marked UNKNOWN and their colour is
 searched over the colours the other pins show, rather than believed.
@@ -50,6 +58,7 @@ that step and a guessed step spends the budget in the wrong place.
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from collections import deque
 from typing import Any
 
@@ -63,10 +72,6 @@ __all__ = ["ReforgeTool"]
 Cell = tuple[int, int]
 # (x, y, h, w, bar_col, bar_row, colour) — the complete state of one piece.
 State = tuple[int, int, int, int, int, int, int]
-
-# Canvas padding: a piece is legal while its MIDDLE is on the board, so its body may hang off
-# any edge by half its span. Every mask is built on a padded grid so those cells stay indexable.
-_PAD = 48
 
 # A pin is a 3x3 ring standing ALONE: at least this many of its eight border cells survive
 # (a bar lying across it can eat two), and none of its colour may appear in the surrounding
@@ -156,6 +161,27 @@ def _neighbour_sums(mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     box3, box5 = box(3), box(5)
     return box3 - padded[2:-2, 2:-2], box5 - box3
+
+
+class Layout:
+    """The board's immovable furniture, plus the union of it.
+
+    The union is the cheap first question every move asks: a move that touches nothing at all —
+    which is nearly all of them — is answered once here instead of once per press and once per
+    dye pad. On the board with fourteen pads that is one test in place of fifteen.
+    """
+
+    __slots__ = ("gates", "pads", "any_of")
+
+    def __init__(self, gates: list, pads: list) -> None:
+        self.gates = gates
+        self.pads = pads
+        cells: set[Cell] = set()
+        for blocks, _ in gates:
+            cells |= blocks.cells
+        for blocks, _ in pads:
+            cells |= blocks.cells
+        self.any_of = _Blocks(cells)
 
 
 def _find_pins(grid: np.ndarray, bg: int, live: np.ndarray) -> tuple[int, list[Cell]]:
@@ -261,19 +287,33 @@ def _fit_shape(cells: list[Cell], grid: np.ndarray, bg: int, ring_colour: int,
     bar_row, bar_col = int(rows.argmax()), int(cols.argmax())
     plus = {(y0 + bar_row, x0 + i) for i in range(w)} | {(y0 + i, x0 + bar_col) for i in range(h)}
     if have <= plus and explained(plus):
-        # A bar the chrome or the board's edge cuts short reports a frame narrower than the
-        # piece really is, and one row short is enough to put every winning placement out of
-        # reach. An unpressed plus is symmetric about its own bar, so the longer arm gives the
-        # true span back. MEASURED: without this the widest piece on one board reads 18 rows tall
-        # instead of 19 and its only solution disappears.
-        if _cut(live, y0 - 1, x0 + bar_col) or _cut(live, y1 + 1, x0 + bar_col):
+        # ⛔ A BAR ENDS WHERE THE BOARD IS BARE, NOT WHERE ITS COLOUR STOPS BEING VISIBLE.
+        # Read the other way round, a piece lying under another is measured short by however
+        # many of its cells that other piece is standing on — and one row short puts every
+        # winning placement out of reach. MEASURED, and it is the whole of a 23x wall-clock
+        # difference between two renderings of the SAME board: the two differ only in the ORDER
+        # their sprites are listed, which decides which of two overlapping pieces is drawn on
+        # top. On one, the widest piece reads 19 rows; on the other the outline crossing it hides
+        # two of its cells and it reads 17, every plan computed from that is off by a row, the
+        # model disagrees with the board on every action, and the planner rebuilds from scratch
+        # each time. Growing the bar across anything that is merely COVERED — the same test the
+        # holes already use — reads both renderings identically. Growth is capped at the visible
+        # span, so a long piece lying end-on cannot drag the frame away.
+        top = _run_out(grid, live, bg, ring_colour, y0, x0 + bar_col, -1, 0, h)
+        bottom = _run_out(grid, live, bg, ring_colour, y1, x0 + bar_col, 1, 0, h)
+        left = _run_out(grid, live, bg, ring_colour, y0 + bar_row, x0, 0, -1, w)
+        right = _run_out(grid, live, bg, ring_colour, y0 + bar_row, x1, 0, 1, w)
+        y0, h, bar_row = y0 - top, h + top + bottom, bar_row + top
+        x0, w, bar_col = x0 - left, w + left + right, bar_col + left
+        # Growth stops at the edge of the board, and a piece may be driven until half of it hangs
+        # over. An unpressed plus is symmetric about its own bar, so the longer arm restores what
+        # is off screen; where growth already found the whole piece this changes nothing.
+        if y0 <= 0 or y0 + h >= grid.shape[0]:
             reach = max(bar_row, h - 1 - bar_row)
-            y0, h = y0 + bar_row - reach, 2 * reach + 1
-            bar_row = reach
-        if _cut(live, y0 + bar_row, x0 - 1) or _cut(live, y0 + bar_row, x1 + 1):
+            y0, h, bar_row = y0 + bar_row - reach, 2 * reach + 1, reach
+        if x0 <= 0 or x0 + w >= grid.shape[1]:
             reach = max(bar_col, w - 1 - bar_col)
-            x0, w = x0 + bar_col - reach, 2 * reach + 1
-            bar_col = reach
+            x0, w, bar_col = x0 + bar_col - reach, 2 * reach + 1, reach
         return {"kind": "plus", "y": y0, "x": x0, "h": h, "w": w,
                 "bar_row": bar_row, "bar_col": bar_col, "rel": ()}
 
@@ -303,11 +343,23 @@ def _fit_shape(cells: list[Cell], grid: np.ndarray, bg: int, ring_colour: int,
             "bar_row": h // 2, "bar_col": w // 2, "rel": rel}
 
 
-def _cut(live: np.ndarray, y: int, x: int) -> bool:
-    """Is this cell off the board, or chrome drawn over it? Either way a shape stops being seen."""
-    if not (0 <= y < live.shape[0] and 0 <= x < live.shape[1]):
-        return True
-    return not bool(live[y, x])
+def _run_out(grid: np.ndarray, live: np.ndarray, bg: int, ring_colour: int,
+             y: int, x: int, dy: int, dx: int, limit: int) -> int:
+    """How many further cells a line runs past its last visible one before the board goes bare.
+
+    Chrome and the edge of the board count as covered — a bar under the budget gauge is still
+    there — and so does any other piece. Bare background, or the blueprint showing through, is
+    where the line genuinely ends.
+    """
+    steps = 0
+    while steps < limit:
+        ny, nx = y + dy * (steps + 1), x + dx * (steps + 1)
+        if not (0 <= ny < grid.shape[0] and 0 <= nx < grid.shape[1]):
+            break
+        if live[ny, nx] and int(grid[ny, nx]) in (bg, ring_colour):
+            break
+        steps += 1
+    return steps
 
 
 def _one_object(cells: set[Cell]) -> bool:
@@ -328,8 +380,52 @@ def _one_object(cells: set[Cell]) -> bool:
     return len(seen) == len(cells)
 
 
-def _blank(grid: np.ndarray) -> np.ndarray:
-    return np.zeros((grid.shape[0] + 2 * _PAD, grid.shape[1] + 2 * _PAD), dtype=bool)
+class _Blocks:
+    """The cells of one piece of furniture, indexed by row and by column.
+
+    ⛔ This index is the whole answer to a 23x wall-clock difference between two renderings of the
+    same board. The search's inner question is "does this bar touch this thing", asked once per
+    obstacle per direction per state — millions of times — and a stack sample of a slow run landed
+    in `numpy.any` every single time. A board with fourteen dye pads pays that cost fourteen times
+    per move to learn, almost always, that the answer is no. The furniture never moves and is a
+    few dozen cells, so it is indexed ONCE and the question becomes a bisect over a short list.
+    A piece may hang off the board while its middle stays on, so negative coordinates are ordinary
+    here; a dict of rows costs nothing for them, where a padded array cost a constant everywhere.
+    """
+
+    __slots__ = ("cells", "rows", "cols")
+
+    def __init__(self, cells: Any) -> None:
+        self.cells: frozenset[Cell] = frozenset(cells)
+        self.rows: dict[int, list[int]] = {}
+        self.cols: dict[int, list[int]] = {}
+        for cy, cx in self.cells:
+            self.rows.setdefault(cy, []).append(cx)
+            self.cols.setdefault(cx, []).append(cy)
+        for run in self.rows.values():
+            run.sort()
+        for run in self.cols.values():
+            run.sort()
+
+    def __bool__(self) -> bool:
+        return bool(self.cells)
+
+    def at(self, y: int, x: int) -> bool:
+        return (y, x) in self.cells
+
+    def in_row(self, y: int, x0: int, x1: int) -> bool:
+        run = self.rows.get(y)
+        if not run:
+            return False
+        i = bisect_left(run, x0)
+        return i < len(run) and run[i] <= x1
+
+    def in_col(self, x: int, y0: int, y1: int) -> bool:
+        run = self.cols.get(x)
+        if not run:
+            return False
+        i = bisect_left(run, y0)
+        return i < len(run) and run[i] <= y1
 
 
 def parse_board(grid: np.ndarray,
@@ -383,9 +479,8 @@ def parse_board(grid: np.ndarray,
             fills = [v for v in inner if v != bg and v != ring_colour]
             if not inner or len(fills) != len(inner) or len(set(fills)) != 1:
                 continue
-            mask_pad = _blank(grid)
-            mask_pad[y0 + _PAD:y1 + 1 + _PAD, x0 + _PAD:x1 + 1 + _PAD] = True
-            board.pads.append((mask_pad, fills[0]))
+            board.pads.append((_Blocks((cy, cx) for cy in range(y0, y1 + 1)
+                                       for cx in range(x0, x1 + 1)), fills[0]))
             pad_cells[y0:y1 + 1, x0:x1 + 1] = True
     blocked |= pad_cells
 
@@ -434,10 +529,7 @@ def parse_board(grid: np.ndarray,
                 return None
             if y1 - y0 < 2 or x1 - x0 < 2:
                 continue
-            mask_gate = _blank(grid)
-            for cy, cx in comp:
-                mask_gate[cy + _PAD, cx + _PAD] = True
-            board.gates.append((mask_gate, (x0, y0, x1 - x0 + 1, y1 - y0 + 1)))
+            board.gates.append((_Blocks(comp), (x0, y0, x1 - x0 + 1, y1 - y0 + 1)))
     if not board.pieces:
         return None
 
@@ -502,9 +594,9 @@ def _cells_of(state: State, kind: str, rel: tuple) -> list[Cell]:
     return [(y + dy, x + dx) for dy, dx in rel]
 
 
-def _hits(mask: np.ndarray, state: State, kind: str, rel: tuple,
+def _hits(blocks: _Blocks, state: State, kind: str, rel: tuple,
           with_mark: bool = True) -> bool:
-    """Does the driven piece's ink touch this mask?
+    """Does the driven piece's ink touch this furniture?
 
     ⛔ The driven piece's own mark counts against the PRESS and not against the DYE PADS. The mark
     is repainted partway through the engine's handling of a move — it is still there when the
@@ -514,21 +606,17 @@ def _hits(mask: np.ndarray, state: State, kind: str, rel: tuple,
     them.
     """
     x, y, h, w, bar_col, bar_row, _ = state
-    if with_mark and mask[y + h // 2 + _PAD, x + w // 2 + _PAD]:
+    if with_mark and blocks.at(y + h // 2, x + w // 2):
         return True
     if kind == "plus":
-        if mask[y + _PAD:y + h + _PAD, x + bar_col + _PAD].any():
-            return True
-        return bool(mask[y + bar_row + _PAD, x + _PAD:x + w + _PAD].any())
+        return (blocks.in_col(x + bar_col, y, y + h - 1)
+                or blocks.in_row(y + bar_row, x, x + w - 1))
     if kind == "ring":
-        if mask[y + _PAD, x + _PAD:x + w + _PAD].any():
-            return True
-        if mask[y + h - 1 + _PAD, x + _PAD:x + w + _PAD].any():
-            return True
-        if mask[y + _PAD:y + h + _PAD, x + _PAD].any():
-            return True
-        return bool(mask[y + _PAD:y + h + _PAD, x + w - 1 + _PAD].any())
-    return any(mask[y + dy + _PAD, x + dx + _PAD] for dy, dx in rel)
+        return (blocks.in_row(y, x, x + w - 1)
+                or blocks.in_row(y + h - 1, x, x + w - 1)
+                or blocks.in_col(x, y, y + h - 1)
+                or blocks.in_col(x + w - 1, y, y + h - 1))
+    return any(blocks.at(y + dy, x + dx) for dy, dx in rel)
 
 
 def _snap(v: int, step: int) -> int:
@@ -536,7 +624,7 @@ def _snap(v: int, step: int) -> int:
 
 
 def apply_move(state: State, dx: int, dy: int, kind: str, rel: tuple,
-               gates: list, pads: list, step: int, size: int) -> State | None:
+               layout: Layout, step: int, size: int) -> State | None:
     """One action, modelled exactly: bounds, then every press in turn, then the first dye pad.
 
     Returns the resulting state, or None when the outcome is outside what this model covers
@@ -548,8 +636,10 @@ def apply_move(state: State, dx: int, dy: int, kind: str, rel: tuple,
     if not (0 <= nx + w // 2 < size and 0 <= ny + h // 2 < size):
         return state
     cur: State = (nx, ny, h, w, bar_col, bar_row, colour)
-    for mask, (gx, gy, gw, gh) in gates:
-        if not _hits(mask, cur, kind, rel):
+    if not _hits(layout.any_of, cur, kind, rel):
+        return cur
+    for blocks, (gx, gy, gw, gh) in layout.gates:
+        if not _hits(blocks, cur, kind, rel):
             continue
         cx, cy, ch, cw, cbc, cbr, ccol = cur
         if kind == "ring":
@@ -616,8 +706,8 @@ def apply_move(state: State, dx: int, dy: int, kind: str, rel: tuple,
     # the first pad in ITS OWN order, which no frame reveals; guessing it produced a piece the
     # right shape in the wrong colour at the end of a forty-move route, with nothing along the
     # way to show the plan had already failed.
-    touched = [dye for mask, dye in pads
-               if cur[6] != dye and _hits(mask, cur, kind, rel, with_mark=False)]
+    touched = [dye for blocks, dye in layout.pads
+               if cur[6] != dye and _hits(blocks, cur, kind, rel, with_mark=False)]
     if len(touched) > 1:
         return None
     if touched:
@@ -625,17 +715,26 @@ def apply_move(state: State, dx: int, dy: int, kind: str, rel: tuple,
     return cur
 
 
-def reachable(start: State, kind: str, rel: tuple, gates: list, pads: list,
+def reachable(start: State, kind: str, rel: tuple, layout: Layout,
               moves: list[tuple[int, int, int]], step: int, size: int,
+              depth: int = 10 ** 6,
               cap: int = 200_000) -> dict[State, tuple[int, State | None, int]]:
-    """Every state the driven piece can reach, with the cheapest route to each."""
+    """Every state the driven piece can reach within `depth` moves, cheapest route to each.
+
+    ⛔ The depth bound is not a safety valve, it is the plan's own arithmetic. A route longer than
+    the level's action budget is not a slower answer, it is not an answer — the level ends on
+    overrun. Searching the whole reachable space to prove that costs more than every plan this
+    tool has ever executed put together.
+    """
     seen: dict[State, tuple[int, State | None, int]] = {start: (0, None, 0)}
     queue: deque[State] = deque([start])
     while queue and len(seen) < cap:
         cur = queue.popleft()
         dist = seen[cur][0]
+        if dist >= depth:
+            continue
         for aid, dx, dy in moves:
-            nxt = apply_move(cur, dx, dy, kind, rel, gates, pads, step, size)
+            nxt = apply_move(cur, dx, dy, kind, rel, layout, step, size)
             if nxt is None or nxt == cur or nxt in seen:
                 continue
             seen[nxt] = (dist + 1, cur, aid)
@@ -681,17 +780,22 @@ def _pin_assignments(board: Board) -> list[list[tuple[Cell, int]]]:
     return options
 
 
-def solve(board: Board, moves: list[tuple[int, int, int]], step: int,
-          size: int) -> dict[int, tuple[State, list[int]]] | None:
-    """Choose a final state per piece so every pin is satisfied, cheapest total first."""
+# How deep each piece's search is allowed to go, tried in order until a plan appears. The first
+# rung covers every plan this tool has ever executed; the ladder exists so a board with no plan is
+# refused after a bounded search instead of an exhaustive one.
+_DEPTHS = (40, 80, 160)
+
+
+def _attempt(board: Board, layout: Layout, moves: list[tuple[int, int, int]], step: int,
+             size: int, depth: int) -> dict[int, tuple[State, list[int]]] | None:
+    """One pass of the planner at a fixed search depth."""
     reaches = []
     for piece in board.pieces:
         start: State = (piece["x"], piece["y"], piece["h"], piece["w"],
                         piece["bar_col"], piece["bar_row"], piece["colour"])
-        reaches.append(reachable(start, piece["kind"], piece["rel"],
-                                 board.gates, board.pads, moves, step, size))
-    for reading in _pin_assignments(board):
-        pins = reading
+        reaches.append(reachable(start, piece["kind"], piece["rel"], layout,
+                                 moves, step, size, depth))
+    for pins in _pin_assignments(board):
         per_piece: list[dict[frozenset, tuple[int, State]]] = []
         for piece, seen in zip(board.pieces, reaches):
             options: dict[frozenset, tuple[int, State]] = {}
@@ -744,6 +848,24 @@ def solve(board: Board, moves: list[tuple[int, int, int]], step: int,
     return None
 
 
+def solve(board: Board, moves: list[tuple[int, int, int]], step: int,
+          size: int) -> dict[int, tuple[State, list[int]]] | None:
+    """Choose a final state per piece so every pin is satisfied, cheapest total first.
+
+    ⛔ Deepened in rungs rather than searched exhaustively. MEASURED: the exhaustive search opened
+    331,000 states on one level and executed a plan 96 moves long — it spent nine seconds proving
+    there was nothing better far past where any usable answer lives, and every rebuild paid it
+    again. The rungs cost at most twice the successful one and answer the common case in a
+    fraction of a second.
+    """
+    layout = Layout(board.gates, board.pads)
+    for depth in _DEPTHS:
+        plan = _attempt(board, layout, moves, step, size, depth)
+        if plan is not None:
+            return plan
+    return None
+
+
 # --------------------------------------------------------------------------- tool
 
 
@@ -776,8 +898,7 @@ class ReforgeTool:
         self._blueprint: tuple[int, list[tuple[Cell, int | None]]] | None = None
         self._model: list[State] | None = None
         self._shapes: list[tuple[str, tuple]] = []
-        self._gates: list = []
-        self._pads: list = []
+        self._layout = Layout([], [])
         self._pins: list[tuple[Cell, int | None]] = []
         self._ring: int = -1
         self._bg: int = -1
@@ -804,7 +925,7 @@ class ReforgeTool:
         if self._blueprint is None:
             self._blueprint = (board.pin_ring, list(board.pins))
         self._ring, self._bg = board.pin_ring, board.bg
-        self._gates, self._pads, self._pins = board.gates, board.pads, board.pins
+        self._layout, self._pins = Layout(board.gates, board.pads), board.pins
         self._shapes = [(p["kind"], p["rel"]) for p in board.pieces]
         self._model = [(p["x"], p["y"], p["h"], p["w"], p["bar_col"], p["bar_row"], p["colour"])
                        for p in board.pieces]
@@ -845,26 +966,35 @@ class ReforgeTool:
         return True
 
     def _who_drives(self, grid: np.ndarray) -> int:
-        """Which piece the controls are on, read through the model's own occlusions."""
+        """Which piece the controls are on.
+
+        ⛔ Read from the COLOUR AT THE MIDDLE, never from which piece is assumed to be on top.
+        The same board served by two API versions differs in exactly one thing — the order its
+        sprites are listed, and therefore which of two overlapping pieces is drawn over the other.
+        A reading that decides "this mark must be hidden because another piece is there" is right
+        on one rendering and inverted on the other, sends every move to the wrong piece, and makes
+        the model disagree with the board on nearly every action. What a cell SHOWS needs no such
+        assumption: the mark means driven, the piece's own idle drawing means not driven, and any
+        third colour means something is standing on it and the cell says nothing either way.
+        """
         height, width = grid.shape
-        hidden, claimed = [], []
-        for slot in range(len(self._model)):
+        claimed, mute = [], []
+        for slot, state in enumerate(self._model):
             cy, cx = self._middle(slot)
             if not (0 <= cy < height and 0 <= cx < width):
-                hidden.append(slot)
+                mute.append(slot)
                 continue
-            covered = any(other != slot and (cy, cx) in set(self._cells(other))
-                          for other in range(len(self._model)))
-            if covered:
-                hidden.append(slot)
-            elif int(grid[cy, cx]) == self._mark:
+            seen = int(grid[cy, cx])
+            if seen == self._mark:
                 claimed.append(slot)
+            elif seen != state[6] and seen != self._bg and seen != self._ring:
+                mute.append(slot)
         if len(claimed) == 1:
             return claimed[0]
-        # Nobody visible is wearing the mark, so it is under something: the one piece whose own
-        # middle another piece is standing on is the one holding the controls.
-        if not claimed and len(hidden) == 1:
-            return hidden[0]
+        # Nobody visible wears the mark, so it is under something: the one piece whose middle is
+        # showing a colour that is neither its own nor the mark is the one holding the controls.
+        if not claimed and len(mute) == 1:
+            return mute[0]
         return self._sel
 
     # -- calibration -----------------------------------------------------------
@@ -930,11 +1060,7 @@ class ReforgeTool:
             return None
         here = self._model[self._sel]
         kind, rel = self._shapes[self._sel]
-        danger = _blank(np.zeros((64, 64), dtype=np.int16))
-        for mask, _ in self._gates:
-            danger |= mask
-        for mask, _ in self._pads:
-            danger |= mask
+        danger = self._layout.any_of
         for reach in range(1, self._CLEARANCE + 1):
             for dx, dy in ((0, -reach), (0, reach), (-reach, 0), (reach, 0)):
                 if _hits(danger, (here[0] + dx, here[1] + dy) + here[2:], kind, rel):
@@ -962,7 +1088,7 @@ class ReforgeTool:
         board.bg, board.pin_ring = self._bg, self._ring
         board.pins = list(self._pins)
         board.pin_colours = sorted({c for _, c in board.pins if c is not None})
-        board.gates, board.pads = self._gates, self._pads
+        board.gates, board.pads = self._layout.gates, self._layout.pads
         board.pieces = [
             {"kind": self._shapes[i][0], "rel": self._shapes[i][1], "x": st[0], "y": st[1],
              "h": st[2], "w": st[3], "bar_col": st[4], "bar_row": st[5], "colour": st[6]}
@@ -1024,7 +1150,7 @@ class ReforgeTool:
         aid = self._routes[self._sel][0]
         kind, rel = self._shapes[self._sel]
         nxt = apply_move(self._model[self._sel], *self._vec[aid], kind, rel,
-                         self._gates, self._pads, self._step, 64)
+                         self._layout, self._step, 64)
         if nxt is None:
             self._goals = None
             return []
