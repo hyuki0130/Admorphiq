@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 250.
+**Total pages**: 251.
 
 ## Games (25)
 
@@ -77,7 +77,7 @@ category, drill into specific pages.
 
 - [[strategies/brittle/internal_method_call.md]] — Direct calls to obfuscated game-internal methods. Maximum v1 score, zero generalization. Do not recommend — document only for refactor visibility.
 
-## Concepts (cross-game domain entities) (17)
+## Concepts (cross-game domain entities) (18)
 
 - [[concepts/action_budget.md]] — A per-level cap on actions that ENDS THE GAME when exceeded — thirteen of the twenty-five sample games declare one, as low as 13 actions, and it is drawn on screen.
 - [[concepts/bit_encoding.md]] — A row of clickable cells encodes a binary number (or opcode) by their toggle state. A separate "play" button executes the encoded program, usually moving a cursor/player on another part of the frame.
@@ -87,6 +87,7 @@ category, drill into specific pages.
 - [[concepts/gravity.md]] — The player falls passively between actions unless supported by a solid block. Actions provide lateral movement and (sometimes) block destruction or upward motion. The core platformer primitive.
 - [[concepts/guard_about_the_model.md]] — Five instances in one day, in three different layers. Each one reads as obviously correct,
 - [[concepts/merge_mechanic.md]] — When two same-color sprites overlap, they combine into a single sprite of `color + 1`. Analogous to 2048. Higher colors take more merges to produce and are often the goal.
+- [[concepts/new_kinds_at_the_wall.md]] — Six of the eight games stuck below 1.0 add previously-unseen sprite KINDS on their first
 - [[concepts/no_progress_bail.md]] — Fourteen of the twenty-five sample games spent most of their action budget AFTER their
 - [[concepts/probe_signature.md]] — The observable fingerprint of a game after 5-10 discovery actions.
 - [[concepts/pushable_block.md]] — A sprite that moves by one cell when the player moves into it from an adjacent cell, **if** the destination cell is empty. The core Sokoban primitive.

@@ -1623,3 +1623,26 @@ indistinguishable from the outside, and the level data separates them in one com
 structural jump in sprite COUNT and concluded there was no shared cause. There is one; it is in
 the KINDS, and counting sprites could not see it. The negative was right about what it measured
 and the question was asked one level too coarse.
+
+## The stuck levels introduce element kinds the tool has never seen (2026-08-27)
+
+Ran `scripts/level_diff_probe.py` over all eight games holding the remaining 0.1219 — last
+cleared level against first uncleared, engine never started. **Six of the eight introduce
+previously-unseen sprite KINDS at exactly the wall**; the other two (bp35, lf52) build their
+boards at runtime and the probe is blind to them, which is unknown, not negative.
+
+The load-bearing row is g50t: level 7 has **fewer sprites** than level 6 and six new kinds. That
+excludes volume and arrangement difficulty for at least one game and makes the finding a
+discriminator rather than a story. Three games (ka59 `65x61`, g50t `56x61`, s5i5 `70x51`) add an
+element at or beyond the size of the 64x64 board — a covering, not a piece — which generates the
+first hypothesis to kill: the level opens under an overlay and the tool plans against the overlay.
+
+⚠️ It also corrects how this round has been directed. A tool emitting actions that change nothing
+**looks** like a planning failure and is equally what a CORRECT plan produces when aimed at objects
+whose behaviour the model has wrong. Indistinguishable from outside the tool; separated by one
+command before the engine starts. Every agent on a stuck game was redirected from planner
+iteration to reading the new kinds.
+
+Written up as [[../concepts/new_kinds_at_the_wall]]. ⛔ The first version of the claim said *every*
+stuck game — carried two games past the measurement, cut within the hour, and it is the same error
+[[../lessons/instrument_validity_20260825]] already records.
