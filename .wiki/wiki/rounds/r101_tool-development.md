@@ -1406,3 +1406,28 @@ is still a wrong reading, and it propagates.
 
 ⛔ When comparing two tools' per-level costs, split by attempt first. `attempt_probe.py where`
 does it in one command.
+
+#### The attempt axis, fully mapped — it is two games
+
+Running `attempt_probe.py where` on all four games that bin anything settles which of them the
+attempt axis can actually help:
+
+```
+re86  L6 only   [200x 201x 144c]   binned 401   won in 144 vs human 139   ceiling +0.1445
+bp35  L2,L3,L5  winning runs 57/48, 43/44, 38/33 — at or better than human   ceiling +0.1283
+s5i5  L6 only   [150x 106c]        binned 150   won in 106 vs human  38    ceiling +0.0177
+wa30  ZERO binned on every level it clears; its 1,217 binned actions are all on level 9,
+      which it never clears at all                                          ceiling +0.0000
+```
+
+**wa30 is the case that keeps the reading honest.** It bins more actions than re86 and has no
+attempt headroom whatsoever, because binning on a level you never clear costs nothing you were
+going to be paid for. Read the ceiling column; the binned count is not the signal.
+
+**s5i5 is the case that is neither.** Its level 6 bins one attempt AND wins in 106 against a
+human 38 — so it is 2.8x on the route as well, and its ceiling is small because a level priced
+that low cannot return much. Attempt work and route work would both be nearly worthless there;
+the value in s5i5 is levels 7 and 8.
+
+So the attempt axis is **two games — re86 and bp35, together +0.0109 of the card** — and both
+have a route that is already at human parity.
