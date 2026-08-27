@@ -1,26 +1,44 @@
-"""Stencil tool — paint a small instruction glyph onto a lattice of equal tiles.
+"""Stencil tool — satisfy small instruction glyphs printed onto a lattice of equal tiles.
 
-Recovered from frames alone in round r101 and measured on ft09 (levels 1-4, 62 actions,
-zero game constants). The mechanic:
+Recovered from frames alone in round r101 and deepened on 2026-08-27. The mechanic, as it is
+now measured rather than guessed:
 
-  * the board is a lattice of equal square tiles, all one colour to begin with;
-  * one or more tiles instead carry a 3x3 STENCIL drawn at every second pixel;
-  * the stencil's centre pixel names the MARKER colour a click paints with;
-  * each stencil cell says what its neighbour must be — the marker, or the other colour.
+  * the board is a lattice of equal square tiles at a constant pitch;
+  * a site holds either a TILE (clickable, carries one state colour) or a STENCIL (inert);
+  * a stencil's centre names a MARKER colour, and its eight outer cells each speak about the
+    lattice neighbour in that direction: one ink says "that neighbour MUST be the marker",
+    another says "it must NOT be", and a third is printed where there is no tile to speak of;
+  * clicking a tile advances every tile in its EFFECT MASK one step around a colour cycle.
 
-⛔ Nothing here is written down: not the tile size, not the pitch, not which ink means
-"paint", not the palette. Every one of those is derived, because a constant recovered by hand
-does not transfer to a private game, which is the entire point of the generic-tool track.
+⛔ The effect mask is the part that was missing, and its absence is exactly why the tool stopped
+four levels in. A tile drawn in one flat colour moves only itself. A tile whose art carries a
+second colour is announcing a bigger reach: each off-colour cell of its 3x3 art marks a lattice
+direction that moves WITH it. On the level that had been recorded as an impassable wall, three
+tiles carry a plus of off-colour cells; the earlier model read them as decoration, clicked them
+as if they were ordinary, and destroyed two neighbours per click.
 
-The three derivations that are easy to get wrong, each of which DID fail a measurement first:
+⛔ The recorded wall was also mis-diagnosed. The round page said the neighbourhood model
+"self-contradicts — 4 tiles demanded in two colours at once". It does not: the contradiction was
+manufactured by reading "must NOT be the marker" as "must be the OTHER colour", which is the same
+statement only while the cycle has exactly two colours. One level runs a cycle of three. Solved as
+an inequality there is no contradiction anywhere — checked on all six boards.
+
+⛔ Nothing here is written down: not the tile size, not the pitch, not the palette, not which ink
+means which, not the effect masks. Every one of those is derived, because a constant recovered by
+hand does not transfer to a private game, which is the entire point of the generic-tool track.
+
+The derivations that are easy to get wrong, each of which DID fail a measurement first:
 
   * a coloured FRAME touches every tile, so plain connected components return the whole board
-    as one blob — `_peel` treats a component far larger than its siblings as a container;
+    as one blob — `segment.peel_containers` treats a component far larger than its siblings as a
+    container;
   * two unrelated panels can sit 2 pixels apart, so the lattice step is the COMMONEST gap
     between origins, never the smallest;
   * the ink -> role code cannot be guessed from ink frequency (both inks appear exactly four
-    times on ft09 level 1). It is read off the solved panels drawn beside the live board, and
-    then CARRIED, because the next level ships no worked example at all.
+    times on the first board). It is read off the solved panels drawn beside the live board, and
+    then CARRIED, because the next level ships no worked example at all;
+  * a tile with a reach mask breaks one-click-at-a-time greed: retiring one stencil's demand
+    breaks a neighbour's. Coupled boards are SOLVED as a linear system over the cycle, not walked.
 
 Full failure ledger: `.wiki/wiki/rounds/r101_tool-development.md`.
 """
@@ -37,7 +55,16 @@ from admorphiq.tools.segment import (
     square_regions,
 )
 
-__all__ = ["StencilTool", "tiles", "all_tiles", "read_code", "plan"]
+__all__ = [
+    "StencilTool",
+    "Demand",
+    "tiles",
+    "all_tiles",
+    "read_code",
+    "plan",
+    "pitch",
+    "board_model",
+]
 
 Grid = Any
 Cell = tuple[int, int]
@@ -64,48 +91,70 @@ def pitch(origins: list[Cell], side: int = 0) -> int:
     return Counter(gaps).most_common(1)[0][0] if gaps else 0
 
 
-def _stencil(g: Grid, origin: Cell) -> tuple[int, list[list[int]]] | None:
-    """The marker and the 3x3 ink, or None when this tile is decorated rather than instructing.
+def _art(g: Grid, origin: Cell, side: int = 6) -> list[list[int]]:
+    """The 3x3 glyph a tile carries — one sample per cell of its own 3x3 division.
 
-    The discriminator is that a stencil's CENTRE colour appears exactly once among its nine
-    sample points. Measured on ft09 level 5, which carries three identical
-    `[[14,6,14],[6,14,6],[14,6,14]]` checkerboard tiles: read as stencils they taught the code
-    two extra inks (6 -> paint, 14 -> leave) that no real stencil uses, and the level planned
-    nothing. A real marker names one cell — itself.
+    The cell size is the tile's side over three, derived rather than assumed: the pre-2026-08-27
+    version hard-coded a stride of 2, which is the answer for a 6-pixel tile and for nothing else.
     """
     y0, x0 = origin
-    ink = [[int(g[y0 + 2 * i][x0 + 2 * j]) for j in range(3)] for i in range(3)]
-    marker = ink[1][1]
-    if sum(row.count(marker) for row in ink) != 1:
-        return None
-    return marker, ink
+    unit = max(1, side // 3)
+    return [[int(g[y0 + r * unit][x0 + c * unit]) for c in range(3)] for r in range(3)]
+
+
+def _is_stencil(art: list[list[int]]) -> bool:
+    """A stencil names ONE cell in the marker colour — itself. A tile repeats its own colour.
+
+    Measured on the coupled board, which carries tiles drawn `[[14,6,14],[6,14,6],[14,6,14]]`:
+    read as stencils they taught the ink code two roles no real stencil uses and the level
+    planned nothing. Counting the centre colour separates the two kinds with no threshold.
+    """
+    marker = art[1][1]
+    return sum(row.count(marker) for row in art) == 1
+
+
+def _mask(art: list[list[int]]) -> set[Cell]:
+    """Which lattice neighbours move WITH this tile, in (dy, dx) lattice steps.
+
+    A tile always moves itself. Every cell of its art drawn in something other than its own
+    colour marks one more direction. A flat tile therefore yields `{(0, 0)}` and behaves exactly
+    as the pre-2026-08-27 model assumed — which is why four levels cleared under that model and
+    the fifth, the first to print reach onto its tiles, did not.
+    """
+    own = art[1][1]
+    out = {(0, 0)}
+    for r in range(3):
+        for c in range(3):
+            if art[r][c] != own:
+                out.add((r - 1, c - 1))
+    return out
 
 
 def read_code(g: Grid, board: dict[Cell, dict[str, Any]], step: int) -> dict[int, bool]:
-    """Learn ink -> ROLE (carries the marker / does not) from the solved panels on screen.
+    """Learn ink -> ROLE (demands the marker / forbids it) from the solved panels on screen.
 
     A panel counts as worked only when its ink -> colour map is ONE-TO-ONE: an untouched board
     maps every ink to the blank colour, which is a map that carries no code. The role is stored,
-    never the colour — ft09 paints in 8 on level 1 and in 12 on level 2.
+    never the colour — the first board is painted in 8 and the second in 12.
     """
     votes: Counter[tuple[int, bool]] = Counter()
     for origin, tile in board.items():
         if len(tile["colours"]) == 1:
             continue
-        read = _stencil(g, origin)
-        if read is None:
+        art = _art(g, origin, tile["size"])
+        if not _is_stencil(art):
             continue
-        marker, ink = read
+        marker = art[1][1]
         y0, x0 = origin
         seen: dict[int, set[int]] = {}
-        for i in range(3):
-            for j in range(3):
-                if (i, j) == (1, 1):
+        for r in range(3):
+            for c in range(3):
+                if (r, c) == (1, 1):
                     continue
-                nb = board.get((y0 + (i - 1) * step, x0 + (j - 1) * step))
+                nb = board.get((y0 + (r - 1) * step, x0 + (c - 1) * step))
                 if nb is None or len(nb["colours"]) != 1:
                     continue
-                seen.setdefault(ink[i][j], set()).add(next(iter(nb["colours"])))
+                seen.setdefault(art[r][c], set()).add(next(iter(nb["colours"])))
         if len(seen) < 2 or any(len(v) != 1 for v in seen.values()):
             continue
         if len({next(iter(v)) for v in seen.values()}) < len(seen):
@@ -118,69 +167,191 @@ def read_code(g: Grid, board: dict[Cell, dict[str, Any]], step: int) -> dict[int
     return out
 
 
-def plan(g: Grid, code: dict[int, bool] | None = None) -> tuple[list[Cell], dict[int, bool]]:
-    """Every click the live stencils call for, plus the code in force."""
+class Demand:
+    """What the stencils around one tile jointly require of it.
+
+    ⛔ The forbidden colours are held as an EXCLUSION, never as "the other colour". Those two
+    readings agree only while the cycle has exactly two colours, and this game runs one board on
+    three. Read positively, that board reports four tiles demanded in two colours at once and the
+    tool refuses to act — which is precisely the contradiction the round page recorded as an
+    impassable wall. Read as an inequality it is an ordinary board with an ordinary answer: the
+    third colour, which satisfies both stencils and is not on screen to be named until a tile
+    reaches it.
+    """
+
+    __slots__ = ("must", "forbid", "broken")
+
+    def __init__(self) -> None:
+        self.must: int | None = None
+        self.forbid: set[int] = set()
+        self.broken = False
+
+    def demand(self, colour: int) -> None:
+        if self.must is not None and self.must != colour:
+            self.broken = True
+        self.must = colour
+
+    def refuse(self, colour: int) -> None:
+        self.forbid.add(colour)
+
+    def satisfied_by(self, colour: int) -> bool:
+        return colour not in self.forbid and (self.must is None or colour == self.must)
+
+    def impossible(self) -> bool:
+        return self.broken or (self.must is not None and self.must in self.forbid)
+
+    def target(self, palette: set[int]) -> int | None:
+        """The one colour that satisfies this demand, when the visible cycle leaves only one."""
+        if self.must is not None:
+            return self.must
+        left = palette - self.forbid
+        return next(iter(left)) if len(left) == 1 else None
+
+
+def board_model(
+    g: Grid, code: dict[int, bool]
+) -> tuple[dict[Cell, int], dict[Cell, set[Cell]], dict[Cell, Demand], int, int] | None:
+    """Read the live board as (tile states, effect masks, per-tile demands, pitch, tile side).
+
+    `None` when the frame carries no lattice this tool can speak about. An impossible demand is
+    left in place deliberately — the caller refuses to act on it, and silence is what keeps a
+    won level.
+    """
     board = tiles(g)
     if not board:
-        return [], code or {}
+        return None
     side = next(iter(board.values()))["size"]
     step = pitch(list(board), side)
     if step <= 0:
-        return [], code or {}
-    every = all_tiles(g)
-    code = read_code(g, every, pitch(list(every), side) or step) or (code or {})
-    if not code:
-        return [], code
-    palette = {next(iter(t["colours"])) for t in board.values() if len(t["colours"]) == 1}
-    reads = {o: _stencil(g, o) for o in board}
-    markers = {r[0] for r in reads.values() if r is not None}
-    demands: dict[Cell, set[int]] = {}
-    clicks: list[Cell] = []
-    for origin, tile in board.items():
-        if len(tile["colours"]) == 1:
-            continue
-        read = reads[origin]
-        if read is None:
-            continue
-        marker, ink = read
-        # "The other colour" comes from the tiles when they show two states. Only when every
-        # plain tile is the SAME colour — ft09 level 5 starts all-14 while its stencils name 14
-        # and 15 — do the markers supply it; reading markers first regressed level 4, which has
-        # a two-colour palette that already answers the question.
-        rest = sorted(palette - {marker}) or sorted(markers - {marker}) or sorted(palette)
-        if not rest:
-            continue
-        other = rest[0]
-        y0, x0 = origin
-        for i in range(3):
-            for j in range(3):
-                if (i, j) == (1, 1):
+        return None
+    arts = {o: _art(g, o, side) for o in board}
+    stencils = {o: a for o, a in arts.items() if len(board[o]["colours"]) > 1 and _is_stencil(a)}
+    state = {o: a[1][1] for o, a in arts.items() if o not in stencils}
+    masks = {o: _mask(arts[o]) for o in state}
+    demands: dict[Cell, Demand] = {}
+    for (y0, x0), art in stencils.items():
+        marker = art[1][1]
+        for r in range(3):
+            for c in range(3):
+                if (r, c) == (1, 1):
                     continue
-                role = code.get(ink[i][j])
+                role = code.get(art[r][c])
                 if role is None:
+                    continue                  # the third ink marks an EMPTY site; it says nothing
+                at = (y0 + (r - 1) * step, x0 + (c - 1) * step)
+                if at not in state:
                     continue
-                # A stencil states BOTH halves. Levels that start uniform only ever exercise
-                # "paint this"; a level that starts mixed also needs "this must NOT be painted".
-                want = marker if role else other
-                at = (y0 + (i - 1) * step, x0 + (j - 1) * step)
-                nb = board.get(at)
-                if nb is None or nb["colours"] == {want}:
-                    continue
-                if _stencil(g, at) is not None:
-                    continue                           # a stencil instructs; it is not painted
-                # A patterned neighbour that is not a stencil is an UNRESOLVED tile, and the
-                # stencil beside it says what it must become. Measured on ft09 level 5, where
-                # every stencil was already satisfied and the only work left sat in three
-                # checkerboard tiles that the earlier "plain neighbours only" rule skipped.
-                demands.setdefault(at, set()).add(want)
-                clicks.append((at[0] + 2, at[1] + 2))
-    # ⛔ Refuse to act on a model that contradicts itself. Two stencils demanding different
-    # colours for one tile means the neighbourhood reading is wrong for this board, and on ft09
-    # a wrong click COSTS A LEVEL — measured, 4 -> 3 on one click and 4 -> 0 over a run. Silence
-    # keeps what is already won; guessing spends it.
-    if any(len(v) > 1 for v in demands.values()):
-        return [], code
-    return sorted(set(clicks)), code
+                want = demands.setdefault(at, Demand())
+                if role:
+                    want.demand(marker)
+                else:
+                    want.refuse(marker)
+    return state, masks, demands, step, side
+
+
+def _gf2(rows: list[list[int]], width: int) -> list[int] | None:
+    """Least-index particular solution of an augmented GF(2) system, or None if inconsistent.
+
+    Free variables are pinned to 0 and the pivot order is the column order, which makes the
+    answer a FUNCTION of the board rather than of the search. That matters: the plan is recomputed
+    from scratch after every single click, so a solver that wandered between equally valid
+    solutions would spend the level undoing itself.
+    """
+    work = [r[:] for r in rows]
+    pivots: list[int] = []
+    r = 0
+    for col in range(width):
+        src = next((i for i in range(r, len(work)) if work[i][col]), None)
+        if src is None:
+            continue
+        work[r], work[src] = work[src], work[r]
+        for i in range(len(work)):
+            if i != r and work[i][col]:
+                work[i] = [a ^ b for a, b in zip(work[i], work[r])]
+        pivots.append(col)
+        r += 1
+    if any(row[width] and not any(row[:width]) for row in work):
+        return None
+    out = [0] * width
+    for i, col in enumerate(pivots):
+        out[col] = work[i][width]
+    return out
+
+
+def _coupled_clicks(
+    state: dict[Cell, int],
+    masks: dict[Cell, set[Cell]],
+    demands: dict[Cell, Demand],
+    step: int,
+) -> list[Cell]:
+    """Solve a board whose tiles move their neighbours, as a linear system over a 2-state cycle.
+
+    ⛔ Only over TWO states. With a longer cycle the same board is a system over Z_k, and the two
+    colours currently on screen are not proof the cycle is that short — so an under-determined
+    board returns nothing rather than guessing, and the tool falls silent. Both coupled boards
+    measured here run two states; the three-state board has no coupled tiles.
+    """
+    # The cycle a tile walks is not printed anywhere. What IS on screen is every colour a tile
+    # holds plus every colour a stencil names, and their union is the cycle so far.
+    palette = set(state.values()) | {d.must for d in demands.values() if d.must is not None}
+    palette |= {c for d in demands.values() for c in d.forbid}
+    if len(palette) != 2:
+        return []
+    targets: dict[Cell, int] = {}
+    for site, want in demands.items():
+        pick = want.target(palette)
+        if pick is None:
+            return []
+        targets[site] = pick
+    lo, hi = sorted(palette)
+    bit = {lo: 0, hi: 1}
+    order = sorted(state)
+    at = {t: n for n, t in enumerate(order)}
+    rows: list[list[int]] = []
+    for site, pick in sorted(targets.items()):
+        row = [0] * (len(order) + 1)
+        for tile, mask in masks.items():
+            for dy, dx in mask:
+                if (tile[0] + dy * step, tile[1] + dx * step) == site:
+                    row[at[tile]] ^= 1
+        row[len(order)] = bit[pick] ^ bit[state[site]]
+        rows.append(row)
+    sol = _gf2(rows, len(order))
+    if sol is None:
+        return []
+    return [order[i] for i, v in enumerate(sol) if v]
+
+
+def plan(g: Grid, code: dict[int, bool] | None = None) -> tuple[list[Cell], dict[int, bool]]:
+    """Every click the live stencils call for, plus the ink code in force."""
+    carried = code or {}
+    every = all_tiles(g)
+    if every:
+        side = next(iter(every.values()))["size"]
+        learned = read_code(g, every, pitch(list(every), side))
+        if learned:
+            carried = learned
+    if not carried:
+        return [], carried
+    model = board_model(g, carried)
+    if model is None:
+        return [], carried
+    state, masks, demands, step, side = model
+    # ⛔ Refuse to act on a model that contradicts itself. One tile demanded in two colours at
+    # once means the reading is wrong for this board, and this game charges an ACTION BUDGET per
+    # level that a wrong plan burns straight through. Silence keeps what is already won.
+    if any(d.impossible() for d in demands.values()):
+        return [], carried
+    if any(len(m) > 1 for m in masks.values()):
+        want = _coupled_clicks(state, masks, demands, step)
+    else:
+        # Independent tiles: a tile that fails its demand is advanced one step and re-read. The
+        # cycle's LENGTH and ORDER stay unknown and unneeded — "not yet right" is a complete
+        # instruction when a click can only affect the tile under it, and it is what carries the
+        # three-colour board, whose third colour never appears until a tile is clicked onto it.
+        want = sorted(t for t, d in demands.items() if not d.satisfied_by(state[t]))
+    unit = max(1, side // 3)          # aim at the tile's middle cell, whatever its size
+    return [(y + unit, x + unit) for y, x in want], carried
 
 
 class StencilTool:
@@ -230,10 +401,10 @@ class StencilTool:
         g = frame_2d(obs)
         # ⛔ Stop on a REVISITED board. A demand count that fails to fall is not the signal —
         # one click can retire one stencil's demand while breaking a neighbour's, and requiring
-        # a strict decrease killed level 4, which legitimately plateaus. A repeated state is
-        # unambiguous: the plan is cycling. On ft09 that matters because clicking on regardless
-        # burned 130 actions at level 5 and lost every level already won (4 -> 0).
-        # Hash the TILE MAP, not the frame: ft09 marches an action counter one pixel per
+        # a strict decrease killed a level that legitimately plateaus. A repeated state is
+        # unambiguous: the plan is cycling. Here that matters because clicking on regardless
+        # burned 130 actions on one level and lost every level already won (4 -> 0).
+        # Hash the TILE MAP, not the frame: this game marches an action counter one pixel per
         # action, so a whole-frame hash is unique every step and never detects anything.
         stamp = repr(sorted((o, sorted(v["colours"])) for o, v in tiles(g).items()))
         if stamp in self._seen:
