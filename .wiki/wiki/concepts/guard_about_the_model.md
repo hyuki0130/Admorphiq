@@ -116,6 +116,29 @@ Tightening it to "only where the track actually RUNS" returned to parity and sti
 level. Both reverted. **A count tells you which branch to look at; it does not tell you the
 branch is the reason the level is unsolved.**
 
+## The inverse: a guard measuring the WORLD where it should measure the TOOL
+
+Every instance above is a guard whose condition is about our model when it should be about the
+world. The stall detector is the mirror image and it cost 401 actions of one game's score.
+
+`UnifiedAgent` decides a tool has stalled when it stops reaching states it has not seen, keyed by
+default on the raw frame — a fact about the BOARD. That is right while a tool is following a
+plan. It is wrong the moment a tool has NO plan: it proposes nothing, the actions it declined are
+filled by probes, those shuffle pieces into frames never seen before, novelty never runs out, and
+a tool that has already bid **0.00** holds the level to the end of its allowance.
+
+Measured on a board whose level asks for shapes that are not translations of anything present, so
+no plan exists and none ever appears:
+
+```
+8 of 8 targets uncovered across 480 consecutive proposals, 463 of them EMPTY
+held 200 actions, lost; held 201 more, lost; another tool then cleared it in 63
+```
+
+The fix belongs in the tool, because the harness cannot know what progress means for one:
+`loop.py` already calls a `state_key` hook, so a tool can answer "the board" while it has a plan
+and "no progress" when it does not.
+
 ## Falsification
 
 Wrong as a general claim if a guard of this shape is found that cannot become permanently true —
