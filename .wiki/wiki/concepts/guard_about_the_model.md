@@ -139,6 +139,27 @@ The fix belongs in the tool, because the harness cannot know what progress means
 `loop.py` already calls a `state_key` hook, so a tool can answer "the board" while it has a plan
 and "no progress" when it does not.
 
+### But "held while bidding 0.00" is not itself a cost — the ceiling is
+
+The signature that cost re86 401 actions is easy to find once you know to look: count actions
+where the acting tool's own `detect` returns 0.00. Swept across the eight games with headroom:
+
+```
+lf52  825 held at bid 0.00   (hop 664, railpeg 82)      dc22  275   (phase_grid 138, gantry 137)
+g50t  142   ls20  87   s5i5  59   wa30  52   ka59  21
+```
+
+lf52 looks like the worst case by a wide margin. It is not a case at all: removing `hop` from the
+registry leaves lf52 **byte-identical — 0.2727, the same five levels at the same per-level costs,
+zero binned**. Those 664 actions are spent on a level that is never cleared under any
+configuration, so they cost nothing anyone was going to be paid for.
+
+⛔ **This is the same trap as counting binned actions**, where wa30 bins more than re86 and has
+zero recoverable. A held-while-silent count and a binned-action count are both proxies; the only
+number that decides is what the game would score if the waste were removed. Measure that — by
+`attempt_probe`'s ceiling column, or by removing the tool and re-running — before naming anyone's
+work as a cost.
+
 ## Falsification
 
 Wrong as a general claim if a guard of this shape is found that cannot become permanently true —
