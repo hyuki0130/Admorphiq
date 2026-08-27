@@ -2,14 +2,29 @@
 type: reasoning
 round: R101
 axis: stage 1 of the top policy — develop the generic tools until they clear all 25 sample games
-keywords: [tool-development, 25-of-25, stage-one, inert-actions, dead-signature, goal-inference, graph-search, stall-diagnosis, per-game]
-verdict: OPEN — the 25-game diagnosis is in and it splits the work into three named repairs.
+keywords: [tool-development, 25-of-25, stage-one, generic-tools, fan-out, selectivity, transfer,
+  depth-vs-efficiency, attempt-vs-search, instrumentation, action-budget, adapters, per-game]
+verdict: **ACTIVE — generic tools ALONE, zero adapters: 0.0200 -> 0.8602 over the 25, FIFTEEN
+  games at 1.0000 (re86 0.9908 makes sixteen at or above 0.99), SEVENTEEN clearing every level,
+  ~25 gates with cumulative regressions ZERO.** Method: one background agent per GAME owning two
+  new files, the parent integrating ONE at a time, a full 25 on ceph deciding
+  (`scripts/rounds/gate_tool.sh`). ⛔ The card is NOT the property that matters — the shipped
+  `--agent kaggle_detect` scores 0.5422, so the thirteen adapters now COST 0.318 and only ls20
+  earns its board (submission-affecting, the user's call). ✅ TRANSFER 0.9981, 13 of 14
+  re-rendered games IDENTICAL. Load-bearing findings, each measured: a tool with no plan must bid
+  0.0; DEPTH without efficiency is worth nothing (two extra levels bought +0.0011 where the same
+  levels made cheaper bought +0.0304); a level LOST AND RETRIED is invisible in the score, and
+  splitting a run into attempts took re86 from 0.8349 to 0.9908; COUNT how often each branch runs
+  before tuning any of them; a guard whose condition can never be false is the commonest defect
+  here. Open: bp35, lf52, s5i5, dc22, ls20, ka59, g50t, wa30 — 0.1219 of card, all assigned.
 date: 2026-08-26
+updated: 2026-08-27
 ---
-
 # R101 — stage 1: develop the tools to 25/25
 
-> Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear — three tools registered, the action-budget finding, and the selectivity rule that governs how tools are kept.
+> Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear. The
+> generic path went 0.0200 -> 0.8602 in two days with zero cumulative regressions, and every
+> number below was decided by a full-25 run rather than by a single-game probe.
 
 Per `OPERATING_RULES.md` rule 0: I build the generic tools until they clear all 25 sample games;
 only then does the LLM patch and combine them on hidden games. This round is stage 1.

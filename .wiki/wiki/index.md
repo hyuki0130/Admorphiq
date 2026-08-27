@@ -261,7 +261,7 @@ category, drill into specific pages.
 - [[memory/project_wiki_agent_first_run.md]] — 40-env Qwen 3 8B WikiAgent bench — 15/40 envs, 36/290 levels (12.41%), classification accuracy 45%
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
-- [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear — three tools registered, the action-budget finding, and the selectivity rule that governs how tools are kept.
+- [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear. The
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
 - [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal
