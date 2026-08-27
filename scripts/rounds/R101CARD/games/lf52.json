@@ -3,24 +3,48 @@
   "n_games_run": 1,
   "n_games_scored": 1,
   "n_excluded": 0,
-  "total_score": 0.000131,
-  "total_score_pct": 0.013,
+  "total_score": 0.219797,
+  "total_score_pct": 21.98,
   "games": [
     {
       "game_id": "lf52-271a04aa",
       "win_levels": 10,
-      "levels_completed": 1,
-      "elapsed_s": 50.13,
-      "total_actions": 4000,
+      "levels_completed": 5,
+      "elapsed_s": 57.92,
+      "total_actions": 2213,
       "per_level": [
         {
           "level": 1,
           "agent_actions": 377,
           "human_actions": 32,
           "score": 0.007205
+        },
+        {
+          "level": 2,
+          "agent_actions": 401,
+          "human_actions": 81,
+          "score": 0.040802
+        },
+        {
+          "level": 3,
+          "agent_actions": 57,
+          "human_actions": 60,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 64,
+          "human_actions": 71,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 113,
+          "human_actions": 205,
+          "score": 1.0
         }
       ],
-      "game_score": 0.000131,
+      "game_score": 0.219797,
       "has_baseline": true,
       "llm_hypothesis": null,
       "title": "LF52"

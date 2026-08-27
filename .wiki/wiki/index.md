@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 248.
+**Total pages**: 249.
 
 ## Games (25)
 
@@ -96,12 +96,13 @@ category, drill into specific pages.
 - [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (50)
+## Lessons (engineering wisdom from past incidents) (51)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
 - [[lessons/adapter_port_is_a_dispatch_change_20260825.md]] — Porting an adapter changes what the shipped dispatcher does, so it is a card change and must be re-measured on the full 25.
 - [[lessons/adapter_port_progress_20260825.md]] — L0/L1 are cleared by the rare-colour sweep. **L2** is the ring-permutation board — "2 targets +
+- [[lessons/adapters_now_cost_the_card_20260827.md]] — The deployed configuration scores **0.5335** over the 25 sample games. The generic tools
 - [[lessons/api_hash_rotation_20260421.md]] — Between 2026-04-20 and 2026-04-21 the API replaced every served env hash; all brittle-internals solvers silently died
 - [[lessons/brittle_tells.md]] — Code smells that indicate a strategy will fail on a new version hash. Use this checklist when reviewing any new `strat_*` function in `src/admorphiq/agent_ensemble.py`.
 - [[lessons/cd82_paint_palette_signature_20260423.md]] — Pre-HUD-masking, CD82's discovery phase reported 71 of 71

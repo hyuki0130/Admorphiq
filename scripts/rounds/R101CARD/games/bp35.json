@@ -3,17 +3,48 @@
   "n_games_run": 1,
   "n_games_scored": 1,
   "n_excluded": 0,
-  "total_score": 0.0,
-  "total_score_pct": 0.0,
+  "total_score": 0.14256,
+  "total_score_pct": 14.256,
   "games": [
     {
       "game_id": "bp35-0a0ad940",
       "win_levels": 9,
-      "levels_completed": 0,
-      "elapsed_s": 90.48,
-      "total_actions": 4000,
-      "per_level": [],
-      "game_score": 0.0,
+      "levels_completed": 5,
+      "elapsed_s": 107.8,
+      "total_actions": 2782,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 1292,
+          "human_actions": 21,
+          "score": 0.000264
+        },
+        {
+          "level": 2,
+          "agent_actions": 94,
+          "human_actions": 48,
+          "score": 0.260751
+        },
+        {
+          "level": 3,
+          "agent_actions": 83,
+          "human_actions": 44,
+          "score": 0.281028
+        },
+        {
+          "level": 4,
+          "agent_actions": 23,
+          "human_actions": 38,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 72,
+          "human_actions": 33,
+          "score": 0.210069
+        }
+      ],
+      "game_score": 0.14256,
       "has_baseline": true,
       "llm_hypothesis": null,
       "title": "BP35"
