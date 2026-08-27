@@ -71,3 +71,18 @@ around the border went into the numerator.
 
 - [[../games/LP85]], [[../games/TU93]], [[../games/WA30]], [[../games/LS20]] — pages that already
   recorded a StepCounter before this concept existed.
+
+## A measured budget table, and a free action (2026-08-27)
+
+Read off one game's own source while building a tool for it, and worth checking for elsewhere
+because it changes what a plan can afford:
+
+* the per-level cap is **not constant within a game** — 64 actions on level 1, 320 on levels
+  2-5, 640 on levels 6-10. A tool that calibrates its patience on level 1 will be five times too
+  cautious later, and one that calibrates on level 6 will overrun level 1;
+* **ACTION7 is a free UNDO**: it does not increment the counter. A plan that can undo can afford
+  to be wrong, which is a different search than one that cannot;
+* when the game itself decides a board is unwinnable it offers a **restart button**, bottom-left.
+  That is the game telling you the state is dead — cheaper than inferring it.
+
+Provenance: the lf52 tool author, 2026-08-27, from `environment_files/lf52/*/lf52.py`.
