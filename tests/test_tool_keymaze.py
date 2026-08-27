@@ -15,7 +15,12 @@ import re
 
 import numpy as np
 
-from admorphiq.tools.keymaze import KeyMazeTool, _find_indicator
+from admorphiq.tools.keymaze import (
+    KeyMazeTool,
+    _Board,
+    _find_indicator,
+    _repeat_length,
+)
 
 # The board these fixtures draw, in this family's grammar:
 #   pitch 5, lattice origin (0, 4); floor 3, wall 4; a lock cell of body 5 holding a
@@ -82,6 +87,71 @@ def _calibrated(g: np.ndarray) -> KeyMazeTool:
     return tool
 
 
+
+
+def test_indicator_must_be_magnified():
+    """Purpose: pin the magnification requirement that makes the panel distinguishable.
+
+    A board built OUT of framed glyph tiles (one of the 25 samples is) offers dozens of
+    square two-colour blocks holding a glyph at magnification 1. Only the indicator draws
+    the key larger than the board does.
+
+    Expected feedback: pass ⇒ a magnification-1 block is not mistaken for the panel; fail
+    ⇒ this tool bids 0.9 on a game it cannot play and takes the turn from one that can.
+    """
+    assert _find_indicator(_board()) == ((53, 1, 62, 10), 3)
+    flat = _board()
+    flat[53:63, 1:11] = _BODY
+    _stamp(flat, 57, 5, _KEY_A, 9, 1)                 # same glyph, drawn 1:1
+    assert _find_indicator(flat) is None
+
+
+def test_detect_requires_four_directions_and_both_glyphs():
+    """Purpose: pin the selectivity gate — bid only with a panel AND a lock in view.
+
+    Expected feedback: pass ⇒ a click game, a panel-less board and a lock-less board all
+    score 0.0; fail ⇒ the tool bids where it has no plan, which is measured to cost
+    another tool its game.
+    """
+    g = _board()
+    assert KeyMazeTool().detect([], _Obs(g)) == 0.9
+    assert KeyMazeTool().detect([], _Obs(g, actions=(1, 2, 3, 4, 6))) == 0.0
+    assert KeyMazeTool().detect([], _Obs(g, actions=(1, 2))) == 0.0
+    no_panel = _board()
+    no_panel[53:63, 1:11] = _WALL
+    assert KeyMazeTool().detect([], _Obs(no_panel)) == 0.0
+    no_lock = _board()
+    no_lock[10:15, 34:39] = _FLOOR
+    assert KeyMazeTool().detect([], _Obs(no_lock)) == 0.0
+
+
+def test_a_rider_is_read_as_a_cycle_and_keeps_its_phase_while_hidden():
+    """Purpose: pin the two properties that make a moving icon plannable.
+
+    A rider's route is recovered as a CYCLE, not a line, because one sample board's rider
+    walks a closed loop in two dimensions. And its phase advances on every action whether
+    or not it can be seen: an avatar parked on a rider hides it, and a model phased only
+    from sight loses every rider at once — measured as a level whose remaining lock needed
+    a mutation that then had no reachable source, so the search returned no plan at all.
+
+    Expected feedback: pass ⇒ the loop is recovered and survives occlusion; fail ⇒ moving
+    icons are planned at cells they have already left.
+    """
+    loop = [(6, 3), (5, 3), (4, 3), (4, 4), (4, 5), (5, 5), (6, 5), (6, 4)]
+    assert _repeat_length(loop + loop) == 8
+    bounce = [(2, 3), (2, 4), (2, 5), (2, 4)]
+    assert _repeat_length(bounce + bounce) == 4
+
+    tool = _calibrated(_board())
+    sig = ("rider",)
+    tool._orbit[sig] = loop
+    tool._phase[sig] = 0
+    tool._advance_riders(set(), _Board())          # nothing in view at all
+    assert tool._phase[sig] == 1
+    seen = _Board()
+    seen.icons[(4, 5)] = sig                       # in view, four places along
+    tool._advance_riders(set(), seen)
+    assert tool._phase[sig] == 4
 
 
 def test_matching_key_walks_straight_to_the_lock():

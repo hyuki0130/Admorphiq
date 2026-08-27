@@ -208,3 +208,80 @@ def test_shared_grammar_ignores_edge_chrome_in_board_changed() -> None:
     assert board_changed(a, b) is False
     b[30, 30] = 7
     assert board_changed(a, b) is True
+
+
+def _coupled_scene() -> list[list[int]]:
+    """A 3x3 board whose top-middle tile carries a reach mask, plus the worked example beside it.
+
+    The stencil sits top-left and demands the marker of the tile to its right — the very tile
+    drawn with a plus of off-colour cells, so clicking it also moves the tile below, which the
+    same stencil forbids the marker to. A greedy reader clicks once and breaks that neighbour;
+    only a solved board clicks the neighbour back.
+    """
+    g = _blank_grid()
+    _panel(g, 2, 4, solved=True)
+    for y in range(32, 62):
+        for x in range(32, 62):
+            g[y][x] = 4
+    for i in range(3):
+        for j in range(3):
+            _put_tile(g, 36 + 8 * i, 36 + 8 * j, BLANK)
+    _put_stencil(g, 36, 36)
+    for dr, dc in ((0, 1), (1, 0), (1, 2), (2, 1)):     # the plus, in the masked tile's own art
+        g[36 + 2 * dr][44 + 2 * dc] = MARKER
+    return g
+
+
+def test_a_tile_drawn_with_off_colour_cells_reaches_its_neighbours() -> None:
+    """Purpose: pin the effect mask, which is what the tool stopped four levels in without.
+
+    Passing means a tile whose 3x3 art carries a plus of off-colour cells is modelled as moving
+    its four orthogonal neighbours along with itself, while a flat tile moves only itself.
+    Failing means coupled boards are planned as if every click were local — the pre-2026-08-27
+    model, which clicked such a tile and destroyed two neighbours per click.
+    """
+    from admorphiq.tools.stencil import board_model
+
+    model = board_model(_coupled_scene(), {0: True, 2: False})
+    assert model is not None
+    _state, masks, _demands, step, _side = model
+    assert step == 8
+    assert masks[(36, 44)] == {(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)}
+    assert masks[(44, 44)] == {(0, 0)}
+
+
+def test_a_coupled_board_is_solved_rather_than_walked() -> None:
+    """Purpose: pin that a board with reach masks is answered as a linear system, not greedily.
+
+    The stencil asks for exactly one repaint, but the tile that must change drags the tile below
+    it — which the same stencil forbids the marker to. Passing means the plan contains BOTH the
+    repaint and the click that puts the dragged neighbour back. Failing means only the first is
+    returned, which is the greedy answer: it satisfies one demand by breaking another, and on a
+    real board it never terminates.
+    """
+    clicks, _code = plan(_coupled_scene(), {0: True, 2: False})
+    assert clicks == [(38, 46), (46, 46)]
+
+
+def test_forbidden_is_an_exclusion_not_the_other_colour() -> None:
+    """Purpose: pin the reading that dissolved the recorded "impassable" contradiction.
+
+    Two stencils of different markers can both forbid one tile. With a two-colour cycle that is
+    unsatisfiable; with a longer one the answer is simply a colour not yet on screen. Passing
+    means such a tile is reported as unsatisfied-but-possible. Failing means it is reported as
+    impossible and the tool withdraws from a board it can in fact finish — which is exactly what
+    the round page recorded as "4 tiles demanded in two colours at once".
+    """
+    from admorphiq.tools.stencil import Demand
+
+    both = Demand()
+    both.refuse(9)
+    both.refuse(12)
+    assert not both.impossible()
+    assert not both.satisfied_by(9)
+    assert both.satisfied_by(8)
+
+    conflict = Demand()
+    conflict.demand(9)
+    conflict.refuse(9)
+    assert conflict.impossible()
