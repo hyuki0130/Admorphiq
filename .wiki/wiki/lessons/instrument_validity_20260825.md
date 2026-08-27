@@ -67,6 +67,27 @@ None of these would have been caught by the check passing. Each was caught by ru
 text whose verdict was already known, in BOTH directions — a checker that flags nothing and one
 that flags everything each pass a one-sided test.
 
+## A fourth kind: an ad-hoc driver that is not the runner (2026-08-27)
+
+Three throwaway probes were written in one afternoon to count what a real run does — which tool
+acts inside each attempt, which tool holds a board while bidding zero. Each drove the game itself
+rather than calling `score_efficiency.run_game`, and each was wrong in a way that looked like a
+finding about the SYSTEM:
+
+* one reported `bp35` crashing its own engine with `KeyError: 'x'` inside `perform_action`,
+  complete with a traceback into the game's obfuscated `step()`. The real runner records **zero**
+  such crashes on that game. The runner passes click coordinates as a separate argument —
+  `env.step(action, data=action.action_data.model_dump())` — and the probe called `env.step(action)`,
+  so every ACTION6 arrived without the `x` the game reads. The engine was right and the probe was
+  wrong;
+* another passed `[obs]` as the frames list where the runner passes an accumulated one, and so
+  measured a tool that never switched when the real loop switches at step 479;
+* the third asked a tool for its bid mid-restart and got an exception it reported as a zero.
+
+⛔ **When counting what a real run does, drive it with the real runner.** `harness_probe.py` and
+`attempt_probe.py` exist because of this; both wrap the same loop the score uses. An ad-hoc driver
+answers a question about the ad-hoc driver.
+
 ## What to do instead
 
 - **Validate the corpus before fitting to it.** A fix justified by bad boards passes every
