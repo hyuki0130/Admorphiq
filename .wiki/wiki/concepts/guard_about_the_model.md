@@ -180,6 +180,35 @@ had also had a boarding preference built and reverted the round before, on the e
 never fired — it never fired because the boarding move was candidate 16 and the window ended at
 8. The preference was right about the move and the diagnosis was wrong about the reason.
 
+## The opposite sign: a guard made wrongly-TRUE by an INCOMPLETE model
+
+Everything above is a guard whose condition can never become false. This is its mirror and it is
+harder to find, because **counting cannot see it** — the branch fires, and answers confidently.
+
+lf52, after three separate guards had each been built correctly and each turned out inert:
+
+```
+reposition:fired      3   — the trigger fires on every all-fatal case, 3 of 3
+reposition:no-way-out 3   — and never produces a drive
+model at each firing: 3 pieces of 8 known, known_cols 0..22
+```
+
+It fires LATE, after the fatal capture is already taken. At the moment that matters — choosing
+capture three from the six-piece position — `all_fatal` was **FALSE**, because
+`capture_reachable` answers over the KNOWN board only and said the fatal candidate survives. The
+trigger is sound, the tier is sound, and the trigger is unreachable at the moment it is needed.
+
+⛔ **One optimistic predicate made three correct guards collectively inert**, each of them
+downstream of it. The dead-end refusal, the all-fatal refusal and the reposition tier all inherit
+`capture_reachable`'s optimism, which is why each measured right in isolation and bought nothing.
+
+**Detection differs from the other variant.** A guard that can never be false is caught by
+counting how often its branch runs — that is what found the tier which had fired 0 times in 728
+decisions. A guard made wrongly-true by an incomplete model fires and answers, so the count looks
+healthy. It took comparing the MODEL'S answer against the ENGINE'S board, position by position,
+to see it. ⚠️ On a partial map, "a route exists" is not evidence the board survives; it is
+evidence the board is unknown.
+
 ## Falsification
 
 Wrong as a general claim if a guard of this shape is found that cannot become permanently true —
