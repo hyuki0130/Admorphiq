@@ -91,3 +91,37 @@ the same error and [[../lessons/instrument_validity_20260825]] for the rule both
 - [[new_kinds_at_the_wall]] — the finding this corrects; its small-kind half survives.
 - [[guard_about_the_model]] — a correct plan over a wrong model, which this is an instance of.
 - [[../rounds/r101_tool-development]] — the round.
+
+## The shared segmentation can DISCARD the geometry entirely
+
+`tools/base.py:connected_components()` defaults to `background=None`, which treats **the most
+common colour on the board as background and skips it**. When the walls are the most common
+colour, every tool calling it sees a board with no walls — and plans straight through them.
+
+Measured on the stuck level of all six stuck games (`scratchpad/bg_swallows_walls.py`, level data
+composited, engine never started):
+
+```
+ka59 L7  bg=c0   65x61:c2                              not swallowed
+s5i5 L7  bg=c0   70x51:c15                             not swallowed
+ls20 L7  bg=c4   64x64:c5   (its c4 half is background, partially)
+dc22 L6  bg=c0   32x66:c5                              not swallowed
+wa30 L9  bg=c0   no board-sized geometry at all
+g50t L7  bg=c5   56x61:c5 AND 59x51:c5                 BOTH SWALLOWED
+```
+
+**One game in six, and it is graded rather than binary** — which is what makes it usable. g50t
+swallows one geometry sprite from L5 onward and **clears L5 and L6 anyway**; L7 is the first level
+where a *second* one goes. So the swallow is not sufficient to stop a tool, and the thing to look
+at is what the additional sprite carried.
+
+⚠️ Two instrument notes, both mine, both the same error:
+
+* the first version of this probe compared only the **largest** sprite against the background and
+  reported g50t clean. Checking one representative instead of the set hid the entire finding;
+* the composite is static — layering the level data by hand rather than reading an engine frame —
+  so it is a screening tool, not a verdict. Verify on a real frame before building on it.
+
+⛔ And apply the same test this page already carries: **before calling a swallow the cause, check
+the levels the tool CLEARS.** Here that check downgraded the finding from an explanation to a
+graded lead, in one command.
