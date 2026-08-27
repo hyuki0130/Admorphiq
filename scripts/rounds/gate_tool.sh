@@ -22,6 +22,16 @@
 #      in-flight edits are the normal state of a fan-out round — so it names the riders, writes
 #      them next to the result, and makes the joint attribution part of the record.
 #
+#   5. THE TREE MOVED DURING THE GATE, and worse, the two machines were never the same tree.
+#      ceph's ~/admorphiq is a TARBALL EXTRACT, not a checkout, so it only holds what the last
+#      sync carried -- and an agent editing a tool after the sync leaves the box measuring code
+#      the repository no longer has, deterministically and therefore convincingly. Measured:
+#      blastclock was d33922ec locally and ef0dafdf on ceph, so five ka59 runs returned 0.7500
+#      five times while the real tree scored 1.0000. "Both dirty" is not "both the same dirty".
+#      The RIDERS step (trap 4) does not cover this -- it reads dirty files at the gate's START.
+#      -> this script HASHES every tool at sync, hashes again after the run, and refuses the
+#         verdict if any moved. It also PROVES the box holds the same bytes it just sent.
+#
 #
 # Usage:  bash scripts/rounds/gate_tool.sh <ROUND_NAME> <BASELINE_ROUND_DIR> [UNTOUCHED_GAME]
 #   e.g.  bash scripts/rounds/gate_tool.sh R101XY scripts/rounds/R101DC vc33 railpeg
@@ -65,6 +75,7 @@ uv run python scripts/harness_probe.py "$CANARY" 800 2>&1 | grep "HARNESS:" || t
 echo "    ^ compare against the baseline round's number for $CANARY before continuing."
 
 echo "=== 4. sync the WHOLE tree (never one file — see trap 2)"
+shasum -a1 src/admorphiq/tools/*.py src/admorphiq/harness/*.py | sort > "$OUT/tree_before.sha"
 tar czf /tmp/gate_sync.tgz --exclude=.venv --exclude=.git --exclude='__pycache__' \
     src scripts tests notebooks pyproject.toml uv.lock environment_files ARC-AGI-3-Agents 2>/dev/null
 scp -q -i "$KEY" /tmp/gate_sync.tgz "$REMOTE:~/" || exit 1
@@ -91,5 +102,21 @@ fi
 
 mkdir -p "$OUT/games" && rm -f "$OUT/games"/*.json
 scp -q -i "$KEY" "$REMOTE:~/admorphiq/$OUT/games/*.json" "$OUT/games/" || exit 1
-echo "=== 8. verdict"
+echo "=== 8. the tree did not move under the measurement, and the box holds what we sent"
+shasum -a1 src/admorphiq/tools/*.py src/admorphiq/harness/*.py | sort > "$OUT/tree_after.sha"
+if ! diff -q "$OUT/tree_before.sha" "$OUT/tree_after.sha" >/dev/null; then
+  echo "⛔ REFUSING THE VERDICT: a tool changed WHILE the gate ran — this number is of no tree."
+  diff "$OUT/tree_before.sha" "$OUT/tree_after.sha" | grep '^[<>]' | sed 's/^/    /'
+  echo "    Re-run the gate. See trap 5."; exit 1
+fi
+"${SSH[@]}" "cd ~/admorphiq && shasum -a1 src/admorphiq/tools/*.py src/admorphiq/harness/*.py | sort" \
+  > "$OUT/tree_box.sha" 2>/dev/null
+if ! diff -q "$OUT/tree_before.sha" "$OUT/tree_box.sha" >/dev/null; then
+  echo "⛔ REFUSING THE VERDICT: the BOX measured different bytes than this machine holds."
+  diff "$OUT/tree_before.sha" "$OUT/tree_box.sha" | grep '^[<>]' | sed 's/^/    /' | head -12
+  exit 1
+fi
+echo "  (tree identical before/after and on the box)"
+
+echo "=== 9. verdict"
 uv run python scripts/rounds/compare.py "$OUT" "$BASE"
