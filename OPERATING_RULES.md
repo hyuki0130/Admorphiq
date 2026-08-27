@@ -234,8 +234,18 @@ mean 0.8602 over ALL 25   FIFTEEN at 1.0000   SEVENTEEN clear EVERY level   25/2
 0.4204 s5i5 6/8 · 0.2727 lf52 5/10 · 0.1648 bp35 5/9
 ```
 
-✅ **TRANSFER 0.9981, 13 of 14 re-rendered games IDENTICAL** (`scripts/rounds/R101XFER7`), held
-across the day's last three conquests. Re-run it whenever the card moves.
+✅ **TRANSFER 0.9981, 13 of 14 re-rendered games IDENTICAL** (`scripts/rounds/R101XFER8`),
+held across the day's last three conquests AND across tightening the no-progress bail.
+Re-run it whenever the card moves.
+
+⚠️ **A GUARD CALIBRATED AGAINST A MEASUREMENT DECAYS ON ITS OWN, AND THE DIRECTION IS NOT
+KNOWABLE WITHOUT RE-MEASURING.** Three checked on 2026-08-27 evening: the no-progress bail's
+stated 10x margin had become 4.7x because the worst level ever CLEARED went 120 -> 255 in a
+day (recalibrated to 500, a deliberate 2.0x — full 25 IDENTICAL at 300, 500 and 1200, so the
+choice is wall-clock against margin and nothing was measured lost); the wall-clock cap's
+stated 4x had become 10x, drifting the SAFE way; and `claim breadth` went from 29 specialists
+to 38 with the clean split intact. Re-read every constant whose comment cites a number
+whenever the tools underneath it change.
 
 ⛔ **A LEVEL LOST AND RETRIED IS INVISIBLE IN THE SCORE.** The engine restores the board and hands
 back a fresh allowance while the score carries the actions already paid, so a level cleared on the
