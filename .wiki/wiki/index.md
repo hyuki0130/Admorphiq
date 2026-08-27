@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 246.
+**Total pages**: 247.
 
 ## Games (25)
 
@@ -168,7 +168,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (115)
+## Top-level dispatch (architecture, selector, log, schema) (116)
 
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
@@ -257,6 +257,7 @@ category, drill into specific pages.
 - [[memory/project_unified_harness_r53.md]] — R53 unified self-improving harness — 6 from-scratch generic tools + retry loop; graph clears 3/9 legacy games; continuation = per-tool strengthening
 - [[memory/project_wiki_agent_first_run.md]] — 40-env Qwen 3 8B WikiAgent bench — 15/40 envs, 36/290 levels (12.41%), classification accuracy 45%
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
+- [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
 - [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear — three tools registered, the action-budget finding, and the selectivity rule that governs how tools are kept.
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
