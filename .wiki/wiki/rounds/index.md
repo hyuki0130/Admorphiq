@@ -123,7 +123,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
 - **tool-development / stage-one / 25-of-25 / inert-actions / dead-signature / goal-inference / stall-diagnosis**: [[r101_tool-development]] (OPENED 2026-08-26 — stage 1 of the top policy: build the generic tools to 25/25 sample clears. The 25-game stall diagnosis splits the work into THREE named repairs, not one: ELEVEN games where 72-99% of actions are inert (ft09 opens 24 states from 1,610 transitions; lp85 99% inert) = action-space pruning, and dead_signature.py exists for this and is not biting; TWO games that never draw a goal (cn04 1,079 states, sp80 964) = goal inference; TWELVE that expand and aim and still clear nothing (sk48 979 states with a goal) = planning. Start at ft09, the sharpest case.)
 - **tool-set-spec / stage-one / reach-deliver-configure-induce / four-classes / test-method**: [[tool_set_spec]] (ACTIVE SPEC, not a round — the four generic tools derived from the 25 games' mechanics, their build order, and how each is tested. Read before writing tool code: A navigate (7 games) / B transport+assignment (6) / C configure+simulate (5) / D induce-rule-then-apply (7); `graph` expands over ACTIONS which is class A's shape alone, so 18 of 25 games have no tool shaped for them. Build order T-D, T-B, T-C, T-A. Testing: unit on fixed captures -> single game via tool_alternatives -> the whole class in parallel on ceph at LOAD-capped 60 -> card must stay 0.3162.)
 - **model-guidance / context-budget / gemma4-31b / qwen3.8-27b / gpt-oss-120b / closed-choice / per-model / two-model-rule**: [[model_guidance_spec]] (ACTIVE SPEC — the harness layer that turns a game's measured signature into a tool choice a SPECIFIC model can make within its context. Design constraint from R98's nine-run stage: gemma4 and qwen3.8 are 9/9 at closed-choice SELECT and 0/9 at open FILL, gpt-oss-120b is the only one that fills — so tool choice must be presented as a CLOSED multiple choice with glossed options, never as open description. Contents per game: measured observables, the class as a 4-way closed choice, the tool's config slots as glossed enums, and a falsification signature. Budget: build_context caps at 6000 chars while tool_selector is 12.9 KB, so it is already truncating — sweep HARNESS_CTX per model before shipping. Waits on stage 1.)
-- **r101-llm** — the shipped LLM path measured at width on a Kaggle GPU: agrees with the
-  signature fallback on 24 of 25 games, loses cn04 alone, 18x the wall-clock.
-  [[r101_llm-path-measured]]
-
+- **r101-llm / kaggle-gpu / vllm / gemma4 / routing / claim-threshold**: [[r101_llm-path-measured]]
+  (CLOSED — the shipped LLM path measured at width on a Kaggle GPU. First run: agrees with the
+  LLM-free signature fallback on 24 of 25 games and loses cn04 alone, 0.6333 vs 0.6733, 18x the
+  wall-clock. Cause was in the PROMPT, not the model — a 0.60 CLAIMS threshold the fallback does
+  not have, so the two paths could only diverge in 0 < fit < 0.60 and that is where they did.
+  After the fix: **25 of 25 IDENTICAL, ZERO routing losses, 0.7288 both, and the LLM arm fell
+  from 2817s to 228s.** ⛔ Parity is the CEILING of this measurement, not a win — on these 25 the
+  signature default is already right everywhere. Whether the model helps on a board we have never
+  tuned against is untouched by it.)
+- **r101 / tool-development / generic-tools / fan-out / selectivity / transfer / stage-one**:
+  [[r101_tool-development]] (ACTIVE — the generic tools alone, zero adapters, over the 25 sample
+  games: **0.0200 -> 0.8224**, THIRTEEN at 1.0000, FIFTEEN clearing every level, 2.60x the
+  adapter-assisted card, cumulative regressions ZERO across ~15 gates. Method: one background
+  agent per GAME owning two new files, parent integrates ONE at a time, full 25 on ceph decides
+  ([[../parallel_build_protocol]]). Load-bearing findings: a tool with no plan must bid 0.0
+  ([[../lessons/tool_selectivity_20260827]]); DEPTH without efficiency is worth nothing — two
+  extra levels bought +0.0011 where the same levels made cheaper bought +0.0304; the card is not
+  the property that matters ([[../lessons/generic_transfer_20260827]], ratio 0.93, 12 of 14
+  re-rendered games identical); a game stops 1200 actions after its last level-up
+  ([[../concepts/no_progress_bail]], -63% actions) and at 1000s wall-clock; frame layers are an
+  ANIMATION TIMELINE, and reading the last one globally REGRESSED three games
+  ([[../concepts/frame_layer_timeline]]).)
