@@ -1135,3 +1135,14 @@ clear, so a larger cap is simply never reached.
 
 ⛔ Do not re-run a budget sweep on this axis. The remaining loss is that the tools stop
 knowing what to do, and no cap fixes that.
+
+### First transfer evidence for the generic path (2026-08-27)
+
+`scripts/rounds/R101XFER` — the generic tools against the archived version hashes:
+**twelve of fourteen re-rendered games score IDENTICALLY**, ratio 0.91, and sk48 (whose
+archive hash equals its live hash) reproduces exactly as the control. Full detail and the
+weak-vs-strong-transfer caveat: [[../lessons/generic_transfer_20260827]].
+
+The two losses are the open leads — tu93 1.0000 -> 0.2222 (9/9 -> 4/9) and s5i5 0.0833 ->
+0.0000. In both the tool still ENGAGES, so the plan generalises less far than the detection
+does. That is the opposite of the usual failure and the sharper signal.
