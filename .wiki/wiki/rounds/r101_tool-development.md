@@ -1479,3 +1479,36 @@ levels 1 through 5. The tool that is losing level 6 is the tool that wins the ot
 ⛔ Three guesses, three measurements, three corrections — and every correction cost one command.
 The rule this round keeps re-learning is not "instrument when stuck", it is **instrument BEFORE
 naming a cause**, because a plausible cause is what gets sent to an agent as instruction.
+
+#### bp35: 24 deaths, and only SIX of them cost anything
+
+`scripts/deathcount_probe.py` — built after four failed attempts to measure this from outside,
+and carrying all four in its docstring — answers the question the score cannot:
+
+```
+bp35: 5 levels in 1509 actions   acted {graph: 1071, crag: 437}
+   24 deaths
+      6 on levels that were LATER CLEARED  -- these cost score
+     18 after the last clear               -- these cost nothing
+
+   [COSTS] L2 action  20  crag ACTION6      [COSTS] L3 action 123  crag ACTION3
+   [COSTS] L2 action  55  crag ACTION6      [COSTS] L3 action 152  crag ACTION3
+   [COSTS] L5 action 231  crag ACTION6      [COSTS] L5 action 252  crag ACTION6
+
+   who took the deaths that cost score: {crag: 6}
+   the free deaths are PERIODIC at 65 actions -- that is a clock, not a hazard
+```
+
+Two findings, and the second is a MECHANIC nobody had named:
+
+* **All six costly deaths are `crag`'s**, two per level on exactly the three levels that bin
+  attempts — matching `[2x 35x 57c]`, `[11x 29x 43c]`, `[13x 21x 38c]` from the attempt split.
+  The other eighteen are `graph`'s, all on level 6, all free.
+* **Level 6 kills every 65 actions, on the dot.** Fourteen deaths at 614, 679, 744, 809, 874,
+  939, 1004, 1069, 1134, 1199, 1264, 1329, 1394, 1459 — a period, not a hazard the tool walked
+  into. bp35's level 6 runs a clock, and no amount of route or policy work survives it; it has to
+  be planned inside.
+
+⚠️ Note how differently the same run reads through the two instruments. `attempt_probe` prices
+what the deaths COST and says +0.1283; `deathcount_probe` says who took them and that
+three-quarters were free. Neither alone would have pointed at `crag`'s six.
