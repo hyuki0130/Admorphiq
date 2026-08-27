@@ -88,6 +88,27 @@ finding about the SYSTEM:
 `attempt_probe.py` exist because of this; both wrap the same loop the score uses. An ad-hoc driver
 answers a question about the ad-hoc driver.
 
+⚠️ **And that is necessary, not sufficient.** The same question — what kills a game between 2 and
+35 actions — took FOUR instrument revisions, each failing differently and each looking plausible:
+
+1. an ad-hoc driver called `env.step(action)` where the runner calls
+   `env.step(action, data=action.action_data.model_dump())`, so every click arrived without its
+   coordinates and the GAME appeared to crash;
+2. calling `run_game` with an `adapter_factory` that built the agent by hand dropped the
+   `giveup`/`stall`/`ctx_budget` the runner supplies — score 0.0338 with 2 levels where the real
+   run gives 0.1648 with 5. **Using the runner is not the same as letting the runner build the
+   agent;**
+3. reading the state from the frame handed to `choose_action` reported ZERO deaths, because a
+   GAME_OVER the runner resets is never shown to the agent. The env is where that truth is;
+4. replacing the class in the runner's module namespace did nothing, because `_make_agent`
+   imports it INSIDE the function — so the real agent ran, the score matched perfectly, and the
+   spy recorded `None` for all 24 deaths. **A number that reproduces the real one is not proof
+   the instrument is attached.**
+
+The one honest measurement to come out of it: bp35 has **24 GAME_OVER transitions** in a
+1600-action run, counted at the env boundary. Which tool is acting at each is still unmeasured,
+and belongs to whoever owns the tool — instrumenting from inside it avoids all four traps above.
+
 ## What to do instead
 
 - **Validate the corpus before fitting to it.** A fix justified by bad boards passes every
