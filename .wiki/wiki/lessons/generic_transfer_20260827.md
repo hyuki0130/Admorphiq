@@ -54,6 +54,33 @@ Neither is a routing failure — the tools still engage. Both are a plan that ge
 far than the detection does, which is the opposite of the usual failure and worth treating as
 the sharper signal.
 
+## Re-measured after five new tools landed (same day)
+
+The five tools gated on 2026-08-27 took the live card 0.6733 -> 0.7459. Re-running the archive
+gives the honest counterpart, and it is NOT the same number:
+
+```
+13 measurable re-rendered games   live 0.7459   archive 0.6541   ratio 0.88   identical 11/13
+```
+
+**One of the day's five gains does not transfer at all.** `telescope` takes s5i5 from 0.0833 to
+0.4167 on the live board and scores **0.0000** on the re-render — worse in ratio terms than
+before the tool existed. So a headline card number can rise while the property that matters
+does not, and only the archive run says so.
+
+Diagnosed to the cell. All eight of s5i5's levels are byte-identical between the two boards
+(positions, sizes, rotations, mirrors, scale, layer, blocking, visibility, pixels, grid). The
+rendered first frame differs by **TWO CELLS out of 4096** — (10,31) 13->14 and (34,10) 13->11 —
+and the tool's own bid goes from **0.950 to 0.000**. Its colour-13 census is 10 cells live and 8
+archived. On the archive board `graph` runs all 1,223 actions: telescope never bids, so this is
+a DETECTION failure, not a planning one.
+
+⛔ **A detector keyed on an exact colour census is not a detector.** The mechanic is what
+identifies a family — a relation between parts, a count of STRUCTURES, a ratio with slack. Two
+cells is the whole margin a pixel census has. Returned to the tool's author with the two
+coordinates rather than loosened centrally, because the fix that merely makes it fire again is
+the one that destroys its discrimination.
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run
