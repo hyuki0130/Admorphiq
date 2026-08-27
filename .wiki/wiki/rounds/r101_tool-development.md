@@ -1206,3 +1206,29 @@ su15 7/9  0.3778      sp80 5/6  0.2857     m0r0 5/6  0.2857     ls20 6/7  0.2500
 
 Total locked: **5.8214**, i.e. **0.2329** of the mean card. Clearing every remaining level at
 human parity would put the generic tools at **0.9788**. That number is the work list, in order.
+
+### Depth without efficiency is worth nothing — measured to four decimals (2026-08-27)
+
+The round already recorded that the remaining score is DEPTH rather than efficiency on levels
+already cleared. bp35 shows the other half of that, and it is sharper than the general claim.
+
+Two tools, same board, measured through the real runner with the loser removed from the
+registry so the winner actually drives:
+
+```
+ledge   3 of 9 levels   0.1333    L1 15/21   L2 47/48   L3 35/44
+crag    5 of 9 levels   0.1344    L1 31/21   L2 124/48  L3 81/44   L4 35/38   L5 116/33
+```
+
+**Two extra levels bought +0.0011.** RHAE prices a level at `(human/ours)^2`, so ledge's three
+clears at human parity are worth ~1.0 each while crag's are worth 0.46, 0.15, 0.29, 1.0 and 0.08.
+The level COUNT doubled and the score did not move.
+
+⛔ So "which tool goes deeper" is not the question, and a report that gives only the level count
+cannot be acted on. The bar handed to per-game agents is stated in levels because it is easy to
+check, but the decision is made on the per-level costs — ask for both.
+
+crag is NOT registered. Registering it ahead of `ledge` also does nothing on its own: ordering
+breaks TIES, and `_signature_default` takes the argmax, so ledge's 0.6 beats crag's 0.5 wherever
+it is placed. An inert tool in the registry is a risk on boards nobody has seen and no gain on
+the ones we have.
