@@ -32,7 +32,7 @@ from typing import Any
 
 import numpy as np
 
-from admorphiq.tools.base import Step, availability, frame_2d, has_frame
+from admorphiq.tools.base import Step, availability, base_hash, frame_2d, has_frame
 from admorphiq.tools.segment import background, board_changed
 
 __all__ = ["CoverTargetsTool"]
@@ -81,9 +81,45 @@ class CoverTargetsTool:
         self._handover = True
         self._rigid = False
         self._idle = 0
+        self._stuck = False
+        self._noplan = False
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """The harness's transition hook; the tool learns from its own frames in propose."""
+
+    def state_key(self, frame: np.ndarray) -> str:
+        """What counts as PROGRESS while this tool holds the board.
+
+        Progress is measured as reaching a state not seen before, and by default that state is
+        the raw frame — a fact about the BOARD, not about the tool. The two come apart exactly
+        when this tool has no covering plan: it proposes nothing, the actions it declined are
+        filled by probes, and those shuffle pieces into frames never seen before. Novelty never
+        runs out, so the stall that would hand the board on never arrives, and a tool that has
+        already bid ZERO holds the level to the end of its allowance.
+
+        ⛔ Measured on the board this was built against, whose sixth level asks for a plus whose
+        bar is NOT at its middle and a rectangle outline whose sides are not the ones it starts
+        with. Neither is a translation of anything on the board, so no plan exists there and none
+        ever appears — the pip count stood at 8 of 8 uncovered across 480 consecutive proposals,
+        of which 463 were empty. The level was held for 200 actions, lost, held for 201 more,
+        lost again, and then cleared by another tool in 63 against an allowance of 200. That is
+        401 actions of the game's score spent sitting on a board this tool cannot read.
+
+        So: while a plan is being followed the answer is the board, exactly as before — that path
+        is untouched. While none exists, the answer is what this tool KNOWS: its pieces, where it
+        believes they stand, and how many pips are still uncovered. A probe that teaches it
+        something moves that on and the clock rightly restarts; a probe that merely stirs the
+        board does not, and the stall arrives.
+        """
+        if not self._stuck:
+            return base_hash(frame)
+        known = sorted(
+            (-1 if p["colour"] is None else int(p["colour"]), p["anchor"], len(p["shape"]))
+            for p in self._parts
+        )
+        pips = self._spec[1] if self._spec is not None else []
+        left = sum(1 for r, c, v in pips if not self._covered(r, c, v))
+        return f"cover_targets:noplan:{known}:{left}"
 
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Confidence, which is zero unless a covering translation actually exists."""
@@ -446,6 +482,24 @@ class CoverTargetsTool:
     # --- planning ----------------------------------------------------------
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
+        """One action toward covering the pips, or nothing — and say which it was.
+
+        A step of its own is the tool acting on a plan or on a piece it is still measuring.
+        Nothing at all means it has no move to make on this board, which is the state `state_key`
+        exists to report: it must be a fact the tool records about itself, not something the
+        harness has to infer from an empty list it has already replaced with a probe.
+        """
+        self._noplan = False
+        steps = self._advance(frames, obs)
+        # ⛔ `not steps` is not the whole of it. A tool that parks on the select control to keep
+        # the board still is still a tool with no plan, and if that were read as progress the
+        # stall would never come — the parking action changes the frame, so the board-hash answer
+        # would look novel every turn and the level would be held to the end of its allowance
+        # exactly as before.
+        self._stuck = self._noplan or not steps
+        return steps
+
+    def _advance(self, frames: list[Any], obs: Any) -> list[Step]:
         """One action toward covering the pips, learning the board as it goes."""
         if not has_frame(obs):
             return []
@@ -478,7 +532,8 @@ class CoverTargetsTool:
                 return hunt
             plan = self._scheme(pips, blobs)
         if plan is None:
-            return []
+            self._noplan = True
+            return self._park()
         for i, vec in plan:
             if vec == (0, 0):
                 continue
@@ -728,6 +783,28 @@ class CoverTargetsTool:
     def _emit(self, action: int) -> list[Step]:
         self._acted = action
         return [(action, None)]
+
+    def _park(self) -> list[Step]:
+        """No plan exists on this board — stand still rather than stir it.
+
+        The action is spent either way: a tool that returns nothing has its turn filled by a
+        probe, and a probe pushes pieces around. That matters here because the board is about to
+        be handed to whoever CAN read it, and the boards this family draws are not all
+        recoverable — pieces are re-dyed by the pads they touch and re-shaped by the press, so a
+        long random walk can leave two pieces wearing one colour, which is a board no reader can
+        tell apart. The control that hands the driving seat between pieces moves nothing, so
+        pressing it holds the board exactly as it stands until the stall arrives.
+
+        Measured, and worth more than the tidiness: spending those turns on probes instead
+        cost 121 actions before the board changed hands and 63 after it, for a level of 184;
+        parking cost 91 and 48, for 139. Against an allowance of 200 and a human baseline of 139
+        that is the difference between a level barely inside its budget and one that costs
+        exactly what a person spends on it. ⛔ Why the wait itself was longer is NOT established
+        — only that the stirred board took longer to hand over and longer to solve once handed.
+        """
+        if self._select is not None and self._select in self._usable():
+            return self._emit(self._select)
+        return []
 
     def _cycle(self) -> list[Step]:
         """Hand the controls to another piece."""
