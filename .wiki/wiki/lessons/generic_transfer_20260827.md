@@ -160,10 +160,19 @@ Two losses, and only one of them is a loss:
 * **tu93** 1.0000 -> 0.2222, unchanged and already diagnosed — the boards are byte-identical on
   the layer every tool reads, respond differently to the same script, and differ only in one
   sprite's `layer` field. Not a detector problem and not a cost problem.
-* **s5i5** -0.0240, which is the same small residual as before and is the tail of a detector
-  that was fixed today, not a new failure. ⚠️ It is now **3.4x slower per action** on the
-  re-render, the only game above 1.5x — worth watching, since the last time a game showed that
-  signature (re86 at 23x) it was a genuine cost defect that a fix took to 1.0x.
+* **s5i5** -0.0240, the tail of a detector fixed today rather than a new failure. Its 3.4x
+  per-action slowdown was flagged as a watch item and is now **MEASURED AND CLOSED** — the ratio
+  is real and the magnitude is not a threat:
+
+  ```
+  live     1622 actions in 23s   14.1 ms/action   0.4204   6/8
+  archive  1644 actions in 76s   46.3 ms/action   0.3963   6/8      3.3x, reproducible
+  ```
+
+  ⛔ **A ratio is not a verdict without its absolute.** re86's 23x mattered because it was 1011
+  seconds against a 1000-second cap; this is 76 seconds against the same cap, and the eval allows
+  roughly 295 seconds per game (110 games in 9 hours). The threshold that makes a slowdown matter
+  is about **300 seconds, not a multiple**. No round is to be spent on this one.
 
 Ratio across the five runs: **0.91 -> 0.88 -> 0.92 -> 0.93 -> 0.94**, while the card went
 0.6733 -> 0.8540. The dip is where a tool gained on the card without transferring; the recovery
