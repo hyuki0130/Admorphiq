@@ -1125,3 +1125,13 @@ identical**, total actions 57,885 -> 21,382, wall-clock 1,882s -> 774s.
 
 Open work is DEPTH on the four weakest — s5i5, g50t, lf52, bp35 — plus lp85 and re86, all six
 running as parallel per-game agents under [[../parallel_build_protocol]].
+
+### Budget is not the lever — closed by measurement (2026-08-27)
+
+With the bail in, raising the cap costs wall-clock only on games that keep winning, so the
+budget question became cheap to settle. Measured: **@8000 is identical to @4000 on all 25**,
+mean 0.6733 either way, not one game differing. Every game bails 1200 actions after its last
+clear, so a larger cap is simply never reached.
+
+⛔ Do not re-run a budget sweep on this axis. The remaining loss is that the tools stop
+knowing what to do, and no cap fixes that.
