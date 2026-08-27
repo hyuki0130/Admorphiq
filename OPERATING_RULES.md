@@ -223,19 +223,25 @@ decide whether its own work is kept.
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
 
-**Where it stands (re-measured 2026-08-27 at commit 55ce8a3, full 25 on ceph-build,
+**Where it stands (re-measured 2026-08-27 at commit 96a4c9f, full 25 on ceph-build,
 `--agent unified` @4000 — generic tools ALONE, zero adapters):**
 
 ```
-mean 0.7459 over ALL 25    ELEVEN at 1.0000    THIRTEEN clear EVERY level    25/25 clear one
-1.0000  ar25 cd82 cn04 ft09 r11l sb26 sk48 tn36 tr87 tu93 vc33
-0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.7500 ls20 6/7 · 0.7143 m0r0 5/6, sp80 5/6
-0.6222 wa30 7/9 · 0.5357 g50t 5/7 · 0.4882 su15 7/9 · 0.4762 dc22 4/6 · 0.4532 ka59 5/7
-0.4345 sc25 4/6 · 0.4167 s5i5 5/8 · 0.1818 lf52 4/10 · 0.1333 bp35 3/9
+mean 0.7817 over ALL 25    TWELVE at 1.0000    FOURTEEN clear EVERY level    25/25 clear one
+1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 tn36 tr87 tu93 vc33
+0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.7500 ls20 6/7 · 0.7143 dc22 5/6, m0r0 5/6, sp80 5/6
+0.6222 wa30 7/9 · 0.5357 g50t 5/7 · 0.4882 su15 7/9 · 0.4532 ka59 5/7 · 0.4167 s5i5 5/8
+0.2727 lf52 5/10 · 0.1333 bp35 3/9
 ```
 
-The adapter-assisted card is 0.3162, so the generic path is **2.36x past it** and transfers by
+The adapter-assisted card is 0.3162, so the generic path is **2.47x past it** and transfers by
 construction, which the adapters do not.
+
+⚠️ **The card is not the property that matters, and one gain today proved it.** Re-run the
+archive transfer measurement (`scripts/rounds/R101XFER2`) whenever the card moves: `telescope`
+lifted s5i5 from 0.0833 to 0.4167 on the live board and scores **0.0000** on the re-render,
+because its detector keyed on an exact colour census that a two-cell difference destroys. See
+[`.wiki/wiki/lessons/generic_transfer_20260827.md`](.wiki/wiki/lessons/generic_transfer_20260827.md).
 
 ⛔ The figures this block carried until 2026-08-27 — *"0.0230, 16 of 25 clear nothing"* — were
 from the morning of the day the axis was set and were **30x stale by that evening**. An axis
