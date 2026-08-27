@@ -141,6 +141,12 @@ If a routing change is worth nothing, it will show as a byte-identical full-25. 
 did exactly that (0.1525 -> 0.1525, all 25 identical) and was kept anyway, because "first in the
 dict wins" is an accident of ordering rather than a decision.
 
+## What the fix did NOT buy
+
+With both menus derived from the registry, the model on three games the fallback conquers at
+1.0000 still named the general searcher and scored 0.0000 on all three. Being able to see a tool
+is necessary and not sufficient — [[llm_path_anchor_bias_20260827]].
+
 ## Related
 
 - [[tool_selectivity_20260827]] — the mirror image: a tool bidding on a board it cannot solve.
