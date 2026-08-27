@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 242.
+**Total pages**: 243.
 
 ## Games (25)
 
@@ -93,7 +93,7 @@ category, drill into specific pages.
 - [[concepts/swallowed_action.md]] — An action that arrives while the board is animating is CONSUMED WITHOUT EFFECT — it costs budget, changes nothing, and teaches a searcher a wall that is not there.
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (48)
+## Lessons (engineering wisdom from past incidents) (49)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -143,6 +143,7 @@ category, drill into specific pages.
 - [[lessons/unanimous_wrong_answers_are_a_prompt_defect_20260823.md]] — Three independent offline models — gemma4-31b, gpt-oss-120b and qwen3.8-27b —
 - [[lessons/v2_hash_obfuscation.md]] — When the ARC Prize API serves a second version hash of a game, game internals (attribute names, sprite tags, method names, level layouts) are re-obfuscated — so any solver that reads those internals fails silently.
 - [[lessons/vllm_cross_session_nondeterminism_20260715.md]] — A "control" arm that should replicate a prior run's control arm — same
+- [[lessons/wrong_env_var_name_20260827.md]] — A GPU session booted a healthy model server, scored 0.00% over ZERO games in two
 
 ## Debug (failure-mode playbooks) (5)
 

@@ -1067,3 +1067,26 @@ path is at **0.6711**.
 ⛔ **A wall that has not been checked against the level data is not yet a wall.** Paid for twice
 in this round: here, and on the game whose "action -> direction map is NOT fixed and the rule is
 unidentified" turned out to be up/down/left/right with actions swallowed during animations.
+
+## The LLM path had never been measured at width (2026-08-27)
+
+Every number on this page — `0.0200 -> 0.6825`, eleven games conquered — was measured on the
+**LLM-FREE fallback**. `harness/loop.py` drops to signature routing whenever the llm call
+raises, and the ceph round runners name no model, so that is what ran. ceph-build has no GPU
+and one 26B model on its shared CPUs takes about 37 cores, which is why the shipped path
+stayed unmeasured for the whole round.
+
+`notebooks/r101_llm_full25.py` measures it on a Kaggle GPU kernel: both arms through the same
+runner subprocess, differing only in whether a served model is named. Four defects were found
+and fixed BEFORE the first push, each of which would have cost a session — the openai path
+reads `HARNESS_LLM_MODEL` and not `HARNESS_MODEL`, so the wrong name makes every call raise
+and the LLM arm silently BECOMES the fallback arm; setting the vars globally leaked the base
+URL into the fallback arm, producing the same collapse from the opposite direction; the runner
+is not under `scripts/` on Kaggle because `--dir-mode zip` strips the top level; and a model
+mounts several levels deeper than a dataset.
+
+The first GPU run still failed, and instructively:
+[[../lessons/wrong_env_var_name_20260827]] — it scored 0.00% over ZERO games while the model
+server was healthy and the preflight replied, because our own record named the wrong
+environment variable. An arm that scores no games now raises instead of averaging into a
+verdict.
