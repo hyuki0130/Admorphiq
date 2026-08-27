@@ -157,6 +157,23 @@ adapters into the shipped card (no LLM in that path, and it conflicts with the n
 dual-scoreboard doctrine), and treating "the tools cannot clear these" as a verdict rather than as
 stage one's work list.
 
+⛔ **`registry.py` is the ONE file both the parent and the agents touch, and it must never be
+committed from a `git add` that was not preceded by a diff.** Measured 2026-08-27: the `reforge`
+commit silently carried an agent's swap of `LedgeTool` for `ShaftTool` — the parent had named
+explicit paths, not `git add -A`, and `registry.py` was one of them. The committed tree then
+disagreed with every measurement in the round for two hours.
+
+It was caught only because a later `git checkout --` produced a registry with `ledge` missing.
+Two cheap habits prevent it:
+* `git diff src/admorphiq/harness/registry.py` immediately BEFORE staging it, every time;
+* after integrating, `uv run python scripts/harness_probe.py <a game the change should not
+  touch>` and check it still reports the number the round measured. bp35 at 3 levels is what
+  exposed this one.
+
+The measurements themselves survived — the box had the correct registry, and both rounds
+reported bp35 at 3 levels, which is `ledge`'s result and not `shaft`'s. That is luck, not a
+safeguard: the box is synced from the same working tree.
+
 ## 8. FAN OUT, THEN INTEGRATE — the parallel build protocol (user directive, 2026-08-27)
 
 ⛔ **Do not improve tools one at a time.** The user's words: *"언제까지 하나씩 개선할거야? 그러니깐

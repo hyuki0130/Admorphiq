@@ -30,7 +30,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.hop import HopTool
     from admorphiq.tools.keymaze import KeyMazeTool
     from admorphiq.tools.lattice_maze import LatticeMazeTool
-    from admorphiq.tools.shaft import ShaftTool
+    from admorphiq.tools.ledge import LedgeTool
     from admorphiq.tools.linkage import LinkageReachTool
     from admorphiq.tools.llm_goal import LLMGoalTool
     from admorphiq.tools.maze import MazeRunTool
@@ -41,6 +41,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.phase import PhaseGridTool
     from admorphiq.tools.pillar_transfer import PillarTransferTool
     from admorphiq.tools.progbits import ProgramBitsTool
+    from admorphiq.tools.railpeg import RailPegTool
     from admorphiq.tools.reflect_cover import ReflectCoverTool
     from admorphiq.tools.reforge import ReforgeTool
     from admorphiq.tools.rewrite import RuleRewriteTool
@@ -69,6 +70,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         CyclePressTool(),
         CloneWalkTool(),
         TelescopeArmTool(),
+        RailPegTool(),
         PegJumpTool(),
         ReforgeTool(),
         MirrorMergeTool(),
@@ -87,7 +89,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         SpillRouteTool(),
         StampPaintTool(),
         TetherCentroidTool(),
-        ShaftTool(),
+        LedgeTool(),
         MazeRunTool(),
         PhaseGridTool(),
         TubeOrderTool(),
