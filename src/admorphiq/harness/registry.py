@@ -51,6 +51,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.shepherd import ShepherdRelayTool
     from admorphiq.tools.sigilgate import SigilGateTool
+    from admorphiq.tools.sluice import SluiceTool
     from admorphiq.tools.socketmerge import SocketMergeTool
     from admorphiq.tools.spill import SpillRouteTool
     from admorphiq.tools.stamppaint import StampPaintTool
@@ -76,6 +77,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         CyclePressTool(),
         BlastClockTool(),
         CloneWalkTool(),
+        SluiceTool(),
         SwivelArmTool(),
         TelescopeArmTool(),
         OrderForgeTool(),
