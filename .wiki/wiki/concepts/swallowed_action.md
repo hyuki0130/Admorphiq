@@ -51,3 +51,6 @@ up/down/left/right, with the first actions after a reset absorbed. One read of t
 - [[../games/G50T]] — the measured case, including the two same-colour blobs that made it worse.
 - [[../games/LS20]], [[../games/BP35]], [[../games/LF52]] — queue an animation and read the outcome
   once it drains.
+
+- [[frame_layer_timeline]] — the other half: the layer stack is the animation's own
+  timeline, so reading `arr[0]` reasons about the board before the animation resolved.

@@ -1,0 +1,41 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.285714,
+  "total_score_pct": 28.571,
+  "games": [
+    {
+      "game_id": "m0r0-492f87ba",
+      "win_levels": 6,
+      "levels_completed": 3,
+      "elapsed_s": 16.97,
+      "total_actions": 1319,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 19,
+          "human_actions": 30,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 29,
+          "human_actions": 111,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 64,
+          "human_actions": 203,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.285714,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "M0R0"
+    }
+  ]
+}
