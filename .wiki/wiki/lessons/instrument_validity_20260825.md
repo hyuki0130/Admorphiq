@@ -191,3 +191,48 @@ had been reverted were never needed. The model was mostly right the whole time.
   numbers rather than to instruments.
 - [[unanimous_wrong_answers_are_a_prompt_defect_20260823]] — when several models agree on
   a wrong answer, suspect the question; the instrument-validity analogue for prompts.
+
+## A fifth kind: two machines, two trees — "both dirty" is not "both the same dirty" (2026-08-27)
+
+A game measured **0.7500 five times out of five** on the shared box and **1.0000 three times out of
+three** on the laptop, same command, same agent, same `run_game`. Neither side was flaky: each was
+deterministic to the step count. Two deterministic answers to the same question is not
+nondeterminism — it is two different questions.
+
+```
+                              blastclock.py        ka59
+laptop (= git HEAD)           d33922ec2452...      1.0000  (7/7, 3 of 3 runs)
+ceph-build (tarball extract)  ef0dafdf96a2...      0.7500  (6/7, 5 of 5 runs)
+```
+
+**`~/admorphiq` on the box is a TARBALL EXTRACT, not a checkout.** It holds whatever the last sync
+carried. An agent editing a tool after that sync leaves the box measuring code the repository no
+longer has — and because the box is deterministic, it returns the same wrong number as often as you
+ask, which reads as confirmation.
+
+⛔ **The tell that should have prompted the hash check earlier**: the two sides disagreed on a
+BINARY outcome while agreeing on everything else, and repeats on each side were byte-identical.
+Repeating a measurement on ONE machine cannot detect this; it makes the wrong number more
+convincing. **Hash the files, not the verdict.**
+
+⚠️ **The trap has an inward-facing half that cost a false commit.** The gate synced at its START,
+the tool changed on the laptop DURING the run, and the result was committed as "the measured tree".
+It had never been measured. A guard that samples the tree once cannot see it move; `gate_tool.sh`
+now hashes every tool before and after the run, refuses the verdict if any moved, **and refuses if
+the box's bytes differ from the ones just sent**.
+
+⛔ Until those hashes match, **no cross-machine number is quotable** — not a round's mean, not a
+card, not a per-game score. This is cheap: one `shasum -a1` over `tools/*.py harness/*.py`.
+
+### And the corollary about lessons themselves
+
+This entry was nearly written as something else. On the strength of the same disagreement — cause
+unknown — the parent instructed an agent to record *"letting the runner build the agent is not the
+same as using the runner's loop"* as a new trap. The agent **declined**, on the grounds that the
+evidence pointed the other way, then settled it by running `run_game` itself and getting 294 actions
+against its own probe's 295. The loops agreed all along.
+
+**A plausible lesson that the evidence does not support is exactly what this page warns against, and
+it was nearly added to this page.** Refusing to write it — against an instruction — is the discipline
+working. Write down what a claim was measured against, and if the answer is "a disagreement whose
+cause we have not found", it is not a lesson yet.
