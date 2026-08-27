@@ -39,6 +39,25 @@ level in turn, the three that were out of reach cost 50, 105 and 168 actions aga
 200, 300 and 400. The tool does NOT claim that game's second, third or fifth level and says so
 with a bid of zero; the incumbent keeps them, which is why nothing regressed.
 
+⛔ WHAT THIS TOOL CANNOT FIX FROM HERE, MEASURED SO NOBODY SPENDS A DAY ON IT. The game's whole
+remaining shortfall is 401 actions binned on its SIXTH level — and not one of them is spent by
+this tool. Counted per attempt AND PER TOOL, that level reads:
+
+    attempt 1  LOST  200 actions   {incumbent: 200}
+    attempt 2  LOST  201 actions   {incumbent: 201}
+    attempt 3  WON   144 actions   {incumbent: 81, this tool: 63}
+
+The incumbent holds it through two lost allowances while bidding 0.00 on it, because a death
+restores the board and the novelty clock never reaches a stall; this tool is first asked at action
+782 and clears it in 63 against an allowance of 200 — a THREEFOLD margin, so there is no overrun
+here to plan around. ⛔ Read the winning attempt's 144 as this tool's route and the conclusion
+inverts: it is 81 of the incumbent's plus 63 of this one.
+The lever is the handover, in the loop, not the route. Priced: re-deciding on a DEATH is worth
+0.8349 -> 0.8752 and saves 294 actions on both renderings. ⛔ The tempting stronger rule — hand
+over when the incumbent has no claim and someone else does — is REFUTED: 8 levels became 2,
+because the incumbent also bids 0.00 on two levels it goes on to clear at 1.0, and the general
+searcher bids 0.80 on every board in the game.
+
 ⛔ THE SAME BOARD, SERVED TWICE, IS THE ONLY TRANSFER EVIDENCE THERE IS — AND IT FOUND A DEFECT
 THE SCORE COULD NOT. An archived copy of this game, identical in every sprite, position, rotation
 and budget and differing ONLY in the ORDER its sprites are listed, ran **23x slower per action**
@@ -65,6 +84,7 @@ from typing import Any
 import numpy as np
 
 from admorphiq.tools.base import Step, availability, has_frame
+from admorphiq.tools.budget import BudgetReader
 from admorphiq.tools.segment import background, components
 
 __all__ = ["ReforgeTool"]
@@ -90,6 +110,14 @@ _PIECE_SPAN = 10
 # every stall, so holding a board this tool cannot solve is not possible.
 _CLAIM = 0.90
 _PROBE_CLAIM = 0.82
+
+# What fraction of the READ allowance a plan is allowed to occupy. The reader over-reads on this
+# family — MEASURED against the game's own declared counters on all eight of its levels: 100 read
+# as 107, 200 as 232, 250 as 347, 400 as 570, never once short. An over-read licences exactly the
+# overrun the allowance exists to prevent, so it is discounted until every one of those eight
+# becomes an under-estimate. Not a safety margin plucked from the air: 0.7 is the largest value
+# for which 570 x f <= 400 holds.
+_ALLOWANCE_TRUST = 0.7
 
 
 # --------------------------------------------------------------------------- board
@@ -848,8 +876,14 @@ def _attempt(board: Board, layout: Layout, moves: list[tuple[int, int, int]], st
     return None
 
 
+def plan_cost(plan: dict[int, tuple[State, list[int]]]) -> int:
+    """Actions the plan will spend: every move, plus a hand-over between pieces that must move."""
+    moving = sum(1 for _, route in plan.values() if route)
+    return sum(len(route) for _, route in plan.values()) + max(0, moving - 1)
+
+
 def solve(board: Board, moves: list[tuple[int, int, int]], step: int,
-          size: int) -> dict[int, tuple[State, list[int]]] | None:
+          size: int, allowance: int | None = None) -> dict[int, tuple[State, list[int]]] | None:
     """Choose a final state per piece so every pin is satisfied, cheapest total first.
 
     ⛔ Deepened in rungs rather than searched exhaustively. MEASURED: the exhaustive search opened
@@ -857,12 +891,20 @@ def solve(board: Board, moves: list[tuple[int, int, int]], step: int,
     there was nothing better far past where any usable answer lives, and every rebuild paid it
     again. The rungs cost at most twice the successful one and answer the common case in a
     fraction of a second.
+
+    ⛔ The allowance is a CONSTRAINT ON THE PLAN, not a stopping rule. A plan that runs out of
+    actions having achieved nothing loses the level exactly as a plan that never started would, so
+    the answer is not to cap the search — it is to refuse a plan that cannot finish inside what is
+    left, and say so with a bid of zero while the board is still someone else's to try.
     """
     layout = Layout(board.gates, board.pads)
     for depth in _DEPTHS:
         plan = _attempt(board, layout, moves, step, size, depth)
-        if plan is not None:
-            return plan
+        if plan is None:
+            continue
+        if allowance is not None and plan_cost(plan) > allowance:
+            continue
+        return plan
     return None
 
 
@@ -906,6 +948,8 @@ class ReforgeTool:
         self._sel: int = -1
         self._goals: list[State] | None = None
         self._routes: list[list[int]] = []
+        self._no_plan_for: tuple | None = None
+        self._gauge = BudgetReader()
         self._failed = False
         self._handovers = 0
         self._probe: tuple[int, State] | None = None
@@ -1083,7 +1127,13 @@ class ReforgeTool:
 
     # -- planning --------------------------------------------------------------
 
-    def _build(self) -> bool:
+    def _allowance(self) -> int | None:
+        """Actions left in this level, discounted for the reader's measured optimism."""
+        left = self._gauge.remaining()
+        return None if left is None else int(left * _ALLOWANCE_TRUST)
+
+    def _make_plan(self, vectors: dict[int, tuple[int, int]]):
+        """Solve the board this tool believes it is looking at, under a given action map."""
         board = Board()
         board.bg, board.pin_ring = self._bg, self._ring
         board.pins = list(self._pins)
@@ -1094,9 +1144,18 @@ class ReforgeTool:
              "h": st[2], "w": st[3], "bar_col": st[4], "bar_row": st[5], "colour": st[6]}
             for i, st in enumerate(self._model)
         ]
-        moves = [(aid, dx, dy) for aid, (dx, dy) in sorted(self._vec.items())]
-        plan = solve(board, moves, self._step, 64)
+        moves = [(aid, dx, dy) for aid, (dx, dy) in sorted(vectors.items())]
+        return solve(board, moves, self._step, 64, self._allowance())
+
+    def _build(self) -> bool:
+        # A refusal is as much an answer as a plan, and re-deriving it on every bid was the other
+        # half of what made polling expensive: the search runs once per distinct board.
+        snapshot = (tuple(self._model or ()), tuple(self._pins), self._allowance())
+        if snapshot == self._no_plan_for:
+            return False
+        plan = self._make_plan(self._vec)
         if plan is None:
+            self._no_plan_for = snapshot
             return False
         self._goals = [plan[i][0] for i in range(len(self._model))]
         self._routes = [list(plan[i][1]) for i in range(len(self._model))]
@@ -1105,23 +1164,50 @@ class ReforgeTool:
     # -- protocol --------------------------------------------------------------
 
     def detect(self, frames: list[Any], obs: Any) -> float:
+        """How well this board fits — a READ-ONLY opinion.
+
+        ⛔ A bid must not be able to damage a plan. This used to re-read the board and rebuild
+        whenever the model disagreed, which is `propose`'s job and only safe on `propose`'s
+        schedule: the harness may ask for a bid at any moment, including mid-animation, and a
+        re-read taken then installs a board that is briefly wrong and throws away a route that was
+        working. MEASURED — polling the bid every ten actions cost a level that the same build
+        clears when nobody asks. Disagreement is repaired where the actions are chosen; here the
+        question is only whether this tool has a plan for this family of board.
+        """
         if not has_frame(obs) or self._failed:
             return 0.0
-        grid = settled_frame(obs)
-        if self._model is None or not self._agrees(grid):
-            if not self._bootstrap(grid):
-                return 0.0
+        if self._model is None and not self._bootstrap(settled_frame(obs)):
+            return 0.0
         if len(self._vec) < 4:
             return _PROBE_CLAIM
-        if self._goals is None and not self._build():
-            return 0.0
-        return _CLAIM
+        if self._goals is not None:
+            return _CLAIM
+        return _CLAIM if self._build() else 0.0
+
+    def plan_actions(self) -> int | None:
+        """How many actions this tool's current plan will spend, or None if it has no plan.
+
+        ⛔ Offered so a handover can be decided on ARITHMETIC instead of on a stall. Measured on
+        the board this was built for: the incumbent holds a level it bids 0.00 on for 482 actions
+        and two lost allowances, while this tool has a finished 63-action plan for a 200-action
+        allowance the whole time. A stall clock cannot see that; "does the claimant's plan still
+        fit what is left" can, and it is the difference between that level scoring 0.065 and 0.93.
+        Read-only, and cheap: the plan is already built.
+        """
+        if self._goals is None:
+            return None
+        return sum(len(route) for route in self._routes) + max(
+            0, sum(1 for route in self._routes if route) - 1)
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if not has_frame(obs) or self._failed:
             return []
         ids, _ = availability(obs)
         grid = settled_frame(obs)
+        # Fed HERE and nowhere else: the reader counts one action per observation, and `detect`
+        # can be called any number of times per action, which would make it read the allowance
+        # draining several times faster than it is.
+        self._gauge.observe(grid)
         if self._model is not None and self._probe is not None:
             self._absorb(grid)
         if self._model is None or not self._agrees(grid):

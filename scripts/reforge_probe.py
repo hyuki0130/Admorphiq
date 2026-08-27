@@ -11,6 +11,12 @@ Four modes:
 * ``reforge_probe.py --harness <game> [cap]`` — the REAL ``UnifiedAgent`` with the full tool set
   and no LLM. ⛔ This is the number that counts; the tool alone answers an empty proposal
   differently from the loop.
+* ``reforge_probe.py --attempts <game> [cap]`` — splits a real harness run into LEVELS and, inside
+  each, ATTEMPTS, and reports WHICH TOOL spent each action. `attempt_probe.py where` prices the
+  attempts; this says who bought them, which is the piece that decides whose bug it is. ⛔ It has
+  now overturned two readings of the same level: the actions were attributed to the tool that
+  cleared the level rather than to the two tools that lost it, and the winning attempt's total was
+  read as one tool's route when it is two tools' work added together.
 * ``reforge_probe.py --sweep [cap]`` — the bid on every sample game. A tool that bids on a board
   it cannot solve takes that game away from whatever could.
 """
@@ -134,6 +140,47 @@ def run_harness(title: str, cap: int) -> None:
     print(f"   who acted: {picks}")
 
 
+def run_attempts(title: str, cap: int) -> None:
+    """Per level, per attempt, per tool: who spent the actions."""
+    from collections import Counter
+
+    from admorphiq.harness.loop import UnifiedAgent
+    from admorphiq.harness.registry import default_tools
+
+    def _no_llm(*_a, **_k):
+        raise RuntimeError("LLM-free: the signature fallback is what this measures")
+
+    env = _env(title)
+    obs = env.reset()
+    agent = UnifiedAgent(default_tools(), _no_llm, giveup=cap, stall=80, ctx_budget=6000)
+    frames = [obs]
+    levels = attempt = 0
+    attempt = 1
+    spent: Counter = Counter()
+    rows: list[tuple[int, int, str, dict]] = []
+    for _step in range(cap):
+        if agent.is_done(frames, obs):
+            break
+        act = agent.choose_action(frames, obs)
+        who = str(agent._current)
+        data = act.action_data.model_dump() if getattr(act, "action_data", None) else None
+        obs = env.step(act, data=data) if data else env.step(act)
+        frames.append(obs)
+        spent[who] += 1
+        now = int(getattr(obs, "levels_completed", levels) or 0)
+        if str(getattr(obs, "state", "")).endswith("GAME_OVER"):
+            rows.append((levels + 1, attempt, "LOST", dict(spent)))
+            spent.clear()
+            attempt += 1
+        elif now != levels:
+            rows.append((levels + 1, attempt, "WON", dict(spent)))
+            spent.clear()
+            levels, attempt = now, 1
+    for level, att, kind, who in rows:
+        share = "  ".join(f"{n}:{k}" for n, k in sorted(who.items(), key=lambda kv: -kv[1]))
+        print(f"  L{level} attempt {att} {kind:4s} {sum(who.values()):4d} actions   {share}")
+
+
 def run_sweep(cap: int) -> None:
     """The bid on every sample game, over a WALK and not just the opening frame.
 
@@ -177,6 +224,8 @@ def main() -> None:
         run_sweep(int(args[1]) if len(args) > 1 else 400)
     elif args and args[0] == "--harness":
         run_harness(args[1], int(args[2]) if len(args) > 2 else 1500)
+    elif args and args[0] == "--attempts":
+        run_attempts(args[1], int(args[2]) if len(args) > 2 else 1500)
     elif args and args[0] == "--level":
         run_level(args[1], int(args[2]), int(args[3]) if len(args) > 3 else 400)
     else:
