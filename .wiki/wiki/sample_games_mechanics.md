@@ -157,3 +157,24 @@ property of the game; both were the limits of black-box probing, and both were o
 - [[rounds/r101_tool-development]] — the round this came out of, including the generic-tools card.
 - [[lessons/instrument_validity_20260825]] — the discipline this is an instance of: validate the
   instrument before the hypothesis, and prefer the source of truth over a proxy for it.
+
+## bp35's boards are not in `levels` — they are a runtime tile table (2026-08-27)
+
+`scripts/dump_sample_levels.py` reports one 1x1 sprite on an 8x8 grid for all nine bp35 levels,
+which reads as "there is nothing here" and is a true report of the wrong object. The boards live
+in a module-level dict of ten entries keyed `grid1`..`grid10`, each an object with `.width`,
+`.height`, the board as a list of one-character-per-cell strings, a legend from char to sprite
+name, a start cell and an exit.
+
+They are **11 cells wide and 36 to 39 tall**, which settles a question two tool authors were
+arguing from pixels: the board really is far taller than the viewport, so a viewport-only planner
+cannot see where it is going.
+
+The legend resolves to real sprites and one is NOT obfuscated — `player_right`, alongside
+`player_left` and their walk frames. Two facts from it are worth carrying into any tool for this
+family: the board holds BOTH the player and a second body-shaped tile, so tagging the player by
+silhouette can pick the wrong one; and two distinct legend characters share an identical pixel
+signature, so the game separates by something a pixel comparison cannot see.
+
+⛔ Dev-time understanding only. A tool may read pixels and nothing else — the ban is on encoding
+a game's identity, not on understanding its mechanic, exactly as with reading `step()`.

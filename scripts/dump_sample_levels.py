@@ -11,6 +11,21 @@ see a level it has not yet reached. The data was on disk the whole time.
 
 Same line as `read_sample_games.py`: DEV-TIME understanding of which mechanic a generic tool must
 handle. Nothing here may be imported by a tool.
+
+⛔ IT IS BLIND TO GAMES THAT BUILD THEIR BOARD AT RUNTIME, and it does not say so — it reports a
+true fact about the wrong object. MEASURED 2026-08-27: bp35 comes back as one 1x1 sprite on an
+8x8 grid for all nine levels, which reads as "there is nothing here". Its boards are actually in
+a module-level dict, ten entries keyed `grid1`..`grid10`, each an object carrying `.width`,
+`.height`, the board as a list of one-char-per-cell strings, a legend mapping char to sprite
+name, a start cell and an exit. Two tool authors worked that game without them.
+
+So when this script reports a level with almost nothing in it, the next step is to walk the
+module for OTHER tables — a dict or list whose length matches the level count is the tell — not
+to conclude the level is empty:
+
+    for name, val in vars(module).items():
+        if isinstance(val, (dict, list, tuple)) and len(val) >= len(module.levels):
+            print(name, type(val).__name__, len(val))
 """
 
 from __future__ import annotations
