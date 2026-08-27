@@ -92,6 +92,27 @@ the signature default is already right everywhere, so parity is the best any rou
 The question this cannot answer is whether the model helps on a board whose signature we have
 never tuned against — which is the entire private set.
 
+## Re-measured at HEAD with both procedure defects fixed (2026-08-27, kernel v5)
+
+```
+              llm      fallback
+mean       0.8540        0.8540      25 of 25 IDENTICAL
+routing losses    0
+wall-clock    512s          322s     1.6x
+```
+
+**The kernel's mean now equals the ceph card to four decimals**, which is the check that was
+missing from v4: that run reported 0.8067 against a ceph 0.8225 and the gap was entirely mine —
+`cp -R` shipped the WORKING TREE so the kernel measured a tree in no commit, and MAX_ACTIONS was
+still 500 on a justification that had expired as the tools got deeper. Both fixed
+(`git archive HEAD`, and 4000), and the two numbers now agree across a different machine, OS and
+Python build.
+
+Parity holds at 46 tools and after a day of harness changes — the partial-claim rule, the
+registration-order tie-break, the no-progress bail and the wall-clock cap. ⛔ Parity remains the
+CEILING of this measurement rather than a result: on these 25 the signature default is right
+everywhere, so equal is the best any router can do here.
+
 ## Open work
 
 - Find what the model picks on cn04 and why. The prompt already lists tools RANKED by their own
