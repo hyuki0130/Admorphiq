@@ -123,6 +123,28 @@ Two hundred times faster, and the transfer loss goes to ZERO. The public card di
 digit either way (0.7935 before and after), which is the whole point: this defect was invisible
 to the measurement everyone watches and fatal to the one that decides.
 
+## Fourth measurement — the best yet, at card 0.8224 (2026-08-27)
+
+```
+14 re-rendered games   live 0.8675   archive 0.8102   ratio 0.93   identical 12/14
+per-action wall clock  0.7x - 1.3x on EVERY game — the 23x cost blow-up is gone
+```
+
+Both of the day's transfer defects are closed. s5i5's detector, which two cells used to kill,
+now fires on both boards (−0.0240, from −0.4167). re86's cost, which was 23x on the re-render,
+is 0.9x and it scores 0.8350 on both. su15's conquest transfers intact at 1.0000.
+
+**The only remaining loss is tu93**, 1.0000 -> 0.2222, and it is the one already diagnosed: the
+two boards' level-5 start frames are byte-identical on the layer every tool reads, they respond
+differently to the same twenty-action script, and their sole recorded difference is one sprite's
+`layer` field. It is not a detector problem and not a cost problem — it is the tool being shown
+a board that cannot be told apart from a different one. See [[../concepts/frame_layer_timeline]].
+
+⚠️ The ratio has moved 0.91 -> 0.88 -> 0.92 -> 0.93 across four runs while the card went 0.6733
+-> 0.8224. It did not rise BECAUSE the card rose: it dipped when a tool gained on the card
+without transferring, and recovered when that tool was fixed. The two numbers are independent
+and only one of them is evidence about the private set.
+
 ## Falsification
 
 Wrong if the control stops matching (sk48 live vs archive), which would mean the archive run
