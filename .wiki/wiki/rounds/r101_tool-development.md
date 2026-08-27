@@ -1343,3 +1343,39 @@ Two consequences, and both save work:
 
 ⚠️ It also means a fix that "sometimes works" is not a fix here: if a change makes a level clear,
 it will clear every time, and if it does not, no amount of running will surface it.
+
+### A restart is INVISIBLE in the level counter — search problem or attempt problem (2026-08-27)
+
+`scripts/attempt_probe.py` names a distinction nothing in the harness could express. When a level
+is failed the engine restores the board and hands back a fresh allowance, but the score carries
+the actions already spent — so **a level cleared on the third try reads exactly like a level
+cleared slowly**, and the two want opposite work:
+
+* the winning run is slow -> the route is bad, improve the SEARCH;
+* the winning run is fast and the cost is in attempts that were binned -> the route is already
+  right, and what to improve is NOT DYING.
+
+Its `where` mode splits a real harness run into levels and, inside each, ATTEMPTS, and prices
+them. The last column is what the game would score if only its winning attempts were paid for: a
+ceiling near the score is a SEARCH problem, a ceiling far above it is an ATTEMPT problem.
+
+```
+re86   0.8349 -> 0.9794   +0.1445     401 actions binned
+bp35   0.1648 -> 0.2931   +0.1283   1,329 actions binned
+s5i5   0.4203 -> 0.4381   +0.0177   1,355 actions binned
+wa30   0.8000 -> 0.8000   +0.0000   1,217 actions binned   <- binning, but on levels never cleared
+everything else            +0.0000       0 actions binned
+```
+
+⛔ **It refuted the instruction I had given bp35's author hours earlier.** I read its per-level
+costs — 18/21, 94/48, 83/44, 23/38, 72/33 — as a slow route and told them levels 2, 3 and 5 at
+~2x human were worth more than depth. The attempt split says the winning attempts there run at or
+BETTER than the human count and every bit of the shortfall is in earlier attempts that were
+binned. No amount of route improvement pays for that, and the tool's author says two days could
+have gone into it.
+
+⚠️ Note wa30: 1,217 binned actions and a ceiling EQUAL to its score, because its binning is on
+levels it never clears at all. Binned actions are not themselves the signal — the ceiling is.
+
+Only three games have any attempt headroom, and two of them are worth having: re86 +0.1445 and
+bp35 +0.1283, together **+0.0109 of the card**.
