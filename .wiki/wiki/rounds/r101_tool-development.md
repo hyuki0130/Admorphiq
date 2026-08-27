@@ -1566,3 +1566,30 @@ free.
 
 ⚠️ That is worth stating as a rule, because three sweeps in a row have gone the same way: **a
 count of bad events is not a count of lost score.** Price it before assigning it.
+
+### Close of 2026-08-27 — the measured position
+
+```
+generic tools ALONE, zero adapters, full 25 on ceph-build @4000
+   mean 0.8602    FIFTEEN at 1.0000    re86 0.9908 makes SIXTEEN at or above 0.99
+   SEVENTEEN clear every level         25 of 25 clear at least one
+   ~28 gates, cumulative regressions ZERO
+
+transfer   ratio 0.9981, 13 of 14 re-rendered games IDENTICAL   (scripts/rounds/R101XFER9)
+shipped    --agent kaggle_detect 0.5422 — the adapters now COST 0.318, only ls20 earns its board
+LLM path   25 of 25 identical to the LLM-free fallback, zero routing losses (Kaggle GPU, v5)
+cost       10,310 actions and 610s for the full 25, down from 57,885 and 1,882s this morning
+```
+
+Eight games still hold headroom, 0.1219 of card between them, every one assigned:
+
+```
+bp35 0.1648 5/9   lf52 0.2727 5/10   s5i5 0.4204 6/8   dc22 0.7143 5/6
+ls20 0.7500 6/7   ka59 0.7500 6/7    g50t 0.7500 6/7   wa30 0.8000 8/9
+```
+
+⚠️ **Three axes were opened and each turned out to be ONE GAME WIDE.** Attempts (re86, then
+bp35), deaths (bp35 alone — five of eight games kill on a fixed clock and only one of those
+deaths costs score), and held-while-silent (lf52 looked worst by double and measured worth
+exactly zero). Each sweep produced a count of bad events and each time the count was not a count
+of lost score. **Price it before assigning it** is the rule that came out of all three.
