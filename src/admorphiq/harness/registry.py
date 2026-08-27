@@ -25,6 +25,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.clonewalk import CloneWalkTool
     from admorphiq.tools.cyclepress import CyclePressTool
     from admorphiq.tools.dead_signature import DeadSignatureTool
+    from admorphiq.tools.decouple import CoupledPairTool
     from admorphiq.tools.dealias import DealiasTool
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.haul import HaulDeliveryTool
@@ -77,6 +78,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         CyclePressTool(),
         BlastClockTool(),
         CloneWalkTool(),
+        CoupledPairTool(),
         SluiceTool(),
         SwivelArmTool(),
         TelescopeArmTool(),

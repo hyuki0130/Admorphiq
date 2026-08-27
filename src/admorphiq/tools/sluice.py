@@ -41,14 +41,16 @@ THE PROPAGATION RULE is the whole tool. A droplet carries a heading; it looks on
     anything else   the droplet stops.
 
 ⛔ WHERE A TOOL THAT HAS THE MECHANIC RIGHT STILL STOPS — measured, not guessed, because it is
-the one thing this tool exists to fix. On this family's deepest board the winning layout stands a
-straight bar directly against an elbow, and two of the three pieces that must move reach their
-places only by sliding THROUGH a piece that has not moved yet. Both are legal: the engine refuses
-a slide that would meet a cup, the band or the rim, and MOVES ANYWAY when everything it meets is
-another piece. A planner that treats pieces as obstacles to each other therefore searches a board
-the game does not have — measured on that board, it can reach 63 of the 159 places one piece can
-actually stand, the winning layout is not among them, and the search returns nothing after ten
-seconds even though its own propagation model, handed that layout, correctly reports a clear.
+the one thing this tool exists to fix. On this family's deepest board, three of the four pieces
+must move, and the winning layout asks for two things a planner is tempted to forbid: two of those
+pieces come to REST touching a piece of another colour, and the third can only reach its place by
+sliding PAST pieces that have not moved yet. Both are legal — the engine refuses a slide that
+would meet a cup, the band or the rim, and MOVES ANYWAY when everything it meets is another
+piece — so a planner that treats pieces as obstacles to each other is searching a board the game
+does not have. Measured on it: that planner reaches 63 of the 159 places the third piece can
+actually stand, the winning layout is not among them, and its search returns nothing after ten
+seconds — while its own propagation model, handed that layout directly, correctly reports a
+clear. The mechanic was never the thing missing.
 
 So this tool keeps exactly one separation rule, and only where it earns its keep: two pieces of
 the SAME colour may not touch, because they would read back as one component on the next frame and
@@ -238,8 +240,7 @@ class Board:
 
 def _read(obs: Any) -> Board | None:
     """Recover the whole mechanic from the settled frame, or return None: this is not the family."""
-    stack = _stack(obs)
-    px = stack[-1]
+    px = _stack(obs)[-1]
     lat = _lattice(px)
     if lat is None:
         return None
