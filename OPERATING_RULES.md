@@ -235,13 +235,15 @@ mean 0.8425 over ALL 25   FOURTEEN at 1.0000   SIXTEEN clear EVERY level   25/25
 ```
 
 ⛔ **THE THIRTEEN ADAPTERS NOW COST THE SHIPPED CARD.** Measured the same day, same tree:
-`--agent kaggle_detect` (as shipped) **0.5335** against `--agent unified` **0.8425**. The
-adapters are worse on 23 of 25 games — sc25 0.0427 against a generic 1.0000, wa30 0.0222 against
-0.8000 — and only ls20 and m0r0 still beat the generic path. Nothing broke: the FALLBACK moved
+`--agent kaggle_detect` (as shipped) **0.5422** against `--agent unified` **0.8540** — a gap of
+**+0.3118**. The adapters lose on 22 of 25 games (sc25 0.0427 against a generic 1.0000, ar25
+0.0833 against 1.0000, sp80 0.1429 against 1.0000, wa30 0.0222 against 0.8000), tie on two,
+and **only `ls20` still beats the generic path**. The gap widens on its own every time a
+generic tool lands. Nothing broke: the FALLBACK moved
 out from under them and both routing guards were calibrated when it scored 0.0566. Full
 measurement and the two guard defects:
 [`.wiki/wiki/lessons/adapters_now_cost_the_card_20260827.md`](.wiki/wiki/lessons/adapters_now_cost_the_card_20260827.md).
-**Dropping eleven adapters is worth ~+0.29 of card and is SUBMISSION-AFFECTING, so it is the
+**Dropping twelve adapters is worth ~+0.31 of card and is SUBMISSION-AFFECTING, so it is the
 user's call, not mine.**
 
 ⛔ **A report that gives only the LEVEL COUNT cannot be acted on.** Measured on bp35 the same

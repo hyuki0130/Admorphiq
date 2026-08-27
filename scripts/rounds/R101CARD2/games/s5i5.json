@@ -1,0 +1,59 @@
+{
+  "agent": "kaggle_detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.370425,
+  "total_score_pct": 37.043,
+  "games": [
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 6,
+      "elapsed_s": 75.39,
+      "total_actions": 1878,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 19,
+          "human_actions": 20,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 280,
+          "human_actions": 89,
+          "score": 0.101033
+        },
+        {
+          "level": 3,
+          "agent_actions": 47,
+          "human_actions": 106,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 39,
+          "human_actions": 54,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 32,
+          "human_actions": 162,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 255,
+          "human_actions": 38,
+          "score": 0.022207
+        }
+      ],
+      "game_score": 0.370425,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5"
+    }
+  ]
+}

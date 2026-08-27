@@ -66,6 +66,24 @@ touches the unresolved doctrine conflict already in `CLAUDE.md`: the adapters ar
 BY DESIGN because per-game code cannot transfer to 110 private games, and the generic path now
 beats them on the public set as well.
 
+## Re-measured four hours later — now only ONE adapter earns its place
+
+```
+SHIPPED  --agent kaggle_detect   0.5335 -> 0.5422
+GENERIC  --agent unified         0.8224 -> 0.8540
+gap                              +0.29  -> +0.3118
+adapters still beating their own board:  ls20, and nothing else
+```
+
+`m0r0` was the second of the two survivors and is no longer one: its adapter scores 1.0000 and
+the generic path now matches it exactly. `ft09` also ties at 1.0000. Every other adapter loses,
+several catastrophically — sc25 0.0427 against a generic 1.0000, ar25 0.0833 against 1.0000,
+sp80 0.1429 against 1.0000, wa30 0.0222 against 0.8000.
+
+⚠️ The gap widens on its own, without anyone touching the adapters, every time a generic tool
+lands. That is the honest way to read it: this is not a defect that appeared, it is a comparison
+that keeps inverting further as the thing it was measured against improves.
+
 ## Falsification
 
 Wrong if the two runs are not comparable — check that both used the same tree and that the

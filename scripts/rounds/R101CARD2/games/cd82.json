@@ -1,0 +1,59 @@
+{
+  "agent": "kaggle_detect",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.946286,
+  "total_score_pct": 94.629,
+  "games": [
+    {
+      "game_id": "cd82-fb555c5d",
+      "win_levels": 6,
+      "levels_completed": 6,
+      "elapsed_s": 86.27,
+      "total_actions": 109,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 7,
+          "human_actions": 55,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 10,
+          "human_actions": 8,
+          "score": 0.64
+        },
+        {
+          "level": 3,
+          "agent_actions": 24,
+          "human_actions": 41,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 21,
+          "human_actions": 21,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 24,
+          "human_actions": 23,
+          "score": 0.918403
+        },
+        {
+          "level": 6,
+          "agent_actions": 23,
+          "human_actions": 23,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.946286,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CD82"
+    }
+  ]
+}
