@@ -455,13 +455,55 @@ class LatticeMazeTool:
         return board
 
     def _locate(self, board: _Board) -> Cell | None:
-        """Where the steered piece stands — by its body colour, so a struck piece is still found."""
+        """Where the steered piece stands: by POSITION when its colour is shared, colour otherwise.
+
+        Colour alone is an identity for a CLASS, never for one piece, and this board proves it.
+        ⛔ Measured 2026-08-27 on the archived re-render of this game: a second piece is drawn in
+        the steered piece's own body and mark colours, so the reader fell through to the centroid
+        of every pixel of that colour — which averages the two pieces to a point BETWEEN them, and
+        on this board that point is not a node at all, so the answer was NOTHING. propose() then
+        re-picked the identity from the ranking on every single action, which throws away what the
+        level had learned each turn. The board went from 9 levels in 188 actions to 4 in 1288.
+
+        The two copies are the same game — an action tape recorded on one clears the other level
+        for level (`scripts/twinboard_probe.py same`) — and the only difference is that the maze
+        sprite is drawn at a different z-order in the two renders, so it COVERS that second piece
+        on one copy and not on the other. Nothing about the frame stack is involved: the level
+        hands back a single layer on both copies and the nine cells that differ are visible in it.
+        So a tool cannot rely on a piece being drawn at all, and must not treat "the only thing of
+        my colour" as "me".
+
+        What a position is: the piece stood at a known node and a control of known displacement
+        was spent, so it is at that node plus the displacement if the move was taken and still at
+        that node if it was refused. Both readings are needed — propose() distinguishes a refusal
+        from a mis-identification by whether the cell changed. Everything else wearing the colour
+        is a different piece.
+        """
         if self._body is None:
             return None
         same = [c for c, (body, _) in board.pieces.items() if body == self._body]
         if len(same) == 1:
             return same[0]
-        return self._centroid_cell(board, board.side)
+        if not same:
+            # Nothing of that colour is drawn: the piece may be mid-strike and part-way redrawn,
+            # which is what the centroid was for.
+            return self._centroid_cell(board, board.side)
+        if self._prev_cell is None:
+            # First reading of the board, with the colour already shared. The ranking is the only
+            # evidence there is, and it is what chose this colour a moment ago.
+            for cell in rank_pieces(board):
+                if cell in same:
+                    return cell
+            return same[0]
+        eff = self._effect.get(self._prev_action) if self._prev_action is not None else None
+        if eff is not None:
+            moved = (self._prev_cell[0] + eff[0], self._prev_cell[1] + eff[1])
+            if moved in same:
+                return moved
+            if self._prev_cell in same:
+                return self._prev_cell
+        return min(same, key=lambda c: abs(c[0] - self._prev_cell[0])
+                   + abs(c[1] - self._prev_cell[1]))
 
     def _centroid_cell(self, board: _Board, side: int) -> Cell | None:
         grid = self._grid

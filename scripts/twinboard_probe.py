@@ -29,9 +29,8 @@ stands on is drawn at a different layer in the two renders and covers it in only
     uv run python scripts/twinboard_probe.py candidate <title> [budget]
     uv run python scripts/twinboard_probe.py full [budget]
 
-``candidate`` measures a proposed change to an EXISTING tool without editing it, by binding the
-replacement over the class for the length of the run. It is a measurement harness, not an edit:
-the change it carries has to be applied by whoever owns the integration.
+``candidate`` re-demonstrates a retired reader against the current one, by binding it over the
+class for the length of the run. It is a measurement harness and changes nothing on disk.
 """
 
 from __future__ import annotations
@@ -210,74 +209,45 @@ def both(title: str, cap: int) -> None:
         print(f"{root:28s} {lv} levels / {acts} actions  {marks}  acted {top}")
 
 
-# --- the candidate change ----------------------------------------------------
+# --- the reader this game retired ---------------------------------------------
 #
-# ⛔ NOT APPLIED. This is the fix this probe was written to justify, held here so it can be
-# re-measured in one command by whoever owns the integration.
+# Kept so the regression can be re-demonstrated in one command rather than argued about. This is
+# how the maze tool used to answer "where is the piece I steer": by its BODY COLOUR, falling
+# through to the centroid of every pixel of that colour when more than one piece wore it.
 #
-# The steered piece is currently found by its BODY COLOUR, and that stops being an identity the
-# moment a second piece wears the same colours -- which is exactly what one archived copy shows
-# and the live copy hides. With two candidates the reader falls through to the CENTROID of every
-# pixel of that colour, which lands between the two pieces and is neither of them.
-#
-# What a position is: the piece stood at a known node, a control with a known displacement was
-# spent, so it is at that node plus the displacement if the move was taken, or still at that node
-# if it was refused. Everything else wearing the colour is a different piece. Colour alone still
-# answers when only one piece wears it, which is what keeps a struck piece findable.
-#
-# MEASURED with `full`: the owning tool takes a turn on 2 of 40 game/copy pairs, both of them the
-# same game, so 38 pairs cannot change and did not. Of the two, the live copy is byte-for-byte
-# unchanged and the archived copy goes 4 levels in 1288 actions to 9 in 188 -- the live copy's
-# own timings, level for level.
-#
-# To apply it: this is a method of the owning tool, so `rank_pieces` becomes a plain module
-# reference and the local import goes.
+# On one archived re-render a second piece IS drawn in the steered piece's colours, the centroid
+# lands between the two, and the board goes from 9 levels in 188 actions to 4 in 1288. Colour is
+# an identity for a class, never for one piece. `candidate` runs both readers on both copies.
 
-def _locate_by_position(self, board):
-    """Where the steered piece stands: by position when the colour is shared, colour otherwise."""
+def _locate_by_colour(self, board):
+    """The superseded reader: colour, then the centroid of everything wearing it."""
     if self._body is None:
         return None
-    same_colour = [c for c, (body, _) in board.pieces.items() if body == self._body]
-    if len(same_colour) == 1:
-        return same_colour[0]
-    if not same_colour:
-        return self._centroid_cell(board, board.side)
-    if self._prev_cell is None:
-        from admorphiq.tools.lattice_maze import rank_pieces
-        for cell in rank_pieces(board):
-            if cell in same_colour:
-                return cell
-        return same_colour[0]
-    eff = self._effect.get(self._prev_action) if self._prev_action is not None else None
-    if eff is not None:
-        moved = (self._prev_cell[0] + eff[0], self._prev_cell[1] + eff[1])
-        if moved in same_colour:
-            return moved
-        if self._prev_cell in same_colour:
-            return self._prev_cell
-    return min(same_colour,
-               key=lambda c: abs(c[0] - self._prev_cell[0]) + abs(c[1] - self._prev_cell[1]))
+    same = [c for c, (body, _) in board.pieces.items() if body == self._body]
+    if len(same) == 1:
+        return same[0]
+    return self._centroid_cell(board, board.side)
 
 
 def candidate(title: str, cap: int) -> None:
     from admorphiq.tools.lattice_maze import LatticeMazeTool
-    original = LatticeMazeTool._locate
-    for label, fn in (("as registered", original), ("with the candidate", _locate_by_position)):
+    current = LatticeMazeTool._locate
+    for label, fn in (("as registered", current), ("with the retired reader", _locate_by_colour)):
         LatticeMazeTool._locate = fn
         for root in (LIVE, ARCHIVE):
             lv, acts, marks, _p, _t = _run(root, title, cap)
-            print(f"{label:20s} {root:28s} {lv} levels / {acts} actions  {marks}")
-    LatticeMazeTool._locate = original
+            print(f"{label:24s} {root:28s} {lv} levels / {acts} actions  {marks}")
+    LatticeMazeTool._locate = current
 
 
 def full(cap: int) -> None:
-    """Every game, both copies, before and after the candidate -- the only honest keep/revert.
+    """Every game, both copies, current reader against the retired one -- the honest keep/revert.
 
-    Scoped, and the scope is an argument rather than an economy: the candidate replaces a method
-    of ONE tool, and that method only ever runs after the harness has already handed that tool a
-    turn. A game where the tool never acted cannot change, so the baseline pass records who acted
-    and the second pass re-runs only the games where it did. Both passes are printed in full, so
-    the scope can be checked rather than taken on trust.
+    Scoped, and the scope is an argument rather than an economy: the reader is a method of ONE
+    tool and only ever runs after the harness has already handed that tool a turn. A game where
+    the tool never acted cannot differ, so the first pass records who acted and the second re-runs
+    only the games where it did. Both passes print in full, so the scope can be checked rather
+    than taken on trust.
     """
     from admorphiq.tools.lattice_maze import LatticeMazeTool
     owner = LatticeMazeTool.name
@@ -292,26 +262,26 @@ def full(cap: int) -> None:
             if acted:
                 touched.append((title, root))
             tag = "live" if root == LIVE else "archive"
-            print(f"  before {tag:7s} {title:8s} {lv} levels / {acts:5d}"
+            print(f"  now     {tag:7s} {title:8s} {lv} levels / {acts:5d}"
                   f"   {owner} acted {acted}", flush=True)
     print(f"\n{owner} acted on {len(touched)} of {len(base)} game/copy pairs; "
-          f"re-running those with the candidate\n")
-    LatticeMazeTool._locate = _locate_by_position
+          f"re-running those with the retired reader\n")
+    LatticeMazeTool._locate = _locate_by_colour
     changed = 0
     try:
         for title, root in touched:
             lv, acts, marks, _p, _t = _run(root, title, cap)
             was = base[(title, root)]
-            flag = "" if (lv, acts) == was else "   <-- CHANGED"
+            flag = "" if (lv, acts) == was else "   <-- WOULD REGRESS"
             if flag:
                 changed += 1
             tag = "live" if root == LIVE else "archive"
-            print(f"  after  {tag:7s} {title:8s} {lv} levels / {acts:5d}"
+            print(f"  retired {tag:7s} {title:8s} {lv} levels / {acts:5d}"
                   f"   was {was[0]}/{was[1]}{flag}  {marks if flag else ''}", flush=True)
     finally:
         LatticeMazeTool._locate = original
-    print(f"\n{changed} of {len(touched)} pairs changed; "
-          f"{len(base) - len(touched)} could not")
+    print(f"\n{changed} of {len(touched)} pairs differ under the retired reader; "
+          f"{len(base) - len(touched)} could not be affected either way")
 
 
 if __name__ == "__main__":
