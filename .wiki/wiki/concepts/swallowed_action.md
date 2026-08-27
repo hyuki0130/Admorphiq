@@ -54,3 +54,25 @@ up/down/left/right, with the first actions after a reset absorbed. One read of t
 
 - [[frame_layer_timeline]] — the other half: the layer stack is the animation's own
   timeline, so reading `arr[0]` reasons about the board before the animation resolved.
+
+## Waiting for the board to settle IS the synchronisation (measured 2026-08-27)
+
+A tool that waits for a settled frame before acting looks like it is being over-cautious, and
+there is an argument that reads as obviously correct: an unsettled frame should stop the model
+being BELIEVED, not stop the tool from ACTING — a sliding piece does not move the lattice, so
+click coordinates stay valid throughout the animation.
+
+**Measured on lf52: 5 levels -> 1.** Clicking into a board that has not finished resolving the
+previous action loses every level after the first. The wait is not caution; it is the only
+synchronisation a frame-only tool has with the engine. Reverted, and the reason is recorded in
+the tool so nobody re-derives it.
+
+Two related rules from the same measurement, both kept because both were free:
+
+* **A model invariant is not evidence the board has settled.** "The carts are conserved" is a
+  statement about the MODEL, so a model that is merely WRONG about one cart makes it true
+  forever and the tool waits out the level holding a winning plan. Scope such a check to the
+  window where the action could actually have violated it — here, the three frames after a
+  DRIVE, because only a drive moves a cart.
+* **Claim furniture only from settled frames.** An animation is the one thing that can invent an
+  object, and a phantom obstacle is a phantom stepping stone the engine then refuses to use.

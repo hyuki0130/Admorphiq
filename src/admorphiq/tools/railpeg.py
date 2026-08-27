@@ -106,6 +106,11 @@ _MIN_MATCH = 8
 _LIVERY = 14
 _HISTORY = 8
 _NODE_CAP = 90_000
+# How many candidate captures to weigh before committing to one. Eight is what the deepest sample
+# board needs: its first seven cheapest captures are all dead ends.
+_LOOKAHEAD = 8
+# Frames a cart may spend visibly between two cells after it is told to move.
+_SLIDE = 3
 
 
 # --------------------------------------------------------------------------- pixels
@@ -494,13 +499,55 @@ def _path(parent: dict[Any, tuple[Any, Move]], node: Any) -> list[Move]:
     return out
 
 
+def _won(state: Any, targets: set[int]) -> bool:
+    seen = Counter(v for _c, v in state[0])
+    return all(seen[c] <= 1 for c in targets)
+
+
+def capture_reachable(state: Any, ground: Ground, noncapture: frozenset[int],
+                      node_cap: int = 25_000) -> bool:
+    """Can ANOTHER capture still be reached from here? Bounded, so False means "not cheaply"."""
+    total = len(state[0])
+    cost_of: dict[Any, int] = {state: 0}
+    heap: list[tuple[int, int, Any]] = [(0, 0, state)]
+    tie = 0
+    while heap:
+        cost, _t, st = heapq.heappop(heap)
+        if cost > cost_of.get(st, cost):
+            continue
+        if len(st[0]) < total:
+            return True
+        if len(cost_of) > node_cap:
+            return False
+        for ns, _mv, step in _successors(st, ground, noncapture):
+            nc = cost + step
+            if nc < cost_of.get(ns, 1 << 30):
+                cost_of[ns] = nc
+                tie += 1
+                heapq.heappush(heap, (nc, tie, ns))
+    return False
+
+
 def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
-               ) -> tuple[list[Move], bool] | None:
-    """Cheapest action sequence to the whole level, or failing that to the next capture.
+               lookahead: int = _LOOKAHEAD) -> tuple[list[Move], bool] | None:
+    """Cheapest action sequence to the whole level, or failing that to a SURVIVABLE next capture.
 
     Returns (moves, solved). `solved` is True when the sequence takes every capturable colour down
-    to a single piece; otherwise it is the shortest route to one more capture, which is always
-    worth taking because a capture cannot be undone by a later mistake.
+    to a single piece; otherwise it is a short route to one more capture.
+
+    ⛔ "Shortest route to the next capture" is NOT safe, and this board proves it out of the game's
+    own mouth. A capture cannot be undone, so a cheap one can leave a position from which nothing
+    further can ever be taken — and the game SHIPS A DETECTOR for exactly that, greying the pieces
+    out and offering a restart, which is how a designer says "this branch is lost". Chasing the
+    cheapest capture walks a level with six of them into that detector after three, every time.
+    Measured on the full board: at the third capture, the seven cheapest candidates are each a
+    dead end and the eighth is not — taking it finishes the level in 87 actions against a human
+    baseline of 148, where taking the cheapest strands it three captures in with nothing legal
+    left but shunting empty carts.
+    So the rule is: prefer the cheapest capture FROM WHICH ANOTHER IS STILL REACHABLE. Only prefer,
+    never require — the map is partial, so "nothing further is reachable" is often just "the rest
+    of the board has not been seen yet", and refusing to move at all is strictly worse than
+    risking a wrong branch.
     """
     if not m.pieces:
         return None
@@ -515,18 +562,17 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
     parent: dict[Any, tuple[Any, Move]] = {}
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
     tie = 0
-    capture: Any = None
+    captures: list[Any] = []
     expanded = 0
 
     while heap:
         cost, _t, state = heapq.heappop(heap)
         if cost > cost_of.get(state, cost):
             continue
-        seen = Counter(v for _c, v in state[0])
-        if all(seen[c] <= 1 for c in targets):
+        if _won(state, targets):
             return _path(parent, state), True
-        if capture is None and len(state[0]) < total:
-            capture = state
+        if len(state[0]) < total and len(captures) < lookahead:
+            captures.append(state)
         expanded += 1
         if expanded > node_cap:
             break
@@ -538,9 +584,12 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
                 tie += 1
                 heapq.heappush(heap, (nc, tie, ns))
 
-    if capture is not None:
-        return _path(parent, capture), False
-    return None
+    if not captures:
+        return None
+    for state in captures:
+        if _won(state, targets) or capture_reachable(state, ground, noncapture):
+            return _path(parent, state), False
+    return _path(parent, captures[0]), False
 
 
 def _spread(state: Any, noncapture: frozenset[int]) -> int | None:
@@ -713,6 +762,8 @@ class RailPegTool:
         self._refused: tuple[tuple[Any, ...], int] | None = None
         self._doubt = 0
         self._misaligned = 0
+        # Frames still owed to a cart that was just told to move; only a drive moves one.
+        self._driving = 0
         self._visited: set[Any] = set()
         self._ncarts = 0
         self._barren = 0
@@ -791,6 +842,7 @@ class RailPegTool:
             self._sync_key, self._sync_res = key, None
             return None
         self._sync_key = key
+        self._driving = max(0, self._driving - 1)
         if self._model is None:
             return self._restart(board)
         m = self._model
@@ -822,17 +874,6 @@ class RailPegTool:
         m.sockets |= {shift(c) for c in board.sockets}
         m.rails |= {shift(c) for c in board.rails}
         m.sockets -= carts
-        # ⛔ A piece in flight is drawn across two cells and fills whatever it is passing over,
-        # which reads exactly like an obstacle — and an obstacle claim is the one claim that must
-        # be RETRACTABLE, because it is the only one that can be invented by an animation. Bolted
-        # furniture is mutually exclusive with both a hole and a track, so any cell the board has
-        # since shown to be either is struck off, retrospectively and not merely at the moment it
-        # is added. Getting that wrong is silent and expensive: one frame of a piece flying over a
-        # cart left that cart marked solid for the rest of the level, and a solid cart is not a
-        # landing, so the level's only capture became unreachable and the tool played on for two
-        # hundred actions with a board it believed was finished.
-        m.obstacles |= {shift(c) for c in board.obstacles}
-        m.obstacles -= m.sockets | m.rails
         seen = (tuple(sorted((shift(c), v) for c, v in board.pieces.items())),
                 tuple(sorted(carts)), tuple(sorted(cargo)))
 
@@ -843,13 +884,46 @@ class RailPegTool:
         # neither on screen nor remembered off it has not left the board, it is mid-slide, and
         # losing it deletes the only route between two halves of a board the lattice does not
         # otherwise connect.
+        #
+        # ⛔ But that conservation law is a statement about the MODEL, so a model that is simply
+        # WRONG about a cart makes it true FOREVER — measured as a tool holding a winning plan and
+        # spending inert clicks waiting for a board that had already settled. The rule is narrowed
+        # by the mechanic instead of by patience: ONLY A DRIVE MOVES A CART. After a jump, or after
+        # an inert click, a cart the frame does not show is not mid-slide — it is a cart the model
+        # should never have believed in, and the frame is right. Bounding the wait by a frame count
+        # instead was measured and REJECTED: it cost ~55 actions across levels 2-5 and unlocked
+        # nothing, because it also overrode the honest mid-slide readings the law is there for.
         merged = len(carts) + len([c for c in m.carts if c not in m.window])
+        slipping = self._driving > 0 and (len(carts) < len(here[1]) or merged < self._ncarts)
         unsettled = (board.moving > 0
-                     or len(carts) < len(here[1])
-                     or merged < self._ncarts
+                     or slipping
                      or bool({shift(c) for c in board.obstacles} & m.sockets))
         self._calibrate(seen[1], settled=not unsettled)
+        if not unsettled:
+            # ⛔ An obstacle is the ONLY thing on this board that an animation can invent, and it
+            # is therefore the only claim that is both DEFERRED and RETRACTABLE.
+            #   Deferred: a piece in flight is drawn across two cells and fills whatever it passes
+            #   over, which reads exactly like bolted furniture. So obstacles are read off SETTLED
+            #   frames only — the same test that already knows a piece is in the air. Believing
+            #   them from any frame put a phantom obstacle on a plain hole, and a phantom obstacle
+            #   is a phantom STEPPING STONE: the planner keeps proposing a jump across it, the
+            #   engine refuses the jump because there is nothing to jump over, the board does not
+            #   change, and the tool re-plans the same move forever.
+            #   Retractable: furniture is mutually exclusive with both a hole and a track, so any
+            #   cell the board has since shown to be either is struck off retrospectively, not
+            #   merely at the moment it is added. One frame of a piece flying over a CART left that
+            #   cart marked solid for the rest of the level, and a solid cart is not a landing, so
+            #   the level's only capture became unreachable.
+            m.obstacles |= {shift(c) for c in board.obstacles}
+        m.obstacles -= m.sockets | m.rails
         if unsettled:
+            # ⛔ Do NOT play on through this. It looks as though an unsettled frame should only
+            # stop the model being BELIEVED, not stop the tool ACTING — the lattice does not move
+            # while a cart slides, so the click coordinates are still good. Measured: acting
+            # anyway takes this game from five levels to ONE. Clicking into a board that has not
+            # finished resolving the last action is how a plan gets played into a position that no
+            # longer exists, and every level after the first is lost to it. The wait is the tool's
+            # only synchronisation with the engine and it is load-bearing.
             self._sync_res = (m, bool(self._plan))
             return self._sync_res
         if self._refused is not None and seen == _seen(self._refused[0], m.window):
@@ -1080,6 +1154,7 @@ class RailPegTool:
                 finally:
                     self._retried = False
             self._advance(m, move)
+            self._driving = 0
             return steps
         aid = self._dirmap.get(d)
         if aid is None:
@@ -1092,6 +1167,8 @@ class RailPegTool:
             aid = untried[0]
             self._plan = []          # the probe may point anywhere; re-plan from what happens
             self._pending = (aid, tuple(sorted(m.carts)), 0, d)
+            self._driving = _SLIDE
             return [(aid, None)]
         self._advance(m, move)
+        self._driving = _SLIDE
         return [(aid, None)]
