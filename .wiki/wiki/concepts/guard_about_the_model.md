@@ -160,6 +160,26 @@ number that decides is what the game would score if the waste were removed. Meas
 `attempt_probe`'s ceiling column, or by removing the tool and re-running — before naming anyone's
 work as a cost.
 
+### A candidate window must count OUTCOMES, not paths
+
+Measured on lf52's level 6, enumerating capture candidates in cost order from the tool's real
+position:
+
+```
+candidates 1..15:  cost 21-23, survivable=False, ALL THE SAME BOARD
+candidate  16   :  cost 23,    survivable=TRUE   — a distinct board, and the winning one
+```
+
+**One action drives every cart at once**, so a great many drive ORDERS reach the same board with
+the carts parked differently, and a cost-ordered search enumerates them one after another. An
+eight-candidate window therefore held exactly ONE distinct outcome while looking full.
+
+⛔ **On any board where one action moves several things, a fixed-size candidate window is a
+window on paths, not on choices.** Deduplicate by the resulting state before counting. The tool
+had also had a boarding preference built and reverted the round before, on the evidence that it
+never fired — it never fired because the boarding move was candidate 16 and the window ended at
+8. The preference was right about the move and the diagnosis was wrong about the reason.
+
 ## Falsification
 
 Wrong as a general claim if a guard of this shape is found that cannot become permanently true —

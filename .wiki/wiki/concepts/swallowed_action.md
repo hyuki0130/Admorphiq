@@ -76,3 +76,26 @@ Two related rules from the same measurement, both kept because both were free:
   DRIVE, because only a drive moves a cart.
 * **Claim furniture only from settled frames.** An animation is the one thing that can invent an
   object, and a phantom obstacle is a phantom stepping stone the engine then refuses to use.
+
+## A calibration probe can LOSE the level before any real move (2026-08-27)
+
+lf52's level 6 is winnable in 87 actions against a human 148 — from the position it starts in.
+Read off the engine's own object positions, varying nothing but where one cart sits:
+
+```
+opening, all 8 pieces, far cart at (23,4):  WINNABLE in 87
+opening, all 8 pieces, far cart at (23,5):  NOT WINNABLE
+opening, all 8 pieces, far cart at (23,6):  NOT WINNABLE
+```
+
+The level starts with that cart at (23,4). By the tool's first capture it is at (23,6), moved
+during the ~29 actions of direction calibration and early travel that precede any capture — a
+cart twenty columns from the action, which no plan was reasoning about.
+
+**So the level was lost by a PROBE, before a single piece was taken.** And it is recoverable in
+two actions: driving that cart back up restores the win outright, because nothing else has track
+above it.
+
+⚠️ The general shape: on a board where one action moves several objects, a probe is not a
+read-only operation on the parts of the board it is not asking about. A tool that calibrates by
+acting must either model what its calibration moves, or be able to undo it — here two drives.

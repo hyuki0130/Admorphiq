@@ -532,7 +532,7 @@ def capture_reachable(state: Any, ground: Ground, noncapture: frozenset[int],
 
 
 def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
-               lookahead: int = _LOOKAHEAD,
+               lookahead: int = _LOOKAHEAD, refuse_fatal: bool = False,
                why: Counter | None = None) -> tuple[list[Move], bool] | None:
     """Cheapest action sequence to the whole level, or failing that to a SURVIVABLE next capture.
 
@@ -569,6 +569,7 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
     tie = 0
     captures: list[Any] = []
+    seen_outcomes: set[Any] = set()
     expanded = 0
 
     while heap:
@@ -578,7 +579,17 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
         if _won(state, targets):
             return _path(parent, state), True
         if len(state[0]) < total and len(captures) < lookahead:
-            captures.append(state)
+            # ⛔ COUNT OUTCOMES, NOT PATHS. One action drives EVERY cart at once, so a great many
+            # different drive orders arrive at the same board with the carts parked differently —
+            # and the search, ordered by cost, enumerates them one after another. Measured on the
+            # board this cost a level: the first FIFTEEN capture candidates were the identical
+            # losing position reached fifteen ways, and the sixteenth was the winning one. A window
+            # of eight candidates therefore held exactly ONE distinct outcome and looked full.
+            # Keyed by the pieces, the same window holds eight real choices.
+            key = state[0]
+            if key not in seen_outcomes:
+                seen_outcomes.add(key)
+                captures.append(state)
         expanded += 1
         if expanded > node_cap:
             break
@@ -597,6 +608,18 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
     for state in captures:
         if _won(state, targets) or capture_reachable(state, ground, noncapture):
             return _path(parent, state), False
+    # ⛔ EVERY candidate is a dead end. Taking the cheapest one anyway is right on a board this
+    # tool has seen all of — refusing to move is strictly worse than a wrong branch. It is WRONG
+    # on a board known to extend past the screen, and one level measured why: its winning line and
+    # its losing line share the same first two captures, and what separates them is a DRIVE. A
+    # cart parked twenty columns from the action, nudged two cells by an earlier probe, makes a
+    # FATAL capture two actions cheaper than the winning one — and two drives putting that cart
+    # back restore the win outright. So when nothing on offer survives, a capture is not the move:
+    # a capture cannot be undone and a drive can, so hand the turn to the tiers that reposition.
+    if refuse_fatal:
+        if why is not None:
+            why["plan:all-candidates-fatal"] += 1
+        return None
     return _path(parent, captures[0]), False
 
 
@@ -1081,7 +1104,8 @@ class RailPegTool:
         stuck = self._elsewhere and self._sincecapture >= _LOCAL_PATIENCE
         if stuck:
             self._why['plan:skipped-region-finished'] += 1
-        found = None if stuck else plan_level(m, self._noncapture, why=self._why)
+        found = None if stuck else plan_level(
+            m, self._noncapture, refuse_fatal=self._elsewhere, why=self._why)
         if found is not None and found[0]:
             self._plan = list(found[0])
             self._claiming = found[1]
