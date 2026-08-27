@@ -223,3 +223,47 @@ exist and are fine; the pattern is specifically about conditions carrying state 
 - [[../lessons/adapters_now_cost_the_card_20260827]] — the most expensive instance, 0.29 of card.
 - [[../lessons/instrument_validity_20260825]] — the same discipline one level up: validate the
   instrument before the hypothesis.
+
+## The third variant: a guard that CANNOT fire, because its input is filtered upstream
+
+The two above are guards that run and answer wrongly. This one never answers at all, and it was
+approved by two people in a row before anyone asked the cheapest question about it.
+
+**The proposal** (lf52, 2026-08-27): three guards were collectively inert because
+`capture_reachable` returned a false positive on a partial map. The fix seemed obvious — *make it
+conservative: a capture reached only through UNSEEN cells is not survivable*. It was recommended,
+reviewed, approved, and scheduled with three measurements attached.
+
+**It can never fire.** The route search that feeds the predicate carries two filters:
+
+```python
+land:   if not ((land in sockets and land not in cart_set) or land in cart_set): continue
+drive:  if n in live or n not in rails: continue
+```
+
+Every landing must be a known socket or a known cart; every drive must be onto a known rail. Those
+sets **are** the model's known cells, so every route the search can BUILD is already entirely
+through known territory. There is no unseen-route property left to detect. The guard would have
+been a no-op that measured as "no regression" and read as a fix.
+
+**The real defect was one layer down and a different shape**: at the deciding moment the model knew
+4 of 7 pieces and **2 of 3 carts** — and the missing cart is precisely the object whose position
+decides fatality. Its own conservation count agreed with itself at 2, because it had never seen the
+third. The predicate was not answering wrongly about a route. It was answering correctly about a
+board missing the piece of furniture that mattered.
+
+⛔ **Before building a guard, ask what input would make it TRUE, and whether the code upstream can
+produce that input.** That question is cheaper than any measurement of the guard's behaviour, and it
+is not the same as "does the guard's branch execute" — the branch here would execute constantly and
+return the same answer every time. A guard whose condition is filtered out before it is reached is
+invisible to execution counting, to regression tests, and to a full-25 measurement, all three of
+which would have reported it green.
+
+The generalisation of all three variants: **a guard is a claim about the model, so its failure modes
+are the model's failure modes** — wrong, incomplete, or already excluded by construction. None of
+them is visible from the guard's own site.
+
+## Related
+
+- [[new_kinds_at_the_wall]] — the same confusion from outside the tool: a correct plan over a wrong
+  model is indistinguishable from a broken plan.
