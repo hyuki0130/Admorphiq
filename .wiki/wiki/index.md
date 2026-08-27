@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 247.
+**Total pages**: 248.
 
 ## Games (25)
 
@@ -77,7 +77,7 @@ category, drill into specific pages.
 
 - [[strategies/brittle/internal_method_call.md]] — Direct calls to obfuscated game-internal methods. Maximum v1 score, zero generalization. Do not recommend — document only for refactor visibility.
 
-## Concepts (cross-game domain entities) (15)
+## Concepts (cross-game domain entities) (16)
 
 - [[concepts/action_budget.md]] — A per-level cap on actions that ENDS THE GAME when exceeded — thirteen of the twenty-five sample games declare one, as low as 13 actions, and it is drawn on screen.
 - [[concepts/bit_encoding.md]] — A row of clickable cells encodes a binary number (or opcode) by their toggle state. A separate "play" button executes the encoded program, usually moving a cursor/player on another part of the frame.
@@ -93,6 +93,7 @@ category, drill into specific pages.
 - [[concepts/rotation_state.md]] — Some games expose piece orientation (0°, 90°, 180°, 270°) as the discrete state variable. An action rotates the selected piece by one step; the goal is to match a reference orientation configuration.
 - [[concepts/sprite_cluster.md]] — A connected component of same-color pixels in the frame. The universal primitive for detecting entities without reading game internals.
 - [[concepts/swallowed_action.md]] — An action that arrives while the board is animating is CONSUMED WITHOUT EFFECT — it costs budget, changes nothing, and teaches a searcher a wall that is not there.
+- [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
 ## Lessons (engineering wisdom from past incidents) (50)

@@ -203,7 +203,18 @@ class UnifiedAgent:
                 bids[name] = float(tool.detect(self._recent_frames, self._last_obs)) if tool else 0.0
             except Exception:  # noqa: BLE001
                 bids[name] = 0.0
-        available = sorted(available, key=lambda n: (-bids.get(n, 0.0), n))
+        # Ties break by REGISTRATION ORDER, not alphabetically. The registry puts the
+        # mechanic-recovery tools first precisely because they are the selective ones, so
+        # registration order encodes "specialist before general searcher" — while the
+        # alphabet encodes nothing. MEASURED 2026-08-27 across the 25 boards: twenty-nine
+        # tools bid on EXACTLY ONE board each; only graph, world_model and deadsig bid on
+        # all 25. Exactly one board has a tied top bid — cn04, at 0.45 between `assemble`
+        # (claims 1 board) and `graph` (claims 25) — and it is the one game the LLM path
+        # lost. Preferring the specialist picks `assemble`, which scores 1.0000 where graph
+        # scores 0.0000. Alphabetically `assemble` also happens to come first, so the old
+        # ordering got this board right by accident; an accident is not a rule.
+        reg_order = {n: i for i, n in enumerate(self.tools)}
+        available = sorted(available, key=lambda n: (-bids.get(n, 0.0), reg_order.get(n, 1 << 30)))
         listed = ", ".join(f"{n} (fit {bids.get(n, 0.0):.2f})" for n in available)
         claimants = [n for n in available if bids.get(n, 0.0) >= 0.6]
         # A partial claim is still a claim. MEASURED 2026-08-27 on a Kaggle GPU: the LLM
