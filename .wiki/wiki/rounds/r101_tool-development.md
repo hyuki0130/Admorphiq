@@ -1265,3 +1265,32 @@ of finding pieces.
 
 Two more model-invariant guards surfaced in the same pass; the pattern is now a concept page:
 [[../concepts/guard_about_the_model]].
+
+### lf52 level 6 is PARKED, with the reason read off the level's own data
+
+Five rounds of exploration-policy work ended in a structural fact, not a tuning gap:
+
+```
+level 6 rail columns: [7..17] and [23,24,25]    <- TWO DISCONNECTED NETWORKS
+```
+
+**There is no road.** No cart route exists from the region the tool can see to the four pieces it
+cannot. The bridge is a row-2 socket run crossed by a chain of JUMPS, and a jump needs something
+to jump over — so crossing consumes the very pieces that would let you cross. Every travel and
+frontier variant tried was looking for a road that is not on the board.
+
+What level 6 actually asks: the tool's first two captures already MATCH the offline solution
+exactly, and it must then choose a third among seven candidates that look identical from the left
+region and differ only in what they cost on a side it cannot reach without spending them. That is
+genuine partial observability. The game agrees — its own hardcoded dead-end detector is what
+fires when the wrong one is taken.
+
+⚠️ **The park carries its falsification**, which is the only kind kept here: the one signal
+available on frame 1 that the board extends past the screen is that its TRACK LEAVES THE VISIBLE
+REGION, no failed win required. Whether "look before spending an irreversible capture" can pay
+here is open, and on this level may not be answerable, because looking costs the pieces that make
+looking possible.
+
+Shipped from those five rounds: reason codes on every empty return in all four planners (off by
+default), so one run reports both which tier fired and why the others declined —
+[[../concepts/guard_about_the_model]]. Behaviour byte-identical, full-25 0.8540 both.

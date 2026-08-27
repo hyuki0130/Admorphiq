@@ -532,7 +532,8 @@ def capture_reachable(state: Any, ground: Ground, noncapture: frozenset[int],
 
 
 def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
-               lookahead: int = _LOOKAHEAD) -> tuple[list[Move], bool] | None:
+               lookahead: int = _LOOKAHEAD,
+               why: Counter | None = None) -> tuple[list[Move], bool] | None:
     """Cheapest action sequence to the whole level, or failing that to a SURVIVABLE next capture.
 
     Returns (moves, solved). `solved` is True when the sequence takes every capturable colour down
@@ -557,6 +558,8 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
     counts = Counter(m.pieces.values())
     targets = {c for c, n in counts.items() if n >= 2 and c not in noncapture}
     if not targets:
+        if why is not None:
+            why["plan:no-pair"] += 1
         return None
     ground = _ground(m)
     total = len(m.pieces)
@@ -588,6 +591,8 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
                 heapq.heappush(heap, (nc, tie, ns))
 
     if not captures:
+        if why is not None:
+            why["plan:no-capture-reachable"] += 1
         return None
     for state in captures:
         if _won(state, targets) or capture_reachable(state, ground, noncapture):
@@ -612,7 +617,8 @@ def _spread(state: Any, noncapture: frozenset[int]) -> int | None:
 
 
 def approach_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
-                   cost_cap: int = 30, node_cap: int = 60_000) -> list[Move]:
+                   cost_cap: int = 30, node_cap: int = 60_000,
+                   why: Counter | None = None) -> list[Move]:
     """Cheapest sequence that brings two pieces of one colour closer together.
 
     ⛔ This tier exists because the obvious one is a TRAP. "Move a piece toward where the map runs
@@ -630,6 +636,8 @@ def approach_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
     start = m.state()
     base = _spread(start, noncapture)
     if base is None:
+        if why is not None:
+            why["approach:no-pair"] += 1
         return []
     ground = _ground(m)
     cost_of: dict[Any, int] = {start: 0}
@@ -655,6 +663,8 @@ def approach_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
                 tie += 1
                 heapq.heappush(heap, (nc, tie, ns))
     if best is None or best[0] >= base:
+        if why is not None:
+            why["approach:all-visited" if best is None else "approach:no-gain"] += 1
         return []
     return _path(parent, best[2])
 
@@ -677,7 +687,8 @@ def _novelty_field(m: Model, touched: set[Cell]) -> dict[Cell, int]:
 
 
 def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visited: set[Any],
-                 cost_cap: int = 40, node_cap: int = 60_000) -> list[Move]:
+                 cost_cap: int = 40, node_cap: int = 60_000,
+                 why: Counter | None = None) -> list[Move]:
     """Ride a cart to somewhere no piece has been.
 
     ⛔ The objective here was WRONG for two rounds and the wrong version is instructive, because it
@@ -699,6 +710,8 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
     """
     field = _novelty_field(m, touched)
     if not field:
+        if why is not None:
+            why["travel:no-field"] += 1
         return []
     ground = _ground(m)
 
@@ -730,12 +743,15 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
                 tie += 1
                 heapq.heappush(heap, (nc, tie, ns))
     if best is None or best[0] <= base:
+        if why is not None:
+            why["travel:all-visited" if best is None else "travel:no-gain"] += 1
         return []
     return _path(parent, best[2])
 
 
 def probe_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visited: set[Any],
-                cost_cap: int = 12, node_cap: int = 20_000) -> list[Move]:
+                cost_cap: int = 12, node_cap: int = 20_000,
+                why: Counter | None = None) -> list[Move]:
     """Cheapest way to put a piece somewhere it has never stood on this level.
 
     The last tier. Some boards open only when a piece reaches a particular cell, which no amount of
@@ -764,6 +780,8 @@ def probe_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visite
                 parent[ns] = (state, mv)
                 tie += 1
                 heapq.heappush(heap, (nc, tie, ns))
+    if why is not None:
+        why["probe:nowhere-new"] += 1
     return []
 
 
@@ -776,6 +794,7 @@ class RailPegTool:
 
     def __init__(self) -> None:
         self._tiers: Counter[str] = Counter()
+        self._why: Counter[str] = Counter()
         self._dirmap: dict[Delta, int] = {}       # lattice direction -> simple action id
         self._excluded: dict[Delta, set[int]] = {}
         self._noncapture: frozenset[int] = frozenset()
@@ -1060,7 +1079,9 @@ class RailPegTool:
         # Once the board is known to extend past the screen, a run of plans that takes nothing is
         # not bad luck, it is the visible region being finished. Then travel outranks it.
         stuck = self._elsewhere and self._sincecapture >= _LOCAL_PATIENCE
-        found = None if stuck else plan_level(m, self._noncapture)
+        if stuck:
+            self._why['plan:skipped-region-finished'] += 1
+        found = None if stuck else plan_level(m, self._noncapture, why=self._why)
         if found is not None and found[0]:
             self._plan = list(found[0])
             self._claiming = found[1]
@@ -1092,6 +1113,7 @@ class RailPegTool:
         # board it has PROVED extends past the screen, where "nothing got better" describes the
         # journey, not the position. Giving up there is giving up on pieces known to exist.
         if self._barren >= 3 and not self._elsewhere:
+            self._why['barren-cap'] += 1
             return 0.0
         # ⛔ ORDER, not just membership. Closing the distance between two pieces is a LOCAL
         # objective, and once the board is known to extend past the screen a local objective is
@@ -1104,13 +1126,15 @@ class RailPegTool:
         moves: list[Move] = []
         tier = ""
         for tier in order:
-            moves = (travel_moves(m, self._noncapture, self._touched, self._visited)
+            moves = (travel_moves(m, self._noncapture, self._touched, self._visited,
+                                  why=self._why)
                      if tier == "travel"
-                     else approach_moves(m, self._noncapture, self._visited))
+                     else approach_moves(m, self._noncapture, self._visited, why=self._why))
             if moves:
                 break
         if not moves:
-            moves = probe_moves(m, self._noncapture, self._touched, self._visited)
+            moves = probe_moves(m, self._noncapture, self._touched, self._visited,
+                                why=self._why)
             tier = "probe"
         if not moves:
             self._tiers["none"] += 1

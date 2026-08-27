@@ -153,6 +153,10 @@ def solve_mode(cap: int) -> None:
     # a level that looked like a planning failure turned out to be 728 consecutive claimed WINS
     # with the tier that would have gone looking never running once.
     print(f"   tiers: {dict(tool._tiers)}")
+    # And WHY each tier declined, which is the breakdown that actually names a bug. The tier count
+    # alone said "nothing fired 510 times"; the reason codes said travel could find no gain and
+    # there was no capturable pair at all — two different bugs wearing one number.
+    print(f"   why:   {dict(sorted(tool._why.items(), key=lambda kv: -kv[1]))}")
 
 
 def bids_mode(steps: int) -> None:

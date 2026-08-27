@@ -89,6 +89,33 @@ Not frame-based — this is about instrumenting our own code:
 - **Ask when the threshold was calibrated and against what.** If the thing it was compared
   against has moved, the number is measuring history.
 
+## The counter also refutes YOUR OWN DESCRIPTION of the bug
+
+The rule is usually stated as "count instead of guessing". It is stronger than that: the count
+refutes the account you would have acted on, including the one you wrote after already
+instrumenting once.
+
+lf52, round five. The handover said *"travel refuses a target it has aimed at before"* — a
+confident description of a real-looking bug. Breaking the `none` bucket down by reason:
+
+```
+travel:no-gain 510   probe:nowhere-new 510   plan:no-pair 510   approach:no-pair 503
+plan:no-capture-reachable 33   approach:no-gain 7
+travel:all-visited   0        <- the described cause, never once
+```
+
+The visited set had never blocked anything. The real causes were "the piece cannot get further
+from where pieces have been" and "only ONE capturable piece is known at all". A whole round would
+have gone into the visited set.
+
+⚠️ **And then the fix the data DID support also failed** — twice, informatively. If a piece sits
+at the frontier with no gain available, the obvious unlock is that a cart may only be driven onto
+cells already known to be track, so a rail running off screen is a road the tool refuses. Making
+the shell past known track drivable: travel 26 -> 4 plans, idle 509 -> 1075, elapsed +74%.
+Tightening it to "only where the track actually RUNS" returned to parity and still cleared no
+level. Both reverted. **A count tells you which branch to look at; it does not tell you the
+branch is the reason the level is unsolved.**
+
 ## Falsification
 
 Wrong as a general claim if a guard of this shape is found that cannot become permanently true —
