@@ -223,19 +223,26 @@ decide whether its own work is kept.
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
 
-**Where it stands (re-measured 2026-08-27 at commit 6dc51a2, full 25 on ceph-build,
+**Where it stands (re-measured 2026-08-27 at commit 8f1e7a4, full 25 on ceph-build,
 `--agent unified` @4000 — generic tools ALONE, zero adapters):**
 
 ```
-mean 0.8224 over ALL 25   THIRTEEN at 1.0000   FIFTEEN clear EVERY level   25/25 clear one
-1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 su15 tn36 tr87 tu93 vc33
-0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.8000 wa30 8/9 · 0.7500 ka59 6/7, ls20 6/7
-0.7143 dc22 5/6, m0r0 5/6, sp80 5/6 · 0.5357 g50t 5/7 · 0.4167 s5i5 5/8
-0.2727 lf52 5/10 · 0.1648 bp35 5/9
+mean 0.8425 over ALL 25   FOURTEEN at 1.0000   SIXTEEN clear EVERY level   25/25 clear one
+1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33
+0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.8000 wa30 8/9
+0.7500 g50t 6/7, ka59 6/7, ls20 6/7 · 0.7143 dc22 5/6, m0r0 5/6
+0.4204 s5i5 6/8 · 0.2727 lf52 5/10 · 0.1648 bp35 5/9
 ```
 
-The adapter-assisted card is 0.3162, so the generic path is **2.60x past it** and transfers by
-construction, which the adapters do not.
+⛔ **THE THIRTEEN ADAPTERS NOW COST THE SHIPPED CARD.** Measured the same day, same tree:
+`--agent kaggle_detect` (as shipped) **0.5335** against `--agent unified` **0.8425**. The
+adapters are worse on 23 of 25 games — sc25 0.0427 against a generic 1.0000, wa30 0.0222 against
+0.8000 — and only ls20 and m0r0 still beat the generic path. Nothing broke: the FALLBACK moved
+out from under them and both routing guards were calibrated when it scored 0.0566. Full
+measurement and the two guard defects:
+[`.wiki/wiki/lessons/adapters_now_cost_the_card_20260827.md`](.wiki/wiki/lessons/adapters_now_cost_the_card_20260827.md).
+**Dropping eleven adapters is worth ~+0.29 of card and is SUBMISSION-AFFECTING, so it is the
+user's call, not mine.**
 
 ⛔ **A report that gives only the LEVEL COUNT cannot be acted on.** Measured on bp35 the same
 day: one tool cleared five levels where the incumbent cleared three and scored 0.1344 against
