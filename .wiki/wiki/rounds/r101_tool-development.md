@@ -1146,3 +1146,34 @@ weak-vs-strong-transfer caveat: [[../lessons/generic_transfer_20260827]].
 The two losses are the open leads — tu93 1.0000 -> 0.2222 (9/9 -> 4/9) and s5i5 0.0833 ->
 0.0000. In both the tool still ENGAGES, so the plan generalises less far than the detection
 does. That is the opposite of the usual failure and the sharper signal.
+
+### Parallel fan-out, integrated one at a time (2026-08-27)
+
+Six per-game agents, each owning two new files and forbidden the registry. The parent
+registered ONE at a time and ran the full 25 between each. Every gate below is a separate
+25-game run on ceph-build @4000; cumulative regressions ZERO.
+
+```
+cyclepress   lp85  0.3394 -> 0.8919   8/8, 258 actions   mean 0.6733 -> 0.6954
+clonewalk    g50t  0.1071 -> 0.5357   5/7, every level faster than the human count
+telescope    s5i5  0.0833 -> 0.4167   5/8               mean 0.7125 -> 0.7259
+pegjump      lf52  0.1091 -> 0.1818   4/10              mean 0.7259 -> 0.7288
+reforge      re86  0.4074 -> 0.8350   8/8               mean 0.7288 -> 0.7459
+shaft        bp35  NOT KEPT — see below
+```
+
+**All four of the weakest games moved**, and thirteen of twenty-five now clear EVERY level.
+
+**re86 level 8 is winnable.** A quarantined per-game adapter reached 7/8 and recorded level 8
+as *provably unwinnable as modelled*; the claim was handed to the tool's author as a hypothesis
+to verify rather than a fact, and the tool clears 8/8. That is the third time a terminal wall
+in this repository has turned out to be a measurement artifact — the rule "verify parks, do not
+trust them" keeps paying.
+
+**shaft is the instructive rejection.** Its selectivity was perfect first time: it bids on
+exactly one of the 25 boards and 0.00 on the other twenty-four. But bp35 already has `ledge`,
+bidding 0.6 against shaft's 0.5, so shaft never got a turn and the gate reported it INERT —
+mean unchanged, no game moved. ⛔ **A full-25 gate cannot tell a tool that never gets a turn
+from one that has nothing to offer, and those need opposite responses.** Removing `ledge` and
+re-running bp35 settled it: ledge 3 levels, shaft 1. The bid ordering was right. Returned to
+its author with the measurement rather than deleted.
