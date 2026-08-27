@@ -56,6 +56,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.stamppaint import StampPaintTool
     from admorphiq.tools.stencil import StencilTool
     from admorphiq.tools.subroutine import SubroutineProgramTool
+    from admorphiq.tools.swivel import SwivelArmTool
     from admorphiq.tools.telescope import TelescopeArmTool
     from admorphiq.tools.tether import TetherCentroidTool
     from admorphiq.tools.toggle import ToggleTool
@@ -75,6 +76,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         CyclePressTool(),
         BlastClockTool(),
         CloneWalkTool(),
+        SwivelArmTool(),
         TelescopeArmTool(),
         OrderForgeTool(),
         ShepherdRelayTool(),

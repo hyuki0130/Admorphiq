@@ -86,3 +86,24 @@ So a per-game number cannot be attributed to that game's tool alone, and three t
 - [[instrument_validity_20260825]] — the same discipline one level down: validate the instrument
   before the hypothesis. This is validate the CHANGE before keeping it.
 - [[../sample_games_mechanics]] — what the data does give: mechanics, budgets, win conditions.
+
+## The frame-0 sweep cannot see a tool whose mechanic appears at DEPTH (2026-08-27)
+
+The standard check — instantiate a tool, play six frames of each of the 25 games, record the
+maximum bid — is what proves a tool bids on its own board and 0.00 on the other twenty-four. It
+has a blind spot, and `swivel` walked straight into it: **0 bids across all 25 games, even over
+forty frames.**
+
+That was not a broken detector. It is deliberately disjoint from `telescope` — the sibling tool
+declines any board carrying a one-way control, this one REQUIRES one — and a one-way control
+first appears at level 6 of their shared game, which nothing had ever reached. The sweep starts
+every game at level 1, so a tool gated on a deeper mechanic is invisible to it by construction.
+
+⛔ **A zero sweep is therefore two different verdicts wearing the same number**: "this tool
+claims nothing" and "this tool claims something the sweep cannot reach". Distinguish them by
+reading what the tool says it requires, then register it and measure its game — which is the
+only instrument that plays deep. Here it turned +0.0037 and opened the level that gates two more.
+
+⚠️ The consequence for FALSE POSITIVES is the uncomfortable half: a frame-0 sweep of 0/24 is not
+evidence that a depth-gated tool stays silent on the other twenty-four games at depth. Nothing
+currently measures that, and the eval is 110 games we will never see.
