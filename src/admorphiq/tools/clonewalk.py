@@ -40,21 +40,35 @@ the body and the exit ring — and an earlier reading of this family tracked the
 that colour, which silently mixed the two together. The body is the block with the hole; the
 exit is the ring with the loose dot.
 
-⛔ WHAT IS DELIBERATELY DECLINED: a board carrying a SECOND thing drawn like the body. The
-forward model has no account of it, and a plan drawn as though it were absent is a plan for a
-different board. Bidding zero there costs nothing; holding on costs the level's whole budget.
+A SECOND body may be moving on the board without being steered by anything. It is modelled
+too: it keeps its heading, prefers a turn when the heading is closed and takes the reverse
+last, and it presses the inputs it stands on exactly as the body does — which on one of these
+boards is the ONLY way a door on the way out ever opens, because the button that opens it sits
+in a region the body can never reach. Where the stranger may go is bounded by an INVISIBLE
+sprite, so the walk map stands in for it; that substitution is MEASURED against the engine
+rather than assumed. Touching it ends the level, and so does standing under a door as it
+shuts, so no route is allowed to contain either move.
+
+⛔ HOW THIS MODEL IS KEPT HONEST, and it is the only reason the deep boards work: it is
+differentially tested against the engine over random scripts that include rewinds
+(`scripts/clonewalk_probe.py` has the harness half; the fuzz driver is the other). Three
+defects surfaced that way and NONE of them were visible from a plan that happened to work —
+a stranger's REFUSED step being recorded as a move (which put every later undo one entry out),
+clones stacking past the tally instead of wrapping, and a door's closing not killing what stood
+under it. Levels without a stranger now agree with the engine on every step of every script.
 
 Execution is one action per call, each checked against where the body actually ended up. A
 disagreement retires the plan and falls back to a route drawn on the board as it is right now,
 rather than continuing to steer from a fiction. The board is read off the SETTLED frame — one
 command plays out as an animation and the observation carries every tick of it, so the first
-tick shows a board the body has already left.
+tick shows a board the body has already left. That reading is done HERE and not by widening the
+shared reader: switching the shared one to the last tick was measured to cost three games.
 """
 
 from __future__ import annotations
 
 from collections import Counter, deque
-from itertools import permutations
+from itertools import permutations, product
 from typing import Any
 
 import numpy as np
@@ -71,16 +85,25 @@ _SIMPLE = (1, 2, 3, 4, 5, 7)
 # not be spent even if one existed.
 _MAX_ROUTE = 70
 _MAX_STATES = 60_000
-# Total forward-model expansions one board may cost. Planning happens once per board, but the
-# tool must not stall the whole agent while it thinks.
-_MAX_PLAN_STATES = 900_000
+# Total forward-model expansions one BOARD may cost, across every ordering, heading and retry.
+# Planning happens once per board, but a board the tool cannot solve must not be allowed to
+# spend minutes discovering that — measured at two minutes on the one board that defeats it.
+_MAX_PLAN_STATES = 1_500_000
 _MAX_PROBES = 30
 # How many inputs a plan may consider parking a clone on, nearest to the start first — the cut
 # falls on the furthest, least likely candidates.
 _MAX_TARGETS = 6
+# Extra moves a recording leg may be padded by when the plain search comes up empty.
+_MAX_STRETCH = 4
 # Wall pixels tolerated inside a body-sized tile before the cell counts as rock.
 _TILE_SLACK = 2
 _AXES: tuple[Cell, ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
+# A heading, and the two quarter-turns either side of it, in the order an unsteered body on
+# these boards was measured to prefer them. The cycle order is what makes "a turn, then the
+# reverse" expressible as arithmetic; only the ORDER matters, not which end is called zero.
+_HEADINGS: tuple[Cell, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
+# The heading such a body starts with is not drawn, so a plan is checked against all of them.
+_FACINGS = (0, 1, 2, 3)
 
 
 class _Door:
@@ -99,7 +122,7 @@ class _Board:
     """Everything static about one board, read from a single frame."""
 
     __slots__ = ("stride", "home", "exit", "walk", "doors", "buttons", "pads",
-                 "circuit_doors", "circuit_swaps", "slots")
+                 "circuit_doors", "circuit_swaps", "slots", "strangers")
 
     def __init__(self) -> None:
         self.stride = 1
@@ -112,6 +135,7 @@ class _Board:
         self.circuit_doors: dict[int, list[int]] = {}
         self.circuit_swaps: dict[int, list[tuple[Cell, Cell]]] = {}
         self.slots = 1
+        self.strangers: list[Cell] = []
 
 
 class _Scene:
@@ -195,12 +219,18 @@ def _holed_squares(grid: np.ndarray, colour: int) -> list[tuple[Cell, int]]:
             mid = (y + side // 2, x + side // 2)
             if int(grid[mid]) == colour:
                 continue
-            # A body is drawn standing alone: nothing of its colour touches it, which is what
+            # A body is drawn standing alone: nothing of its colour TOUCHES it, which is what
             # separates it from a corner of some larger shape of the same colour.
-            y0, x0 = y - 1, x - 1
-            if y0 < 0 or x0 < 0 or y0 + side + 2 > n or x0 + side + 2 > n:
-                continue
-            if int(block(0, 0, side + 2)[y0, x0]) != side * side - 1:
+            #
+            # ⛔ Touching means edge-adjacent, and the four edges are tested one at a time. An
+            # earlier version tested the whole surrounding box instead, which also catches
+            # anything sitting DIAGONALLY outside a corner — and the exit marker sits exactly
+            # there when the body is one cell short of it. The body then went unread on the last
+            # two steps of every single level, and only a fallback path hid it.
+            if ((y and mask[y - 1, x:x + side].any())
+                    or (y + side < n and mask[y + side, x:x + side].any())
+                    or (x and mask[y:y + side, x - 1].any())
+                    or (x + side < n and mask[y:y + side, x + side].any())):
                 continue
             out.append((mid, side))
     return out
@@ -389,6 +419,7 @@ def read_board(grid: np.ndarray, scene: _Scene, stride: int) -> _Board | None:
                 board.buttons[(y, x)] = cid
     _pair_pads(board)
     board.slots = _count_slots(grid, scene.wall, scene.floor)
+    board.strangers = [c for c in scene.others if c in board.walk]
     return board
 
 
@@ -412,30 +443,62 @@ def _pair_pads(board: _Board) -> None:
 class _World:
     """An exact forward model of the board's rules — the thing the plan is searched inside."""
 
-    def __init__(self, board: _Board) -> None:
+    def __init__(self, board: _Board, facing: int = 0, meter: list[int] | None = None) -> None:
         self.b = board
+        # A shared tally of forward steps taken across every world one board's planning builds,
+        # so the whole search can be stopped rather than each attempt separately.
+        self.meter = meter if meter is not None else [0]
         self.open = [False] * len(board.doors)
         self.ghosts: list[list[Cell]] = []
         self.expansions = 0
         self.t = 0
         self.pos = board.home
         self.gpos: list[Cell] = []
+        self.spos = list(board.strangers)
+        self.face = [facing] * len(board.strangers)
+        self.slog: list[list[Cell]] = [[] for _ in board.strangers]
         self.path: list[Cell] = []
+        # ⛔ Who is standing on which input is CARRIED, not re-derived from positions each
+        # tick. The board keeps a set per input and only an arrival or a departure changes it;
+        # a swap moves bodies WITHOUT either, so a derived version drifts the moment one fires
+        # — measured as a rewind that left the unsteered body stranded mid-board.
+        self.held: dict[Cell, set[str]] = {}
+        self.dead = [False] * len(board.strangers)
+        self._squashed = False
+        self.spent = 0
         self._settle(False)
 
     # -- state ---------------------------------------------------------------
 
     def key(self) -> tuple:
-        return (self.t, self.pos, tuple(self.gpos), tuple(self.open))
+        """What makes two states the same for search purposes.
+
+        ⛔ The move COUNT belongs in the key only while a clone is replaying, because that is the
+        only thing it indexes. Carrying it unconditionally multiplies the state space by the
+        route length, and the one board whose route has to WAIT for an unsteered body to arrive
+        then exhausts the search before it finds the wait.
+        """
+        base = (self.pos, tuple(self.gpos), tuple(self.open), tuple(self.spos),
+                tuple(self.face), tuple(self.dead))
+        return (self.t, *base) if self.ghosts else base
 
     def snapshot(self) -> tuple:
-        return (self.t, self.pos, tuple(self.gpos), tuple(self.open), tuple(self.path))
+        return (self.t, self.pos, tuple(self.gpos), tuple(self.open), tuple(self.path),
+                tuple(self.spos), tuple(self.face), tuple(tuple(g) for g in self.slog),
+                tuple(sorted((c, tuple(sorted(v))) for c, v in self.held.items() if v)),
+                self.spent, tuple(self.dead))
 
     def restore(self, snap: tuple) -> None:
-        self.t, self.pos, gpos, opened, path = snap
+        (self.t, self.pos, gpos, opened, path, spos, face, slog, held,
+         self.spent, dead) = snap
+        self.dead = list(dead)
         self.gpos = list(gpos)
         self.open = list(opened)
         self.path = list(path)
+        self.spos = list(spos)
+        self.face = list(face)
+        self.slog = [list(g) for g in slog]
+        self.held = {c: set(v) for c, v in held}
 
     # -- rules ---------------------------------------------------------------
 
@@ -451,17 +514,40 @@ class _World:
             return False
         return all(self._door_cell(i) != cell for i in range(len(self.b.doors)))
 
-    def _occupants(self) -> dict[Cell, set[str]]:
-        occ: dict[Cell, set[str]] = {}
-        occ.setdefault(self.pos, set()).add("P")
-        for i, g in enumerate(self.gpos):
-            occ.setdefault(g, set()).add(f"G{i}")
-        return occ
+    def _stranger_step(self, i: int) -> Cell | None:
+        """One step of a body this tool does not steer, by the rule its own motion shows.
 
-    def _fire(self, cell: Cell, body: str, value: bool, occ: dict[Cell, set[str]],
+        It keeps the heading it has, and when the heading is not available it prefers a turn,
+        then the reverse. Where it may go at all is not drawn anywhere on the board — the region
+        that confines it is an INVISIBLE sprite — so the walk map stands in for it. That
+        substitution is measured, not assumed: against the engine it reproduces the body's cell
+        exactly for forty consecutive moves on both boards that carry one.
+        """
+        cell, facing = self.spos[i], self.face[i]
+        for _ in range(4):
+            chosen = None
+            for turn in (facing, (facing - 1) % 4, (facing + 1) % 4, (facing + 2) % 4):
+                dy, dx = _HEADINGS[turn]
+                nxt = (cell[0] + dy * self.b.stride, cell[1] + dx * self.b.stride)
+                if nxt in self.b.walk:
+                    chosen, facing = turn, turn
+                    break
+            if chosen is None:
+                self.face[i] = facing
+                return None
+            dy, dx = _HEADINGS[chosen]
+            nxt = (cell[0] + dy * self.b.stride, cell[1] + dx * self.b.stride)
+            if self._passable(nxt):
+                self.face[i] = facing
+                return nxt
+            facing = (facing + 2) % 4
+        self.face[i] = facing
+        return None
+
+    def _fire(self, cell: Cell, body: str, value: bool,
               swaps: list[tuple[Cell, Cell]], rewinding: bool) -> None:
         """One body arriving at or leaving one cell, plus whatever edge that creates."""
-        here = occ.setdefault(cell, set())
+        here = self.held.setdefault(cell, set())
         was = bool(here)
         if value:
             here.add(body)
@@ -482,16 +568,24 @@ class _World:
             swaps.extend(self.b.circuit_swaps.get(cid, ()))
 
     def _settle(self, rewinding: bool) -> None:
-        occ: dict[Cell, set[str]] = {}
         swaps: list[tuple[Cell, Cell]] = []
-        self._fire(self.pos, "P", True, occ, swaps, rewinding)
-        for i, g in enumerate(self.gpos):
-            self._fire(g, f"G{i}", True, occ, swaps, rewinding)
+        self._press_all(swaps, rewinding)
         self._apply_swaps(swaps)
 
+    def _press_all(self, swaps: list[tuple[Cell, Cell]], rewinding: bool) -> None:
+        """Everything standing on an input presses it, in the order the board resolves them."""
+        self._fire(self.pos, "P", True, swaps, rewinding)
+        for i, c in enumerate(self.spos):
+            self._fire(c, f"S{i}", True, swaps, rewinding)
+        for i, g in enumerate(self.gpos):
+            self._fire(g, f"G{i}", True, swaps, rewinding)
+
     def _apply_swaps(self, swaps: list[tuple[Cell, Cell]]) -> None:
+        """Exchange whatever stands on the two endpoints — sets and positions together."""
         for a, b in swaps:
             on_a, on_b = self._names_at(a), self._names_at(b)
+            self.held[a] = set(on_b)
+            self.held[b] = set(on_a)
             for name in on_a:
                 self._place(name, b)
             for name in on_b:
@@ -499,23 +593,28 @@ class _World:
 
     def _names_at(self, cell: Cell) -> list[str]:
         out = ["P"] if self.pos == cell else []
-        return out + [f"G{i}" for i, g in enumerate(self.gpos) if g == cell]
+        out += [f"G{i}" for i, g in enumerate(self.gpos) if g == cell]
+        return out + [f"S{i}" for i, c in enumerate(self.spos) if c == cell]
 
     def _place(self, name: str, cell: Cell) -> None:
         if name == "P":
             self.pos = cell
-        else:
+        elif name[0] == "G":
             self.gpos[int(name[1:])] = cell
+        else:
+            self.spos[int(name[1:])] = cell
 
     def move(self, step: Cell) -> bool:
         """One command. False when the board refuses it — and then NOTHING advances."""
         self.expansions += 1
+        self.meter[0] += 1
         dest = (self.pos[0] + step[0] * self.b.stride, self.pos[1] + step[1] * self.b.stride)
         if not self._passable(dest):
             return False
-        occ = self._occupants()
+        before = self.snapshot()
+        shut = list(self.open)
         swaps: list[tuple[Cell, Cell]] = []
-        self._fire(self.pos, "P", False, occ, swaps, False)
+        self._fire(self.pos, "P", False, swaps, False)
         self.pos = dest
         for i, ghost in enumerate(self.ghosts):
             if self.t >= len(ghost):
@@ -525,15 +624,48 @@ class _World:
                      self.gpos[i][1] + gstep[1] * self.b.stride)
             if not self._passable(gdest):
                 continue
-            self._fire(self.gpos[i], f"G{i}", False, occ, swaps, False)
+            self._fire(self.gpos[i], f"G{i}", False, swaps, False)
             self.gpos[i] = gdest
-        self._fire(self.pos, "P", True, occ, swaps, False)
-        for i, g in enumerate(self.gpos):
-            self._fire(g, f"G{i}", True, occ, swaps, False)
+        for i in range(len(self.spos)):
+            nxt = None if self.dead[i] else self._stranger_step(i)
+            if nxt is None:
+                # ⛔ A step it could not take is NOT recorded. The board logs only the moves an
+                # unsteered body actually made, and the rewind walks that log back one entry per
+                # undo — so recording a refusal as a zero-move puts every later undo one entry
+                # out and the body ends the rewind somewhere it never was.
+                continue
+            self._fire(self.spos[i], f"S{i}", False, swaps, False)
+            self.slog[i].append(((nxt[0] - self.spos[i][0]) // self.b.stride,
+                                 (nxt[1] - self.spos[i][1]) // self.b.stride))
+            self.spos[i] = nxt
+        self._press_all(swaps, False)
         self._apply_swaps(swaps)
+        self._crush(shut)
         self.path.append(step)
         self.t += 1
+        # ⛔ Touching an unsteered body ends the level, and so does standing under a door as it
+        # shuts. A plan must never contain the move that does either, so the move is refused
+        # here rather than discovered once the body is already dead.
+        if self.pos in self.spos or self._squashed:
+            self.restore(before)
+            return False
         return True
+
+    def _crush(self, shut: list[bool]) -> None:
+        """A door that has just closed kills whatever is standing where it landed.
+
+        The unsteered body does not merely stop — it is GONE, and every later pass that was
+        counting on it to press something is counting on nothing.
+        """
+        self._squashed = False
+        for idx, door in enumerate(self.b.doors):
+            if not shut[idx] or self.open[idx]:
+                continue
+            if self.pos == door.home:
+                self._squashed = True
+            for i, cell in enumerate(self.spos):
+                if cell == door.home:
+                    self.dead[i] = True
 
     def rewind(self) -> None:
         """Retrace the path backwards, leave a clone replaying it, and start the pass over.
@@ -544,11 +676,20 @@ class _World:
         if not self.path:
             return
         recorded = list(self.path)
-        occ = self._occupants()
         while self.path:
             step = self.path.pop()
             idx = len(self.path)
             swaps: list[tuple[Cell, Cell]] = []
+            for i in range(len(self.spos)):
+                if idx >= len(self.slog[i]):
+                    continue
+                sstep = self.slog[i].pop()
+                sdest = (self.spos[i][0] - sstep[0] * self.b.stride,
+                         self.spos[i][1] - sstep[1] * self.b.stride)
+                if not self._passable(sdest):
+                    continue
+                self._fire(self.spos[i], f"S{i}", False, swaps, True)
+                self.spos[i] = sdest
             for i, ghost in enumerate(self.ghosts):
                 if idx >= len(ghost):
                     continue
@@ -557,30 +698,50 @@ class _World:
                          self.gpos[i][1] - gstep[1] * self.b.stride)
                 if not self._passable(gdest):
                     continue
-                self._fire(self.gpos[i], f"G{i}", False, occ, swaps, True)
+                self._fire(self.gpos[i], f"G{i}", False, swaps, True)
                 self.gpos[i] = gdest
             back = (self.pos[0] - step[0] * self.b.stride,
                     self.pos[1] - step[1] * self.b.stride)
             if self._passable(back):
-                self._fire(self.pos, "P", False, occ, swaps, True)
+                self._fire(self.pos, "P", False, swaps, True)
                 self.pos = back
             self.t -= 1
-            self._fire(self.pos, "P", True, occ, swaps, True)
-            for i, g in enumerate(self.gpos):
-                self._fire(g, f"G{i}", True, occ, swaps, True)
+            shut = list(self.open)
+            self._press_all(swaps, True)
             self._apply_swaps(swaps)
-        self.ghosts.append(recorded)
+            self._crush(shut)
+        # ⛔ Spending the LAST tally mark does not add a clone — it clears every clone already
+        # parked and puts the tally back to full. A model that keeps stacking them believes in
+        # help that is no longer on the board.
+        self.spent += 1
+        if self.spent == self.b.slots:
+            for i in range(len(self.ghosts)):
+                for standing in self.held.values():
+                    standing.discard(f"G{i}")
+            self.ghosts = []
+            self.spent = 0
+        else:
+            self.ghosts.append(recorded)
         self.t = 0
         self.pos = self.b.home
         self.gpos = [self.b.home] * len(self.ghosts)
+        self.slog = [[] for _ in self.spos]
         self.path = []
-        self._settle(False)
 
     # -- searching -----------------------------------------------------------
 
-    def route(self, target: Cell, moves: list[Cell]) -> list[Cell] | None:
-        """Shortest command sequence from HERE that lands the body on ``target``."""
-        if self.pos == target:
+    def route(self, target: Cell, moves: list[Cell],
+              shun: frozenset[Cell] = frozenset(), at_least: int = 0) -> list[Cell] | None:
+        """Shortest command sequence from HERE that lands the body on ``target``.
+
+        ``shun`` names cells the route may not step on. It exists for one measured reason: a
+        clone replays every step of the route it was recorded on, so a route that crosses an
+        input it did not come for goes on pressing that input FOREVER, in every later pass. On
+        one board the second clone's route wandered over the first clone's latch four moves
+        after the first clone had opened it, shut it again, and locked out the third party whose
+        help the whole plan depended on.
+        """
+        if self.pos == target and not at_least:
             return []
         start = self.snapshot()
         seen = {self.key()}
@@ -595,11 +756,13 @@ class _World:
                 self.restore(snap)
                 if not self.move(step):
                     continue
+                if self.pos in shun:
+                    continue
                 states += 1
-                if states > _MAX_STATES or self.expansions > _MAX_PLAN_STATES:
+                if states > _MAX_STATES or self.meter[0] > _MAX_PLAN_STATES:
                     queue.clear()
                     break
-                if self.pos == target:
+                if self.pos == target and len(taken) + 1 >= at_least:
                     found = taken + [step]
                     break
                 k = self.key()
@@ -658,6 +821,7 @@ class CloneWalkTool:
         self._probes = 0
         self._board_key: tuple | None = None
         self._cache: tuple[bytes, float] | None = None
+        self._meter = [0]
         self.reset()
 
     def reset(self) -> None:
@@ -706,7 +870,7 @@ class CloneWalkTool:
             return self._cache[1]
         scene = read_scene(grid)
         score = 0.0
-        if scene is not None and not scene.others:
+        if scene is not None:
             board = read_board(grid, scene, self._span or scene.span + 1)
             if board is not None and board.doors and board.exit in board.walk:
                 score = 0.75
@@ -751,15 +915,8 @@ class CloneWalkTool:
             spent = self._spend_marks(grid, scene)
             if spent is not None:
                 return spent
-        if self._board is None:
-            if scene.others:
-                # ⛔ Something else is moving on this board and the forward model has no account
-                # of it. A plan drawn as if it were not there is a plan for a different board;
-                # declining costs nothing, and holding on costs the whole level's budget.
-                self._dead = True
-                return []
-            if not self._build(grid, scene):
-                return []
+        if self._board is None and not self._build(grid, scene):
+            return []
         return self._advance(grid, scene)
 
     def _emit(self, action: int, body: Cell) -> list[Step]:
@@ -947,36 +1104,96 @@ class CloneWalkTool:
         return out
 
     def _solve(self, board: _Board) -> tuple[list[int], list[Cell]] | None:
-        """Shortest plan: park k clones on gating inputs, then walk out. k grows from zero."""
+        """Find a plan, and prefer one that holds however the unsteered bodies are facing.
+
+        ⛔ A body this tool does not steer starts pointing SOMEWHERE, and which way is not drawn
+        — the sprite is symmetric and it has not moved yet. So the plan is searched under each
+        heading in turn and then REPLAYED under all of them; one that still wins under every
+        heading is taken over a shorter one that only wins under the assumed one. Where no such
+        plan exists the shortest is kept and the execution check catches the disagreement.
+        """
         moves = self._moves()
         if len(moves) < 4:
             return None
         targets = self._gating(board)
+        self._meter = [0]
+        fallback: tuple[list[int], list[Cell]] | None = None
+        for facing in _FACINGS:
+            got = self._search(board, targets, moves, facing)
+            if got is None:
+                continue
+            if not board.strangers:
+                return got
+            if all(self._replay(board, got[0], f) is not None for f in _FACINGS):
+                return got
+            if fallback is None or len(got[0]) < len(fallback[0]):
+                fallback = got
+        return fallback
+
+    def _search(self, board: _Board, targets: list[Cell], moves: list[Cell],
+                facing: int) -> tuple[list[int], list[Cell]] | None:
+        """Shortest plan under ONE heading: park k clones on gating inputs, then walk out."""
         budget = max(0, board.slots - 1)
         # A plan whose FIRST leg cannot be walked is not a plan; testing that once per target
         # rather than once per ordering is what keeps the search affordable.
-        opener = {t: _World(board).route(t, moves) for t in targets}
-        best: tuple[list[int], list[Cell]] | None = None
+        opener = {t: self._leg(_World(board, facing, self._meter), t, moves, board)
+                  for t in targets}
+        near: list[tuple[Cell, ...]] = []
         for k in range(0, budget + 1):
+            best: tuple[list[int], list[Cell]] | None = None
             for order in permutations(targets, k):
                 if order and opener[order[0]] is None:
                     continue
-                got = self._attempt(board, order, moves)
+                got, parked = self._attempt(board, order, moves, facing, (0,) * k)
+                if got is None:
+                    if k and parked:
+                        near.append(order)
+                    continue
+                if best is None or len(got[0]) < len(best[0]):
+                    best = got
+            if best is not None:
+                return best
+        return self._stretched(board, moves, facing, near)
+
+    def _stretched(self, board: _Board, moves: list[Cell], facing: int,
+                   near: list[tuple[Cell, ...]]) -> tuple[list[int], list[Cell]] | None:
+        """Retry the orderings that got all their clones parked and then could not walk out.
+
+        ⛔ Why a leg is ever made LONGER than it needs to be. A clone replays its route in every
+        later pass, so the route's LENGTH is when its arrival lands — and, where a route crosses
+        a latching input, its length also decides the PARITY that input ends the pass on. One
+        board's whole chain turns on that: the shortest first leg leaves the latch open, the
+        first clone's replay then shuts it, and the third party the plan depends on is locked
+        out. Three extra moves in the first leg invert it and the level falls out. This is only
+        reached when the plain search has already failed, so it costs nothing elsewhere.
+        """
+        best: tuple[list[int], list[Cell]] | None = None
+        for order in near:
+            for stretch in product(range(_MAX_STRETCH + 1), repeat=len(order)):
+                if not any(stretch) or self._meter[0] > _MAX_PLAN_STATES:
+                    continue
+                got, _ = self._attempt(board, order, moves, facing, stretch)
                 if got is not None and (best is None or len(got[0]) < len(best[0])):
                     best = got
             if best is not None:
                 return best
         return best
 
-    def _attempt(self, board: _Board, order: tuple[Cell, ...],
-                 moves: list[Cell]) -> tuple[list[int], list[Cell]] | None:
-        world = _World(board)
+    def _run_legs(self, board: _Board, order: tuple[Cell, ...], moves: list[Cell],
+                  facing: int, stretch: tuple[int, ...]
+                  ) -> tuple[_World, list[int], list[Cell]] | None:
+        """Park every clone of an ordering; the world it leaves behind, or None if a leg fails."""
+        world = _World(board, facing, self._meter)
         actions: list[int] = []
         expect: list[Cell] = []
-        for target in order:
-            leg = world.route(target, moves)
+        for target, extra in zip(order, stretch):
+            leg = self._leg(world, target, moves, board)
             if leg is None:
                 return None
+            if extra:
+                leg = self._leg(world, target, moves, board, len(leg) + extra)
+                if leg is None:
+                    return None
             for step in leg:
                 world.move(step)
                 actions.append(self._action_of(step))
@@ -984,14 +1201,50 @@ class CloneWalkTool:
             world.rewind()
             actions.append(self._rewind or 0)
             expect.append(world.pos)
-        leg = world.route(board.exit, moves)
+        return world, actions, expect
+
+    def _replay(self, board: _Board, actions: list[int], facing: int) -> list[Cell] | None:
+        """Run a finished plan under one heading; the positions it visits, or None if it loses."""
+        world = _World(board, facing, self._meter)
+        seen: list[Cell] = []
+        for action in actions:
+            if action == self._rewind:
+                world.rewind()
+            else:
+                step = self._delta.get(action)
+                if step is None or not world.move(step):
+                    return None
+            seen.append(world.pos)
+        return seen if world.pos == board.exit else None
+
+    def _attempt(self, board: _Board, order: tuple[Cell, ...], moves: list[Cell],
+                 facing: int, stretch: tuple[int, ...]
+                 ) -> tuple[tuple[list[int], list[Cell]] | None, bool]:
+        """(plan, every-clone-parked). The second half says whether stretching is worth trying."""
+        if self._meter[0] > _MAX_PLAN_STATES:
+            return None, False
+        got = self._run_legs(board, order, moves, facing, stretch)
+        if got is None:
+            return None, False
+        world, actions, expect = got
+        leg = self._leg(world, board.exit, moves, board)
         if leg is None:
-            return None
+            return None, True
         for step in leg:
             world.move(step)
             actions.append(self._action_of(step))
             expect.append(world.pos)
-        return actions, expect
+        return (actions, expect), True
+
+    @staticmethod
+    def _leg(world: _World, target: Cell, moves: list[Cell], board: _Board,
+             at_least: int = 0) -> list[Cell] | None:
+        """One leg, preferring a route that touches no input it did not come for."""
+        shun = frozenset(board.buttons) - {target}
+        clean = world.route(target, moves, shun, at_least)
+        if clean is None:
+            clean = world.route(target, moves, frozenset(), at_least)
+        return clean
 
     # -- execution -------------------------------------------------------------
 
