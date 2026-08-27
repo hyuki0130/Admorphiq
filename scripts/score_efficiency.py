@@ -121,11 +121,15 @@ def _make_agent(name: str, game_id: str | None = None):
         # 2026-08-27: every one of the seven games that stalls short spends ~1,200 actions on the
         # level it cannot pass, which is 8,400 per full-25 run, and the most expensive level ANY
         # game ever CLEARED cost 120. Exposed so the margin can be measured rather than assumed.
-        no_progress = int(os.environ.get("HARNESS_NOPROGRESS", "1200"))
+        # ⛔ NO DEFAULT HERE. It is UnifiedAgent's, and duplicating it created two: this file
+        # said 1200 while loop.py said 500, and because an explicit argument wins, the 500 that
+        # was measured, committed and written up NEVER RAN. Caught when a run came back at 1520
+        # actions where 820 was expected. A constant with two homes has one that is wrong.
+        no_progress = os.environ.get("HARNESS_NOPROGRESS")
         return UnifiedAgent(
             default_tools(),
             _llm(),
-            no_progress=no_progress,
+            **({"no_progress": int(no_progress)} if no_progress else {}),
             # Target draws use the probe-validated LLM params (the draw is
             # measured-sensitive to them; see rounds/r53).
             draw_llm=_llm(num_ctx=8192, num_predict=400),

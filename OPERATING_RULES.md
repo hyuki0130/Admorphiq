@@ -247,6 +247,19 @@ stated 4x had become 10x, drifting the SAFE way; and `claim breadth` went from 2
 to 38 with the clean split intact. Re-read every constant whose comment cites a number
 whenever the tools underneath it change.
 
+⛔ **AND GIVE IT ONE HOME.** The recalibrated bail was measured, committed and written up — and
+NEVER RAN, because `score_efficiency.py` passed an explicit `no_progress=1200` that overrode
+`UnifiedAgent`'s new 500. Caught only when a run came back at 1520 actions where 820 was
+expected. A constant with two homes has one that is wrong, and the wrong one wins whenever it is
+the explicit argument.
+
+⛔ **"THE RATIOS WILL HOLD" IS UNSAFE FOR ANYTHING ORDERED IN TIME.** Told a tool author that
+halving the bail would shrink their counts and leave the ratios intact. Measured, on lf52 level
+6: `none` collapsed 510 -> 3 while the working tiers merely halved, because the idle phase is a
+TAIL rather than something spread through the level — so truncating cuts almost pure idle. Their
+conclusions survived because they rested on the working tiers, but the reasoning I gave them was
+wrong.
+
 ⛔ **A LEVEL LOST AND RETRIED IS INVISIBLE IN THE SCORE.** The engine restores the board and hands
 back a fresh allowance while the score carries the actions already paid, so a level cleared on the
 third try reads exactly like one cleared slowly — and the two want OPPOSITE work.

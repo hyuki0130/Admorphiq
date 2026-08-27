@@ -136,6 +136,10 @@ def solve_mode(cap: int) -> None:
     levels = 0
     marks: list[tuple[int, int]] = []
     step = 0
+    # How far across the board the tool's map ever reached, per level. On a board wider than the
+    # screen this is the question "did it ever SEE the far side", which a level count cannot answer.
+    seen: dict[int, int] = {}
+    known: dict[int, int] = {}
     for step in range(cap):
         if agent.is_done(frames, obs):
             break
@@ -143,6 +147,11 @@ def solve_mode(cap: int) -> None:
         data = act.action_data.model_dump() if getattr(act, "action_data", None) else None
         obs = env.step(act, data=data) if data else env.step(act)
         frames.append(obs)
+        model = agent.tools["railpeg"]._model
+        if model is not None and model.known():
+            cols = [c[1] for c in model.known()]
+            seen[levels] = max(seen.get(levels, 0), max(cols) - min(cols))
+            known[levels] = max(known.get(levels, 0), len(model.pieces))
         now = int(getattr(obs, "levels_completed", levels) or 0)
         if now != levels:
             marks.append((now, step + 1))
@@ -157,6 +166,10 @@ def solve_mode(cap: int) -> None:
     # alone said "nothing fired 510 times"; the reason codes said travel could find no gain and
     # there was no capturable pair at all — two different bugs wearing one number.
     print(f"   why:   {dict(sorted(tool._why.items(), key=lambda kv: -kv[1]))}")
+    print(f"   widest map seen per level (columns): "
+          f"{ {k + 1: v for k, v in sorted(seen.items())} }")
+    print(f"   most pieces known per level:         "
+          f"{ {k + 1: v for k, v in sorted(known.items())} }")
 
 
 def bids_mode(steps: int) -> None:
