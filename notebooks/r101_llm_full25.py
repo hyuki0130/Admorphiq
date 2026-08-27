@@ -39,6 +39,10 @@ GAMES = [
     "lp85", "ls20", "m0r0", "r11l", "re86", "s5i5", "sb26", "sc25", "sk48",
     "sp80", "su15", "tn36", "tr87", "tu93", "vc33", "wa30",
 ]
+# 500 and not 4000: MEASURED on the first kernel run, the fallback arm scored 0.6733 at 500
+# actions — equal to the ceph-build baseline at 4000 to four decimals. Budget is not the lever
+# on this set (a separate full-25 at 8000 was also identical), so the smaller cap buys wall
+# clock on the arm that costs 18x, and costs nothing.
 MAX_ACTIONS = int(os.environ.get("MAX_ACTIONS", "500"))
 # A subset for smoke-testing the plumbing off-Kaggle. Empty means all 25, which is what
 # the kernel runs. The plumbing is validated on one game locally before a push, because
