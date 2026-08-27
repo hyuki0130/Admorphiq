@@ -223,20 +223,31 @@ decide whether its own work is kept.
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
 
-**Where it stands (re-measured 2026-08-27 at commit 8f1e7a4, full 25 on ceph-build,
+**Where it stands (re-measured 2026-08-27 at commit d1f0e3c, full 25 on ceph-build,
 `--agent unified` @4000 — generic tools ALONE, zero adapters):**
 
 ```
-mean 0.8425 over ALL 25   FOURTEEN at 1.0000   SIXTEEN clear EVERY level   25/25 clear one
-1.0000  ar25 cd82 cn04 ft09 r11l sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33
-0.8919 lp85 8/8 · 0.8350 re86 8/8 · 0.8000 wa30 8/9
-0.7500 g50t 6/7, ka59 6/7, ls20 6/7 · 0.7143 dc22 5/6, m0r0 5/6
+mean 0.8602 over ALL 25   FIFTEEN at 1.0000   SEVENTEEN clear EVERY level   25/25 clear one
+1.0000  ar25 cd82 cn04 ft09 m0r0 r11l sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33
+0.9908 re86 8/8 · 0.8919 lp85 8/8 · 0.8000 wa30 8/9
+0.7500 g50t 6/7, ka59 6/7, ls20 6/7 · 0.7143 dc22 5/6
 0.4204 s5i5 6/8 · 0.2727 lf52 5/10 · 0.1648 bp35 5/9
 ```
 
+✅ **TRANSFER 0.9981, 13 of 14 re-rendered games IDENTICAL** (`scripts/rounds/R101XFER7`), held
+across the day's last three conquests. Re-run it whenever the card moves.
+
+⛔ **A LEVEL LOST AND RETRIED IS INVISIBLE IN THE SCORE.** The engine restores the board and hands
+back a fresh allowance while the score carries the actions already paid, so a level cleared on the
+third try reads exactly like one cleared slowly — and the two want OPPOSITE work.
+`scripts/attempt_probe.py where <game>` splits a run into levels and attempts and prices them;
+its last column is what the game would score if only its winning attempts were paid for. That
+measurement moved re86 from 0.8349 to 0.9908 and refuted two of my own diagnoses on the way.
+Only **bp35 (+0.1283)** still has attempt headroom.
+
 ⛔ **THE THIRTEEN ADAPTERS NOW COST THE SHIPPED CARD.** Measured the same day, same tree:
-`--agent kaggle_detect` (as shipped) **0.5422** against `--agent unified` **0.8540** — a gap of
-**+0.3118**. The adapters lose on 22 of 25 games (sc25 0.0427 against a generic 1.0000, ar25
+`--agent kaggle_detect` (as shipped) **0.5422** against `--agent unified` **0.8602** — a gap of
+**+0.3180**. The adapters lose on 22 of 25 games (sc25 0.0427 against a generic 1.0000, ar25
 0.0833 against 1.0000, sp80 0.1429 against 1.0000, wa30 0.0222 against 0.8000), tie on two,
 and **only `ls20` still beats the generic path**. The gap widens on its own every time a
 generic tool lands. Nothing broke: the FALLBACK moved
