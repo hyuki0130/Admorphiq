@@ -1379,3 +1379,30 @@ levels it never clears at all. Binned actions are not themselves the signal — 
 
 Only three games have any attempt headroom, and two of them are worth having: re86 +0.1445 and
 bp35 +0.1283, together **+0.0109 of the card**.
+
+#### The per-level number answers TWO questions and is only right for one
+
+`per_level.agent_actions` is the actions PAID on a level, failed attempts included. That is
+exactly right for scoring — RHAE prices what you spent — and exactly wrong as a measure of route
+quality, which is what it was read as all round, including by me in the instruction above.
+
+bp35, split by attempt:
+
+```
+        paid   won in   binned   human      as quoted     actually
+L2        94       57       37      48       1.96x         1.19x
+L3        83       43       40      44       1.89x         0.98x  (better than human)
+L5        72       38       34      33       2.18x         1.15x
+```
+
+Every "2x the human count" in the instruction I gave was an artifact of counting deaths as route.
+The routes are at parity.
+
+⚠️ **The DECISION that rested on those numbers still stands, and it is worth being exact about
+why.** `crag` replaced `ledge` on a SCORE comparison — 0.1648 against 0.1333 — and score is the
+metric, not a proxy for it. What was wrong was the explanation I attached, and the explanation is
+what got passed on to an agent as instruction. A right decision reached through a wrong reading
+is still a wrong reading, and it propagates.
+
+⛔ When comparing two tools' per-level costs, split by attempt first. `attempt_probe.py where`
+does it in one command.
