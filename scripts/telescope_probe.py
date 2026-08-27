@@ -50,9 +50,11 @@ def scan() -> None:
 
     import numpy as np
 
+    from admorphiq.tools.telescope import anchored_bars as T_anchored
     from admorphiq.tools.telescope import marker_colour, read_markers, read_widgets
 
-    root = pathlib.Path(__file__).resolve().parent.parent / "environment_files"
+    where = sys.argv[2] if len(sys.argv) > 2 else "environment_files"
+    root = pathlib.Path(__file__).resolve().parent.parent / where
     claims = 0
     for game_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         src = next(iter(sorted(game_dir.rglob("*.py"))), None)
@@ -84,6 +86,8 @@ def scan() -> None:
                 continue
             m = read_markers(g, colour)
             if m is None or all(q in set(m.movers) for q in m.places):
+                continue
+            if len(T_anchored(g, colour, boxes)) < len(m.places):
                 continue
             hits.append(n)
             claims += 1
@@ -171,7 +175,12 @@ def harness(title: str, cap: int) -> None:
     env = arcade.make(info.game_id)
     obs = env.reset()
     tools = default_tools()
-    if "--with" in sys.argv:
+    # Registered by the integrator, so it is already in the set; `--with` only adds it when it
+    # is not, and `--without` measures the same tree with it taken out.
+    if "--without" in sys.argv:
+        tools = [t for t in tools if getattr(t, "name", "") != TelescopeArmTool.name]
+    elif "--with" in sys.argv and not any(
+            getattr(t, "name", "") == TelescopeArmTool.name for t in tools):
         tools = tools + [TelescopeArmTool()]
     agent = UnifiedAgent(tools, _no_llm, giveup=cap, stall=80, ctx_budget=6000)
     frames = [obs]

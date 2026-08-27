@@ -3,8 +3,13 @@
 The mechanic, stated in frame terms only, recovered from the game's own source and then
 re-derived from pixels because a tool may only read pixels:
 
-  * one rare colour carries two kinds of small marker — a LONE CELL that travels and a
-    DIAMOND of four cells around an empty centre that is where a lone cell must come to rest;
+  * one rare colour draws the DESTINATIONS: a ring of four cells around a centre, one cell out,
+    each of which is where a rider must come to rest;
+  * the RIDER itself — the thing that travels — is a small sprite sitting on the bar carrying
+    it, and it may or may not be painted. Whether its cell survives into the frame depends on
+    where it lands in the level's sprite list, because the engine paints in list order. It is
+    therefore never required: a rider rides the unit at its bar's far end, so the bars say where
+    the riders are whether or not the riders are drawn;
   * the board is furnished with BARS: solid rectangles three cells across whose far end is
     capped by a three-cell stripe. The stripe is the anchored end; the bar telescopes away
     from it in whole three-cell units and the anchored end never moves;
@@ -41,6 +46,15 @@ exists, and an observation carrying more than one render is itself the refusal s
 ⛔ NO CONSOLATION BID. detect() returns zero the moment the model is contradicted by a frame,
 and stays zero for that board. A tool that keeps bidding on a board it has stopped
 understanding spends a budget that ENDS THE GAME when it runs out.
+
+⛔ WHAT THE DETECTOR MAY KEY ON, learned the expensive way. Its first version required a visible
+rider. The same eight boards, re-serialized under a later version hash, paint every rider
+underneath its bar — two cells out of four thousand change, ten marker cells become eight, and
+the tool bid 0.00 on a board it clears five levels of. Nothing about the mechanic had changed.
+A detector must key on what the mechanic cannot do without — here the destination rings and the
+anchored bars — never on a fact about how one file happened to be serialized. Both boards are
+measured on every change: `scripts/telescope_probe.py --scan <root>` and the same script's
+`--harness` mode under `ENVIRONMENTS_DIR`.
 """
 
 from __future__ import annotations
@@ -57,6 +71,8 @@ from admorphiq.tools.base import Step, availability, has_frame, levels_completed
 
 __all__ = [
     "TelescopeArmTool",
+    "anchored_bars",
+    "tip_centre",
     "Widget",
     "Piece",
     "read_widgets",
@@ -233,15 +249,22 @@ def _divider(inner: np.ndarray, axis: int) -> int | None:
     return found[0] if len(found) == 1 else None
 
 
+# The destination glyph is a ring one cell out from its own centre, so the sprite it stands for
+# is this many cells across. Everything else scales off it: the bar's width, the telescoping
+# step, the tip unit the rider occupies.
+_RING_RADIUS = 1
+_UNIT = 1 + 2 * _RING_RADIUS
+
+
 @dataclass(frozen=True)
 class Markers:
     colour: int
-    movers: tuple[Cell, ...]
-    places: tuple[Cell, ...]
+    movers: tuple[Cell, ...]      # riders that happen to be DRAWN — may legitimately be empty
+    places: tuple[Cell, ...]      # every destination ring on the board
 
 
 def marker_colour(g: np.ndarray, banned: set[int]) -> int | None:
-    """The colour that reads as lone cells plus four-cell diamonds, or None."""
+    """The colour that reads as destination rings, or None."""
     bg = _background(g)
     counts = Counter(int(v) for v in g.ravel())
     best: int | None = None
@@ -254,34 +277,50 @@ def marker_colour(g: np.ndarray, banned: set[int]) -> int | None:
 
 
 def read_markers(g: np.ndarray, colour: int) -> Markers | None:
-    """Split one colour's cells into diamonds (places) and lone cells (movers), or reject it.
+    """One colour's cells split into OUTSTANDING destinations and whatever riders are drawn.
 
-    ⛔ A mover is found by SUBTRACTING the diamonds, not by testing isolation. A mover that has
-    arrived stops being a lone cell — it becomes the centre of a five-cell plus — so an
-    isolation test loses movers exactly when the board is closest to solved.
+    ⛔ THE RIDER IS NOT RELIABLY DRAWN, and requiring it made the first version of this tool a
+    detector of one serialization rather than of a mechanic. The rider is a small sprite sitting
+    ON the bar that carries it, so whether its cell survives into the frame depends only on
+    where it lands in the level's sprite list — the engine paints in list order. The same eight
+    boards re-serialized under a later version hash paint every rider UNDERNEATH its bar: ten
+    marker cells become eight, this function returned None, and the tool bid 0.00 on a board it
+    solves five levels of. Riders are optional evidence here, never a requirement.
+
+    ⛔ Nor is "has this destination been satisfied" observable. On one board an arrived rider
+    fills the ring's centre; on the other the rider is under the bar and the centre shows the
+    bar, so a satisfied destination is indistinguishable from an outstanding one. Every ring is
+    therefore a destination, and whether it is satisfied is decided by the MODEL — which knows
+    where it put each rider — never by the frame.
     """
     h, w = g.shape
     cells = {(int(y), int(x)) for y, x in zip(*np.where(g == colour))}
     if not cells:
         return None
-    places: list[Cell] = []
+    r = _RING_RADIUS
     ring: set[Cell] = set()
-    for y in range(1, h - 1):
-        for x in range(1, w - 1):
-            if all((y + dy, x + dx) in cells for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))):
+    places: list[Cell] = []
+    for y in range(r, h - r):
+        for x in range(r, w - r):
+            around = ((y - r, x), (y + r, x), (y, x - r), (y, x + r))
+            if all(q in cells for q in around):
                 places.append((y, x))
-                ring |= {(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)}
+                ring |= set(around)
+    if not places:
+        return None
+    # ⛔ Every clump of this colour must be SMALL, which is what separates markers from a colour
+    # that paints something. The earlier test — every lone cell must have no marker neighbour —
+    # says the same thing on an untouched board and the wrong thing on a played one: a bar
+    # sliding across a ring leaves two or three of its cells showing, side by side, and the
+    # reader threw the whole board away mid-level. A ring is four cells that touch only
+    # diagonally, so its clumps are single cells; a ring with its rider home is a five-cell
+    # plus. Nothing in this family is bigger.
+    grid = np.zeros(g.shape, dtype=bool)
+    for y, x in cells:
+        grid[y, x] = True
+    if any(len(part) > 2 * _UNIT - 1 for part in _components(grid)):
+        return None
     movers = sorted(cells - ring)
-    if not places or not movers:
-        return None
-    if len(cells) != len(ring) + len(movers):
-        return None
-    at_place = set(places)
-    for y, x in movers:
-        if (y, x) in at_place:
-            continue
-        if any((y + dy, x + dx) in cells for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))):
-            return None
     return Markers(colour, tuple(movers), tuple(sorted(places)))
 
 
@@ -353,6 +392,74 @@ def read_pieces(g: np.ndarray, marker: int, boxes: list[tuple[int, int, int, int
             solid = bool(holes) is False or all(marks[c] for c in holes)
             out.append(Piece(colour, frozenset(full if solid else here), box, solid))
     return out
+
+
+def anchored_bars(g: np.ndarray, marker: int, boxes: list[tuple[int, int, int, int]],
+                  pieces: list[Piece] | None = None) -> list[tuple[int, int]]:
+    """Every telescoping bar on the board, as (index into read_pieces, its FAR edge).
+
+    A bar is a rectangle `_UNIT` across and `k * _UNIT - 1` along — one line short of a whole
+    number of units, because the anchor stripe that caps it eats that line. The anchor is the
+    end abutted by a single-colour line that is neither the bar's own colour nor the
+    background; a bar showing that at both ends, or at neither, is not read as a bar at all.
+    """
+    pieces = read_pieces(g, marker, boxes) if pieces is None else pieces
+    bg = _background(g)
+    out: list[tuple[int, int]] = []
+    for i, p in enumerate(pieces):
+        if not p.rect:
+            continue
+        y0, x0, y1, x1 = p.box
+        h, w = y1 - y0 + 1, x1 - x0 + 1
+        if h == _UNIT and (w + 1) % _UNIT == 0 and w >= _UNIT - 1:
+            upright = False
+        elif w == _UNIT and (h + 1) % _UNIT == 0 and h >= _UNIT - 1:
+            upright = True
+        else:
+            continue
+        body = int(g[y0][x0])
+        anchors = []
+        for low in (True, False):
+            if upright:
+                row = y0 - 1 if low else y1 + 1
+                if not 0 <= row < g.shape[0]:
+                    continue
+                seg = [(row, x) for x in range(x0, x1 + 1)]
+            else:
+                col = x0 - 1 if low else x1 + 1
+                if not 0 <= col < g.shape[1]:
+                    continue
+                seg = [(y, col) for y in range(y0, y1 + 1)]
+            tone = {int(g[y][x]) for y, x in seg}
+            # ⛔ Exclude the BACKGROUND as well as the bar's own colour. A bar's free end is
+            # uniform background, so a test that only rules out the bar's colour finds an
+            # "anchor" at both ends and rejects every bar on the board.
+            if len(tone) == 1 and tone != {body} and tone != {bg}:
+                anchors.append(low)
+        if len(anchors) != 1:
+            continue
+        low = anchors[0]
+        out.append((i, (2 if low else 0) if upright else (3 if low else 1)))
+    return out
+
+
+def tip_centre(box: tuple[int, int, int, int], edge: int) -> Cell:
+    """Where the rider sits: the middle of the unit at the bar's far end.
+
+    Measured, not assumed: on all sixteen boards of both serializations, every rider that IS
+    drawn sits exactly here. It follows from the mechanic — lengthening a bar translates
+    everything it carries by the whole of the added length, so the rider never falls behind the
+    far end.
+    """
+    y0, x0, y1, x1 = box
+    half = _UNIT // 2
+    if edge == 0:
+        return (y0 + half, (x0 + x1) // 2)
+    if edge == 2:
+        return (y1 - half, (x0 + x1) // 2)
+    if edge == 1:
+        return ((y0 + y1) // 2, x0 + half)
+    return ((y0 + y1) // 2, x1 - half)
 
 
 # --- matching one frame's pieces onto the previous frame's ---------------------
@@ -432,22 +539,36 @@ class _Model:
     """Everything the board does, as a linear function of how far each control is wound."""
 
     pieces: list[Piece]
-    movers: list[Cell]
+    riders: list[tuple[int, int]]      # (host piece, its FAR edge) — the rider rides that unit
     places: list[Cell]
+    width: int = 0                     # how many controls the board has
     shift: dict[tuple[int, int], Vec] = field(default_factory=dict)      # (piece, ctrl) -> per-click shift
-    mover_shift: dict[tuple[int, int], Vec] = field(default_factory=dict)
     grow: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # piece -> (ctrl, edge, step)
     lo: list[int] = field(default_factory=list)
     hi: list[int] = field(default_factory=list)
+    pairing: tuple[tuple[int, int], ...] | None = None
+    refuted: set[tuple[tuple[int, int], ...]] = field(default_factory=set)
+    _steps: dict[tuple[int, int], Vec] = field(default_factory=dict)
 
     def mover_at(self, i: int, w: tuple[int, ...]) -> Cell:
-        y, x = self.movers[i]
-        for c, n in enumerate(w):
-            v = self.mover_shift.get((i, c))
-            if v and n:
-                y += v[0] * n
-                x += v[1] * n
-        return (y, x)
+        """Where rider `i` is at this winding — read off its host bar, never off the frame."""
+        host, edge = self.riders[i]
+        box = self.piece_box(host, w)
+        if box is None:
+            return (1 << 20, 1 << 20)
+        return tip_centre(box, edge)
+
+    def rider_step(self, i: int, c: int) -> Vec:
+        """How far one click of control `c` carries rider `i`. Constant: the model is affine."""
+        key = (i, c)
+        hit = self._steps.get(key)
+        if hit is None:
+            zero = (0,) * self.width
+            one = tuple(1 if k == c else 0 for k in range(self.width))
+            a, b = self.mover_at(i, zero), self.mover_at(i, one)
+            hit = (b[0] - a[0], b[1] - a[1])
+            self._steps[key] = hit
+        return hit
 
     def piece_box(self, i: int, w: tuple[int, ...]) -> tuple[int, int, int, int] | None:
         p = self.pieces[i]
@@ -572,12 +693,20 @@ _MAX_EXPAND = 40_000
 
 
 def _solved(model: _Model, w: tuple[int, ...]) -> bool:
-    here = {model.mover_at(i, w) for i in range(len(model.movers))}
-    return all(p in here for p in model.places)
+    """Is the board finished, according to the rider pairing currently believed?
+
+    ⛔ Asked of the PAIRING, never of "is some rider on that destination". Where riders are not
+    drawn there is one candidate per anchored bar, and on one board a spare bar's tip starts
+    sitting exactly on the only destination — so the any-rider reading declared the level solved
+    before the first click and the tool retired without playing it.
+    """
+    if model.pairing is None:
+        return False
+    return all(model.mover_at(r, w) == model.places[p] for p, r in model.pairing)
 
 
 def _carriers(model: _Model, i: int) -> frozenset[int]:
-    return frozenset(c for (m, c) in model.mover_shift if m == i)
+    return frozenset(c for c in range(model.width) if model.rider_step(i, c) != (0, 0))
 
 
 def _heuristic(model: _Model, w: tuple[int, ...], unit: int) -> int:
@@ -587,18 +716,16 @@ def _heuristic(model: _Model, w: tuple[int, ...], unit: int) -> int:
     L1 distance in units is a floor for it. The floors ADD only when no single control drives
     two markers at once — which the model can say — and otherwise only the largest is safe.
     """
-    if not model.places:
+    if not model.pairing:
         return 0
-    pos = [model.mover_at(i, w) for i in range(len(model.movers))]
-    best: int | None = None
-    for pick in permutations(range(len(pos)), len(model.places)):
-        costs = [(abs(p[0] - pos[m][0]) + abs(p[1] - pos[m][1]) + unit - 1) // unit
-                 for p, m in zip(model.places, pick)]
-        sets = [_carriers(model, m) for m in pick]
-        disjoint = all(not (a & b) for k, a in enumerate(sets) for b in sets[k + 1:])
-        total = sum(costs) if disjoint else (max(costs) if costs else 0)
-        best = total if best is None else min(best, total)
-    return best or 0
+    costs = []
+    for place_i, rider_i in model.pairing:
+        here = model.mover_at(rider_i, w)
+        goal = model.places[place_i]
+        costs.append((abs(goal[0] - here[0]) + abs(goal[1] - here[1]) + unit - 1) // unit)
+    sets = [_carriers(model, r) for _p, r in model.pairing]
+    disjoint = all(not (a & b) for k, a in enumerate(sets) for b in sets[k + 1:])
+    return sum(costs) if disjoint else (max(costs) if costs else 0)
 
 
 def plan(model: _Model, board: _Board, start: tuple[int, ...], unit: int,
@@ -859,52 +986,73 @@ def route_plan(model: _Model, board: _Board, start: tuple[int, ...], unit: int,
     return walk(start, _MAX_DEPTH)
 
 
-def _assign(model: _Model, w: tuple[int, ...]) -> list[tuple[int, int]] | None:
-    """Which marker is meant for which socket — the cheapest pairing, or None if none fits."""
-    if len(model.movers) < len(model.places):
-        return None
-    pos = [model.mover_at(i, w) for i in range(len(model.movers))]
-    best: tuple[int, list[tuple[int, int]]] | None = None
-    for pick in permutations(range(len(pos)), len(model.places)):
-        cost = sum(abs(p[0] - pos[m][0]) + abs(p[1] - pos[m][1])
-                   for p, m in zip(model.places, pick))
-        if best is None or cost < best[0]:
-            best = (cost, list(zip(range(len(model.places)), pick)))
-    return best[1] if best else None
-
-
-def _targets(model: _Model, w: tuple[int, ...], unit: int) -> dict[int, int] | None:
-    """Where every control has to end up for the markers to be home.
-
-    A marker driven along one axis by exactly one control fixes that control outright. A marker
-    two controls can drive along the same axis is under-determined, and the whole remaining
-    distance is put on the first of them — an arbitrary choice, but a legal one, and the route
-    search is free to find it cannot be walked and say so rather than guess again.
-    """
-    pair = _assign(model, w)
-    if pair is None:
-        return None
+def _windings(model: _Model, w: tuple[int, ...],
+              pair: tuple[tuple[int, int], ...]) -> dict[int, int] | None:
+    """The winding each control must reach for this rider-to-destination pairing, or None."""
     want: dict[int, int] = {}
-    for place_i, mover_i in pair:
-        here = model.mover_at(mover_i, w)
+    for place_i, rider_i in pair:
+        here = model.mover_at(rider_i, w)
         goal = model.places[place_i]
         for axis in (0, 1):
             gap = goal[axis] - here[axis]
             if gap == 0:
                 continue
-            drivers = [c for c in range(len(w))
-                       if model.mover_shift.get((mover_i, c), (0, 0))[axis]]
+            drivers = [c for c in range(len(w)) if model.rider_step(rider_i, c)[axis]]
             if not drivers:
                 return None
             c = drivers[0]
-            step = model.mover_shift[(mover_i, c)][axis]
+            step = model.rider_step(rider_i, c)[axis]
             if gap % step:
                 return None
             value = w[c] + gap // step
+            if not (model.lo[c] <= value <= model.hi[c]):
+                return None
             if want.get(c, value) != value:
                 return None
             want[c] = value
     return want
+
+
+def _targets(model: _Model, w: tuple[int, ...], unit: int) -> dict[int, int] | None:
+    """Where every control has to end up for the riders to be home.
+
+    ⛔ The pairing is chosen by FEASIBILITY, not by which rider looks closest. Where the riders
+    are drawn there is one candidate per destination and the question does not arise; where they
+    are not, every anchored bar's tip is a candidate and the nearest one is routinely a bar that
+    cannot reach the destination at all — it points the wrong way, or the distance is not a
+    whole number of units. Solving the winding for each pairing and keeping the ones that have
+    a solution is the same test the board itself applies.
+
+    A destination driven along one axis by exactly one control fixes that control outright. One
+    that two controls can drive along the same axis is under-determined, and the whole remaining
+    distance goes on the first of them — an arbitrary choice, but a legal one, and the route
+    search is free to find it cannot be walked and say so rather than guess again.
+    """
+    if len(model.riders) < len(model.places):
+        return None
+    if model.pairing is not None:
+        return _windings(model, w, model.pairing)
+    best: tuple[int, dict[int, int], tuple[tuple[int, int], ...]] | None = None
+    for pick in permutations(range(len(model.riders)), len(model.places)):
+        pair = tuple(zip(range(len(model.places)), pick))
+        if pair in model.refuted:
+            continue
+        found = _windings(model, w, pair)
+        if not found:
+            # ⛔ A pairing that says the board is ALREADY SOLVED is refuted by the board being
+            # here at all — a solved level has advanced. Without this, any spare bar whose tip
+            # happens to sit on a destination is read as the rider that already delivered, and
+            # the tool declares victory on a level it has not touched.
+            continue
+        effort = sum(abs(v - w[c]) for c, v in found.items())
+        if best is None or effort < best[0]:
+            best = (effort, found, pair)
+    if best is None:
+        return None
+    # ⛔ Hold the pairing for the rest of the level. Re-deciding it every node lets the plan
+    # drift between two readings of the same board and undo its own progress.
+    model.pairing = best[2]
+    return best[1]
 
 
 # --- the tool -----------------------------------------------------------------
@@ -947,10 +1095,16 @@ class TelescopeArmTool:
         """0.95 for a board of telescoping bars with somewhere left to send a marker, else 0.0.
 
         ⛔ NO middle ground. Everything below is a conjunction the mechanic cannot do without:
-        clicks are the only input, every framed widget is two-way (a one-way one re-aims bars
-        and breaks the linear model), and one colour reads cleanly as diamonds plus lone cells
-        with at least one diamond still empty. A tool that softens any of these bids on a board
-        it cannot plan, and takes the turn from the tool that could.
+        clicks are the only input; every framed widget is two-way (a one-way one re-aims bars
+        and breaks the linear model); one colour reads as destination rings with at least one
+        still outstanding; and there are at least as many ANCHORED BARS as there are outstanding
+        destinations. A tool that softens any of these bids on a board it cannot plan, and takes
+        the turn from the tool that could.
+
+        ⛔ The bar count replaces the old "at least one lone marker cell". That test keyed the
+        whole tool on whether the engine happened to paint the rider on top of its bar, which is
+        a fact about the level's sprite ORDER and not about the mechanic — and it cost every
+        level of the re-serialized board. The bar is the thing the mechanic cannot do without.
         """
         if self._dead or not has_frame(obs):
             return 0.0
@@ -960,6 +1114,11 @@ class TelescopeArmTool:
         layers = _layers(obs)
         if not layers:
             return 0.0
+        # ⛔ Once a model for THIS level exists, keep bidding on it. Every destination ring can
+        # be hidden at once behind a bar, and re-running the opening frame test then reads as
+        # "not my board" and hands away a level already half played.
+        if self._model is not None:
+            return 0.95
         g = layers[-1]
         widgets = read_widgets(g)
         two = [wd for wd in widgets if wd.two_way]
@@ -969,7 +1128,10 @@ class TelescopeArmTool:
         if colour is None:
             return 0.0
         m = read_markers(g, colour)
-        if m is None or all(p in set(m.movers) for p in m.places):
+        if m is None:
+            return 0.0
+        boxes = [wd.box for wd in widgets]
+        if len(anchored_bars(g, colour, boxes)) < len(m.places):
             return 0.0
         return 0.95
 
@@ -1008,10 +1170,21 @@ class TelescopeArmTool:
         m = read_markers(g, self._marker)
         if m is None:
             return False
-        self._pieces = read_pieces(g, self._marker, [wd.box for wd in self._controls])
+        boxes = [wd.box for wd in widgets]
+        self._pieces = read_pieces(g, self._marker, boxes)
         if not self._pieces:
             return False
-        self._model = _Model(list(self._pieces), list(m.movers), list(m.places))
+        # ⛔ The rider is derived from the bar that carries it, not read off the frame. Where it
+        # IS drawn it pins the choice for free; where it is not, every anchored bar's tip is a
+        # candidate and reachability decides between them.
+        bars = anchored_bars(g, self._marker, boxes, self._pieces)
+        drawn = set(m.movers)
+        pinned = [b for b in bars if tip_centre(self._pieces[b[0]].box, b[1]) in drawn]
+        riders = pinned if len(pinned) >= len(m.places) else bars
+        if len(riders) < len(m.places):
+            return False
+        self._model = _Model(list(self._pieces), riders, list(m.places),
+                             width=len(self._controls))
         self._w = [0] * len(self._controls)
         self._tries = [0] * len(self._controls)
         self._sig = self._stamp(g)
@@ -1041,8 +1214,21 @@ class TelescopeArmTool:
             self._plan = []
             return True
         marks = read_markers(g, self._marker or 0)
-        if marks is None or len(marks.movers) != len(model.movers):
-            return False
+        # ⛔ EVERY RING CAN BE HIDDEN AT ONCE, and that is not a contradiction — it is a bar
+        # parked across the destinations. The model already knows where they are, so a frame
+        # with nothing to say about markers simply says nothing, and the occupancy check below
+        # carries the verification on its own.
+        # ⛔ The set of visible destinations MOVES BOTH WAYS, and neither direction is a fault.
+        # A bar sliding across a ring hides it; sliding off reveals it again. On the board that
+        # paints riders under their bars this is the normal course of a level. A ring that was
+        # not there before is new information about the goal, so it is taken on board and the
+        # rider guess is started again — refusing instead retired the tool mid-level.
+        fresh = [] if marks is None else [p for p in marks.places if p not in model.places]
+        if fresh:
+            model.places.extend(fresh)
+            model.pairing = None
+            model.refuted.clear()
+            self._plan = []
         if learning:
             seen = read_pieces(g, self._marker or 0, [wd.box for wd in self._controls])
             paired = _match(self._pieces, seen)
@@ -1071,15 +1257,9 @@ class TelescopeArmTool:
             else:
                 edge, step = vec
                 model.grow[i] = (ctrl, edge, step // delta)
-        for i, m in enumerate(model.movers):
-            here = model.mover_at(i, tuple(self._w))
-            near = min(marks.movers, key=lambda q: abs(q[0] - here[0]) + abs(q[1] - here[1]))
-            v = ((near[0] - here[0]) // delta, (near[1] - here[1]) // delta)
-            if v != (0, 0):
-                model.mover_shift[(i, ctrl)] = v
         return True
 
-    def _agrees(self, g: np.ndarray, marks: Markers) -> bool:
+    def _agrees(self, g: np.ndarray, marks: Markers | None) -> bool:
         """The model must keep predicting the whole board, or this tool stops betting the budget.
 
         ⛔ Checked against the MODEL, never by segmenting the frame again. Two bars of the same
@@ -1090,8 +1270,13 @@ class TelescopeArmTool:
         model = self._model
         assert model is not None
         w = tuple(self._w)
-        if {model.mover_at(i, w) for i in range(len(model.movers))} != set(marks.movers):
-            return False
+        # ⛔ Check the DRAWN riders only. On a board that paints its riders under their bars
+        # there are none to check, and demanding a match there is the same mistake as demanding
+        # one to detect the board at all.
+        if marks is not None:
+            want_riders = {model.mover_at(i, w) for i in range(len(model.riders))}
+            if any(seen not in want_riders for seen in marks.movers):
+                return False
         boxes = [wd.box for wd in self._controls]
         hidden = _off_board(g, boxes)
         want: set[Cell] = set()
@@ -1124,22 +1309,44 @@ class TelescopeArmTool:
         if self._board is None:
             self._bounds()
             self._board = _Board(model)
-        if not self._plan:
-            if self._plans >= _MAX_PLANS:
-                self._dead = True
-                return []
-            self._plans += 1
-            here = tuple(self._w)
-            found = plan(model, self._board, here, self._unit, self._blocked)
-            if found is None:
-                found = route_plan(model, self._board, here, self._unit, self._blocked)
-            if not found:
-                self._dead = True
-                return []
-            self._plan = found
+        if not self._plan and not self._replan():
+            self._dead = True
+            return []
         ctrl, delta = self._plan.pop(0)
         self._pending = (ctrl, delta, False)
         return [self._click(ctrl, delta)]
+
+    def _replan(self) -> bool:
+        """Find a plan, retiring rider guesses the board has already refuted.
+
+        ⛔ Where the riders are not drawn the pairing is a HYPOTHESIS, and it has to be one the
+        board can knock down. Two things refute it and both are free: the model reaching the
+        winding it said would finish the level while the level plainly has not finished, and no
+        legal route to that winding existing at all. Either way the pairing is retired and the
+        next-cheapest is tried, so a wrong guess costs the clicks it asked for rather than the
+        level. Cheap guesses are also the cheapest to disprove, which is why they go first.
+        """
+        model = self._model
+        assert model is not None and self._board is not None
+        for _ in range(len(model.riders) + 1):
+            if self._plans >= _MAX_PLANS:
+                return False
+            self._plans += 1
+            here = tuple(self._w)
+            if _targets(model, here, self._unit) is None:
+                return False
+            if not _solved(model, here):
+                found = plan(model, self._board, here, self._unit, self._blocked)
+                if found is None:
+                    found = route_plan(model, self._board, here, self._unit, self._blocked)
+                if found:
+                    self._plan = found
+                    return True
+            if model.pairing is None:
+                return False
+            model.refuted.add(model.pairing)
+            model.pairing = None
+        return False
 
     def _click(self, ctrl: int, delta: int) -> Step:
         wd = self._controls[ctrl]
@@ -1151,7 +1358,7 @@ class TelescopeArmTool:
         assert model is not None
         return any(c == ctrl for (_i, c) in model.shift) \
             or any(c == ctrl for (c, _e, _s) in model.grow.values()) \
-            or any(c == ctrl for (_i, c) in model.mover_shift)
+            or any(c == ctrl for (_i, c) in model.shift)
 
     def _bounds(self) -> None:
         """How far a control may be wound back before one of its bars is shorter than a unit."""
