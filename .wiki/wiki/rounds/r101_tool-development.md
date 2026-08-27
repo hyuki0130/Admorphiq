@@ -1177,3 +1177,32 @@ mean unchanged, no game moved. ⛔ **A full-25 gate cannot tell a tool that neve
 from one that has nothing to offer, and those need opposite responses.** Removing `ledge` and
 re-running bp35 settled it: ledge 3 levels, shaft 1. The bid ordering was right. Returned to
 its author with the measurement rather than deleted.
+
+### Where the remaining score is — ranked (2026-08-27, at mean 0.7459)
+
+Two questions, both answered from the round's own per-level data rather than by intuition.
+
+**Is it efficiency on levels we already clear?** No — and this cheaply re-confirms the rule
+already on this page. Across all 25 games only THREE cleared levels score below 0.5:
+
+```
+re86 L6   544 vs 139 human   0.0653      su15 L7   18 vs 8   0.1975
+lp85 L4    59 vs  16 human   0.0735
+```
+
+Bringing all three to human parity is worth **0.0153** of the mean card. Efficiency on cleared
+levels is not the axis.
+
+**It is the levels we do not reach.** Twelve games stop short, and RHAE weights a level by its
+1-indexed number over the sum of ALL levels, so an unreached deep level is worth far more than a
+shallow one — and a game whose FINAL level is unreached is capped below 1.0 however efficient
+the rest is:
+
+```
+bp35 3/9  0.8667      lf52 4/10 0.8182     s5i5 5/8  0.5833     sc25 4/6  0.5238
+dc22 4/6  0.5238      ka59 5/7  0.4643     g50t 5/7  0.4643     wa30 7/9  0.3778
+su15 7/9  0.3778      sp80 5/6  0.2857     m0r0 5/6  0.2857     ls20 6/7  0.2500
+```
+
+Total locked: **5.8214**, i.e. **0.2329** of the mean card. Clearing every remaining level at
+human parity would put the generic tools at **0.9788**. That number is the work list, in order.
