@@ -66,8 +66,15 @@ _DECIDE_SYS = (
     "and the latest feedback, choose the NEXT move. Reply ONLY with JSON: "
     '{"mode":"tool","tool":"<name>","why":"..."} to run a tool, or '
     '{"mode":"code","why":"..."} to write Python that inspects the frame and '
-    "queues actions. Prefer a tool whose signature matches; fall back to code "
-    "for transform/arrangement games no tool fits."
+    "queues actions.\n\n"
+    "HOW TO CHOOSE. Each tool is listed with its own FIT for this exact board — "
+    "the tool's own report that its mechanic is present and that it has a plan. "
+    "A CLAIMS THIS BOARD line names any tool reporting fit 0.60 or higher. "
+    "If that line is present, pick the tool it names, unless that tool is in the "
+    "already-failed list. Those tools recover a specific mechanic and finish "
+    "games in tens of actions; the general searcher explores and is the right "
+    "answer only when NOTHING claims the board. "
+    "Choose code only when nothing claims the board and no tool's signature fits."
 )
 
 
@@ -161,10 +168,31 @@ class UnifiedAgent:
         """Ask the model for the next move -> (mode, tool_name)."""
         ctx = build_context(sig, self.ctx_budget, self._last_obs, self._recent_frames)
         available = [n for n in self.tools if n not in self._failed] or list(self.tools)
+        # ⛔ Present the tools RANKED, with each one's own bid attached. A flat list let the model
+        # name the general searcher on three games that other tools conquer at 1.0000, scoring
+        # zero on all three — the same anchor bias this project measured at 8B across rounds
+        # R5-R11, reproducing at 26B. Nothing is hidden: every available tool is still listed, in
+        # the order the detectors rank it, so the model chooses against evidence rather than
+        # against familiarity.
+        bids: dict[str, float] = {}
+        for name in available:
+            tool = self.tools.get(name)
+            try:
+                bids[name] = float(tool.detect(self._recent_frames, self._last_obs)) if tool else 0.0
+            except Exception:  # noqa: BLE001
+                bids[name] = 0.0
+        available = sorted(available, key=lambda n: (-bids.get(n, 0.0), n))
+        listed = ", ".join(f"{n} (fit {bids.get(n, 0.0):.2f})" for n in available)
+        claimants = [n for n in available if bids.get(n, 0.0) >= 0.6]
+        claim_line = (
+            f"CLAIMS THIS BOARD: {', '.join(claimants)} — these report their own mechanic is "
+            f"present AND they have a plan for it.\n" if claimants else ""
+        )
         failed = ", ".join(sorted(self._failed)) or "none"
         user = (
             f"SIGNATURE: {sig.as_line()}\n\nWIKI:\n{ctx}\n\n"
-            f"TOOLS AVAILABLE: {', '.join(available)}\n"
+            f"{claim_line}"
+            f"TOOLS AVAILABLE (ranked by their own fit to THIS board): {listed}\n"
             f"ALREADY FAILED THIS LEVEL (do NOT pick these): {failed}\n"
             f"LATEST FEEDBACK: {self._feedback}\n\nNext move?"
         )
