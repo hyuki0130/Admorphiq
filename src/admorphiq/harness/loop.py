@@ -76,7 +76,9 @@ _PRIMARY_CONF = 0.7
 # take 621s, so the same 1000 is a 10x margin — this one decayed in the SAFE direction, unlike
 # the no-progress bail below, which decayed the other way over the same afternoon. Both are
 # recorded rather than adjusted: a constant whose stated basis no longer holds is a constant
-# nobody can reason about, and the direction of the drift is not knowable without re-measuring. It exists because the eval is 110 games inside a
+# nobody can reason about, and the direction of the drift is not knowable without re-measuring.
+#
+# It exists because the eval is 110 games inside a
 # 9-hour cap, where one game like this is the whole budget. 0 disables it.
 _GAME_SECONDS = float(os.environ.get("HARNESS_GAME_SECONDS", "1000"))
 
