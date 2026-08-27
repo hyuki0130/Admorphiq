@@ -109,6 +109,26 @@ The one honest measurement to come out of it: bp35 has **24 GAME_OVER transition
 1600-action run, counted at the env boundary. Which tool is acting at each is still unmeasured,
 and belongs to whoever owns the tool — instrumenting from inside it avoids all four traps above.
 
+## The single failure behind both halves of 2026-08-27
+
+The day produced two apparently unrelated classes of error, and they are one:
+
+* **guards that decayed** — a bail's stated 10x margin had become 4.7x, a cap's stated 4x had
+  become 10x, a "29 specialists" comment had become 38, none of them touched by anyone;
+* **parks that overreached** — a level parked as having "nowhere to go" when the measurement only
+  supported "nowhere the travel objective scores", and the difference turned out to be a cart
+  that cannot REACH the far side but can REVEAL it.
+
+Both are **a claim calibrated against a measurement, then carried further than the measurement
+reached.** The guard was true when written and the world moved; the park was true of what was
+measured and the sentence covered more than that. Neither needed anyone to be careless — they
+needed only time, or one word doing more work than the evidence.
+
+⛔ So the rule is not "measure more". It is: **when you write down a conclusion, write down what
+it was measured against**, because that is what lets the next reader — often yourself, hours
+later — notice it no longer holds. Every one of the five corrections above was found in one
+command, and only because the original claim had named its own basis.
+
 ## What to do instead
 
 - **Validate the corpus before fitting to it.** A fix justified by bad boards passes every

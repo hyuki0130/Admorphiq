@@ -1302,9 +1302,30 @@ fires when the wrong one is taken.
 
 ⚠️ **The park carries its falsification**, which is the only kind kept here: the one signal
 available on frame 1 that the board extends past the screen is that its TRACK LEAVES THE VISIBLE
-REGION, no failed win required. Whether "look before spending an irreversible capture" can pay
-here is open, and on this level may not be answerable, because looking costs the pieces that make
-looking possible.
+REGION, no failed win required.
+
+⛔ **AND THE PARK'S AUTHOR THEN FALSIFIED HALF OF IT.** The topology claim holds — read off the
+level's own data, a 15-cell rail component spanning columns 7..17 and a 9-cell one spanning
+23..25, with carts at (7,6), (8,6) and (23,4). What was wrong was the sentence *"every travel and
+frontier variant was looking for a road that is not on the board"*, which conflates REACHING with
+SEEING, and on this level those come apart:
+
+* the cart at **(7,6)** sits immediately right of the left socket block, so once the opening
+  leapfrog has moved pieces into row 6, a piece at (5,6) jumping right over (6,6) lands ON that
+  cart — a capture and a boarding in one move;
+* landing at (7,6) is **level 6's own scripted pan trigger**, worth about 3.3 columns;
+* and the level makes the camera FOLLOW a cart-borne piece moving right, so riding that component
+  east to column 17 pans the view across the board.
+
+**The right-hand pieces cannot be REACHED by cart and can be REVEALED by one.** The park stopped
+one step early because "travel found no gain" was generalised into "there is nowhere to go",
+where the measurement only supported "there is nowhere the travel objective scores".
+
+The lever that hands the next round, stated to be falsifiable and NOT yet built: on a board known
+to extend past the screen, a capture that lands a piece ON A CART is worth more than an
+equal-cost capture that does not, because it buys sight as well as a capture. It is a preference
+inside the existing eight-candidate choice rather than a new tier, so it costs nothing when no
+cart landing is available.
 
 Shipped from those five rounds: reason codes on every empty return in all four planners (off by
 default), so one run reports both which tier fired and why the others declined —
