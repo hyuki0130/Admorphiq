@@ -539,12 +539,20 @@ class ShepherdRelayTool:
         if not loose or not bays:
             return self._hold(board, carrier)
         walk = self._eyes._walk(board, carrier)
-        # ⛔ The mover set has to be STABLE or the rule below silently turns into its opposite.
-        # The reader reports a mover only on the frames its tile happens to read flat and off a
-        # bay, so on the frames it reports none, "farthest from every mover" is a distance of zero
-        # for every piece and the choice collapses to the cheapest plan — which is the rule
-        # measured to take the board from 12 delivered to 10.
-        movers = sorted(set(board.movers) | set(self._actors))
+        # ⛔ The sweep's answer ALONE. This union'd in the reader's own mover map as well, which
+        # is the noisy test — "a cell that was covered and is now bare" — that the sweep exists to
+        # replace, and unioning a clean set with the dirty one it replaces just restores the dirt.
+        # Counted on the final board: 49 cells reported as movers, of which 2 were movers and 47
+        # were the wall of a comb of corridors. "The piece farthest from every mover" then means
+        # the piece farthest from the nearest wall, which is the rule this whole plan rests on.
+        # ⚠️ The sweep is also the STABLE answer, which the rule needs: the reader reports a mover
+        # only on frames whose tile happens to read flat and off a bay, so on the frames it reports
+        # none the distance is zero for every piece and the choice collapses to the cheapest plan —
+        # which is the rule measured to take the gating board from 12 delivered to 10.
+        # ⛔ Attendants, not actors. A thief does not deliver anything — a piece standing next to
+        # one is in danger, not in hand — so counting it here says "leave that piece alone" about
+        # the one piece most likely to be stolen. Colours that answered the latch are known.
+        movers = sorted(c for c, kind in self._actors.items() if kind not in self._removable)
         best: tuple[int, int, list[int]] | None = None
         for piece in loose:
             # ⛔ Distance to the nearest MOVER, not to the carrier. The movers work nearest-first,
