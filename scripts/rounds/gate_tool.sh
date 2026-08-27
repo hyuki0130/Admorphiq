@@ -16,9 +16,16 @@
 #      already have a result is how a killed round resumes. The gate then compared the same
 #      garbage twice and reported all twenty-five games regressed. -> this script deletes and
 #      VERIFIES the delete, and refuses if any game log carries ERROR.
+#   4. FIVE agents had in-flight edits in the tree while ONE tool was being gated. Syncing the
+#      whole tree (which trap 2 requires) therefore ships everyone's work-in-progress, so a
+#      "single tool" measurement is jointly attributed and nobody notices. It cannot REFUSE —
+#      in-flight edits are the normal state of a fan-out round — so it names the riders, writes
+#      them next to the result, and makes the joint attribution part of the record.
+#
 #
 # Usage:  bash scripts/rounds/gate_tool.sh <ROUND_NAME> <BASELINE_ROUND_DIR> [UNTOUCHED_GAME]
-#   e.g.  bash scripts/rounds/gate_tool.sh R101XY scripts/rounds/R101DC vc33
+#   e.g.  bash scripts/rounds/gate_tool.sh R101XY scripts/rounds/R101DC vc33 railpeg
+# The 4th argument is the tool being gated; without it every dirty tool is reported as a rider.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -29,6 +36,18 @@ OUT="scripts/rounds/$NAME"
 REMOTE="ubuntu@ceph-build"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
+
+echo "=== 0. who else is dirty — this measurement is jointly attributed to everything listed"
+mkdir -p "$OUT"
+GATED="${4:-}"
+git status --porcelain src/admorphiq/tools | awk '{print $2}' | sed 's#.*/##; s#\.py$##' \
+  | grep -v "^${GATED:-__none__}$" > "$OUT/RIDERS.txt" || true
+if [ -s "$OUT/RIDERS.txt" ]; then
+  echo "  ⚠️  riding along, UNMEASURED and not requested:"; sed 's/^/       /' "$OUT/RIDERS.txt"
+  echo "  A regression here belongs to the SET, not to ${GATED:-the gated tool}. Recorded in $OUT/RIDERS.txt."
+else
+  echo "  (clean — ${GATED:-the gated tool} is the only dirty tool)"
+fi
 
 echo "=== 1. the registry diff — LOOK AT IT. Anything here you did not write is an agent's."
 git diff --stat src/admorphiq/harness/registry.py || true
