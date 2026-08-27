@@ -1040,3 +1040,30 @@ name a tool, and exercising it for the first time today found that the model's m
 were both hardcoded to eight literal names — the tools built today were unnameable. Both are fixed;
 the LLM path's 25-game score is still UNMEASURED and needs a GPU. See
 [[../lessons/harness_owns_the_routing_20260827]].
+
+
+## ft09 CONQUERED — and the "wall" was my own misreading
+
+This round opened by recording ft09 level 5 as a wall: first "the two-colour target model cannot
+express it", then "its neighbourhood model self-contradicts — 4 tiles demanded in two colours at
+once". Both were concluded from live probes, without reading the game.
+
+One command refutes it:
+
+```
+L3 data: cwU = [9, 8, 12]                     <- THREE palette colours, not two
+L4 tags: Hkx 27, NTi 3    L5 tags: Hkx 0, NTi 22
+elp (every level) = [[0,0,0],[0,1,0],[0,0,0]]
+```
+
+`Hkx` toggles its 3x3 NEIGHBOURHOOD; `NTi` toggles ONLY ITSELF — that is what the `elp` mask is —
+and level 5 is entirely the second kind. A two-colour, one-operator model on a three-colour,
+two-operator board is not a contradiction in the game; it is a model that stops early.
+
+**ft09 now clears 6/6 in 80 actions**, level 1 in 4 against a human baseline of 43, with
+`detect` = 0.00 on all 24 other games. Twelve of the twenty-five are conquered and the generic
+path is at **0.6711**.
+
+⛔ **A wall that has not been checked against the level data is not yet a wall.** Paid for twice
+in this round: here, and on the game whose "action -> direction map is NOT fixed and the rule is
+unidentified" turned out to be up/down/left/right with actions swallowed during animations.
