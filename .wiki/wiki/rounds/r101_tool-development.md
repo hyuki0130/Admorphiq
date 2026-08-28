@@ -2749,3 +2749,36 @@ differing only in whether the furniture is visible — and it clears exactly whe
 ⛔ So the park stands, and it is now falsifiable in one line: **make the hidden 291 cells knowable by
 any means and level 7 should clear.** Anything that does not add that information has already been
 measured not to help, six times.
+
+##### ⛔ THE s5i5 PARK IS FALSIFIED — perfect knowledge of the hidden furniture changes NOTHING
+
+The park's own one-line falsifier was "make the hidden 291 cells knowable and level 7 should clear".
+Ran it: an oracle probe reads the level file and injects the exact hidden footprint into the model's
+`offblocked` before planning begins.
+
+```
+[oracle] lvl=5 handed 0 hidden cells       (level 6 — nothing is hidden there, as measured)
+[oracle] lvl=6 handed 291 hidden cells     (level 7 — the entire hidden frame)
+[oracle] injected total offblocked=291
+         levels=6/8   game_score=0.5833    UNCHANGED
+```
+
+⛔ **So the missing information is NOT the cause.** With perfect knowledge of every hidden cell the
+level still does not clear, which means the whole chain I built tonight — refusal-learning reaching
+only a sixth of the wall, the attempt budget, the unpredictable margin, the control that "confirmed"
+it — explains a real difference between the levels that is **not what stops this one.**
+
+⚠️ The control (level 6 hides zero cells, level 7 hides 291) is still a true and clean measurement.
+It just does not license the causal claim I drew from it: a difference that correlates perfectly
+with success is not thereby the cause, and the only way to know was to supply the missing quantity
+and look. **Six repairs and one park, all resting on an inference an oracle refutes in one run.**
+
+**What this leaves for s5i5**: the tool reads the board correctly, models every arm but the frame,
+plans successfully, and its plans are refused by the engine for a reason that is NOT collision with
+hidden furniture. The refusals are real (`ctrl=0 step=+1`, twice, in states where the same control
+passes elsewhere) and their cause is now genuinely unknown — every candidate tonight has been
+measured and rejected.
+
+⛔ The oracle is a PROBE and was never in the live tree; it reads `environment_files` directly and is
+unshippable by construction. It is worth keeping the technique: **when a park says "it needs
+information X", hand it X and see.** That took one run and overturned an evening's reasoning.
