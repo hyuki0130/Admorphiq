@@ -935,7 +935,13 @@ class CragTool:
                         # exit. What was missing was not knowledge of the board; it was the
                         # reading that an axis you can still turn is worth more than three rows
                         # of descent.
-                        score = (fresh, safe, -len(marks), reach, -len(leg))
+                        # ⛔ REACH OUTRANKS BLOCKS SPENT on a board that reveals little per landing. bp35's level 2
+                        # offers 280 of 323 candidates at reveal=1, so the magnitude term cannot
+                        # separate them and the ranking below it decides the level. MEASURED:
+                        # moving `reach` above the block count takes bp35 0.2078 -> 0.2220, and
+                        # putting reach LAST measures 0.2078 — it is the position that matters,
+                        # not the term.
+                        score = (fresh, safe, reach, -len(marks), -len(leg))
                         if best is None or score > best[0]:
                             best = (score, leg)
                 if verdict in ("edge", "blind", "test"):
