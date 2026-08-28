@@ -2022,3 +2022,40 @@ to answer why 5 cells is also wrong, i.e. what is bleeding an extra cell into co
 "multi-piece" → "two-tone tokens" → "occluded pieces". The first two were inferred from sprite
 LISTS; only the third came from the composed board's own histogram. ⛔ **Count the pixels the tool
 actually sees, not the sprites the level declares.**
+
+#### dc22 level 6, fifth layer: ONE STRAY PIXEL — and two attempts to remove it, both measured
+
+Composing the board and asking who drew each cell:
+
+```
+colour 14   (52,28) (52,29) (53,28) (53,29)  drawn by plflho1        <- a clean 2x2 PIECE
+            (59,37)                          drawn by sprite_81-2    <- an unrelated decoration
+colour 11   (4,5) (5,4)                      drawn by tewfutyefmyf2  <- a DIAGONAL pair, not a block
+            (18,7)                           drawn by piyqze-buezna-pueite-1
+```
+
+**The piece is intact. One stray pixel of the same colour, from a decoration on the other side of
+the board, is what makes `hist[14] == 5` and fails `side*side == count`.** That is the whole reason
+`_pieces` returns nothing and dc22's level 6 has never been read.
+
+Two fixes measured, both rejected:
+
+| change | dc22 | why |
+|---|---|---|
+| drop cells with no 4-neighbour before the square test | 0.7143 | `squares` on L6 still `[]` — the *count* check in `_pieces` still used the unfiltered `hist` |
+| also count only contiguous cells in `_pieces` | **0.0000** | levels 1-5 collapse: the filter removes pieces the tool depends on |
+
+⛔ **The second is the important measurement.** "A piece is contiguous, a lone pixel is chrome"
+sounds principled and is wrong here: applied to the count, it destroys every level the tool
+currently clears. So the stray cannot be filtered globally — it has to be excluded *with respect to
+the candidate square*, i.e. accept a colour when its cells contain exactly one solid `side x side`
+block and treat anything outside that block as not part of the piece.
+
+⚠️ Colour 11 stays unsolved either way: on level 6 it paints a DIAGONAL pair inside a two-tone
+token, so it is not a block at any threshold. Whatever reads that level has to recognise the token
+as the piece, and the earlier attempt at that measured 0.7143 with the branch running and returning
+None on every colour (the (6,7) tokens come in a pair, so "all cells in one block" is false).
+
+**Five readings of this level today**, each measured, each replacing the last: multi-piece →
+two-tone tokens → occlusion → one stray pixel → the stray cannot be filtered globally. The live
+tree is unchanged; everything above ran in snapshots.
