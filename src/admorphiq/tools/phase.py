@@ -94,16 +94,23 @@ def _split_columns(g: np.ndarray, top: int, bot: int) -> tuple[int, int] | None:
     band = np.asarray(g)[top:bot + 1]
     modal = [Counter(int(v) for v in band[:, x]).most_common(1)[0][0] for x in range(band.shape[1])]
     ground = modal[0]
-    right = next((x for x, m in enumerate(modal) if m != ground), None)
-    if right is None or right < _MIN_SIDE_COLS or len(modal) - right < _MIN_SIDE_COLS:
+    # The panel is the band of one ground that REACHES THE FRAME'S EDGE, so it is the terminal run
+    # of the column-modal profile — not the first column that differs from the board's ground.
+    # ⛔ MEASURED on dc22 level 6, whose profile is
+    #     4@0-8  2@9-11  4@12-19  0@20-21  4@22-39  0@40-41  5@42-63
+    # The old rule took the FIRST deviation (column 9, an object standing inside the board), found
+    # the modal colour to its right was the ground again, and concluded there was no panel — so the
+    # tool never read that board on any of its 500 actions and the level has never cleared. The
+    # panel is plainly 5@42-63.
+    edge = modal[-1]
+    if edge == ground:
         return None
-    other = Counter(modal[right:]).most_common(1)[0][0]
-    if other == ground:
+    start = len(modal) - 1
+    while start > 0 and modal[start - 1] == edge:
+        start -= 1
+    if start < _MIN_SIDE_COLS or len(modal) - start < _MIN_SIDE_COLS:
         return None
-    panel = next((x for x in range(right, len(modal)) if modal[x] == other), None)
-    if panel is None or len(modal) - panel < 6:
-        return None
-    return right, panel
+    return start, start
 
 
 def _one_square(board: np.ndarray, colour: int) -> Cell | None:
