@@ -216,20 +216,44 @@ reads as a confirmed mechanic.
 ⚠️ Reporting only the MAXIMUM colour shift cannot separate a launcher from a pan from a bounce. The
 per-colour breakdown WITH cell counts separates all three in one run, and it is the same cost.
 
+## How lf52 is actually played — the protocol, read off a level the tool WINS
+
+Traced action by action through level 1 (`scripts/_lf52_protocol.py`), logging every action rather
+than only the ones that changed something:
+
+```
+step 0  click (19,20)          select
+step 1  click (31,20)   -12    land TWO CELLS right; the pad at the midpoint is captured
+step 2  click (31,20)          select, at the new position
+step 3  click (43,20)   -12    land two more cells right
+step 4  click (43,20)          select
+step 5  click (43,32)   -12    land two cells DOWN
+        level clears at 24 green
+```
+
+**Select the piece, then click two cells away; the pad at the midpoint disappears.** Each capture is
+exactly 12 green pixels, one pad, and the level advances the moment the count reaches 24 = 2 pads
+(1 pad on levels other than 6 and 7). Peg solitaire, played with pairs of clicks.
+
+⛔ Logging only the actions that CHANGED the pad count hid the select clicks entirely and made the
+captures look like single clicks on odd-numbered steps. Four wrong models of this game were built on
+that omission. Log every action first; filter afterwards.
+
 ## Level 6, measured end to end
 
-- **36 green pixels = 3 pads**, at cells (4,3), (8,2), (9,4). Win needs 2, so **exactly one capture
-  clears the level**.
-- **ACTION7 DOES NOT RESTORE THE BOARD** — measured on all four directions, before/after/undone
-  hashes all differ. Any look-ahead that "undoes its probe" corrupts the state it is scoring; one
-  did, and reported two colours vanishing that were its own trials.
-- **ACTION5 rebuilds the level**, and from the rebuilt board only RIGHT does anything at all.
-- From the position the tool actually reaches, selecting pad (25,19) shows ONE dark-gray blob at
-  that same cell — a selection highlight, not a landing marker — and the other two pads do not
-  select at all. **There is no legal capture from where the tool arrives.**
-- 600 random moves reach ~300 distinct boards without a clear, so the space is large but the
-  arrived position may already be dead.
+- Arrives with **36 green = 3 pads** at cells (4,3), (8,2), (9,4); winning needs 2, so **ONE
+  capture clears it**. ⚠️ This is the board at the MOMENT OF ENTRY — the probe stops the tool as
+  soon as `levels_completed` reaches 5 — so nothing here is damage the tool did on the way in.
+- **No capture is available.** All twelve pad flanks were enumerated (select one cell to one side,
+  land one cell to the other, for all three pads on both axes) and none captures. A 100-cell
+  single-click sweep changes nothing either.
+- Arrows move a 32-pixel sprite one cell and leave every pad exactly where it was, across 32
+  presses in all four directions.
+- **ACTION7 does not restore the board** (measured on all four directions), and **ACTION5 wipes the
+  pads to zero without winning** — it is a trap, not a lever, because the win is only checked inside
+  the capture handler.
 
-**Open, and the next thing to measure**: whether level 6 is still winnable at the moment the tool
-enters it, or whether the tool's own route into the level spends the position. The game keeps no
-restoring undo, so "arrived dead" is a real possibility rather than a figure of speech.
+**So the tool is not failing to play the game — it is failing to find a SETUP.** railpeg clears
+levels 1-5 with exactly the protocol above, which means it knows the capture; level 6 needs a move
+that is not itself a capture before any capture exists, and its plan is built only of captures. That
+is the lever, stated precisely, and it is what its 117 refused ACTION1 presses are groping for.

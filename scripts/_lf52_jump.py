@@ -107,30 +107,31 @@ def main() -> None:
                         sum(p[1] for p in cells) // len(cells), len(cells)))
         return out
 
-    print(f"level 6: {ngreen(obs)} green in {len(green_blobs(obs))} pads "
-          f"{[(b[0], b[1]) for b in green_blobs(obs)]}", flush=True)
+    # ⛔ ARRIVED vs FRESH. The tool spends ~180 actions inside level 6 before stalling and the game
+    # has no restoring undo, so the position it hands over may already be lost. ACTION5 rebuilds the
+    # level; comparing the two boards is the only way to tell "the tool cannot solve this" from
+    # "the tool destroyed it on the way in".
+    # Assumption-free: click every cell centre once and watch the pad pixels. The cell is 6 px
+    # (line 5566 builds pixels as grid*6 + origin), so a 10x10 sweep covers the board for 100
+    # actions — inside the game's own 640-action level budget. If a single click can capture, this
+    # finds it; if none can, the interaction needs two clicks and the responders name the pairs.
     base = ngreen(obs)
-    # Markers are ABSENT until something is selected (measured: zero dark-gray blobs on arrival),
-    # so select first and read the board again. Both halves of the interaction are clicks, and only
-    # the second one is a move.
-    for py, px, _n in green_blobs(obs):
-        obs2 = click(py, px)
-        marks = blobs_of(obs2, 3)
-        print(f"  selected pad ({py},{px}) -> {len(marks)} markers "
-              f"{[(m[0], m[1]) for m in marks][:6]}", flush=True)
-        for my, mx, _m in marks:
-            obs3 = click(my, mx)
-            now = ngreen(obs3)
-            lvl = int(getattr(obs3, "levels_completed", 0) or 0)
-            if now != base or lvl != 5:
-                print(f"    click marker ({my},{mx}): green {base} -> {now}, level {lvl}",
-                      flush=True)
+    print(f"ARRIVED: {base} green at {[(b[0], b[1]) for b in green_blobs(obs)]}", flush=True)
+    hits = []
+    for cy in range(10):
+        for cx in range(10):
+            y, x = cy * 6 + 3, cx * 6 + 3
+            o2 = click(y, x)
+            now = ngreen(o2)
+            lvl = int(getattr(o2, "levels_completed", 0) or 0)
+            if now != base:
+                print(f"  click cell ({cy},{cx}) px ({y},{x}): green {base} -> {now}", flush=True)
+                hits.append((cy, cx, base, now))
                 base = now
             if lvl != 5:
-                print("LEVEL CLEARED")
+                print(f"LEVEL CLEARED by cell ({cy},{cx})")
                 return
-            obs2 = click(py, px)      # re-select for the next marker
-    print(f"no capture found; green still {base}")
+    print(f"sweep done: {len(hits)} clicks changed the pad pixels; green now {base}")
 
 
 if __name__ == "__main__":
