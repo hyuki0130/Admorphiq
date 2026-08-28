@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 253.
+**Total pages**: 254.
 
 ## Games (25)
 
@@ -77,10 +77,11 @@ category, drill into specific pages.
 
 - [[strategies/brittle/internal_method_call.md]] — Direct calls to obfuscated game-internal methods. Maximum v1 score, zero generalization. Do not recommend — document only for refactor visibility.
 
-## Concepts (cross-game domain entities) (19)
+## Concepts (cross-game domain entities) (20)
 
 - [[concepts/action_budget.md]] — A per-level cap on actions that ENDS THE GAME when exceeded — thirteen of the twenty-five sample games declare one, as low as 13 actions, and it is drawn on screen.
 - [[concepts/bit_encoding.md]] — A row of clickable cells encodes a binary number (or opcode) by their toggle state. A separate "play" button executes the encoded program, usually moving a cursor/player on another part of the frame.
+- [[concepts/card_portability.md]] — Measured 2026-08-28: all 25 games score **identically** on ceph-build and on the laptop —
 - [[concepts/frame_hashing.md]] — A compact fingerprint of the current frame used to deduplicate states in BFS/graph search. Enables tractable state-space exploration despite the nominally huge frame space.
 - [[concepts/frame_layer_timeline.md]] — Nine of the twenty-five sample games return more than one frame layer, and on six of them
 - [[concepts/geometry_as_one_sprite.md]] — Five of six stuck games carry a board-sized sprite that IS the level geometry — the cell
