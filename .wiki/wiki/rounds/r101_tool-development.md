@@ -1994,3 +1994,31 @@ the block rather than either colour as the piece."**
 column 40 while the colour change is at 42), so the board region carries two columns of panel
 chrome. Extending the terminal run left through non-ground columns removes them — and **regresses
 dc22 to 0.6550**, because on other levels it eats real board. Not kept.
+
+#### dc22 level 6, fourth layer — and the third-layer reading was WRONG
+
+⛔ **The two-tone-token story is withdrawn.** Implementing it (recognise a 2x2 block of exactly two
+colours as one piece) measured 0.7143 — no change — and instrumenting the branch showed why: it
+runs and returns None for every colour, because the (6,7) tokens come in a PAIR and "all of this
+colour's cells lie in one block" is then false. Worse, the premise was never the problem.
+
+Counting the composed board's own histogram (columns 0..41, engine never started):
+
+```
+L5 board   colour 11 -> 4 cells   colour 14 -> 4 cells      two complete 2x2 squares
+L6 board   colour 11 -> 3 cells   colour 14 -> 5 cells      neither is a square
+```
+
+The tool locks onto `(11, 2)` and `(14, 2)` on every level it clears — measured 35/52/58/86/194
+times on levels 1-5. On level 6 those same two colours paint **3 and 5 cells**: the pieces are
+partly OCCLUDED or overlapped, so neither forms the 4-cell square `_one_square` requires, and the
+scan returns a single candidate `[(9, 2)]` with nothing to pair it with.
+
+**So the capability gap is occlusion, not two-tone drawing**: the piece is there, and something is
+drawn over part of it. That is a different fix — recover a piece from a PARTIAL square — and it has
+to answer why 5 cells is also wrong, i.e. what is bleeding an extra cell into colour 14.
+
+⚠️ Three readings of this one level in one session, each measured and each replacing the last:
+"multi-piece" → "two-tone tokens" → "occluded pieces". The first two were inferred from sprite
+LISTS; only the third came from the composed board's own histogram. ⛔ **Count the pixels the tool
+actually sees, not the sprites the level declares.**
