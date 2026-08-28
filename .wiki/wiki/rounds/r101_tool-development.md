@@ -2489,3 +2489,31 @@ because with one rider the plan never needs the configuration where the chain me
 The target is now exact: **give the model a box for every sprite the engine tags as an arm**, frame
 included, rather than only the ones on a `Children` chain. Verification stays as stated — level 6
 unchanged, level 7's plans surviving their 8th click.
+
+##### s5i5: learning on-board solid cells — implemented, wired, and it buys NOTHING
+
+The off-grid mechanism (`offblocked`) learns hidden furniture cell by cell from unexplained
+refusals, and its docstring calls it "a superset, but a learned and shrinking one". The missing arms
+`0007` (15x3) and `0008` (3x15) sit INSIDE the grid, so that mechanism cannot see them. Extended it
+symmetrically — an `onblocked` set filled from the same unexplained refusals and consulted by
+`legal()`:
+
+```
+level 7   learned=9 total=9      first refusal banks nine on-board cells
+level 7   learned=0 total=9      second refusal banks NOTHING NEW
+legal()   consulted the learned cells 4,422,834 times — fully wired
+score     0.5833, unchanged
+```
+
+⛔ **The second refusal learning nothing is the informative half.** The cells that move would occupy
+are already banked, or they belong to the bar's own current footprint — and in either case `legal()`
+cannot refuse the configuration in advance. So the collision that kills the plan is not with a cell
+the model can mark as solid: it is between boxes the model already has, in a way `_overlap` does not
+catch, or with an arm sitting exactly where a bar already stands.
+
+⛔ Not kept — zero score change, and a set consulted four million times per run is not free.
+
+**What this rules out**, so it is not tried again: the refusal is NOT explained by unknown solid
+cells on the board, the way the off-grid case was. The engine's rule is
+`any(arm.collides_with(other) for arm in arms)` over SPRITES, and reproducing it needs the arms'
+actual footprints — not a cell-set approximation reconstructed from refusals.
