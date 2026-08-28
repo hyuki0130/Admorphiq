@@ -8,9 +8,9 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 256.
+**Total pages**: 257.
 
-## Games (25)
+## Games (26)
 
 - [[games/AR25.md]] — v1 2/8 depth — L0 super-human (1.0 @ 23a); L1 cleared via geared-copy coverage (game_score 0.0833), v2 same (frame-only, never reads internals) — Movable colour glyphs are drawn together with their reflections across a movable mirror bar; a level is won when every goal cell is covered by some piece pixel or one of its reflections — NOT a single-avatar maze.
 - [[games/BP35.md]] — v1 brittle 1/9 (bp35_platformer, internals-tuned), generic 0/9 (R23 8B agent regression baseline) — Move the player horizontally and click destructible blocks so gravity drops it toward a fixed `+`-shaped exit marker; win = the player reaches the exit. Physics is DETERMINISTIC and per-action (gravity resolves within a step).
@@ -37,6 +37,7 @@ category, drill into specific pages.
 - [[games/TU93.md]] — v1 2/9 ✅ (game_score 0.0028 — goal-directed exploration, 11.6× the blind 0.00024), v2 2/9 ✅ — Relies on game internals — high v1 score, fails on v2.
 - [[games/VC33.md]] — v1 1/7 ✅, v2 1/7 ✅ — Frame-observation solver; L0 cleared super-human-efficiently by picking the winner of two decoy-paired regions via its smaller containing panel and committing to it exclusively.
 - [[games/WA30.md]] — v1 brittle 2/9 (sprite tags wbmdvjhthc/geezpjgiyd/pkbufziase — non-transferable), generic 0/9 (R23 8B agent regression baseline) — A single worker moves on a grid and uses one context-interact action to pick up items and deliver them to target zones; a level wins when EVERY target zone is satisfied — a multi-item delivery, not a single-goal navigation.
+- [[games/ls20_level7.md]] — `keymaze` clears six levels at the 1.0 cap and then hands level 7 away after ten actions,
 
 ## Game Types (16)
 
