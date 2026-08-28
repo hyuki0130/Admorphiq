@@ -145,3 +145,31 @@ and nothing will ever match it.
 actions that changed nothing and was invalid; redone on a body that actually moves, it gives a real
 answer. Same hypothesis, same tool, opposite evidential value — the difference is whether the
 treatment was applied.
+
+## bp35, the answer: HALF THE SCREEN CHANGES INSIDE THE LEVEL
+
+The last measurement of the chain, and it inverts the diagnosis.
+
+```
+PIXDIFF 1961 of 4096 | absorbed on level 5, now level 5
+PIXDIFF 1968 of 4096 | absorbed on level 5, now level 5      (eight consecutive failures)
+```
+
+**Forty-eight per cent of the picture differs between the frame crag last absorbed and the frames it
+then refuses — inside one level.** The body is one cell, about 36 pixels. Nothing about a moving
+avatar can account for half a screen.
+
+So crag is RIGHT to say "window does not belong to this board". Its map is not misbuilt and its
+search is not too narrow: the board it is looking at is genuinely not the board it recorded, a few
+actions earlier, in the same level. Every fix aimed at the stitch — the threshold, the shift range,
+the origin set, the revival — was aimed at the wrong half of the problem, which is why all four
+measured identical.
+
+⛔ The confound was nearly published. The first version of this measurement compared against "the
+last absorbed frame" without recording WHICH LEVEL that frame came from — and a level-5 frame
+against a level-6 board would differ by half the screen for a trivial reason. Printing the level
+beside the number is what made it a finding rather than an artefact.
+
+**What bp35 actually needs**: a tool that expects the board to be rewritten mid-level. The world
+model here assumes a static level that is merely revealed a window at a time — the assumption every
+one of crag's clears depends on, and the one this level breaks.
