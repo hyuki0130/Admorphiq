@@ -178,3 +178,37 @@ signature, so the game separates by something a pixel comparison cannot see.
 
 ⛔ Dev-time understanding only. A tool may read pixels and nothing else — the ban is on encoding
 a game's identity, not on understanding its mechanic, exactly as with reading `step()`.
+
+## lf52 — recoil launcher, read from the game's own source (2026-08-29)
+
+`environment_files/lf52/271a04aa/lf52.py`, engine never started. Three facts that a frame probe had
+only narrowed, and that together explain why level 6 stalls with actions to spare:
+
+1. **Contact with a `fozwvlovdui` entity DISPLACES, and the displacement is per-level** (line 5296):
+
+   | level | displacement on contact |
+   |---|---|
+   | 1-2 | none |
+   | 3 | `(-dx*8, 0)` |
+   | 4 | `(0, 0)` when `grid_y >= 11` |
+   | 5, 6 | `(-dx*6, 0)` |
+   | 7, 10 | `(0, 0)` |
+   | 8 | `(0, -dy*6)` |
+   | other | `(-dx*6, -dy*6)` |
+
+   `dx`/`dy` is the direction of the move that made contact, so the board throws the piece SIX CELLS
+   BACK along the axis it was travelling. A lattice model that assumes a move advances one cell
+   predicts the wrong cell on every contact — which is what the harness sees as a refused action.
+
+2. **The game keeps its own step budget and ENDS on overrun** (line 5771): level 1 allows 64,
+   levels 2-5 allow `64*5 = 320`, levels 6+ allow `64*10 = 640`. One agent action costs 1.
+
+3. **A death costs 20 of that budget** (line 5805), so thirty-two of them lose the level outright
+   regardless of what else is played.
+
+4. **There is a collectible power-up** (`cwyrzsciwms`, placed by `cncmupctrp`): picking it up sets a
+   flag, and it is spent by an ACTION6 in the BOTTOM-LEFT 16x16 corner (`x < 16 and y > 48`), which
+   is handled as a distinct branch rather than as a click.
+
+⛔ The waste this level shows (117 refused ACTION1 of 138) is a SYMPTOM of fact 1, not a cause:
+removing the wasted presses was gated on the full 25 and moved nothing.
