@@ -111,3 +111,38 @@ snapshot's own runner, and re-validated through the real runner in both directio
 stop that was unattached in the same way.** The rule that survives is not about clocks: **prove
 the instrument is attached before reading it, by making it say something it could not say if it
 were not.**
+
+## What it actually was (2026-08-28, measured)
+
+A 2×2, each cell run through the snapshot's own runner so the code is named rather than assumed:
+
+```
+blastclock.py            this machine        ceph-build
+d33922ec (git HEAD)      1.0000 / 294 a      0.7500 / 700 a    <-- diverges
+393762f2 (uncommitted)   1.0000 / 290 a      1.0000 / 290 a    <-- portable
+```
+
+**The cross-machine divergence exists only in the committed version, and an UNCOMMITTED edit
+removes it.** The same file that had been reported as a regression and nearly reverted is the one
+that makes ka59 machine-independent — same 290 actions, same answer, both machines.
+
+⛔ So the day's headline was backwards twice over: the tool was not budgeting by wall clock in any
+path that fires, and the "regression" was the fix.
+
+### The three instrument failures crossed to get here, all one shape
+
+1. **`PYTHONPATH` does not select the code the runner runs.** `scripts/score_efficiency.py:35`
+   does `sys.path.insert(0, <its own repo>/src)`, which precedes it. Two readings of "the clock
+   never fires on ceph" were readings of ceph's **uninstrumented** code. Caught only by an
+   unconditional `INSTR-ATTACHED` marker that never printed.
+2. **`measure_frozen.sh` carried the identical defect** — written the day before to prevent exactly
+   this, "validated" by importing `admorphiq` under `PYTHONPATH` instead of by running the runner.
+   It printed snapshot fingerprints beside live-tree numbers. Fixed by snapshotting `scripts/` too
+   and running the snapshot's own runner.
+3. **A file-list diff without `LC_ALL=C`** buried the one real difference under dozens of ordering
+   artefacts — a trap already written down in `CLAUDE.md`. With the locale fixed, the entire
+   difference between the two trees was **one file**.
+
+**The rule that survives is not about clocks.** It is: *prove the instrument is attached before
+reading it, by making it say something it could not say if it were not* — and, for a comparison,
+*name the code by hash on both sides before attributing anything to the machine.*
