@@ -2422,3 +2422,39 @@ configuration, so the same control refuses again from a different state and the 
 tool's own note already suspects geometry it cannot see — it records a board "framed by a
 board-spanning wall placed at (-3,-3), three cells outside the visible grid on every side" — and
 s5i5 level 7 carries exactly such a sprite (`0008iqvkanhnxj`, 3x15, and a 70x51 at (-3,-3)).
+
+##### s5i5's refusal rule, from the game's own source: ARMS MUST NOT OVERLAP
+
+The question the measured chain ended on — what makes `ctrl=0 step=+1` illegal in some states and
+legal in others — is answered in one function of the game's own code:
+
+```python
+def qownxibuiy(self) -> bool:                     # tag 0001qwdmnlybkb == the arm sprites
+    arms = self.current_level.get_sprites_by_tag("0001qwdmnlybkb")
+    for a in arms:
+        if any(a.collides_with(other) for other in arms):
+            return True
+    return False
+```
+
+and both callers do the same thing with it: after applying an edit, `if self.qownxibuiy(): return`
+— the edit is abandoned and the saved state kept. On success the saved state is cleared.
+
+**So a click is refused exactly when the configuration it would produce makes two arms overlap.**
+That is why the same control passes twice and refuses twice on one level: it depends on where the
+other arm is standing.
+
+⛔ `swivel` bans the refused CONFIGURATION (`self._model.illegal.add(want.key())`) but has no
+general overlap predicate, so the ban cannot generalise — the same control refuses again from a
+different state and each plan dies at a different click. Its own docstring claims "legality is still
+checked at every single step, so arms from different chains cannot pass through each other", and the
+two refusals measured on level 7 say that check does not reproduce the engine's.
+
+**This is a RULE, not a heuristic, and it is the actionable target for s5i5**: give the model an
+arms-do-not-overlap test over the configuration it is about to propose, so the planner never emits
+the click the engine will refuse. Level 6 needs it too and never trips it (24 plan clicks, zero
+refusals), which is why it clears — so the fix is testable as "level 6 unchanged, level 7's plans
+survive their 8th click".
+
+⚠️ Reached by reading the game's own source after the frame-side chain was complete — the fifth time
+today that route ended a question the measurements had only narrowed.
