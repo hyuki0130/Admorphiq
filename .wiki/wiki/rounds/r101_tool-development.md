@@ -2730,3 +2730,22 @@ un-refuting on new knowledge, a larger control-retry budget, contiguous stripes,
 attempt budget, and the picture-derived margin (refuted before implementation by the 51% figure).
 Four of my readings of the board were also wrong and each was killed by a measurement. The live
 tree is untouched.
+
+##### The control that confirms the s5i5 park: the clearing level's frame hides NOTHING
+
+Before accepting "the level needs information the tool cannot obtain", the obvious objection is that
+level 6 has a frame too and clears anyway. Measured:
+
+```
+level 6 (clears)   frame 0005  57x15 at (3,27)    hidden solid cells = 0     entirely on-screen
+level 7 (stuck)    frame 0006  70x51 at (-3,-3)   hidden solid cells = 291
+```
+
+**Level 6's frame is fully inside the grid, so the tool sees all of it.** That is the single
+structural difference between the level that clears and the level that does not, and it turns the
+park from an assertion into a controlled result: the same tool, the same mechanic, the same planner,
+differing only in whether the furniture is visible — and it clears exactly when it is.
+
+⛔ So the park stands, and it is now falsifiable in one line: **make the hidden 291 cells knowable by
+any means and level 7 should clear.** Anything that does not add that information has already been
+measured not to help, six times.
