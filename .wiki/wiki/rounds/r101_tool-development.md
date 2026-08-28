@@ -2690,3 +2690,43 @@ The sprite is drawn — 708 solid cells, 291 of them outside the visible grid �
 visible part every turn. ⛔ It cannot be given as a BOX (measured: its bounding box makes every
 configuration illegal), so it has to enter the model as CELLS, the way `offblocked` already stores
 them, but derived from the picture rather than from refusals.
+
+##### s5i5 CLOSED by a measured impossibility: the hidden margin cannot be inferred from the picture
+
+The last remaining idea was "stop needing refusals — read the frame's occupancy from the frame
+itself". The frame's own pixels refute it.
+
+```
+y=-3..-1 (outside the grid)   FFFFFFFFFFFFFFFFF   X=40..56 fully solid
+y= 0.. 2 (inside, visible)    FF...............   the same columns are EMPTY
+```
+
+**The hidden rows are solid exactly where the first visible row is empty.** Quantified over the
+whole sprite:
+
+```
+outside-grid cells within the sprite   498      solid 291 (58%)
+"extend the nearest visible cell"      right 243   wrong 255   -> 51% error
+```
+
+⛔ **A predictor built from the visible border is worse than a coin toss**, and a blanket "the margin
+is solid" rule would ban 207 free cells — which is the failure `swivel`'s own note already records
+("a tool that blocks the margin by default loses that level instead").
+
+So the axis is closed by arithmetic rather than by another attempt:
+
+* refusal-learning is **exact** (45 of 45 cells genuinely solid) and **cannot be hurried** (an
+  eightfold attempt budget yields the same two refusals);
+* the frame **cannot be boxed** (its bounding box makes every configuration illegal — measured);
+* the hidden margin **cannot be predicted** from the visible picture (51% error);
+* and every arm except the frame is **already modelled** (`0007`/`0008` print `role=owned`).
+
+**s5i5 level 7 needs information the tool cannot obtain by any route now available to it.** That is
+a park with a proof, not a to-do — and the honest next move on this game is a different mechanic
+model, not another repair to this one.
+
+⚠️ **Six repairs measured on this board tonight, every one 0.5833**: on-board cell learning,
+un-refuting on new knowledge, a larger control-retry budget, contiguous stripes, an eightfold
+attempt budget, and the picture-derived margin (refuted before implementation by the 51% figure).
+Four of my readings of the board were also wrong and each was killed by a measurement. The live
+tree is untouched.
