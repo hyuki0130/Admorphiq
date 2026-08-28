@@ -173,3 +173,33 @@ beside the number is what made it a finding rather than an artefact.
 **What bp35 actually needs**: a tool that expects the board to be rewritten mid-level. The world
 model here assumes a static level that is merely revealed a window at a time — the assumption every
 one of crag's clears depends on, and the one this level breaks.
+
+## bp35, the cause: THE GRAVITY REVERSAL crag itself performs
+
+Logging the harness's action beside crag's alignment failures:
+
+```
+ACT (6, (39, 33))            <- a click
+LOST gdir=-1 origin=0        <- gravity is now REVERSED, and the stitch fails
+ACT (3, None)  LOST gdir=-1 origin=0
+ACT (3, None)  LOST gdir=-1 origin=0          ... and never recovers
+```
+
+**The first failure comes immediately after the click that reverses gravity, and the tool never
+recovers.** That accounts for the 1,961 changed pixels: reversing gravity re-renders the whole
+board. crag's own docstring anticipates exactly this — "the lattice ORIGIN moves when gravity
+reverses ... the pixel origin moves under the tool's feet" — and at the moment of failure its
+`origin` is still 0.
+
+So the tool is defeated by a mechanic IT ITSELF INVOKES, and every fix aimed at the stitch — the
+0.82 threshold, the shift range, the origin set, the pitch, the revival — was aimed downstream of
+the cause. That is why all five measured identical.
+
+⛔ Two of my own conclusions in this section were reached with actions that change nothing, and both
+were wrong: "the camera does not pan" (lateral moves that did not move the body) and "the board does
+not fill" (sixty lateral moves with a flat colour census, while crag's failure needs the CLICK it
+makes). **An action that leaves the frame unchanged is not evidence about anything.** Third time this
+round, and the first two were caught only because the treatment was verified afterwards.
+
+**bp35's lever, named**: re-derive the lattice origin after a gravity reversal, or treat a reversal
+as a new board rather than as a continuation. Not the threshold, not the range, not the pitch.
