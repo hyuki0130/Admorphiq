@@ -406,3 +406,29 @@ level offers nothing its model recognises.
 **So the remaining 0.1065 is a MOVE-VOCABULARY gap, per game, at one specific level** — not depth,
 not patience, not mechanics-in-general. The next question for each is narrow and answerable: what
 does `propose()` see at that board, and what is the level asking for that the tool has no word for?
+
+## Where each silent tool actually returns empty (2026-08-29)
+
+Marking every `return []` in the four specialists, then the line that sets their dead flag:
+
+| game | silence point | what it means |
+|---|---|---|
+| bp35 | `crag:1117` x8 — self-mute, and it records its own reason: **"window does not belong to this board"** | the stitched world REJECTS the current camera window |
+| s5i5 | `swivel:996` — `_replan()` exhausted every pairing and `_retry_unknown()` was spent | the model is assembled; no click sequence solves it |
+| dc22 | `gantry:501` x79, `:516` x47 — `if found is None` | the route BFS finds no path |
+| lf52 | `railpeg:1252` x11 — more than 8 settle clicks with the board between lattice positions | it cannot get a stable read |
+
+Two of the four then had their obvious explanation tested and REFUTED:
+
+- **crag's rejection is a symptom, not the cause.** The alignment scores at the moment of "lost"
+  are 0.60 and 0.565 against a threshold of 0.82 — not a near miss. Lowering `_ALIGN_FIT` to 0.50,
+  which accepts every one of them, leaves bp35 at **0.2220, unchanged**. Accepting the window does
+  not give the tool a move.
+- **swivel's wall is documented in its own docstring**, measured by its author: "on the seventh
+  board it is over 336,000 configurations and still growing when cut off" — and s5i5 stalls on
+  exactly level 7. Its cap is `_MAX_OPEN = 120_000`. Raised 33x to 4,000,000 the search does not
+  finish in FORTY MINUTES on one game, where the whole 25 normally takes 15.
+
+⛔ So the silence is not one bug with one knob. Each tool goes quiet for its own structural reason,
+and the two cheapest explanations — a rejection threshold and a search cap — are now measured rather
+than assumed: one changes nothing, the other does not terminate.
