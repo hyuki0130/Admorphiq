@@ -2125,3 +2125,32 @@ and print which of its guards refuses — `len(vals) != 2`, the outside-stray te
 ambiguity return. The composed block above is unambiguously two colours, so one of the three is
 firing on data that does not look like it should fire. Everything else about this level is now
 known and written down.
+
+#### dc22: the last guard found, and why the thread stops here
+
+The avatar's colour was being thrown away by the ambiguity test, and the reason is general enough
+to be worth more than this game:
+
+```
+[why] ACCEPT (3,4) side=2          <- the avatar's real token, colours 11 and 12
+[why] AMBIG had=(3,4) now=(16,6)   <- the STRAY at (17,7), sitting on flat ground
+```
+
+⛔ **A LONE PIXEL ON FLAT GROUND IS ALWAYS A VALID TWO-COLOUR BLOCK.** So every stray manufactures
+a phantom token, the "this colour lies in exactly one block" test sees two, and the real piece is
+refused. Requiring a token half to be at least TWO cells removes the phantom, and level 6 then
+offers `tokens=[(9,2),(11,2),(10,2)]` — the avatar is admitted for the first time.
+
+**And the score does not move.** `_pieces` returns the FIRST congruent pair, so level 6 locks onto
+`(14, 9)` where it needs `(14, 11)`; gantry probes, neither square moves, and it declines exactly as
+before. Ordering by rarity is arbitrary here — which square is the avatar is decided by the PROBE,
+not by the histogram.
+
+⛔ **Not banked.** Three changes (solid-before-token ordering, anchor on every containing block,
+a token half is >= 2 cells) restore what a relaxation broke and admit the avatar, and together they
+buy **zero score**. The rule against keeping unmeasured changes applies to my own work.
+
+**What the next attempt should do instead of another read fix**: `_pieces` should offer CANDIDATE
+pairs rather than commit to one, and let gantry's existing probe — which already asks which square
+moves — choose. That is a contract change, not a heuristic, and it is the first thing in this game
+that is not guesswork.
