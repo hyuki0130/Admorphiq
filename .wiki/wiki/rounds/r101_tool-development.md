@@ -2944,3 +2944,34 @@ it cannot clear.
 ⚠️ And it corrects the earlier lf52 reading. "Zero probe waste" was true — the harness never
 substitutes a probe there — but zero probe waste is not zero waste: the tool's OWN proposals are
 what the engine declines. Counting only the harness's fallback missed a third of the level.
+
+##### lf52's waste is ONE DIRECTION: ACTION1 is refused 133 times out of 154
+
+Every level-6 action tagged with its kind and whether the frame changed (score preserved at 0.2727,
+zero propose errors):
+
+```
+              refused   accepted    refusal rate
+ACTION1          133        21          86%      <- the whole of the waste
+ACTION3           11        76          13%
+ACTION2            3         9          25%
+ACTION4            0        35           0%
+click             24       188          11%
+```
+
+**171 wasted actions and 133 of them are the same key.** The tool keeps pressing a direction the
+board almost always refuses, while the other three and the clicks work normally.
+
+⛔ This is not "an insufficient plan" and not a perception failure — it is a MOVE MODEL that has not
+learned an axis is blocked. `railpeg` reaches its execute branch 309 times (measured earlier) and a
+large share of those executions are a key press the engine declines.
+
+⚠️ Note how the readings narrowed, because the order mattered: "zero probe waste" (true, and
+misleading) -> "34% of the level is refused" (the runner comparing frames) -> "one direction is 86%
+of it". Each step needed the previous instrument to be verified harmless first — the score stayed at
+0.2727 through all three.
+
+**The lever is now specific**: a direction refused this consistently should stop being proposed. The
+tool has a `_dirmap` and a settle counter; what it lacks is a per-axis refusal memory. That is a
+small, testable change with a clear verification — levels 1-5 must stay at their 8/52/57/64/138
+actions, and level 6's 500 must stop containing 133 refused ACTION1 presses.
