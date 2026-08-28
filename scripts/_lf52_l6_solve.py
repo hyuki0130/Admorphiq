@@ -50,6 +50,7 @@ def main() -> None:
 
     from admorphiq.harness.loop import UnifiedAgent
     from admorphiq.harness.registry import default_tools
+    from admorphiq.types import ActionType as ActionTypeS
     from admorphiq.types import GameAction
 
     def _no_llm(*_a, **_k):
@@ -72,6 +73,19 @@ def main() -> None:
     if int(getattr(obs, "levels_completed", 0) or 0) < 5:
         print("did not reach level 6")
         return
+
+    # ⛔ THE BOARD IS READ ON A TRANSITIONAL FRAME. The probe stops the tool the instant
+    # levels_completed reaches 5, and the game's own step() only advances once its render queue has
+    # drained — so the first board of a new level is mid-animation. This repository has paid for
+    # this before: "a level-up handed the board away on a transitional frame (ar25 went 1 level ->
+    # 8/8 when fixed)". Let it settle and watch what the pads actually do.
+    for i in range(12):
+        g_before = [(b[0], b[1]) for b in blobs(obs, GREEN)]
+        obs = env.step(agent._convert(GameAction.simple(ActionTypeS(7))))
+        g_after = [(b[0], b[1]) for b in blobs(obs, GREEN)]
+        if g_after != g_before:
+            print(f"  settle {i}: pads {g_before} -> {g_after}", flush=True)
+    print(f"settled pads: {[(b[0], b[1]) for b in blobs(obs, GREEN)]}", flush=True)
 
     def ngreen(o) -> int:
         return int((np.array(o.frame[-1], dtype=np.int16) == GREEN).sum())
@@ -115,22 +129,32 @@ def main() -> None:
     print("pad cells:", cells, "| adjacent pairs:",
           [(a, b) for i, a in enumerate(cells) for b in cells[i + 1:]
            if abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1], flush=True)
-    for v in (5, 9, 11, 12, 8):
-        for by, bx, _n in blobs(obs, v):
-            before = [(q[0], q[1]) for q in blobs(obs, GREEN)]
-            env.step(agent._convert(GameAction.coordinate(int(bx), int(by))),
-                     data={"x": int(bx), "y": int(by)})            # arm
-            o2 = env.step(agent._convert(GameAction.coordinate(4, 60)),
-                          data={"x": 4, "y": 60})                  # spend, bottom-left corner
+    # Captures need two adjacent pads and level 6 has none, on any origin: the pad-to-pad offsets
+    # are (4,-1), (1,2) and (5,1) cells. Pads never move under the arrows either. So the level is
+    # unwinnable by captures alone UNLESS a pad can SLIDE one cell without capturing — the one move
+    # the levels that clear never needed, and therefore the one the tool has never seen.
+    for py, px, _n in pads:
+        for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            ly, lx = py + dy * CELL, px + dx * CELL
+            if not (0 <= ly < 64 and 0 <= lx < 64):
+                continue
+            g1 = np.array(obs.frame[-1], dtype=np.int16)
+            if int(g1[ly, lx]) != 1:            # only into an empty cell
+                continue
+            env.step(agent._convert(GameAction.coordinate(int(px), int(py))),
+                     data={"x": int(px), "y": int(py)})              # select the pad
+            o2 = env.step(agent._convert(GameAction.coordinate(int(lx), int(ly))),
+                          data={"x": int(lx), "y": int(ly)})         # slide one cell
             after = [(q[0], q[1]) for q in blobs(o2, GREEN)]
-            lvl = int(getattr(o2, "levels_completed", 0) or 0)
-            if after != before or ngreen(o2) != base:
-                print(f"  armed on c{v} ({by},{bx}) then corner: pads {before} -> {after}",
-                      flush=True)
-                base = ngreen(o2)
+            moved = after != [(q[0], q[1]) for q in pads]
+            print(f"  slide pad ({py},{px}) -> ({ly},{lx}): pads moved={moved} "
+                  f"green {base} -> {ngreen(o2)}", flush=True)
+            if moved or ngreen(o2) != base:
                 obs = o2
-            if lvl != 5:
-                print(f"LEVEL CLEARED after arming on c{v} ({by},{bx})")
+                base = ngreen(o2)
+                pads = blobs(obs, GREEN)
+            if int(getattr(o2, "levels_completed", 0) or 0) != 5:
+                print("LEVEL CLEARED by a slide")
                 return
     print(f"no capture; green still {base}")
 

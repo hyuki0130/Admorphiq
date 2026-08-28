@@ -285,3 +285,26 @@ different layer in the source.
 levels 1-5 with exactly the protocol above, which means it knows the capture; level 6 needs a move
 that is not itself a capture before any capture exists, and its plan is built only of captures. That
 is the lever, stated precisely, and it is what its 117 refused ACTION1 presses are groping for.
+
+## lf52 level 6 — PARKED, mechanism decoded, one question left (2026-08-29)
+
+Everything about how this game is played is now measured. What is NOT explained is level 6.
+
+**Measured, and each of these is a separate run**: the level clears when the VISIBLE pad count
+reaches 2 — confirmed at all five transitions the tool makes, not read off the source. Level 6
+arrives with 3. So one capture clears it. And there is no capture: the pad-to-pad offsets are
+(4,-1), (1,2) and (5,1) cells, so no two are adjacent **on any origin**. Nor is there a slide (all
+six pad-to-empty-neighbour moves refused), nor a power-up effect (armed on every candidate sprite,
+then spent in the bottom-left corner), nor any pad motion under 32 arrow presses in four
+directions. The board is not transitional either — twelve settling actions leave the pads exactly
+where they were, which is the ar25 trap this repository has already paid for once.
+
+**The question that remains**: the visible green blobs may not be the entities the game counts. The
+win test counts by NAME, `unfozwvlovdui` renders nothing while carrying the pad's name, and the
+empirical clear-at-2 rule differs by one from the source's clear-at-1 for levels 1-5 — a discrepancy
+of exactly one entity, which is the size of one invisible pad. Resolving that is the next step and
+it is cheap: the game's own count can be recovered by watching WHICH capture advances a level that
+does clear.
+
+⛔ PARKED here deliberately. This dig produced a complete protocol, four killed models and two new
+instrument rules, and moved the score by ZERO. Rule 7b names this exact failure mode.
