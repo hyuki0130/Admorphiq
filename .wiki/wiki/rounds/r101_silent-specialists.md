@@ -332,3 +332,35 @@ Which lands bp35 on exactly the same conclusion as lf52, reached by a completely
 Two games, two tools, two independent diagnostic chains, one answer: **the level asks for a move the
 tool has no word for.** That is the round's central finding, and it is now demonstrated rather than
 inferred.
+
+## The missing word, counted
+
+crag classifies each glyph kind by what a click does to it — vanish, swap, inert, flip — and it HAS
+a vocabulary probe ("one click at a kind never clicked before, chosen so it cannot move the body").
+Per level, on bp35:
+
+```
+lvl=0  kinds=4  classified=0  UNKNOWN=4
+lvl=3  kinds=5  classified=2  UNKNOWN=3    of 3: probed=0  air/lethal=2  never-offered=1
+lvl=4  kinds=8  classified=3  UNKNOWN=5    of 5: probed=0  air/lethal=2  never-offered=3
+lvl=5  kinds=7  classified=3  UNKNOWN=4    of 4: probed=0  air/lethal=3  never-offered=1
+```
+
+**On the board that stops the game, four of seven glyph kinds have never been clicked — and the
+probe was never even offered them.** Three are filed as air or lethal, which excludes them from
+probing by design; the fourth is never visible from the body along the gravity axis, which is the
+probe's other precondition. `probed=0` throughout: not one inconclusive measurement, but no
+measurement at all.
+
+Six levels of play grew the whole vocabulary to seven kinds (vanish 1, swap 2, inert 3, flip 1).
+
+So "the level asks for a move the tool has no word for" is now a COUNT rather than a phrase: the word
+is one of four unclassified glyphs, and the tool's own learning rule cannot reach any of them. The
+lever is to relax the probe's preconditions — a lethal-looking glyph is worth one action to
+distinguish from a genuinely fatal one, and a kind that is never visible along the axis will never
+be learned while the probe requires visibility.
+
+⛔ Two markers in this section returned nothing and looked like negative results. One raised inside
+the tool (`self._swap` is a dict, so `|` with a set throws) and the HARNESS SWALLOWED IT; the other
+printed BEFORE the line I was grepping after. Neither was a measurement. Third and fourth occurrence
+this round of an instrument that looks exactly like an answer.
