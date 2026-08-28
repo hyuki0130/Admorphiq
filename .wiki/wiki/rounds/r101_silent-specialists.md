@@ -278,3 +278,31 @@ to keep nothing that does not move the score. But the DIAGNOSIS is the asset her
 attempt on bp35 should start by re-applying this fifty-line fallback — it is written out in this
 round's commits — and then work the planner, rather than re-deriving the perception failure from
 scratch.
+
+## And the planning failure, named: crag OSCILLATES
+
+With the shape fallback in place, every action crag takes on bp35's level 6, classified by whether
+the BOARD (not the edge counter) changed:
+
+```
+ACTION4  right   139 moved    48 refused
+ACTION3  left    120 moved   135 refused
+ACTION6  click    91 moved     2 refused
+```
+
+**350 of 535 actions move the board.** So the tool is not being refused into a corner — its moves
+are real. But the harness's stall counts NOVEL states, and crag is retired by it, which means those
+350 effective moves keep returning to boards already seen. The action log shows the shape directly:
+`(3) (4) (3) (4)` alternating left and right.
+
+So the chain for bp35 is complete, and every link was measured:
+
+1. crag clicks a cell; gravity reverses; the whole board is redrawn (1,961 of 4,096 pixels).
+2. Its signature-based stitch then refuses every window — correctly, because the glyphs really did
+   change — and it goes blind and silent. **Fixed** by matching on shape, where the same boards
+   agree 0.800 against 0.565 on signatures.
+3. Seeing the board again, it plans, its moves work, and it OSCILLATES: back and forth across
+   states it has already visited, until the stall path retires it.
+
+None of this moves the score, and the fix is reverted. But bp35 is no longer an unexplained park:
+the next attempt has a named perception fix to re-apply and a named planner defect to work on.
