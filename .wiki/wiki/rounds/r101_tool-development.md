@@ -2299,3 +2299,29 @@ What survives, and is measured per call rather than by proximity:
 ⛔ The honest state of s5i5 is therefore: **the model is small (2 riders, 2 places, 6 bars) and no
 pairing routes.** Whether the model is WRONG is not established — that is the measurement to make,
 and it needs the board's own semantics, not another proximity-attributed trace.
+
+##### s5i5 measured properly, with the new self-attributing instrument
+
+Re-run with the level printed ON each event line and grouped by `scripts/trace_attribute.py`, so
+none of this rests on proximity:
+
+```
+level 6 (clears)   bars=3 places=1 drawn=1 pinned=1 widgets=6   riders=1
+level 7 (stuck)    bars=6 places=2 drawn=2 pinned=2 widgets=9   riders=2
+level 7 failure    riders=[2,4]  places=2  refuted=2  moves=13  unknownctl=[3,6,8]
+both levels        grow=0  turn=0  moved=6 of 9 controls
+```
+
+⛔ **Two of my own readings die on that last line.** The clearing level has the SAME empty
+`grow_of`/`turn_of` maps and the SAME three unknown controls as the stuck one — so neither
+"the control map is empty" nor "three controls are unknown" is the differentiator. Both were
+plausible and both were wrong, and the contrast with a level that clears is what settled it.
+
+**What actually differs is scale.** One rider and one place pair trivially; level 7 has two riders
+(bars 2 and 4) and two places, offers exactly two pairings, and the planner finds no route for
+either — with the same amount of control knowledge that suffices for one rider.
+
+So the statement for s5i5 is: **routing ONE rider works on this family; routing TWO does not, and
+it is not for want of probing.** Whether that is a planner limitation or a genuine property of the
+board is the open question, and the cheapest way at it is the game's own semantics rather than
+another trace — the same route that resolved ls20 in one field.
