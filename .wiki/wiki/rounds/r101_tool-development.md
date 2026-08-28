@@ -2059,3 +2059,33 @@ None on every colour (the (6,7) tokens come in a pair, so "all cells in one bloc
 **Five readings of this level today**, each measured, each replacing the last: multi-piece →
 two-tone tokens → occlusion → one stray pixel → the stray cannot be filtered globally. The live
 tree is unchanged; everything above ran in snapshots.
+
+#### dc22 level 6: the board is READ now, and the next wall is that nothing moves
+
+Banked: a piece is ONE SOLID BLOCK and the stray is excluded **relative to that block**; failing a
+solid block, a colour is a piece when it fills one block of exactly two colours and appears nowhere
+else. Full 25 identical, dc22 levels 1-5 unchanged, and level 6 goes from `squares=[]` on all 500
+actions to `squares=[(9,2),(14,2)]` — the board reaches the planner for the first time.
+
+With the read fixed the tool gets four more branches deep and then latches dead at its own test:
+
+```
+L6 branch counts   line580=7 (dead/retired)   line612=4 (sense probe)   line616=1
+line616 = "Neither square moved under any simple action: this is not the mechanic."
+```
+
+So gantry probes, finds that neither of the two squares it located responds to a move, and
+correctly declines. **The avatar is missing from the pair**: it should be colour 11
+(`tewfutyefmyf2`), which the token rule refuses because colour 11 ALSO has a stray cell at (18,7)
+from `piyqze-buezna-pueite-1`, and that rule's "appears nowhere else" test is global.
+
+⛔ **Relaxing that global test measured dc22 at 0.1429** (from 0.7143 — levels 1-5 collapse to 2).
+So it is load-bearing, and the stray-tolerance that works for solid blocks does NOT transfer to
+tokens: without "appears nowhere else", the token branch accepts colours it must refuse.
+
+The state of this level is therefore: read ✓, pieces found ✓, but the pair is `(9,14)` where it
+needs `(11,14)`, and no rule tried so far admits colour 11 without also admitting colours it must
+not. That is the next design problem, stated exactly.
+
+**Six measured readings of one level in one session.** Everything above ran in snapshots; the only
+change banked is the one that measured full-25 identical.
