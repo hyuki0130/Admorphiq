@@ -239,6 +239,13 @@ all scored **identically**, and moved the total by **zero**. Diagnosis is not sc
 **⛔ THE BOX IS FOR PARALLEL WORK AND IT WAS LEFT IDLE FOR HOURS.** One game at a time locally while
 ceph-build's 64 cores sat empty. Sweeps go on the box, one process per game, all at once.
 
+⛔ **AND NEVER `pkill` BY A PATTERN A GATE ALSO MATCHES.** Clearing a sweep with
+`pkill -f "score_efficiency.py --agent unified --titles"` also killed the running gate's own s5i5
+process. The gate waits for 25 result files and simply never finishes — it has no way to notice a
+game died, so it hangs instead of failing. Kill by the sweep's OWN path
+(`pkill -f "v[1-4]/scripts/"`), and if a gate is running, check
+`ls <round>/games/*.json | wc -l` before and after so a stall is visible immediately.
+
 ⚠️ **But a GATE must not share the box with a sweep.** Launching eight variant runs beside a
 running full-25 put 33 processes on it and made both crawl — and the gate is the measurement whose
 number gets banked, so loading it is worse than idling. Gate alone; sweep while nothing is being
