@@ -41,11 +41,30 @@ Why every candidate fails the lock test, counted per call:
  2075  border extent=5x2
 ```
 
-## Mechanics Hypothesis
+## Mechanics — RESOLVED by reading the game's own source
 
-The four solid colour-4 blocks are a level-7 mechanic this tool has no vocabulary for. They are
-exactly one lattice cell each at `pitch=5`, so they are placed like walls and read like walls —
-but level 6 has none of them, and level 6 clears.
+The solid colour-4 blocks are **genuine walls**, and the tool is right to call them walls. From
+`environment_files/ls20/*/ls20.py`, every one of them:
+
+```
+name='ihdgageizm' (x3), 'krdypjjivz', 'mxfhnkdzvf', 'ubyunwkbpx'
+layer=-5  blocking=PIXEL_PERFECT  interaction=TANGIBLE  is_collidable=True
+```
+
+**The board simply has no locks.** Counting what the parser finds at its own return, per level:
+
+```
+L1  17 parses   locks 0..1        L5  199 parses  locks 0..1
+L2 109 parses   locks 0..1        L6  298 parses  locks 0..2
+L3  67 parses   locks 0..1        L7   13 parses  locks 0..0   <- none, ever
+L4  73 parses   locks 0..1
+```
+
+So `keymaze` is not failing to SEE a lock; level 7 has none. The tool's whole plan shape is
+"reach the lock that matches the token you carry", and that objective does not exist on this board.
+⛔ **This is a missing capability, not a parsing defect** — the level is won some other way, and
+what that way is has not been established. Level 7 also drops both 7x7 sprites that level 6 carries
+and adds `irgjxweouz`, a `1x29` bar in colour 14.
 
 ## Notes / what was tried
 
