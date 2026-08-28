@@ -27,6 +27,37 @@
 > whole days.
 
 
+> ## ⛔ 0.8929 — 17/25 AT THE CAP, AND HOW THE GAINS WERE ACTUALLY FOUND (2026-08-29)
+>
+> **Generic tools alone, full 25 on ceph-build: `0.8929`, SEVENTEEN at 1.0000, cumulative
+> regressions ZERO, and the two machines agree on all 25 games.** Remaining 0.1071 across eight:
+> bp35 0.2078 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143 · wa30 0.8000 · ls20 0.8442 · lp85 0.9099 ·
+> re86 0.9908.
+>
+> ⛔ **EVERY GAIN CAME FROM AN ASSET ALREADY PRESENT AND NOT BEING USED** — `fogscout` committed but
+> never registered (+0.0942, and an unregistered tool measures exactly like an absent one),
+> `_reveals` used as a boolean where the board needed its magnitude (+0.0431), confirmations
+> unbounded by the plan they protect (+0.0179), a ranking term in the wrong position (+0.0142).
+> Minutes each. The same night, hours of deep-diving ONE parked board produced six measured repairs
+> that all scored identically and moved the total by ZERO. **Sweep for unused assets first, dig
+> second** — full method in [`OPERATING_RULES.md`](OPERATING_RULES.md) rule 7b.
+>
+> ⛔ **ceph-build was left IDLE for hours** while games were run one at a time locally. Sweeps go on
+> the box, one process per game, all at once.
+>
+> **Four guards were built from losses actually taken, all validated in both directions**:
+> `tests/test_every_tool_is_registered.py` (a committed-but-unregistered tool fails the suite),
+> `scripts/trace_attribute.py` (refuses attribution by proximity — it produced three withdrawn
+> findings in one session), `scripts/measure_frozen.sh` (⛔ `PYTHONPATH` does NOT select the code
+> the runner runs — `score_efficiency.py:35` inserts its own repo's `src` first), and
+> `scripts/rounds/gate_tool.sh` (names the riders, and REFUSES the verdict when the tree moved under
+> the measurement or the box holds different bytes).
+>
+> ⚠️ **Contrast with the level that CLEARS before believing any diagnosis.** Four readings of s5i5
+> died that way — "the control map is empty" and "three controls are unknown" are both true of the
+> level that clears. And when a park claims "it needs information X", hand it X: an oracle gave
+> s5i5 the 291 cells it supposedly lacked and the score did not move.
+
 > ## ⛔ THE GENERIC TOOLS ARE NOW SHIPPABLE — AND THE NOTEBOOK STILL SHIPS THE ADAPTERS (2026-08-28)
 >
 > **Full 25, generic tools alone, `--agent unified` @4000 on ceph-build: `0.8874`, SEVENTEEN at

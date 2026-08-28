@@ -219,6 +219,56 @@ of broken code under a green-looking message.
 No agent can see the cost its `detect` imposes on the other twenty-four games, so no agent may
 decide whether its own work is kept.
 
+## 7b. HOW TO WORK THIS AXIS — measured 2026-08-28/29, each line paid for
+
+**⛔ SWEEP FOR UNUSED ASSETS FIRST. DIG SECOND.** Every gain on 2026-08-28 came from something
+already present that was not being used, and each cost minutes:
+
+```
+ls20 +0.0942   fogscout.py was committed and never added to default_tools() — an UNREGISTERED
+               TOOL MEASURES EXACTLY LIKE AN ABSENT ONE, so the run that called it "inert" was a
+               measurement of nothing. Pinned now by tests/test_every_tool_is_registered.py.
+bp35 +0.0431   _reveals was used as a BOOLEAN where the board needed its MAGNITUDE.
+lp85 +0.0179   confirmation presses were unbounded; bounding them by the plan they protect.
+bp35 +0.0142   a ranking term in the right position (reach above blocks-spent).
+```
+
+The same evening, a deep dive into ONE parked board cost hours, produced six measured repairs that
+all scored **identically**, and moved the total by **zero**. Diagnosis is not score.
+
+**⛔ THE BOX IS FOR PARALLEL WORK AND IT WAS LEFT IDLE FOR HOURS.** One game at a time locally while
+ceph-build's 64 cores sat empty. Sweeps go on the box, one process per game, all at once.
+
+**⛔ CONTRAST WITH THE LEVEL THAT CLEARS, ALWAYS.** Four readings of s5i5 were wrong and each died
+the moment the clearing level was measured the same way: "the control map is empty" and "three
+controls are unknown" are both TRUE of the level that clears. A property of the stuck level is not
+a cause until the clearing level lacks it.
+
+**⛔ WHEN A PARK SAYS "IT NEEDS INFORMATION X", HAND IT X AND LOOK.** s5i5 was parked with a proof —
+the tool cannot see 291 hidden cells. An oracle probe injected them exactly; the score did not move.
+One run overturned an evening of reasoning. A difference that correlates perfectly with success is
+not thereby the cause.
+
+**⛔ ATTRIBUTION BY PROXIMITY IS BANNED, AND IT IS NOW AN EXCEPTION.** Assigning trace events to the
+most recent level line produced three withdrawn findings in one session (ten read failures reported
+as "499 of 500 actions"; level 6's model reported as level 7's). Print the level from inside the
+code that fires the marker and group with `scripts/trace_attribute.py`, which REFUSES events with no
+`lvl=` field. ⚠️ And never hardcode the level into a marker — a literal is not a measurement.
+
+**⛔ PROVE THE INSTRUMENT IS ATTACHED BEFORE READING IT.** Make it say something it could not say if
+it were not. Failures this session: a marker replacing the FIRST match of a string that occurs
+twice; a marker calling a name the module does not import, so `propose` threw on every call, the
+harness swallowed it, and the game scored 0.0000 while looking like a measurement.
+
+**⛔ MEASURE A FROZEN COPY**: `bash scripts/measure_frozen.sh` — `PYTHONPATH` does NOT select the
+code the runner runs, because `scripts/score_efficiency.py:35` inserts its own repo's `src` ahead of
+it. And hash the tools on both machines before any cross-machine comparison; `LC_ALL=C sort` or the
+diff is nonsense.
+
+**⛔ KEEP NOTHING THAT DOES NOT MOVE THE SCORE.** Six read repairs were measured on dc22 and exactly
+one was banked (full-25 neutral, and it made the board readable for the first time). The rule
+applies to your own work hardest.
+
 ## 7a. THE CURRENT AXIS — what a tick should find you doing (2026-08-27, user-set)
 
 **Clear the sample games.** Nothing else. Not the leaderboard, not a submission, not the card.
