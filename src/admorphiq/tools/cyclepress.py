@@ -437,6 +437,7 @@ class CyclePressTool:
         self._plan: list[Cell] = []
         self._expect: list[dict[Cell, int]] = []
         self._replans = 0
+        self._confirms = 0
         self._settled = 0
         self._stuck = False
         self._budget = _BudgetBar()
@@ -495,7 +496,7 @@ class CyclePressTool:
             return self._nudge(controls)
         self._settled = 0
 
-        probe = self._next_probe(controls)
+        probe = self._next_probe(controls, tiles, marks)
         if probe is not None:
             self._pending = probe
             self._before = dict(tiles)
@@ -527,7 +528,8 @@ class CyclePressTool:
 
     # -- probing ---------------------------------------------------------
 
-    def _next_probe(self, controls: list[Cell]) -> Cell | None:
+    def _next_probe(self, controls: list[Cell], tiles: dict[Cell, int],
+                    marks: list[tuple[Cell, int]]) -> Cell | None:
         """The next control to press for evidence, or None when the model is worth planning on.
 
         Every control is pressed once first — the cheapest complete model there is. A control is
@@ -553,6 +555,22 @@ class CyclePressTool:
         left = self._budget.remaining(self._last_frame)
         if left is None or left < len(unconfirmed) + _PROBE_RESERVE:
             return None
+
+        # ⛔ Bound the confirmations by the PLAN they protect, not only by the game's allowance.
+        # MEASURED 2026-08-28 on lp85 level 4: 47 probes against 10 presses, human 16 -- the plan
+        # already beat the human and the confirmations were the whole loss. The budget gate above
+        # watches the game's per-level allowance, which is what keeps the level from being LOST and
+        # says nothing about the metric (human/agent)^2; where the allowance is many times the human
+        # count a tool can sit inside budget and score 0.07. Once the model on hand already yields a
+        # plan, spending more than that plan's own length on confirming it is disproportionate.
+        # ⛔ Removing confirmation is a MEASURED LOSS -- streak 1 gives 0.7692 and planning first
+        # gives 0.2894, because a permutation replaying every press seen so far always exists and
+        # the wrong one only stops replaying on one more press. So this BOUNDS, never removes.
+        if self._perm:
+            ready = plan_presses(tiles, marks, self._perm)
+            if ready and self._confirms >= max(2, len(ready)):
+                return None
+        self._confirms += 1
         return unconfirmed[0]
 
     def _learn(self, tiles: dict[Cell, int]) -> None:
