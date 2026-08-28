@@ -2865,3 +2865,37 @@ for the FIRST failure, while flagging it as a real wall waiting at level 8.
 
 ⛔ It also explains why every `crag` ranking variant left lf52 at exactly 0.2727: the game is stuck
 on something the ranking cannot reach.
+
+##### THE CARD IS PORTABLE TO KAGGLE HARDWARE — three environments agree to six decimals
+
+Kernel v6, pushed at commit `9f1bb9b2` (generic tools, zero adapters), run on the competition's own
+GPU machine:
+
+```
+arm_llm        total_score=0.893487   25 games    real gemma-4-31b behind vLLM
+arm_fallback   total_score=0.893487   25 games    signature routing
+games differing: 0
+ceph-build     0.8935                 the same tree, measured on the box
+```
+
+**ceph-build, this laptop and the Kaggle GPU now produce the same number.** Two days ago ka59 alone
+scored 1.0000 on one machine and 0.7500 on another from byte-identical code; that class of drift is
+gone, and it is the precondition for the public number saying anything about the hidden one.
+
+⛔ **And the LLM still changes nothing** — 25 of 25 identical, as on 2026-08-27 when both arms scored
+0.853963. The tools improved by +0.04 and both arms moved together, so every number this round has
+ever quoted is the LLM-free path and the model's contribution on these boards remains exactly zero.
+
+##### lf52 level 6: no waste, no aiming problem, two tools and 404 actions
+
+Attributed per action with the event carrying its own level:
+
+```
+level 6   railpeg 285   pegjump 119   PROBE 0
+levels 1-5  railpeg only, 8/52/57/64/138 actions against human 32/81/60/71/205 — all at the cap
+```
+
+**Every action on the stuck level is a real tool proposal**, and two different tools take turns at it
+without clearing. So lf52 joins bp35 in the "the plan is honest and insufficient" class rather than
+the waste class — and combined with the camera finding (level 6 uses the same horizontal-only rule
+as level 5, which clears), what stops it is neither the camera nor the harness.
