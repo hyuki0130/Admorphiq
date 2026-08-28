@@ -2899,3 +2899,26 @@ levels 1-5  railpeg only, 8/52/57/64/138 actions against human 32/81/60/71/205 �
 without clearing. So lf52 joins bp35 in the "the plan is honest and insufficient" class rather than
 the waste class — and combined with the camera finding (level 6 uses the same horizontal-only rule
 as level 5, which clears), what stops it is neither the camera nor the harness.
+
+##### lf52 level 6: railpeg plans and executes all the way through, and the board does not advance
+
+Instrumented with `scripts/instrument_tool.py` — score preserved at 0.2727 and zero propose errors,
+so the reading is of the tool and not of a broken copy:
+
+```
+558 marker lines,  0 propose errors
+site=1304  309x   execute the planned move, one step        <- the main path
+site=1288  142x   execute a multi-step move
+site=1253   88x   a settle click
+site=1252   11x   return [] (the settle cap)
+```
+
+**`railpeg` keeps planning and executing on the stuck level** — the empty return fires eleven times
+out of 558. Yet the harness swaps it out at step 381 on `action no new state x15`, and `pegjump`
+then spends 119 more actions without clearing.
+
+So the plans run to completion and **the board does not reach a new state**. That is neither waste
+(zero probe actions), nor aiming, nor perception, nor the camera (level 6 uses the same
+horizontal-only rule as level 5, which clears at the cap). lf52's remaining 0.727 sits behind a plan
+that executes and does not achieve anything — the same class as bp35, and the sharpest statement
+available without a model of what level 6 asks for.
