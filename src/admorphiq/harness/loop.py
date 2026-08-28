@@ -107,6 +107,12 @@ _DECIDE_SYS = (
 
 from admorphiq.tools.segment import board_changed as _segment_board_changed  # noqa: E402
 
+#: Consecutive propose() calls returning nothing before the tool is retired for this level.
+#: Not 1 — a tool may legitimately pass a single transitional frame (the frame reporting a level
+#: cleared still draws the level just finished). Not large — each one costs a probe action, and
+#: s5i5 spent 448 and dc22 499.
+_EMPTY_TOLERANCE = 8
+
 
 class UnifiedAgent:
     """Harness-contract agent (is_done/choose_action) built on the tool loop."""
@@ -433,6 +439,21 @@ class UnifiedAgent:
                           f"#{self._propose_errors}: {exc}", file=sys.stderr, flush=True)
                 steps = []
         legal = [s for s in steps if self._legal(s, simple_ids, action6)]
+        # ⛔ A tool proposing NOTHING was replaced by a probe action, silently and indefinitely.
+        # MEASURED 2026-08-28: s5i5 level 7 takes 448 clicks at EXACTLY (32,32) -- the board
+        # centre, i.e. this line's own default -- and dc22 level 6 spends 499 of 500 actions the
+        # same way. Both tools return [] because they cannot read that board, and both `detect`
+        # methods already return 0.0, so the tools were bidding zero and the harness was not
+        # listening. "A tool with no plan must bid zero" is half a rule; acting on the bid is the
+        # other half.
+        if legal:
+            self._empty_runs = 0
+        else:
+            self._empty_runs = getattr(self, "_empty_runs", 0) + 1
+            if self._current is not None and self._empty_runs >= _EMPTY_TOLERANCE:
+                self._failed.add(self._current)
+                self._current = None       # force a re-decide on the next step
+                self._empty_runs = 0
         self._queue = legal or self._probe(simple_ids, action6)
 
     def _write_code(self, obs: Any) -> list[Step]:
