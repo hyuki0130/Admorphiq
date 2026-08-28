@@ -894,7 +894,16 @@ class CragTool:
                     elif verdict != "rest":
                         fresh = 2
                     elif self._reveals(rest, g2) > 0:
-                        fresh = 2
+                        # ⛔ `_reveals` was a BOOLEAN here, so a resting place showing ONE new row
+                        # and one showing twenty scored identically. bp35 pays its whole 2x against
+                        # the human count in discovery — 51 frontier searches on level 2, 39 on
+                        # level 3 — and every route it walks is already shortest (BFS, unit costs),
+                        # so the magnitude of what a landing SHOWS is the only thing left to rank.
+                        # MEASURED: bp35 0.1648 -> 0.2078, level 3 from 81 actions to 45
+                        # (0.281 -> 0.956). ⚠️ The cap is NOT load-bearing: 3, 8, 16 and 999 all
+                        # give 0.2078, so a reveal above 3 rows never decides anything here — kept
+                        # small so it cannot swamp the terms ranked below it.
+                        fresh = 2 + min(self._reveals(rest, g2), 3)
                     elif (rest, g2) not in self._visited:
                         fresh = 1
                     else:
