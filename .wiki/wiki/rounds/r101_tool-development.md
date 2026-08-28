@@ -2813,3 +2813,28 @@ unregistered tool and no losing tie-break left in the stuck set.**
 shape and cost minutes each, while the evening's deep dive into one board cost hours and produced
 diagnosis without score. The lesson is about ordering the work: **sweep for unused assets first,
 dig second.**
+
+##### crag's ranking is now measured at every position — the axis is closed
+
+bp35 0.2078 -> **0.2220** came from moving `reach` above the block count. Four further orderings,
+run in parallel on the box against the current key:
+
+```
+current  (fresh, safe, reach, -marks, -leg)     bp35 0.2220   lf52 0.2727
+v1       (fresh, reach, safe, -marks, -leg)          0.2220        0.2727
+v2       (fresh, safe, reach, -leg, -marks)          0.2214        0.2727
+v3       (fresh, reach, -marks, safe, -leg)          0.2220        0.2727
+v4       (reach, fresh, safe, -marks, -leg)          0.1294        0.2727
+```
+
+**Nothing beats the current key**, `safe` and `reach` are interchangeable in the second and third
+slots, and ⛔ **`fresh` must stay first** — demoting it costs 0.093 on bp35. The reveal cap is
+already optimal too (1 -> 0.2033; 2, 3 and 6 all -> 0.2220).
+
+⚠️ Why `reach` matters at all is in the board, not the tuning: bp35's level 2 offers **280 of 323**
+candidate landings at `reveal=1`, so the magnitude term is flat across nearly the whole frontier and
+whatever ranks below it decides the level. That is also why the earlier magnitude change helped
+level 3 (81 -> 45 actions) and slightly hurt level 2.
+
+**No further ordering work on this tool.** lf52 is untouched by every variant, so its 0.2727 is not
+a ranking problem either.
