@@ -1777,3 +1777,59 @@ ls20 0.7500   wa30 0.8000   lp85 0.8919   re86 0.9908
 All eight agents are rate-limited until 2026-09-01 20:00 KST. Open question now being measured:
 **does any other committed tool score differently on the two machines?** ka59 proved one did; a
 card that is not portable across machines cannot predict the Kaggle number either.
+
+## Where the remaining 0.1126 actually sits — priced per level (2026-08-28)
+
+`R101LP` (mean **0.8874**, seventeen at the cap). Each loss weighted by its own level index over
+the game's full weight sum, so these are directly comparable and directly subtractable:
+
+```
+game   score    cleared   UNCLEARED costs   cheapest CLEARED-level losses
+bp35   0.1648     5/9         0.6667        L5 0.0878 (72 vs 33) · L3 0.0479 (83 vs 44)
+lf52   0.2727    5/10         0.7273        —
+s5i5   0.5833     6/8         0.4167        —
+dc22   0.7143     5/6         0.2857        —
+ls20   0.7500     6/7         0.2500        —
+wa30   0.8000     8/9         0.2000        —
+lp85   0.9099     8/8         0.0000        L4 0.0850 (33 vs 16)
+re86   0.9908     8/8         0.0000        L2 0.0092 (46 vs 42)
+```
+
+**The "no new capability needed" bucket is worth 0.237 and bp35 owns 0.136 of it** — more than
+everything else combined. bp35 is also the lowest-scoring game in the set, so it is both the
+cheapest and the largest target.
+
+### bp35 is a PLAN-LENGTH problem, not a waste problem
+
+Per level, with the acting tool and the fraction of actions that change the board:
+
+```
+lvl  tool     actions  changed  rate
+  1  crag          18       18  100%
+  2  crag          92       92  100%
+  3  crag          81       81  100%
+  4  crag          23       23  100%
+  5  crag          70       70  100%
+  6  graph        356      356  100%   <- the wall
+  6  crag         144      144  100%
+```
+
+**Every action crag takes changes the board.** There is nothing to trim — the routes are valid and
+about twice as long as they need to be (92 vs 48, 81 vs 44, 70 vs 33). That is shortest-path work,
+not aiming work, and it is the opposite of s5i5 (90% of clicks landing on empty space) and of lp85
+(80% of level 4 spent probing). ⛔ **Three stuck games, three different causes — the effectiveness
+rate separates them in one run and should be measured before any of them is worked.**
+
+### A measured non-gain worth not repeating
+
+dc22 level 6 spends **499 of 500 actions** on `gantry`'s `if geom is None: return []` — the tool
+cannot read that board, correctly returns nothing, and its own `detect` correctly returns 0.0. The
+harness was not listening: `self._queue = legal or self._probe(...)` silently substitutes a probe
+action, forever, so no re-decision ever happened. A patch retiring a tool after 8 consecutive empty
+proposals fixes the mechanism — and **dc22's score does not move**, because all 499 actions fall
+AFTER the last clear, where the metric charges nothing. It also fired at step 9 on level 1, which is
+real regression risk on other games for no measured gain, so it was **not kept**.
+
+⛔ Same rule as the deaths sweep: **a count of bad events is not a count of lost score — price it
+before assigning it.** "A tool with no plan must bid zero" is only half a rule; the harness acting
+on the bid is the other half, and it is worth fixing when something measurable depends on it.
