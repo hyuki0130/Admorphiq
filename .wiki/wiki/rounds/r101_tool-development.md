@@ -2585,3 +2585,38 @@ That is why every repair measured tonight came back 0.5833: on-board cell learni
 to bars' own footprints), un-refuting on new knowledge (`cleared=0`, the learning precedes any
 refutation), and a bigger control-retry budget (those controls never move). ⛔ **Three stories ruled
 out, one cause left, and it is stated precisely enough to build against.**
+
+##### s5i5: `stripes` swallows seven pieces, and the frame's exclusion is a MEASURED decision
+
+Two things found by reading `swivel.read_board` rather than instrumenting around it.
+
+**1. Giving the frame a box is already known to be wrong.** Its own note:
+
+> ⛔ Only RECTANGLES may be carried. A wall is an L or a frame and its bounding box covers most of
+> the board — measured, one board's two wall blobs came back as boxes spanning (27,3)-(41,8) and
+> (27,18)-(41,59), which makes every configuration illegal.
+
+So `0006` (70x51) is deliberately furniture, handled through `solid_cells` — "the immovable
+background is what is LEFT OVER, never what a classifier labelled". **My planned repair — a box for
+every arm — would reintroduce a failure this code already measured and designed around.**
+
+**2. The classification on level 7, measured:**
+
+```
+level 6 (clears)   pieces=8    owned=3   stripes=3   freight=0   non-rect=2
+level 7 (stuck)    pieces=16   owned=6   stripes=7   freight=1   non-rect=2
+```
+
+**Seven pieces become `stripes` on level 7** — excluded as "the anchor stripe now lives inside the
+bar's box" — against three on level 6, and only ONE piece survives as freight. `0007` and `0008` are
+15x3 and 3x15 rectangles of 45 cells each; if either is swallowed by that rule, it leaves the box
+list entirely and `legal()` cannot see the collision.
+
+⛔ The `stripes` test is `_overlap(piece.box, bar.box)` — it cannot tell "this stripe is part of that
+bar" from "this arm happens to stand where that bar's box reaches". On a board with two chains and a
+frame, the second reading is available and the rule takes the first.
+
+**That is the sharpest statement of the s5i5 gap so far, and it is a rule to fix rather than a
+quantity to tune**: distinguish a bar's own anchor stripe from an unrelated arm that merely overlaps
+its bounding box. Verification unchanged — level 6 must stay at its 24-clicks-no-refusals, and level
+7's plans must survive their 8th click.
