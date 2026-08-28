@@ -109,3 +109,39 @@ matches crag's own docstring — "the tool went blind eight actions into the lev
 **Next step, named**: dump the window and the stored world side by side as grids at the moment of
 disagreement, and see WHICH cells differ. Everything above narrows where to look; none of it says
 what the 40% actually is.
+
+## The grids, side by side — and three more hypotheses killed with the treatment verified
+
+The world and the window, one glyph per distinct cell signature, SHARING the glyph map so identical
+signatures would print as the same letter:
+
+```
+  W 0 aaaaaabaaa      B 0 aaggggggba
+  W 1 aacccbbbba      B 1 aaaaaaaaba
+  W 2 aabbbbbaba      B 2 aaaaaaaaba
+  W 3 aadddaaaba      B 3 ahhhahhhba
+  W 4 aabbbbbbba      B 4 abibjbbbka
+  W 5 aaaaaaeaaa      B 5 alllmlllna
+  W 6 aabbbbbbba      B 6 aaaaaaaaaa
+  W 9 aaffffffba      B 9 aaaaaaaaaa
+```
+
+They share only `a` and `b`. Every other signature in the window (g,h,i,j,k,l,m,n) is absent from
+the world, and every one in the world (c,d,e,f) is absent from the window.
+
+| hypothesis | test, with the treatment VERIFIED | result |
+|---|---|---|
+| the window is deeper than the search | shift range widened 4x, marker confirms span **-36..45** instead of -10..19 | best score **0.60/0.565, unchanged** |
+| the camera scrolls horizontally | body column tracked while it ACTUALLY MOVES: 2->3->4->5->6->7->6->5->4, window always cols 0..9 | no horizontal scroll; columns are absolute and consistent |
+| the disagreement is small-sample noise | cells compared reported alongside each score | the 0.60 uses 20 cells; the 69-79 cell candidates score 0.55-0.57 |
+
+So: same columns, eighty-two vertical offsets, a board that changes 12 of 4096 cells on its own —
+and no placement agrees. **The remaining suspect is the WORLD's own construction**, which crag's
+docstring already warns about: "on a window that has just filled with rock, two origins tie and the
+tie flips". If the first few readings of the level were taken at a wrong origin, the map is nonsense
+and nothing will ever match it.
+
+⛔ Note the shape of the last two entries. The horizontal test done EARLIER in this round used
+actions that changed nothing and was invalid; redone on a body that actually moves, it gives a real
+answer. Same hypothesis, same tool, opposite evidential value — the difference is whether the
+treatment was applied.
