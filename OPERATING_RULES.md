@@ -432,3 +432,25 @@ After a change: `uv run ruff check` on files you wrote, the related tests, and t
 Commit progress to the round page, and bring the MEASUREMENTS back too — `scripts/ceph_pull.sh`,
 `scripts/memory_mirror.sh` — because the instance and the memory directory both vanish with the
 machine.
+
+### 7c — the waste a stalled tool spends is the HARNESS's, and `observe`'s flag cannot see it (2026-08-29)
+
+Two traps, both measured on lf52, both generic, both of which cost a session each:
+
+**The fallback presses the lowest-numbered key.** `UnifiedAgent._probe` returned `simple_ids[0]`
+whenever the active tool proposed nothing. On lf52's sixth level that is ACTION1, which the engine
+refuses **117 times against 21 that move anything**, and **83 of those presses come from here, not
+from any tool**. The whole of the previous session read this as a tool defect and named a tool-side
+lever for it; the tool's own plan emits 34. ⛔ Before attributing wasted actions to a tool, check
+who ISSUED them — the loop tags nothing, so add the tag rather than assume.
+
+**`observe`'s `changed` flag is `(prev != frame).any()`** — and a board with an action counter at
+the frame's edge makes that TRUE for every action, refusals included. A refusal counter built on it
+recorded `fail={}` across **227 transitions on the very level whose waste it was written to find**,
+and the guard it fed was inert while looking exactly like a measured negative. Only
+`tools.segment.board_changed` (which ignores the outer band) can see a refusal, and it needs the
+NEXT frame, which `observe` is not given — settle it at the following `propose`.
+
+**And the negative that matters more than either**: removing the waste did NOT open a level. lf52
+clears 5 at 500 actions and 5 at 1000. ⛔ A level that stalls with actions to spare is not
+budget-starved, so "N wasted actions" is never by itself a diagnosis of why it stalls.

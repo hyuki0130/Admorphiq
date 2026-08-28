@@ -1,6 +1,22 @@
 {
-  "orphans": [],
-  "missing_xrefs": [],
+  "orphans": [
+    "concepts/card_portability.md",
+    "concepts/geometry_as_one_sprite.md",
+    "concepts/probe_cost_vs_human_baseline.md",
+    "games/ls20_level7.md",
+    "lessons/generic_tools_are_shippable_20260828.md",
+    "rounds/r101_probe-fallback.md"
+  ],
+  "missing_xrefs": [
+    {
+      "page": "memory/feedback_wiki_doctrine.md",
+      "detail": "unresolved [[...]]"
+    },
+    {
+      "page": "memory/feedback_wiki_doctrine.md",
+      "detail": "unresolved [[X]]"
+    }
+  ],
   "stale_claims": [],
   "r23c_gaps": [],
   "missing_summary": [],
