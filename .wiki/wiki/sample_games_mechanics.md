@@ -331,3 +331,45 @@ alone — its model and the source agree.
 cells it supposedly lacked and did not improve), so the stall is not missing information. A
 cover-every-target predicate is a very different search from "reach a goal", and it is the first
 thing to check the tool actually optimises.
+
+## The stuck games stop with 80% of their budget UNSPENT (2026-08-29)
+
+Measured on all four of the biggest remaining gaps, at the scored 4000-action budget:
+
+```
+bp35   5 levels,  741 of 4000 actions used,  last level-up at 232,  GAME_OVER frames 11
+lf52   5 levels,  818 of 4000               last level-up at 316                     0
+dc22   5 levels,  926 of 4000               last level-up at 424                     0
+s5i5   6 levels,  695 of 4000               last level-up at 191                     2
+```
+
+**Neither the game's own budget nor our action cap ends these runs.** The harness gives up:
+`is_done` returns true once `steps - last_clear_step >= no_progress`, and `no_progress` is 500.
+
+⚠️ There IS a measured justification for 500 in `score_efficiency.py`: "the most expensive level ANY
+game ever CLEARED cost 120", a 4x margin. But that statistic is drawn only from levels that WERE
+cleared — a level that needs 600 actions of trying cannot appear in it. The comment beside the knob
+says it was exposed "so the margin can be measured rather than assumed", and it never had been —
+**so it was, and the margin costs nothing.** Seven stuck games at `HARNESS_NOPROGRESS=3000`, six
+times the patience:
+
+```
+bp35 0.2220   dc22 0.7143   lf52 0.2727   lp85 0.9099
+ls20 0.8442   s5i5 0.5833   wa30 0.8000
+```
+
+Every one identical to the baseline to four decimals. The tools are not being cut off; they are
+EXHAUSTED. They stop early because they have nothing left to propose, and 3,000 more actions of
+being allowed to keep trying produce nothing.
+
+**And the models are not the problem.** Read against each game's own win predicate, every tool that
+holds a stuck game is aiming at the right thing:
+
+- s5i5 -> swivel: `all(rider_at(cfg, b) == model.places[p] ...)` = the source's cover-every-target
+- dc22 -> gantry: routes to a goal cell set = the source's two-sprites-in-one-cell
+- bp35 -> crag: gravity axis, settle, pass-through tiles, gem, spike, gravity reversal — all
+  recovered from FRAMES ALONE and all agreeing with `fsvnqdbzrp`
+- lf52 -> railpeg: peg-solitaire captures, which is exactly the protocol that clears levels 1-5
+
+So the remaining 0.1065 is not a mechanics gap. It is depth — and the first thing to establish about
+depth is whether we are cutting it off ourselves.
