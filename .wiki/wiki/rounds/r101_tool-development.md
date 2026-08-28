@@ -2220,3 +2220,28 @@ under the moves this tool has learned, or is `plan` missing a move it needs? The
 path already exists for controls that were jammed at probe time — its own note records a board
 where three of nine controls were unreadable when first tried — so the first thing to measure is
 whether level 7's controls are fully known when the two pairings are attempted.
+
+##### s5i5: the three unknown controls are not a retry-budget problem
+
+At the moment both pairings fail, the tool's own state is:
+
+```
+unknown = 3 of 9 controls · tries=[1,1,1,2,1,1,2,1,2] · banned=0 · moves=13
+```
+
+— exactly the situation `_retry_unknown`'s note describes ("three of one board's nine were
+unreadable at probe time"), and the retry budget is spent (`_MAX_TRIES = 2`, several controls at 2).
+
+⛔ **Raising it changes nothing.** Sweeping `_MAX_TRIES` to 3, 4 and 6 (with `_MAX_RETRIES` lifted
+in step) gives **0.5833 at every value** — 6/8 levels, identical. So those three controls do not
+move however often they are pressed; they are jammed or they are not controls.
+
+⚠️ Worth noting for whoever continues: `_MAX_RETRIES` ships at **1** while `_retry_unknown` skips
+any control with `tries >= _MAX_RETRIES`, so a control pressed once in the first pass can never be
+retried by that path at all. Lifting it was part of the sweep above and still bought nothing here,
+but the default makes the retry path dead on every board where the first pass already pressed
+everything once — which is every board.
+
+The next question for s5i5 is therefore not "press them again" but **whether those three are
+controls at all** — i.e. whether widget detection over-counts, leaving `plan` to route through
+things that were never operable.
