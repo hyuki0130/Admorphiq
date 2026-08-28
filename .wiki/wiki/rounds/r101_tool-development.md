@@ -2245,3 +2245,26 @@ everything once — which is every board.
 The next question for s5i5 is therefore not "press them again" but **whether those three are
 controls at all** — i.e. whether widget detection over-counts, leaving `plan` to route through
 things that were never operable.
+
+##### s5i5 level 7: the model reads TWO riders where the board draws at least five
+
+Reading the game's own sprites, the level's structure changes kind between 6 and 7:
+
+```
+L6   12 TANGIBLE   riders drawn as 7x7,  colours (2,4,X)   — three of them
+L7   20 TANGIBLE   riders drawn as 11x5, colours (2,3,4,X) — 0075(14) 0076(11) 0077(9)
+                                                              0078(12) 0081(10), at least five
+```
+
+The tool reports **`riders=2 places=2`** on that board. So the two pairings it exhausts are two of
+the ways to match a model that has already lost most of the level — which is why every pairing
+fails to route and why pressing the three unknown controls harder changes nothing.
+
+⛔ **The wall on s5i5 is the same SHAPE as ls20's, not as dc22's**: the tool's perception of the
+level is incomplete in one specific, nameable way, and everything downstream is honest work on a
+wrong model. ls20's version of this was solved by registering a tool that already existed; s5i5's
+needs `read_widgets` to see the 11x5 family, or a tool that does.
+
+⚠️ Also visible in the level data and worth carrying: `0063ylopfyonpu` appears TWICE on level 7 at
+different positions under one name, where level 6 has a single instance — so any code keyed on
+sprite name rather than position will collapse them.
