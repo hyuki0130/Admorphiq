@@ -2553,3 +2553,35 @@ else entirely.
 ⚠️ Three repairs measured on this board tonight — on-board cell learning, un-refuting on new
 knowledge, and (earlier) raising the control-retry budget — all **0.5833, no change**. Each ruled
 out a different story, and all three ran in snapshots; the live tree is untouched.
+
+##### s5i5: the numbers that settle it — 291 hidden cells outside, and two arms fully INSIDE
+
+Every sprite the engine tags as an arm on level 7, with its real footprint:
+
+```
+0006vwqootnonz  70x51 at (-3,-3)   solid=708   outside the grid=291
+0007ronybdlipn  15x3  at (21,6)    solid=45    outside=0      <-- entirely ON the board
+0008iqvkanhnxj  3x15  at (12,6)    solid=45    outside=0      <-- entirely ON the board
+0059 / 0060 / 0061 / 0062  the chain, solid 9/18/18/9, outside=0
+```
+
+Two facts close the question:
+
+1. **`offblocked` learns 45 of the frame's 291 hidden cells** — a sixth — from the two refusals the
+   pairing budget allows. The docstring's "a superset, but a learned and shrinking one" is honest
+   about the mechanism and the arithmetic says it cannot converge here: the sprite is only about a
+   fifth opaque, so no small number of refusals covers it.
+2. ⛔ **`0007` and `0008` have ZERO cells outside the grid.** They are 45-cell arms sitting entirely
+   ON the board, and `offblocked` — which by construction only records cells with
+   `y < 0 or x < 0 or y > 63 or x > 63` — **can never learn them at all.** A collision with either
+   is a refusal the model has no representation for, at any budget.
+
+**So the diagnosis for s5i5 level 7 is complete and it is a perception gap with an exact shape**: the
+model needs boxes for the arms it does not derive from the `Children` chains — two on-board arms of
+45 cells each, plus a board-spanning frame — and it cannot reach them through the refusal-learning
+path, which is off-grid only.
+
+That is why every repair measured tonight came back 0.5833: on-board cell learning (the cells belong
+to bars' own footprints), un-refuting on new knowledge (`cleared=0`, the learning precedes any
+refutation), and a bigger control-retry budget (those controls never move). ⛔ **Three stories ruled
+out, one cause left, and it is stated precisely enough to build against.**
