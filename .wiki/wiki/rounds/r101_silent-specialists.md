@@ -226,3 +226,32 @@ So what a reversal changes is neither the terrain nor the pixel origin: it is th
 is indexed in. The map's rows are stored in the old gravity's sense, and after a flip the same
 physical cell is a different row. The remaining candidate is a re-indexing of the map into the new
 gravity frame — not a reset, not an origin re-fit.
+
+## The shape survives the flip — and fixing the alignment still buys nothing
+
+The measurement that named the mechanism, taken at the moment crag declares the window foreign:
+
+```
+OCCUPANCY best=0.800 at shift 4  |  signature best=0.565
+```
+
+**A gravity reversal redraws the ART, not the TERRAIN.** Compared as occupancy — is this cell
+background or not — the same two boards agree 0.800 where their glyph signatures agree 0.565. crag
+matches on signatures, so it correctly concludes the window is a different board, and it is right
+about the glyphs and wrong about the ground.
+
+So the repair was built: when signature alignment fails, place the window by SHAPE instead (at least
+thirty comparable cells, 0.75 agreement, the map kept because dropping it was already measured at
+-0.12). It works — the fallback fires 63 times, mostly at shift 4, exactly the offset the occupancy
+probe found.
+
+**And it changes nothing.** bp35 stays at 0.2220, and `GIVEUP ... failed=['crag']` shows the tool is
+STILL retired: it can now place the window and still has no move to propose. Gated on the full 25
+anyway, because it touches a tool that plays several games: **0.8935 -> 0.8935, no game regressed
+and none gained.** Reverted.
+
+⛔ That refutes the whole thread's premise. Eight interventions now, each verified to have taken
+effect: threshold, shift range, origin re-fit, pitch re-fit, revival, map-drop-on-flip (harmful),
+admissibility bypass, and shape matching. The alignment failure is REAL, its cause is REAL and now
+named — and it is not what stops bp35. crag runs out of moves for a reason that has nothing to do
+with seeing the board.
