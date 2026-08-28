@@ -1868,3 +1868,68 @@ twenty-nine actions and dropped into a slot it could not climb out of). ⛔ So t
 turn up; it is a measured trade with a recorded failure on the cheap side. The open question is
 whether a resting place can be chosen to reveal MORE per action without spending blocks, and
 `_reveals > 0` is currently used only as a boolean filter (line 896) rather than as a magnitude.
+
+## 0.8929 — and the day's biggest gain needed no new code (2026-08-28, evening)
+
+```
+mean 0.8929 over 25   SEVENTEEN at 1.0000   cumulative regressions ZERO
+bp35 0.2078 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143
+wa30 0.8000 · ls20 0.8442 · lp85 0.9099 · re86 0.9908
+```
+
+Banked today, each gated on the full 25 with no game regressing: **ka59 +0.2500**, **ls20 +0.0942**,
+**bp35 +0.0431**, **lp85 +0.0179**, a harness fix removing 448 wasted centre-clicks, and the
+submission notebook switched to the generic tools.
+
+### ⛔ An unregistered tool measures exactly like an absent one
+
+`fogscout.py` was committed on 2026-08-27 and never added to `default_tools()`. It was then
+measured, found "inert", and set aside. **That measurement was of nothing** — an unregistered tool
+does not bid and does not propose. Registering it took ls20 from 0.7500 to **0.8442, 7/7**.
+
+The hole is now pinned by `tests/test_every_tool_is_registered.py`, validated in both directions.
+Two tools stay unregistered and both are named on the record with the measurement that retired
+them: `ledge` (superseded by crag) and `shaft` (registered alongside crag and measured IDENTICAL on
+both games it targets — bp35 0.2078, lf52 0.2727).
+
+### Read the game's own level DATA, not only its frames
+
+ls20 was stuck at 6/7 and every frame-side reading agreed the tool was right to decline the board:
+it parsed cleanly, found the avatar, and found **zero locks across all 13 attempts** where levels
+1-6 always found one or two. One field settled it — level 7 is the ONLY level with `Fog = True`,
+and its other settings match level 5, which clears at the cap in 67 actions. **Level 7 is level 5
+under fog.** No amount of frame instrumentation prints the word "Fog"; `get_data` does, with the
+engine never started.
+
+Generalised as `scripts/level_data_diff.py` (print only the settings that VARY), which immediately
+produced the next constraint — **the stuck level's own action budget**:
+
+```
+game   stuck level   its budget   actions we spend there
+ls20        7            42               500
+wa30        9            70               500
+s5i5        7           200               500
+dc22        6          1024               500
+bp35 / lf52  6          none          144+356 / —
+```
+
+**wa30 level 9 gives SEVENTY actions and the tool spends five hundred** — measured as 7 GAME_OVERs
+at ~71 actions each, i.e. the budget exhausted seven times over. So the target on those three is
+"solve within N", never "search longer".
+
+⚠️ wa30 is nonetheless the best-parked board in the set and my marginal value there is low: its
+author measured five ranking rules, eight weightings, four drop-cell rules, five bay rules, five
+hand-off caps, 300 randomised target orders and four beam searches **using exact engine state**,
+and broke the 70 actions down to 9 latches / 20 towing / 6 turns / 45 walking / ~2 recoverable. The
+one lever they name as untested is reading the drawn budget so the carrier can decline a plan it
+cannot finish.
+
+### The remaining causes, per game
+
+* **dc22** — no waste at all (917 of 925 actions are real tool proposals), budget not binding at
+  1024, board reads fine. A planning problem, and the largest unexplored headroom left (0.2857).
+* **s5i5** — 448 of 500 level-7 actions were the harness's centre-click fallback; fixed, and the
+  level still does not clear within its 200.
+* **bp35 / lf52** — the board is not visible; the score is paid in revealing it.
+* **lp85** — parked, four probe configurations measured.
+* **ls20** — CLEARED 7/7.
