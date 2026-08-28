@@ -2650,3 +2650,43 @@ un-refuting on new knowledge, a larger control-retry budget, contiguous stripes 
 than by argument**: "riders=2 where the board draws five", "the planner finds no route", "the model
 lacks an overlap predicate", and now "0007/0008 are unmodelled". The pattern in all four is the
 same — I inferred the model's contents from the GAME's data instead of asking the model.
+
+##### s5i5: the refusal-learning is EXACT, and the attempt budget is not the bottleneck
+
+Two measurements close this axis.
+
+**The learning has zero false positives.** The 45 cells banked from the two refusals, checked
+against the frame sprite's real pixels:
+
+```
+learned cells 45   actually solid 45   wrongly banned 0
+the frame's hidden footprint: 291 cells
+```
+
+The docstring calls `offblocked` "a superset, but a learned and shrinking one" — on this board it is
+not even a superset, it is an exact subset. Every cell it bans is genuinely solid. **The mechanism is
+right; it has only seen a sixth of the wall.** The cells learned are precisely the two refused moves'
+own footprints outside the grid: rows 6-14 at columns 64-65, then rows -3..-1 at columns 42-50.
+
+**And more attempts do not buy more learning.** Multiplying the pairing-attempt budget by eight:
+
+```
+before   refusals 2, offblocked reaches 45
+after    refusals 2, offblocked reaches 45      score 0.5833, unchanged
+```
+
+⛔ So the tool does not stop because it runs out of permission to try; **a third plan is never
+produced.** After the second refusal the search finds nothing for either pairing under the 45 cells
+it now knows — the bans are correct, and they are enough to close every route the planner can see
+while leaving 246 unknown cells that would close more.
+
+**Five repairs measured on this board tonight, all 0.5833** — on-board cell learning, un-refuting on
+new knowledge, a larger control-retry budget, contiguous stripes, and now an eightfold attempt
+budget. The axis they all probe (make the model learn the hidden frame faster or longer) is closed:
+the learning is exact, bounded by how many refusals the board offers, and the board offers two.
+
+**What is left is to stop needing the refusals**: read the frame's occupancy from the frame itself.
+The sprite is drawn — 708 solid cells, 291 of them outside the visible grid — and the tool sees the
+visible part every turn. ⛔ It cannot be given as a BOX (measured: its bounding box makes every
+configuration illegal), so it has to enter the model as CELLS, the way `offblocked` already stores
+them, but derived from the picture rather than from refusals.
