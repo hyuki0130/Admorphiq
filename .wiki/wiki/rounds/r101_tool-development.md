@@ -2325,3 +2325,34 @@ So the statement for s5i5 is: **routing ONE rider works on this family; routing 
 it is not for want of probing.** Whether that is a planner limitation or a genuine property of the
 board is the open question, and the cheapest way at it is the game's own semantics rather than
 another trace — the same route that resolved ls20 in one field.
+
+##### s5i5 level 7 is the board swivel's own docstring analysed — and the designed path is not running
+
+`Children`, from the game's own level data, is a parent -> child chain:
+
+```
+level 6 (clears)   0047 -> 0048 -> 0049                       ONE chain, depth 3
+level 7 (stuck)    0097 -> 0058                               TWO chains,
+                   0059 -> 0060 -> 0061 -> 0062               one of depth 4
+```
+
+That matches the model exactly (`bars=6`, `riders=[2,4]`, `places=2`) and it matches what
+`swivel`'s planner docstring already says about **"the seventh board"**:
+
+> MEASURED on the seventh board it is over 336,000 configurations and still growing when cut off,
+> from six bars and eleven controls, and no joint search gets near a state with BOTH riders home.
+> But that board never needed a joint search: no control there moves more than one rider — one
+> control drives the first rider's arm and nothing else, five drive the second's. When that holds,
+> the riders are independent problems ... so they are solved in sequence and the plans concatenated.
+> Order can matter when one chain parks across the other's route, so both orders are tried.
+
+So this exact board is already analysed, the independence it relies on is confirmed by the
+`Children` data (the two chains share no sprite), and the sequential path is the DESIGNED answer.
+⛔ **And it is not producing a plan**: `refuted=2` means both pairings were tried and both returned
+nothing, so the sequential solve is failing where its own analysis says it should work.
+
+**That is a much better lead than "two riders do not route."** The next measurement is inside the
+sequential path rather than at its output: for each of the two pairings, does the FIRST rider's
+solve succeed and the second fail, or does the first already fail? `_joint` exists only as the
+shared-control fallback and the docstring says this board must not need it — so if `_joint` is what
+is running here, that is the defect.
