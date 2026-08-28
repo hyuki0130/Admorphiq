@@ -1833,3 +1833,38 @@ real regression risk on other games for no measured gain, so it was **not kept**
 ⛔ Same rule as the deaths sweep: **a count of bad events is not a count of lost score — price it
 before assigning it.** "A tool with no plan must bid zero" is only half a rule; the harness acting
 on the bid is the other half, and it is worth fixing when something measurable depends on it.
+
+### bp35: every route is ALREADY shortest — the 2x is the cost of discovering the board
+
+Refining the plan-length reading above, which was too coarse. `crag._search` is breadth-first over
+unit costs, and its own docstring says so: for `"exit"` the first route found IS the shortest. So
+nothing is being walked the long way. Counting the searches instead:
+
+```
+lvl  exit  new  end  searches   actions  human
+  1     1    5    0         6        18     21
+  2     1   51    1        53        92     48
+  3    19   39    0        58        81     44
+  4     4    6    0        10        23     38
+  5    32   32    1        65        70     33
+  6     0    3    0         3       144      —
+```
+
+**Dozens of `"new"` searches per level.** Each is a frontier-exhausting search for the best next
+resting place, followed by a short walk to it. The tool learns the board a resting place at a time,
+and the 2x against the human is the accumulated cost of that discovery — not a single bad route.
+Level 5 alternates almost evenly (32 exit attempts against 32 explorations), i.e. it repeatedly
+tries to leave before it knows where the exit is.
+
+⚠️ So bp35 belongs with **lf52**, not with s5i5 or lp85: both are games where the board is not
+visible and the score is paid in revealing it. lf52's park says the same thing from the other side
+— *get the whole board into the map before spending something irreversible*
+([[../concepts/guard_about_the_model]], fourth variant).
+
+**The lever is reveal-per-action, and the machinery already exists**: `_reveals(at, gdir)` scores how
+much a resting place would show, and the ranking already puts GROUND GAINED third and cost last —
+deliberately, because ranking by cost alone measured *worse* (the tool broke sixteen blocks in
+twenty-nine actions and dropped into a slot it could not climb out of). ⛔ So this is not a knob to
+turn up; it is a measured trade with a recorded failure on the cheap side. The open question is
+whether a resting place can be chosen to reveal MORE per action without spending blocks, and
+`_reveals > 0` is currently used only as a boolean filter (line 896) rather than as a magnitude.
