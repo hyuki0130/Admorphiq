@@ -1933,3 +1933,36 @@ cannot finish.
 * **bp35 / lf52** — the board is not visible; the score is paid in revealing it.
 * **lp85** — parked, four probe configurations measured.
 * **ls20** — CLEARED 7/7.
+
+### dc22: the wall traced two layers down (2026-08-28)
+
+dc22 was the largest unexplored headroom left (0.2857) and the read was wrong before the plan ever
+ran. Two layers, each measured:
+
+**1. The board was never read.** `_split_columns` took the FIRST column whose modal colour differs
+from the board's ground. On level 6 that is column 9 — an object standing INSIDE the board — and
+the modal colour to its right is the ground again, so the rule concluded "no panel" on every one of
+that level's 500 actions:
+
+```
+4@0-8   2@9-11   4@12-19   0@20-21   4@22-39   0@40-41   5@42-63
+```
+
+The panel is plainly the terminal run `5@42-63`. Fixed by defining the panel as **the band that
+reaches the frame's edge** — full 25 identical, no game changed, dc22's levels 1-5 still clear.
+⚠️ The first version of that fix was a FALLBACK behind the old test; that is slop, because the old
+test is not occasionally unlucky, it is wrong whenever a board object owns a full column. Replaced.
+
+**2. With the split fixed, the read reaches `_pieces` and fails there** — ten times, `squares=[]`.
+`_pieces` wants the two rarest colours that each paint exactly ONE congruent square; on level 6
+**none of the six rarest colours (15, 9, 11, 6, 10, 14) paints a square at all.** So it is not
+merely that level 6 is multi-piece (`tacugo` x25, `bg` x19, `crzsjq` x5, all 4x4) — the pieces this
+tool knows how to look for are not on that board in that shape.
+
+⛔ **Not a parse defect and not a budget problem**: level 6 allows 1024 actions and the run spends
+500; raising the no-progress bail to 1200 and 3000 gives 1626 and 3427 actions and the same
+5/6, 0.7143. It is a capability gap, and it now has an exact statement to design against.
+
+⚠️ Also measured en route: with the read failing, `gantry` stalls after 7 actions, the harness
+hands the board to the general searcher permanently, and `graph` spends 491 refills on it. The
+level's 925 actions are 917 real tool proposals — **there is no waste on dc22 at all.**
