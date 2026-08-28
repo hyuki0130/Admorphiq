@@ -77,3 +77,35 @@ dumping those readings rather than by reasoning about them.
 an edit that replaced the tail of the file removed `if __name__ == "__main__": main()`. A script
 that defines its work and never calls it looks exactly like a script whose measurement came back
 empty.
+
+## bp35 PARKED — the stitch's own numbers, dumped rather than reasoned about
+
+Following this page's own instruction. At the moment crag declares the window foreign, on level 6:
+
+```
+READINGS pitch=6 origins=6 world=100 top=[(0.48,69,90) (0.49,49,100) (0.53,59,100) (0.57,69,100)]
+                                          (score, cells compared, cells in window)
+ORIGINS  in_use=(0,0) offered=[(0,0) (1,0) (2,0) (3,0) (4,0) (5,0)]  body_rows=[4,4,4,4,4,4]
+```
+
+- **Every offered origin has `ox = 0`.** Six candidates that differ only in the ROW sub-cell origin.
+  The code does widen it (`oxs = {self._ox} | {fitted[1]}`) but `_best_origin` returns 0 on this
+  board, so horizontal placement is never varied. Whether 0 is right is not established.
+- **The 0.60 headline is a small-sample artefact**: it compares TWENTY cells. The well-supported
+  candidates compare 69-79 and score **0.55-0.57**. So the disagreement is real, over a solid
+  sample, and lowering the threshold cannot fix a placement that is genuinely wrong.
+- The world holds 100 cells and a window holds ~100 — crag has accumulated roughly ONE window, and
+  the very next reading disagrees with it at every offered offset.
+
+⛔ **My own pan test was INVALID and nearly banked as fact.** It fitted row and column shifts after
+LEFT/RIGHT/UP/DOWN and reported "best shift 0 on both axes, fit 0.989" — but 0.989 means those
+actions changed almost nothing. Concluding "the camera does not pan" from actions that did not move
+anything is the same error shape as reading a maximum without its sample size. The camera during an
+actual FALL has still not been measured.
+
+Deaths are NOT involved: every failing frame is `NOT_FINISHED`, at steps 6-14 of the level, which
+matches crag's own docstring — "the tool went blind eight actions into the level".
+
+**Next step, named**: dump the window and the stored world side by side as grids at the moment of
+disagreement, and see WHICH cells differ. Everything above narrows where to look; none of it says
+what the 40% actually is.
