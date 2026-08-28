@@ -4,7 +4,7 @@
 # Always-ready, valid submission notebook. It:
 #  1. Installs the arc wheels offline (from the Kaggle Data tab).
 #  2. Puts the official `agents` package on `sys.path`.
-#  3. Registers our `KaggleDetectAgent` — detection dispatch over the LLM-free
+#  3. Registers our `KaggleUnifiedAgent` — the generic tool harness, zero adapters (the LLM-free
 #     chained card, measured 0.2771 on the 25-game dev proxy (the chained card
 #     alone measures 0.0566 on the same run; adapter ceiling 0.3296).
 #     It loads NO weights: it learns each game's dynamics at test time, so the
@@ -144,7 +144,7 @@ _ensure_admorphiq_importable()
 # transfer-honest by construction (measured: 9-subset 0.0055 vs online-RL from-scratch
 # 0.0014; breaks L2 given budget — see .wiki/wiki/rounds/r36_graph-frontier-bfs.md).
 # The online-RL card (KaggleOnlineRLAgent) remains available as an alternative.
-from admorphiq.kaggle_detect_agent import KaggleDetectAgent  # noqa: E402
+from admorphiq.kaggle_unified_agent import KaggleUnifiedAgent  # noqa: E402
 
 try:
     # On Kaggle the full package is present and provides the shared registry.
@@ -155,16 +155,33 @@ except ImportError:
     AVAILABLE_AGENTS = {}
 
 AGENT_KEY = "admorphiq"
-# Deployed artifact (2026-08-25): DETECTION DISPATCH over the chained card. Nine mechanic
-# solvers that were reachable only through game_id selection are now reached by FRAME
-# EVIDENCE, so they can run on games whose id we have never seen. Measured full-25 on
-# ceph-build, both cards the same day: chained 0.0566 -> detection 0.2771 (ceiling 0.3296),
-# every port landing exactly on its ceiling and NO game regressing — when no detector
-# fires, the chained card plays exactly as it did before. Each detector passed a measured
-# 0/24 false positives across the public games before it was allowed in. numpy-only: no
-# weights, no LLM.
-AVAILABLE_AGENTS[AGENT_KEY] = KaggleDetectAgent
-print(f"Registered agent '{AGENT_KEY}' -> {KaggleDetectAgent.__name__}")
+# Deployed artifact (2026-08-28): THE GENERIC TOOLS ALONE — zero adapters, zero game ids.
+#
+# ⛔ This REPLACES detection dispatch, and the reason is measured rather than architectural.
+# Full 25 on ceph-build, @4000, same tree, the same day:
+#
+#     kaggle_detect  (13 adapters + generic fallback)   0.5335
+#     kaggle_unified (generic tools alone)              0.8874
+#
+# The adapters are worse on 23 of 25 games. They were written when the generic fallback scored
+# 0.0566 and both routing guards were calibrated against THAT; neither can see that the fallback
+# has since overtaken them. Nothing broke — a constant stopped being true.
+#
+# ⚠️ And the public number is not the argument. The eval is 110 PRIVATE games. An adapter fires on
+# a mechanic recognised from the public 25, so a private game carrying none of them gets the
+# fallback anyway — which is why raising the public card 5.6x moved the hidden score 0.20 -> 0.18.
+# These tools read no game id, no title and no sprite tag; measured transfer across re-rendered
+# games is 0.9981 with 13 of 14 IDENTICAL. That is weaker evidence than a different game, and the
+# hidden score of this path is UNMEASURED — this notebook is how it gets measured.
+#
+# The two machines agree on all 25 games (mean 0.8874 both, zero differing), so the number is a
+# property of the tools and not of the box. numpy-only on the deployed path: no weights, and the
+# harness routes by frame signature whenever the LLM call raises. MEASURED on a Kaggle GPU run
+# 2026-08-27 with a real gemma-4-31b behind vLLM: the LLM arm and the signature arm scored
+# 0.853963 both, ZERO games differing — so the model changes nothing on these 25 and its absence
+# costs nothing here.
+AVAILABLE_AGENTS[AGENT_KEY] = KaggleUnifiedAgent
+print(f"Registered agent '{AGENT_KEY}' -> {KaggleUnifiedAgent.__name__}")
 
 
 # %%
