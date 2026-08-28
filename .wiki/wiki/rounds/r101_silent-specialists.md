@@ -364,3 +364,31 @@ be learned while the probe requires visibility.
 the tool (`self._swap` is a dict, so `|` with a set throws) and the HARNESS SWALLOWED IT; the other
 printed BEFORE the line I was grepping after. Neither was a measurement. Third and fourth occurrence
 this round of an instrument that looks exactly like an answer.
+
+## And the vocabulary hypothesis is REFUTED too
+
+The lever the count named was built: stop excluding lethal-looking glyphs from the vocabulary probe.
+The argument is the tool's own, written beside the volatile exclusion it already removed — lethal is
+a statement about STANDING on a tile, and this probe deliberately picks a cell that cannot move the
+body, so a killer tile costs one action to identify and cannot collect.
+
+It works, and the vocabulary grows exactly as intended:
+
+```
+before   lvl=5  kinds=7  classified=3  UNKNOWN=4   vanish=1 swap=2 inert=3 flip=1
+after    lvl=5  kinds=7  classified=5  UNKNOWN=2   vanish=1 swap=2 inert=5 flip=1
+```
+
+**And bp35 goes 0.2220 -> 0.2206.** Both newly learned kinds are `inert` — a click on them does
+nothing — so the tool spends two actions to learn that two more glyphs are useless, and the frontier
+is exactly as empty as before. Reverted.
+
+So the vocabulary gap is REAL, COUNTED, and NOT THE CONSTRAINT. Knowing what those glyphs do does
+not create a move, because what they do is nothing.
+
+⛔ Eleven interventions this round, every one verified to have taken effect. The pattern across all
+of them: bp35's stuck board offers no move to a tool whose model is correct, whose patience is
+sufficient, whose perception can be fixed, and whose vocabulary can be completed. What it lacks is
+not information about this board — it is a MECHANIC this board uses that no tool in the set models.
+Finding that mechanic means reading bp35's own source for what level 6 does differently, which is
+where rule 0 has ended five questions already this session.
