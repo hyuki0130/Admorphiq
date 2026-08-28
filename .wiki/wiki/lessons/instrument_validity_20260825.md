@@ -236,3 +236,32 @@ against its own probe's 295. The loops agreed all along.
 it was nearly added to this page.** Refusing to write it — against an instruction — is the discipline
 working. Write down what a claim was measured against, and if the answer is "a disagreement whose
 cause we have not found", it is not a lesson yet.
+
+## A sixth kind: carrying the last marker forward and counting actions under it (2026-08-28)
+
+Several of the day's per-level tables were built the same way: a tool or branch prints a marker,
+the runner prints one line per action, and a script attributes each action to **the most recent
+marker seen**. That is only valid when the marker fires once per action. When it fires on a
+*subset* — a function called only sometimes, a branch reached only on refills — the last marker is
+carried across every action until the next one, and a handful of events is reported as hundreds.
+
+Measured: dc22 level 6 was written up as *"499 of 500 actions come from `gantry`'s
+`if geom is None: return []`"*. Instrumenting the same run properly — one line per queue refill,
+attributed by construction rather than by proximity — gives:
+
+```
+491  tool graph        426  tool gantry        7  PROBE gantry        1  PROBE None
+```
+
+**917 of 925 actions are real tool proposals. There is no waste on dc22 at all.** And the read
+failure it was blamed on happens **10 times**, not 499 — confirmed by putting both markers in one
+snapshot, where both print 10.
+
+⛔ **The tell was available and ignored**: the "499" and the level's action count were the SAME
+number, which is what carry-forward always produces. When a branch count equals the total, suspect
+the attribution before believing the finding.
+
+⚠️ This does not touch the s5i5 result, which was measured with a per-refill marker
+(`448 PROBE cur=swivel first=(6,(32,32))` out of 500) and is attributed by construction. The
+difference between the two is exactly the lesson: **print at the site that fires once per action,
+or print the action and its cause on the SAME line.**
