@@ -373,3 +373,36 @@ holds a stuck game is aiming at the right thing:
 
 So the remaining 0.1065 is not a mechanics gap. It is depth — and the first thing to establish about
 depth is whether we are cutting it off ourselves.
+
+## The specialists go SILENT, not slow — measured (2026-08-29)
+
+Two patience knobs were tested and both are inert, and then the instrument check showed the second
+test never did what it claimed:
+
+- `HARNESS_NOPROGRESS=3000` (six times the give-up allowance): seven stuck games, every score
+  identical to baseline to four decimals.
+- `HARNESS_STALL=4000`: same seven, same scores — **and a marker proved the knob does not keep the
+  specialist in charge at all.** crag is still retired and `graph` still holds bp35's board. That
+  run measured nothing about specialist retention, and would have been written up as evidence.
+
+Marking BOTH retirement paths separately settles it:
+
+```
+bp35   RETIRE kind=EMPTY tool=crag
+s5i5   RETIRE kind=EMPTY tool=swivel
+dc22   RETIRE kind=EMPTY tool=gantry, phase_grid
+lf52   RETIRE kind=EMPTY tool=railpeg
+```
+
+**Every specialist retires through the EMPTY path — it proposes NOTHING.** Not a plan that fails; no
+plan at all. The general searcher then inherits the level and spends the remaining budget, which is
+why more patience buys nothing: the patience goes to `graph`, and the tool that understands the game
+has already fallen silent.
+
+This matches the lf52 dig exactly, which is the one stuck level whose board is fully decoded: level 6
+has no two adjacent pads, so railpeg's capture model has NO LEGAL MOVE. It is silent because the
+level offers nothing its model recognises.
+
+**So the remaining 0.1065 is a MOVE-VOCABULARY gap, per game, at one specific level** — not depth,
+not patience, not mechanics-in-general. The next question for each is narrow and answerable: what
+does `propose()` see at that board, and what is the level asking for that the tool has no word for?
