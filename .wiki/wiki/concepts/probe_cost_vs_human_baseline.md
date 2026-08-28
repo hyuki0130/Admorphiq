@@ -81,3 +81,30 @@ and plan are already balanced, this concept does not apply there — the loss is
 - [[action_budget]] — the game's own per-level allowance, the thing the gate does watch.
 - [[guard_about_the_model]] — removing a check that measured inert lost a real capability.
 - [[../rounds/r101_tool-development]] — the round.
+
+## lp85 level 4 is PARKED — four configurations, three measured negatives
+
+After the confirmation bound landed (0.8919 -> 0.9099), level 4 is **28 probes to 5 plan presses**
+against a human's 16. The plan is now shorter than the human's count; the probes are 85% of the
+cost, and most of them are the *first* press of each control — roughly 23 of them on that board.
+
+Every remaining way to spend fewer was measured:
+
+| configuration | lp85 | what broke |
+|---|---|---|
+| **confirmations bounded by plan length** | **0.9099** | — (kept) |
+| probe until plannable, then stop first-pressing | 0.8982 | L1 7 -> 27 actions (1.0 -> 0.396) |
+| `_CONFIRM_STREAK` 2 -> 1 | 0.7692 | L4 59 -> 131, L6 40 -> 115 |
+| plan first, probe only on failure | 0.2894 | L2 34 -> 120, run stops at 5/8 |
+
+⛔ **The first press of every control is load-bearing too.** Stopping it as soon as a partial model
+yields a plan improves levels 3 and 7 and destroys level 1, whose board a human clears in 17
+actions and which the tool then needs 27 for. So the cost is not slack — it is what buys a model
+that plans correctly on the FIRST attempt, and the replans a wrong model causes are dearer than the
+presses saved. Same shape as the confirmation presses, one layer earlier.
+
+**What is left, and it is not a probe-count change:** infer part of the permutation from geometry
+instead of pressing for it. The recorded lp85 mechanics say the colour bijection's cycle
+decomposition IS the ring separator, so the structure is in principle readable off the board. That
+is a new capability, not a tuning of this one, and level 4 is worth 0.085 of the 0.1108 that
+remains in this game's family.
