@@ -2387,3 +2387,38 @@ attributor faithfully reported "level 8" — a literal is not a measurement, and
 the real level in a module global set by `propose`. And the earlier `refuted=2` reading was a
 last-call snapshot presented as the whole story; printing every call is what showed the two plans
 that came before it.
+
+##### s5i5 level 7: ONE CONTROL, state-dependently refused — and the model has no term for it
+
+Instrumented at `_settle`, which sees every click's outcome, with the level carried from `propose`:
+
+```
+level 6 (clears)   24 plan clicks, 0 refused
+level 7 (stuck)    19 plan clicks, 2 refused — and BOTH are the same control:
+
+    refused=1 ctrl=0 step=1 plan_left=18     the 8th click of the 26-click plan
+    refused=1 ctrl=0 step=1 plan_left=9      the 11th click of the 20-click plan
+
+level 7            ctrl=0 also PASSES twice elsewhere in the same level
+level 7 probes     6 of 12 learning clicks refused
+```
+
+**Control 0 with step +1 is legal in some board states and refused in others, and the model carries
+no term that distinguishes them.** Both plans die on exactly that click, which is why both pairings
+are refuted and the tool then has nothing left to try.
+
+⛔ So the chain for s5i5 level 7 is now complete and each link is measured:
+perception ✓ (bars=6, riders=[2,4], places=2 match the game's own `Children` chains) ->
+sequential path engages ✓ (`sequential=True`, every control reaches one rider) ->
+both riders solve ✓ -> a 26-click plan is produced ✓ -> **its 8th click is refused by the engine**
+-> the pairing is refuted -> a 20-click plan -> **its 11th click, same control, same refusal** ->
+pairings exhausted -> dead.
+
+The tool already BANS a refused edge (`self._model.illegal.add(...)`) so it does not loop on the
+same move — that guard works. What it cannot do is generalise: the ban is keyed on the exact
+configuration, so the same control refuses again from a different state and the plan dies again.
+
+**The target is therefore one question about the game: what makes `ctrl=0 step=+1` illegal?** The
+tool's own note already suspects geometry it cannot see — it records a board "framed by a
+board-spanning wall placed at (-3,-3), three cells outside the visible grid on every side" — and
+s5i5 level 7 carries exactly such a sprite (`0008iqvkanhnxj`, 3x15, and a 70x51 at (-3,-3)).
