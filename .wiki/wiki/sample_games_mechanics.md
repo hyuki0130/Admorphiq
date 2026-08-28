@@ -200,26 +200,36 @@ displacement below is quoted in pixels by the source, so `-dx*6` is ONE CELL, no
 6. **A collectible power-up** (`cwyrzsciwms`) is spent by an ACTION6 in the bottom-left 16x16
    corner, dispatched as a distinct branch rather than as a click.
 
-## What the live probe measured, and the two readings it killed
+## What the live probes measured — and the FOUR readings they killed
 
-At `levels_completed=5`, per colour, one action at a time:
+Each of these was written down as a finding before the next measurement removed it. They are kept
+because the errors are more instructive than the survivor, and three of the four are the kind that
+reads as a confirmed mechanic.
 
-```
-RIGHT: 90 cells | c10:n2402 d0.1 (background, still)  c12:n32 d6.0  c11:n40->34 d5.0
-LEFT : 90 cells | c10:n2402 d0.1 (background, still)  c12:n32 d6.0  c11:n34->40 d5.0
-```
+| reading | why it looked right | what killed it |
+|---|---|---|
+| six-cell launcher | colour centroid moved exactly 6.00 | the grid is **6 pixels per cell** (line 5566), so 6.00 px is ONE cell |
+| camera pan | the source applies the shift to a scene object | the background's 2402 cells DO NOT MOVE while one 32-pixel sprite does; a pan moves everything |
+| c3/c4 = a budget gauge | they traded 1 pixel per action, summing to a constant | colour 3 is `DARK_GRAY` = `lgbyiaitpdiDING_COLOR`, the SELECTION colour, and it is absent entirely in other states |
+| pads jump pads | the capture compares two same-named `fozwvlovdui` | level 6's three pads sit at cells (4,3), (8,2), (9,4) — no two are two cells apart with a third between |
 
-⛔ **"Six-cell launcher" — WRONG.** The 6.00 is pixels and the cell is 6 pixels wide; it is one cell.
-⛔ **"Camera pan" — ALSO WRONG**, and it was the correction to the first error. The source applies
-the shift to a scene object, which reads like a camera, but the background's 2402 cells do not move
-while one 32-pixel sprite does. A pan moves everything.
+⚠️ Reporting only the MAXIMUM colour shift cannot separate a launcher from a pan from a bounce. The
+per-colour breakdown WITH cell counts separates all three in one run, and it is the same cost.
 
-The reading that survives both: **one piece bounces one cell opposite the press**, and a second
-colour changes SIZE at the same time (40 <-> 34 pixels) — a pad being consumed and restored.
+## Level 6, measured end to end
 
-⚠️ Reporting only the MAXIMUM colour shift cannot separate a launcher from a pan from a bounce.
-The per-colour breakdown, with cell counts, separates all three in one run.
+- **36 green pixels = 3 pads**, at cells (4,3), (8,2), (9,4). Win needs 2, so **exactly one capture
+  clears the level**.
+- **ACTION7 DOES NOT RESTORE THE BOARD** — measured on all four directions, before/after/undone
+  hashes all differ. Any look-ahead that "undoes its probe" corrupts the state it is scoring; one
+  did, and reported two colours vanishing that were its own trials.
+- **ACTION5 rebuilds the level**, and from the rebuilt board only RIGHT does anything at all.
+- From the position the tool actually reaches, selecting pad (25,19) shows ONE dark-gray blob at
+  that same cell — a selection highlight, not a landing marker — and the other two pads do not
+  select at all. **There is no legal capture from where the tool arrives.**
+- 600 random moves reach ~300 distinct boards without a clear, so the space is large but the
+  arrived position may already be dead.
 
-⛔ The waste this level shows (117 refused ACTION1 of 138) is a SYMPTOM, not a cause: removing the
-wasted presses was gated on the full 25 and moved nothing. And 600 random moves reach ~300 distinct
-boards without clearing, so the level is search-tractable but not blindly.
+**Open, and the next thing to measure**: whether level 6 is still winnable at the moment the tool
+enters it, or whether the tool's own route into the level spends the position. The game keeps no
+restoring undo, so "arrived dead" is a real possibility rather than a figure of speech.
