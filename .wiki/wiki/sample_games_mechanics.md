@@ -308,3 +308,26 @@ does clear.
 
 ⛔ PARKED here deliberately. This dig produced a complete protocol, four killed models and two new
 instrument rules, and moved the score by ZERO. Rule 7b names this exact failure mode.
+
+## Win predicates read straight from the source — the stuck games (2026-08-29)
+
+Rule 0 pays here the way it paid on lf52: the goal a tool must aim at is one line of the game's own
+code, and for three of the eight stuck games it had never been written down.
+
+| game | the level advances when | the level is lost when |
+|---|---|---|
+| **s5i5** (0.5833) | EVERY sprite tagged `0087vvmblxkzdi` (a target) has a sprite tagged `0064ocqkuqacti` (a mover) at the SAME x,y — cover them all | the level's `current_steps` runs out |
+| **dc22** (0.7143) | `self.qnnpcoyzd.x == self.hfuqkxulm.x and .y == .y` — two sprites reach the same cell | a step allowance runs out (`ncuydqtllw()` false) |
+| **bp35** (0.2220) | the falling body lands on a gem (`fjlzdjxhant`) | it lands on a spike (`ubhhgljbnpu` / `hzusueifitk`) |
+| **lf52** (0.2727) | the pad count reaches 1, or 2 on levels 6 and 7 | the level's own step budget overruns (64 / 320 / 640 by level) |
+
+**bp35's fall is a ten-line simulator** and worth copying exactly (`fsvnqdbzrp`): step along the
+gravity axis while the cell is empty or holds only `oonshderxef` / `aknlbboysnc`; stop on anything
+else; a gem wins ON the cell, a spike loses, everything else lands on the cell BEFORE it. Gravity is
+`-1` when `vivnprldht` is set, which is the reversal the crag tool already recovered from frames
+alone — its model and the source agree.
+
+⚠️ s5i5's is the one that matters most: its park was FALSIFIED by an oracle (it was handed the 291
+cells it supposedly lacked and did not improve), so the stall is not missing information. A
+cover-every-target predicate is a very different search from "reach a goal", and it is the first
+thing to check the tool actually optimises.
