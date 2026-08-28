@@ -150,6 +150,25 @@ def _make_agent(name: str, game_id: str | None = None):
         from admorphiq.world_model_agent import WorldModelAgent
 
         return ChainedAgent(WorldModelAgent(), _make_agent("unified", game_id))
+    if name == "kaggle_unified":
+        # The GENERIC TOOLS as the notebook would ship them. Distinct from `--agent unified`
+        # only in that it goes through the official-Agent wrapper, so this is the check that the
+        # wrapper does not change the number: measure both and they must agree.
+        # ⛔ Same refusal as kaggle_detect below, for the same reason — a deployed default that
+        # the environment overrides makes "as shipped" a fiction.
+        import os
+
+        overridden = [k for k in ("GF_GIVEUP", "HARNESS_STALL", "HARNESS_CTX")
+                      if os.environ.get(k)]
+        if overridden:
+            raise SystemExit(
+                f"--agent kaggle_unified measures the DEPLOYABLE configuration, but "
+                f"{', '.join(overridden)} is set and would override it. Unset it, or use "
+                f"--agent unified to measure a tuned configuration."
+            )
+        from admorphiq.kaggle_unified_agent import build_unified
+
+        return build_unified()
     if name == "kaggle_detect":
         # The SHIPPED artifact exactly as notebooks/kaggle_submission.py builds it — a dead
         # LLM callable and the deployed GF_GIVEUP default. `--agent detect` builds its

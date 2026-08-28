@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 255.
+**Total pages**: 256.
 
 ## Games (25)
 
@@ -101,7 +101,7 @@ category, drill into specific pages.
 - [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (52)
+## Lessons (engineering wisdom from past incidents) (53)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -122,6 +122,7 @@ category, drill into specific pages.
 - [[lessons/ft09_glyph_decode_20260715.md]] — Gold-trace reverse-engineering falsifies the R16-R18 "clicking couples
 - [[lessons/ft09_stride_button_drop_20260423.md]] — The default observation stride of 8 px samples 64 candidate
 - [[lessons/g1_g4_direct_test_20260422.md]] — Round-5 shipped four generic strategies — `interactive_grid_toggle`,
+- [[lessons/generic_tools_are_shippable_20260828.md]] — Six Kaggle wrappers existed. **None wrapped the generic tool harness.** So the axis rule 7a
 - [[lessons/generic_transfer_20260827.md]] — Twelve of fourteen re-rendered games score IDENTICALLY — not close, identical. This is the
 - [[lessons/gf2_lights_out_stencil_20260423.md]] — R16-R18 gave `_plan_lights_out` a GF(2) stencil + Gaussian-elimination solver + delta-chaining; it clears FT09 L1 but L2+ stays blocked because the diff-sorted top cells are coupled display feedback, not real toggle buttons.
 - [[lessons/hardcoded_is_anti.md]] — Any hardcoded mapping of `level → solution` is a bet that level layouts stay identical. They do not. Every hardcoded solver eventually breaks; the only question is how much score it takes with it when it does.

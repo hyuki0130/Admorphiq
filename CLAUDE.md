@@ -27,6 +27,43 @@
 > whole days.
 
 
+> ## ⛔ THE GENERIC TOOLS ARE NOW SHIPPABLE — AND THE NOTEBOOK STILL SHIPS THE ADAPTERS (2026-08-28)
+>
+> **Full 25, generic tools alone, `--agent unified` @4000 on ceph-build: `0.8874`, SEVENTEEN at
+> 1.0000, cumulative regressions ZERO. The two machines agree on all 25 games** (mean 0.8874 both,
+> zero differing) — that portability was FALSE two days ago and came down to one tool.
+>
+> ```
+> --agent kaggle_detect  (as SHIPPED: 13 adapters + generic fallback)   0.5335
+> --agent unified        (generic tools alone, zero adapters)           0.8874
+> ```
+>
+> ⛔ **`notebooks/kaggle_submission.py` ships `KaggleDetectAgent`** — grep it for `harness`,
+> `UnifiedAgent` or `default_tools` and you get ZERO. The reason was mechanical, not a decision:
+> six Kaggle wrappers existed (BC, online-RL, chained, world-model, detect, graph-frontier) and
+> **none wrapped the generic harness**, so the axis rule 7a develops had no route to a notebook.
+> **`src/admorphiq/kaggle_unified_agent.py` now exists**; `--agent kaggle_unified` measures it and
+> is verified to give the SAME number as `--agent unified` (lp85 0.9099, ka59 1.0000 both ways).
+> The wrapper MIRRORS `_make_agent("unified")` line for line — diverging is how a card drifts from
+> its own scoreboard.
+>
+> ⚠️ **Whether the notebook switches is SUBMISSION-AFFECTING and the user's call.** And the hidden
+> score of the generic path is **UNMEASURED**: the only calibration point is an adapter card at
+> public 0.2772 -> hidden 0.18, and that ratio describes how much of a PUBLIC-TUNED card survives
+> 110 unseen games. ⛔ Do not quote 0.65 x the public number as a prediction.
+>
+> **The LLM path is MEASURED and makes no difference on these 25** — Kaggle GPU run 2026-08-27,
+> real gemma-4-31b behind vLLM: LLM arm and signature arm **0.853963 both, ZERO games differing**.
+> ⛔ ceph-build cannot substitute: no GPU, and `gemma4:26b` takes **51.8s for four tokens** there.
+> Local ollama has **no models pulled** (`{"models":[]}`), so any local "LLM on/off" comparison is
+> vacuous — one was run and its conclusion withdrawn.
+>
+> **One command for the whole Kaggle flow: `bash scripts/kaggle_bench.sh {status|results|push}`**
+> (slug, venv-only CLI path, result files). ⛔ No `--submit` path by design. And measure a frozen
+> copy with `bash scripts/measure_frozen.sh` — ⛔ `PYTHONPATH` does NOT select the code the runner
+> runs, because `scripts/score_efficiency.py:35` inserts its own repo's `src` ahead of it.
+> Lesson: [`generic_tools_are_shippable_20260828`](.wiki/wiki/lessons/generic_tools_are_shippable_20260828.md).
+
 > ## STAGE 1 — ALL 25 SAMPLE GAMES NOW CLEAR A LEVEL UNDER THE GENERIC TOOLS (2026-08-27)
 >
 > **Generic tools ALONE (zero adapters), full 25: `0.0200` -> `0.6149` in one day — 30.7x, and 1.9x
