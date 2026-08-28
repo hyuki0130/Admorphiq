@@ -203,3 +203,26 @@ round, and the first two were caught only because the treatment was verified aft
 
 **bp35's lever, named**: re-derive the lattice origin after a gravity reversal, or treat a reversal
 as a new board rather than as a continuation. Not the threshold, not the range, not the pitch.
+
+## Two fixes for the reversal, measured
+
+With the cause named, the obvious repair was built and measured, then narrowed and measured again:
+
+| change | bp35 |
+|---|---|
+| baseline | 0.2220 |
+| a reversal is a NEW BOARD — drop the map, reseed from the current window | **0.0995** ⛔ |
+| keep the map, re-fit only the pixel origin | 0.2220 (inert) |
+
+Both results are informative and neither is a fix:
+
+- **The map is load-bearing ACROSS a flip.** Dropping it costs 0.12 — more than half the game's
+  current score — so the terrain genuinely is the same board after a reversal. "New board" is the
+  wrong model of what a flip does.
+- **The origin is not the obstacle.** Re-fitting it changes nothing, because the reading loop
+  already offers every sub-cell row origin (measured earlier: six candidates, `oy` 0..5).
+
+So what a reversal changes is neither the terrain nor the pixel origin: it is the FRAME the terrain
+is indexed in. The map's rows are stored in the old gravity's sense, and after a flip the same
+physical cell is a different row. The remaining candidate is a re-indexing of the map into the new
+gravity frame — not a reset, not an origin re-fit.
