@@ -125,6 +125,62 @@ def _one_square(board: np.ndarray, colour: int) -> Cell | None:
     return y0, x0
 
 
+def _solid_block(board: np.ndarray, colour: int) -> tuple[int, int, int] | None:
+    """(y, x, side) of the ONE solid square block this colour fills, or None.
+
+    ⛔ NOT "all cells of the colour form a square". dc22's level 6 draws the piece `plflho1` as a
+    clean 2x2 of colour 14 at (52,28) and an unrelated decoration, `sprite_81-2`, puts ONE cell of
+    the same colour at (59,37) on the other side of the board. Five cells, so `side*side == count`
+    fails, so `_pieces` returns nothing, so that board was never read on any of its 500 actions.
+
+    ⛔ AND THE OBVIOUS REPAIR IS WRONG. Dropping "isolated" cells globally — a piece is contiguous,
+    a lone pixel is chrome — MEASURED dc22 at 0.0000: levels 1-5 lose the pieces they depend on.
+    So the stray is excluded RELATIVE TO A CANDIDATE BLOCK: find one filled square of this colour
+    and require it to be unique. Cells outside it are simply not the piece.
+    """
+    grid = np.asarray(board)
+    cells = np.argwhere(grid == colour)
+    if len(cells) < 2:
+        return None
+    found = None
+    for y, x in cells:
+        y, x = int(y), int(x)
+        for side in range(2, 7):
+            if y + side > grid.shape[0] or x + side > grid.shape[1]:
+                break
+            if not bool((grid[y:y + side, x:x + side] == colour).all()):
+                continue
+            # maximal: a larger square anchored here would have been taken by the later `side`
+            if y and bool((grid[y - 1, x:x + side] == colour).all()):
+                continue
+            if x and bool((grid[y:y + side, x - 1] == colour).all()):
+                continue
+            if found is not None and found[:2] != (y, x):
+                return None            # two separate blocks: ambiguous, refuse
+            found = (y, x, side)
+    if found is not None:
+        return found
+    # A TWO-TONE TOKEN: the piece is drawn in two colours, so neither fills the block alone.
+    # dc22 level 6 paints colour 11 as a diagonal pair inside `tewfutyefmyf2`, a 2x2 of 11 and 12.
+    # Uniqueness still decides: colour 11 sits in ONE token and is accepted; colours 6 and 7 sit in
+    # TWO and are refused, which is what keeps the halves of a token from being read as two pieces.
+    for y, x in cells:
+        y, x = int(y), int(x)
+        for side in range(2, 7):
+            if y + side > grid.shape[0] or x + side > grid.shape[1]:
+                break
+            blk = grid[y:y + side, x:x + side]
+            vals = {int(v) for v in blk.ravel()}
+            if len(vals) != 2 or colour not in vals:
+                continue
+            if int((blk == colour).sum()) != int((grid == colour).sum()):
+                continue           # this colour also appears outside the block
+            if found is not None and found[:2] != (y, x):
+                return None
+            found = (y, x, side)
+    return found
+
+
 def _pieces(board: np.ndarray) -> tuple[int, int, int] | None:
     """(colour, colour, side) for the two rarest colours that each paint ONE congruent square.
 
@@ -139,12 +195,10 @@ def _pieces(board: np.ndarray) -> tuple[int, int, int] | None:
     order = [c for c, _ in sorted(hist.items(), key=lambda kv: (kv[1], kv[0]))][:_RARE_SCAN]
     squares: list[tuple[int, int]] = []
     for colour in order:
-        if _one_square(board, colour) is None:
+        blk = _solid_block(board, colour)
+        if blk is None:
             continue
-        side = int(round(hist[colour] ** 0.5))
-        if side * side != hist[colour] or side < 2 or side > 6:
-            continue
-        squares.append((colour, side))
+        squares.append((colour, blk[2]))
     for i, (c0, s0) in enumerate(squares):
         for c1, s1 in squares[i + 1:]:
             if s0 == s1:
