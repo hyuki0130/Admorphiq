@@ -20,28 +20,29 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     always propose something.
     """
     from admorphiq.tools.assemble import JigsawAssembleTool
-    from admorphiq.tools.cover_targets import CoverTargetsTool
     from admorphiq.tools.blastclock import BlastClockTool
     from admorphiq.tools.clonewalk import CloneWalkTool
+    from admorphiq.tools.cover_targets import CoverTargetsTool
+    from admorphiq.tools.crag import CragTool
     from admorphiq.tools.cyclepress import CyclePressTool
     from admorphiq.tools.dead_signature import DeadSignatureTool
-    from admorphiq.tools.decouple import CoupledPairTool
     from admorphiq.tools.dealias import DealiasTool
+    from admorphiq.tools.decouple import CoupledPairTool
+    from admorphiq.tools.fogscout import FogScoutTool
+    from admorphiq.tools.gantry import GantryCraneTool
     from admorphiq.tools.graph_search import GraphSearchTool
     from admorphiq.tools.haul import HaulDeliveryTool
     from admorphiq.tools.hop import HopTool
     from admorphiq.tools.keymaze import KeyMazeTool
     from admorphiq.tools.lattice_maze import LatticeMazeTool
-    from admorphiq.tools.crag import CragTool
     from admorphiq.tools.linkage import LinkageReachTool
     from admorphiq.tools.llm_goal import LLMGoalTool
     from admorphiq.tools.maze import MazeRunTool
     from admorphiq.tools.mirror import MirrorMergeTool
-    from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.orderforge import OrderForgeTool
+    from admorphiq.tools.paint_flood import PaintFloodTool
     from admorphiq.tools.pattern_cast import PatternCastTool
     from admorphiq.tools.pegjump import PegJumpTool
-    from admorphiq.tools.gantry import GantryCraneTool
     from admorphiq.tools.phase import PhaseGridTool
     from admorphiq.tools.pillar_transfer import PillarTransferTool
     from admorphiq.tools.progbits import ProgramBitsTool
@@ -49,9 +50,9 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
     from admorphiq.tools.reflect_cover import ReflectCoverTool
     from admorphiq.tools.reforge import ReforgeTool
     from admorphiq.tools.rewrite import RuleRewriteTool
-    from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.shepherd import ShepherdRelayTool
     from admorphiq.tools.sigilgate import SigilGateTool
+    from admorphiq.tools.slotlaunch import SlotLaunchTool
     from admorphiq.tools.sluice import SluiceTool
     from admorphiq.tools.socketmerge import SocketMergeTool
     from admorphiq.tools.spill import SpillRouteTool
@@ -110,6 +111,7 @@ The rule-recovery tools go FIRST because they are the most selective: it decline
         PhaseGridTool(),
         TubeOrderTool(),
         HaulDeliveryTool(),
+        FogScoutTool(),
         KeyMazeTool(),
         SlotLaunchTool(),
         graph,
