@@ -2782,3 +2782,34 @@ measured and rejected.
 ⛔ The oracle is a PROBE and was never in the live tree; it reads `environment_files` directly and is
 unshippable by construction. It is worth keeping the technique: **when a park says "it needs
 information X", hand it X and see.** That took one run and overturned an evening's reasoning.
+
+##### The "already there but unused" sweep — two tie-breaks found, both measured WORSE
+
+After a night that moved the score by zero, the honest read was that the three gains of the day were
+all one shape: something already present that was not being used (`fogscout` unregistered, `_reveals`
+used as a boolean, confirmations unbounded by the plan). So instead of digging further into a parked
+game, the whole stuck set was swept for the same shape — **which tool bids and never gets to act.**
+
+Printing every decision's bid table found exactly two ties, both broken by registration order:
+
+```
+lf52   railpeg 0.95   pegjump 0.95   <- pegjump never wins the board
+wa30   shepherd 0.75  haul 0.75      <- haul never wins the board
+```
+
+Both were tested by reversing the registry order, and both are **worse**:
+
+```
+wa30   shepherd (current)  0.8000      haul first   0.6222
+lf52   railpeg  (current)  0.2727      pegjump first 0.1818
+```
+
+⛔ So the registration order is already the right answer on both boards — it encodes a measured
+preference, not an accident, exactly as `concepts/tool_claim_breadth` says it should. The sweep is
+closed with no gain, and that is worth recording precisely so it is not re-run: **there is no
+unregistered tool and no losing tie-break left in the stuck set.**
+
+⚠️ The sweep itself was the right instinct at the right moment — the day's three gains came from that
+shape and cost minutes each, while the evening's deep dive into one board cost hours and produced
+diagnosis without score. The lesson is about ordering the work: **sweep for unused assets first,
+dig second.**
