@@ -2620,3 +2620,33 @@ frame, the second reading is available and the rule takes the first.
 quantity to tune**: distinguish a bar's own anchor stripe from an unrelated arm that merely overlaps
 its bounding box. Verification unchanged — level 6 must stay at its 24-clicks-no-refusals, and level
 7's plans must survive their 8th click.
+
+##### ⛔ s5i5 CORRECTION: 0007 and 0008 are ALREADY modelled. The only unmodelled arm is the frame.
+
+Printed the role of every piece whose box matches those two arms:
+
+```
+[pc] box=(7,12,20,14)  3x14  colour=8   rect=True  role=owned
+[pc] box=(6,21,8,34)  14x3   colour=10  rect=True  role=owned
+```
+
+**Both are `owned` — they ARE bars in the model.** So `bars=6` is not "the two Children chains
+(2+4)"; it includes these two, and my inference from the chain data was wrong. The only arm the
+engine counts that the model has no box for is **`0006`, the 70x51 frame** — and `read_board`'s own
+measured note forbids boxing it ("its bounding box covers most of the board ... makes every
+configuration illegal").
+
+The stripes fix was still made and measured: requiring a stripe to be CONTIGUOUS with its anchor
+rather than merely overlapping its bounding box moved the classification `stripes 7 -> 6` on level
+7, freeing one piece — which is not a rectangle, so it became furniture, the box list did not change
+and the score stayed **0.5833**. Correct in principle, inert here, **not kept**.
+
+**So the standing account of s5i5 level 7 is:** every arm but the frame is modelled; the frame is
+deliberately furniture and is learned cell-by-cell through `offblocked`, which reaches 45 of its 291
+hidden cells before the pairings run out. Four repairs measured tonight — on-board cell learning,
+un-refuting on new knowledge, a larger control-retry budget, contiguous stripes — **all 0.5833.**
+
+⚠️ **Four of my readings on this one board were wrong and each was killed by a measurement rather
+than by argument**: "riders=2 where the board draws five", "the planner finds no route", "the model
+lacks an overlap predicate", and now "0007/0008 are unmodelled". The pattern in all four is the
+same — I inferred the model's contents from the GAME's data instead of asking the model.
