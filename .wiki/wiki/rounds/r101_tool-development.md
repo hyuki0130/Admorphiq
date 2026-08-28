@@ -2089,3 +2089,39 @@ not. That is the next design problem, stated exactly.
 
 **Six measured readings of one level in one session.** Everything above ran in snapshots; the only
 change banked is the one that measured full-25 identical.
+
+#### dc22 level 6: exactly where it stands, and the next probe
+
+BANKED (full 25 identical, no game changed): a piece is ONE SOLID BLOCK with the stray excluded
+**relative to that block**. Level 6 went from `squares=[]` on all 500 actions to
+`squares=[(9,2),(14,2)]` — the board is read for the first time and reaches the planner.
+
+STILL MISSING: the avatar. The tool locks onto colours **11 and 14** on every level it clears; on
+level 6, colour 11 is drawn as a two-tone 2x2 whose composed pixels are
+
+```
+y=4    12  11
+y=5    11  12          plus one stray cell at (18,7) from `piyqze-buezna-pueite-1`
+```
+
+so gantry finds only `(14,2)`, probes, sees neither square move, and correctly declares the board
+not its mechanic (`line616`).
+
+Four rules tried for admitting colour 11, all measured, none kept:
+
+| rule | dc22 | why |
+|---|---|---|
+| token = 2-colour block, colour appears NOWHERE else | 0.7143 | the stray disqualifies the avatar |
+| drop that test entirely | **0.1429** | levels 1-5 collapse: `(6,2),(7,2)` pair before `(11,14)` |
+| tolerate only ISOLATED strays outside the block | **0.1429** | same — the ordering, not the tolerance, is what breaks |
+| + solid blocks outrank tokens (ordering fixed) | 0.7143 | levels 1-5 restored, level 6 still lacks colour 11 |
+| + anchor on every block CONTAINING a cell, not only blocks whose top-left is one | 0.7143 | level 6 still lacks colour 11 |
+
+**The ordering fix is real and worth keeping when something needs it** — solids before tokens
+restored 0.1429 to 0.7143 — but on its own it buys nothing, so it is not banked.
+
+⛔ **Next probe, and it is one measurement**: instrument `_solid_block` for colour 11 on that board
+and print which of its guards refuses — `len(vals) != 2`, the outside-stray test, or the two-block
+ambiguity return. The composed block above is unambiguously two colours, so one of the three is
+firing on data that does not look like it should fire. Everything else about this level is now
+known and written down.
