@@ -58,22 +58,44 @@ def main() -> None:
         print("did not reach the level; nothing to say about the mechanic")
         return
 
-    keys = [(1, "UP"), (2, "DOWN"), (3, "LEFT"), (4, "RIGHT")]
+    # The two verbs the source has and the tool never uses: ACTION5 (its own handler,
+    # `kuexigxyxw`) and the power-up, which is an ACTION6 in the bottom-left 16x16 corner and is
+    # dispatched as a distinct branch rather than as a click.
+    # ACTION5 rebuilds the level (`kuexigxyxw` -> `pchvqimdvj`, the level builder), so it gives a
+    # FRESH level 6 rather than the dead position the tool left behind. Probe each direction from
+    # that fresh state: what the level offers at its start is a different question from what it
+    # offers after 500 actions of a tool that does not model the launch.
+    keys = [(4, "RIGHT"), (3, "LEFT")]
     seen: list[int] = []
-    for rep in range(60):
-        aid, name = keys[rep % 4]
+    for rep in range(len(keys)):
+        aid, name = keys[rep % len(keys)]
         g0 = np.array(obs.frame[-1], dtype=np.int16)
-        obs = env.step(agent._convert(GameAction.simple(ActionType(aid))))
+        if name == "CORNER":
+            obs = env.step(agent._convert(GameAction.coordinate(4, 60)),
+                           data={"x": 4, "y": 60})
+        else:
+            obs = env.step(agent._convert(GameAction.simple(ActionType(aid))))
         g1 = np.array(obs.frame[-1], dtype=np.int16)
         ndiff = int((g0 != g1).sum())
         # Assumption-free: how far did each colour's centre of mass move?
-        shift = 0.0
-        for v in set(np.unique(g0)) & set(np.unique(g1)):
-            c0 = np.argwhere(g0 == v).mean(axis=0)
-            c1 = np.argwhere(g1 == v).mean(axis=0)
-            shift = max(shift, float(np.abs(c0 - c1).max()))
+        # A LAUNCHER moves one piece; a CAMERA moves everything by the same amount. Reporting the
+        # max alone cannot tell them apart, and reporting only the max is how the first reading of
+        # this board became a six-cell launcher that does not exist.
+        shifts = []
+        per = []
+        for v in sorted(set(np.unique(g0)) & set(np.unique(g1))):
+            n0 = np.argwhere(g0 == v)
+            n1 = np.argwhere(g1 == v)
+            c0 = n0.mean(axis=0)
+            c1 = n1.mean(axis=0)
+            d = float(np.abs(c0 - c1).max())
+            shifts.append(d)
+            per.append(f"c{int(v)}:n{len(n0)}->{len(n1)},d{d:.1f}")
+        shift = max(shifts) if shifts else 0.0
+        lo = min(shifts) if shifts else 0.0
         seen.append(ndiff)
-        if ndiff:
+        print(f"  {name}: {ndiff} cells | " + " ".join(per), flush=True)
+        if False:
             print(f"  {name}: {ndiff} cells changed, max colour-centroid shift {shift:.2f}",
                   flush=True)
     print("changed-cell counts seen:", sorted(set(seen)))

@@ -179,36 +179,47 @@ signature, so the game separates by something a pixel comparison cannot see.
 ⛔ Dev-time understanding only. A tool may read pixels and nothing else — the ban is on encoding
 a game's identity, not on understanding its mechanic, exactly as with reading `step()`.
 
-## lf52 — recoil launcher, read from the game's own source (2026-08-29)
+## lf52 — one-cell bounce, pads counted down (2026-08-29)
 
-`environment_files/lf52/271a04aa/lf52.py`, engine never started. Three facts that a frame probe had
-only narrowed, and that together explain why level 6 stalls with actions to spare:
+`environment_files/lf52/271a04aa/lf52.py`, engine never started, then confirmed live.
 
-1. **Contact with a `fozwvlovdui` entity DISPLACES, and the displacement is per-level** (line 5296):
+**THE GRID IS 6 PIXELS PER CELL** (line 5566 builds pixels as `grid * 6 + origin`). Every
+displacement below is quoted in pixels by the source, so `-dx*6` is ONE CELL, not six.
 
-   | level | displacement on contact |
-   |---|---|
-   | 1-2 | none |
-   | 3 | `(-dx*8, 0)` |
-   | 4 | `(0, 0)` when `grid_y >= 11` |
-   | 5, 6 | `(-dx*6, 0)` |
-   | 7, 10 | `(0, 0)` |
-   | 8 | `(0, -dy*6)` |
-   | other | `(-dx*6, -dy*6)` |
+1. **Goal**: `ddaguepwkt = len(entities named "fozwvlovdui")` — the pads — and the level is won when
+   it reaches **1**, or **2 at levels 6 and 7** (line 5572). So the game counts pads DOWN.
+2. **Move**: every `hupkpseyuim2` piece attempts one cell in the pressed direction. A piece whose
+   target holds a `kraubslpehi` and which stands on a pad is displaced by a level-dependent amount
+   INSTEAD (line 5296): `-dx*8` at level 3, `-dx*6` at levels 5 and 6, `-dy*6` at level 8, none at
+   levels 1-2 / 7 / 10, both axes otherwise. Opposite the press — a bounce.
+3. **The game keeps its own step budget and ENDS on overrun** (line 5771): 64 at level 1, `64*5`
+   at levels 2-5, `64*10` at levels 6+. One agent action costs 1.
+4. **A death costs 20 of that budget** (line 5805) — thirty-two lose the level by themselves.
+5. **ACTION5 rebuilds the level** (`kuexigxyxw` -> `pchvqimdvj`) and **ACTION7 undoes one step**
+   (`aphzlzlgni` pops an undo stack). Both were measured changing 167 cells from a stuck position.
+6. **A collectible power-up** (`cwyrzsciwms`) is spent by an ACTION6 in the bottom-left 16x16
+   corner, dispatched as a distinct branch rather than as a click.
 
-   `dx`/`dy` is the direction of the move that made contact, so the board throws the piece SIX CELLS
-   BACK along the axis it was travelling. A lattice model that assumes a move advances one cell
-   predicts the wrong cell on every contact — which is what the harness sees as a refused action.
+## What the live probe measured, and the two readings it killed
 
-2. **The game keeps its own step budget and ENDS on overrun** (line 5771): level 1 allows 64,
-   levels 2-5 allow `64*5 = 320`, levels 6+ allow `64*10 = 640`. One agent action costs 1.
+At `levels_completed=5`, per colour, one action at a time:
 
-3. **A death costs 20 of that budget** (line 5805), so thirty-two of them lose the level outright
-   regardless of what else is played.
+```
+RIGHT: 90 cells | c10:n2402 d0.1 (background, still)  c12:n32 d6.0  c11:n40->34 d5.0
+LEFT : 90 cells | c10:n2402 d0.1 (background, still)  c12:n32 d6.0  c11:n34->40 d5.0
+```
 
-4. **There is a collectible power-up** (`cwyrzsciwms`, placed by `cncmupctrp`): picking it up sets a
-   flag, and it is spent by an ACTION6 in the BOTTOM-LEFT 16x16 corner (`x < 16 and y > 48`), which
-   is handled as a distinct branch rather than as a click.
+⛔ **"Six-cell launcher" — WRONG.** The 6.00 is pixels and the cell is 6 pixels wide; it is one cell.
+⛔ **"Camera pan" — ALSO WRONG**, and it was the correction to the first error. The source applies
+the shift to a scene object, which reads like a camera, but the background's 2402 cells do not move
+while one 32-pixel sprite does. A pan moves everything.
 
-⛔ The waste this level shows (117 refused ACTION1 of 138) is a SYMPTOM of fact 1, not a cause:
-removing the wasted presses was gated on the full 25 and moved nothing.
+The reading that survives both: **one piece bounces one cell opposite the press**, and a second
+colour changes SIZE at the same time (40 <-> 34 pixels) — a pad being consumed and restored.
+
+⚠️ Reporting only the MAXIMUM colour shift cannot separate a launcher from a pan from a bounce.
+The per-colour breakdown, with cell counts, separates all three in one run.
+
+⛔ The waste this level shows (117 refused ACTION1 of 138) is a SYMPTOM, not a cause: removing the
+wasted presses was gated on the full 25 and moved nothing. And 600 random moves reach ~300 distinct
+boards without clearing, so the level is search-tractable but not blindly.
