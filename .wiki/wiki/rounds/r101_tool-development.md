@@ -2246,7 +2246,7 @@ The next question for s5i5 is therefore not "press them again" but **whether tho
 controls at all** — i.e. whether widget detection over-counts, leaving `plan` to route through
 things that were never operable.
 
-##### s5i5 level 7: the model reads TWO riders where the board draws at least five
+##### s5i5 level 7: the model reads TWO riders where the board draws at least five — ⛔ WITHDRAWN, see below
 
 Reading the game's own sprites, the level's structure changes kind between 6 and 7:
 
@@ -2268,3 +2268,34 @@ needs `read_widgets` to see the 11x5 family, or a tool that does.
 ⚠️ Also visible in the level data and worth carrying: `0063ylopfyonpu` appears TWICE on level 7 at
 different positions under one name, where level 6 has a single instance — so any code keyed on
 sprite name rather than position will collapse them.
+
+##### ⛔ WITHDRAWN: the s5i5 "two riders where the board draws five" claim
+
+That entry rested on a carry-forward attribution — the very error recorded as the sixth instrument
+failure on [[../lessons/instrument_validity_20260825]], committed by me two entries after writing
+it down. Measured per call instead, with a marker inside `_begin` and one at every `propose`:
+
+```
+levels 1-5   delegate=True             swivel hands the board to TelescopeArmTool
+level 6      bars=3 places=1 drawn=1 pinned=1 -> riders=1     (clears)
+level 7      bars=6 places=2 drawn=2 pinned=2 -> riders=2
+```
+
+`riders=2` on level 7 is what `pinned` yields because **exactly two markers are DRAWN** — the rule
+at `swivel.py:713` takes the pinned bars when there are at least as many as there are places, and
+falls back to every bar otherwise. Nothing establishes that the five `11x5` sprites are all riders;
+they may be destinations, or the bars themselves. **The claim was unsupported and is withdrawn.**
+
+What survives, and is measured per call rather than by proximity:
+
+* `swivel` clears levels 1-5 through its delegate and level 6 on its own path;
+* on level 7 it builds a model (`bars=6, places=2, riders=2`), exhausts both pairings, and dies at
+  `REPLAN-FAIL` — the planner finds no route for either;
+* three of nine controls never move, and raising the retry budget to 3, 4 and 6 leaves the score at
+  **0.5833 at every value**;
+* `_MAX_RETRIES` ships at 1 while `_retry_unknown` skips controls with `tries >= _MAX_RETRIES`, so
+  that path cannot fire on any board whose first pass pressed every control once.
+
+⛔ The honest state of s5i5 is therefore: **the model is small (2 riders, 2 places, 6 bars) and no
+pairing routes.** Whether the model is WRONG is not established — that is the measurement to make,
+and it needs the board's own semantics, not another proximity-attributed trace.
