@@ -1966,3 +1966,31 @@ tool knows how to look for are not on that board in that shape.
 ⚠️ Also measured en route: with the read failing, `gantry` stalls after 7 actions, the harness
 hands the board to the general searcher permanently, and `graph` spends 491 refills on it. The
 level's 925 actions are 917 real tool proposals — **there is no waste on dc22 at all.**
+
+#### dc22 level 6, third layer: the pieces are TWO-TONE and the guard against two-tone is what blocks it
+
+Reading the game's own sprites, TANGIBLE squares inside the board (x < 40):
+
+```
+L5 (clears)   crzsjq-1  8x8 colour 8   ·  plflho1 2x2 colour 14  ·  tovemc-plelvb1 4x4 colour 9
+L6 (stuck)    plflho1   2x2 colour 14  ·  tewfutblrmbx2 2x2 colours (9,10)
+                                       ·  tewfutyefmyf2 2x2 colours (11,12)
+                                       ·  tewfutpibpar1 2x2 colours (6,7)
+                                       ·  tewfutpibpar2 2x2 colours (6,7)
+```
+
+**Level 5's pieces are single-colour squares; level 6's are two-tone 2x2 tokens.** `_pieces` asks
+for the rarest colours that each paint ONE COMPLETE congruent square, and each colour of a two-tone
+token paints only half of one — hence `squares=[]` over the six rarest colours.
+
+⛔ **And that requirement is not an oversight — it is a guard, and its own docstring names this
+exact board**: *"a board carrying two-tone tokens gave four colours tied at the avatar's own pixel
+count, and taking the rarest two read the halves of a token as the pieces."* So the rule that keeps
+the tool honest on one board is what makes another unreadable. The design question is therefore not
+"relax the square test" but **"recognise a token as a 2x2 block of exactly two colours, and treat
+the block rather than either colour as the piece."**
+
+⚠️ One cheap idea measured and REVERTED: the panel is drawn with a border (`coorbs-bg-1` starts at
+column 40 while the colour change is at 42), so the board region carries two columns of panel
+chrome. Extending the terminal run left through non-ground columns removes them — and **regresses
+dc22 to 0.6550**, because on other levels it eats real board. Not kept.
