@@ -239,6 +239,11 @@ all scored **identically**, and moved the total by **zero**. Diagnosis is not sc
 **⛔ THE BOX IS FOR PARALLEL WORK AND IT WAS LEFT IDLE FOR HOURS.** One game at a time locally while
 ceph-build's 64 cores sat empty. Sweeps go on the box, one process per game, all at once.
 
+⚠️ **But a GATE must not share the box with a sweep.** Launching eight variant runs beside a
+running full-25 put 33 processes on it and made both crawl — and the gate is the measurement whose
+number gets banked, so loading it is worse than idling. Gate alone; sweep while nothing is being
+gated. (The 60-core cap in rule 5 bounds one job, not the sum of two.)
+
 **⛔ CONTRAST WITH THE LEVEL THAT CLEARS, ALWAYS.** Four readings of s5i5 were wrong and each died
 the moment the clearing level was measured the same way: "the control map is empty" and "three
 controls are unknown" are both TRUE of the level that clears. A property of the stuck level is not
