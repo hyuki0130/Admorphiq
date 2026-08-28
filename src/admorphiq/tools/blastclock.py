@@ -57,7 +57,9 @@ MEASURED, 2026-08-27, both the live board and its archived re-render, identicall
   the first version of it compared against a RE-READ of the frame instead of the engine and blamed
   the model for two mis-parses that were not model errors at all;
 * all seven levels, every one of them at a per-level score of 1.0 — clears at presses 12, 56, 89,
-  128, 152, 198 and 294, against human counts of 28, 109, 51, 51, 33, 132 and 326;
+  128, 152, 198 and 290, against human counts of 28, 109, 51, 51, 33, 132 and 326. Identical in six
+  runs launched AT ONCE on the same machine, which is the check that matters and is not the same
+  check as running it six times in a row — see the note on the search bounds;
 * the last level needs a charge CARRIED to where it is wanted before anything else can happen — see
   `staging_goal`. Its stranded piece sits in a room sealed by a glide field, and of the 107 and the
   120 squares the two holdable pieces can walk to, NOT ONE is behind it. Staging seats the charge in
@@ -96,17 +98,26 @@ _TIME_CAP = 25.0
 # spent waiting on a fuse, so it reads low on a crowded board. Leaning on it is what makes these
 # finish; the cost is a few extra presses.
 _LEAN = 3
-# Seconds of search one level may cost. The harness allows a thousand for the whole game, and every
-# level whose plan simply exists is found in well under a second — nearly all of this is spent on the
-# one level that has to carry a charge into place before anything else can happen.
-_PLAN_BUDGET = 150.0
-# The STAGING search alone is greedier, and it is measured on the board it exists for: at the
-# ordinary weight it reached the charge's last hop and stalled there through three million nodes; at
-# this weight it finishes in 2.3 million, in 42 seconds. ⛔ The weight does not carry over to the
-# ordinary plan that follows — there it finds nothing at all.
-_STAGE_LEAN = 12
-_STAGE_TIME = 75.0
-_STAGE_NODES = 2_500_000
+# ⛔ THE SEARCH IS BOUNDED BY NODES, AND THE CLOCKS BELOW ARE SAFETY NETS THAT MUST NOT BIND.
+# This was got wrong first and the mistake is the kind that only shows up on someone else's machine:
+# the level that needs a charge carried into place was tuned against a WALL-CLOCK budget that it
+# cleared with 1.6x to spare here, and on the measurement box — slower, and running twenty-five games
+# at once — the same search ran out of seconds every time. The tool then scored a deterministic six
+# of seven there while measuring seven of seven here, deterministically, on the same tree and the
+# same runner. A time budget makes the RESULT a property of the machine. A node budget does not.
+#
+# So: caps are node counts with real headroom over what was measured, and the seconds are set far
+# enough away that a box several times slower still reaches the same answer, just later.
+_PLAN_BUDGET = 600.0
+_STAGE_TIME = 300.0
+# Staging needs 248k nodes at this weight, and 2.3 MILLION at the ordinary one — for the identical
+# 37-press plan. Greedy is right HERE, where the goal is one piece on one square.
+_STAGE_LEAN = 20
+# The plan that follows staging needs just under two million, so this is twice what it costs.
+_STAGE_NODES = 4_000_000
+# ⛔ And greedy is WRONG for that plan, which is the same knob pointing the other way: at weight 6 it
+# finds nothing in 109 seconds, at 2 it finds a shorter plan in 36. Measured 0,1,2,3,4,5,6.
+_AFTER_STAGE_LEAN = 2
 # Presses spent watching an unread charge before giving up on reading it.
 _PROBE_CAP = 12
 
@@ -747,31 +758,43 @@ def plan_blast(board: Board, charges: dict[int, Charge], cap: int = _NODE_CAP,
     if done(start):
         return []
     zero = tuple(0 for _ in range(sim.n))
-    seen: dict[tuple[tuple[Cell, ...], int, tuple[int, ...], int], int] = {}
-    heap: list[tuple[int, int, tuple[Cell, ...], int, tuple[int, ...], int, tuple[Step, ...]]] = []
+    # ⛔ The path is held as parent links, not carried on every queue entry. MEASURED: carrying them
+    # cost 1.9 GB for a single search on the one board that needs a deep one, and the cap that board
+    # needs is high enough that the difference decides whether the tool can run beside twenty-four
+    # others at all.
+    seen: dict[Any, int] = {}
+    parent: dict[Any, tuple[Any, Step]] = {}
+    heap: list[tuple[int, int, Any]] = []
     tock = 0
+    root = (start, board.held, zero, 0)
     for h in sim.click:
         cost = 0 if h == board.held else 1
-        acts: tuple[Step, ...] = () if h == board.held else ((6, _click_at(board, h, start)),)
         key = (start, h, zero, 0)
         if seen.get(key, big) <= cost:
             continue
         seen[key] = cost
+        if cost:
+            parent[key] = (root, (6, _click_at(board, h, start)))
         tock += 1
-        heapq.heappush(heap, (cost + lean * heur(start), tock, start, h, zero, 0, acts))
+        heapq.heappush(heap, (cost + lean * heur(start), tock, key))
     popped = 0
     stop = time.monotonic() + limit
     while heap and popped < cap:
-        _, _, pos, held, vel, tick, acts = heapq.heappop(heap)
+        _, _, key = heapq.heappop(heap)
         popped += 1
         if not popped % 2048 and time.monotonic() > stop:
             return None
-        g = len(acts)
-        if seen.get((pos, held, vel, tick), big) < g:
-            continue
+        pos, held, vel, tick = key
+        g = seen[key]
         if done(pos):
-            return list(acts)
-        moves: list[tuple[Step, tuple[tuple[Cell, ...], int, tuple[int, ...], int]]] = []
+            out: list[Step] = []
+            cur = key
+            while cur in parent:
+                cur, act = parent[cur]
+                out.append(act)
+            out.reverse()
+            return out
+        moves: list[tuple[Step, Any]] = []
         for aid in _DIRS:
             nxt = sim.press(pos, held, vel, tick, (aid, None))
             # A press that leaves the board and every fuse exactly as they were is a wasted action.
@@ -781,17 +804,17 @@ def plan_blast(board: Board, charges: dict[int, Charge], cap: int = _NODE_CAP,
         for j in sim.click:
             if j != held:
                 moves.append(((6, _click_at(board, j, pos)), (pos, j, vel, tick)))
-        for act, (npos, nheld, nvel, ntick) in moves:
+        for act, nxt in moves:
             ng = g + 1
-            key = (npos, nheld, nvel, ntick)
-            if seen.get(key, big) <= ng:
+            if seen.get(nxt, big) <= ng:
                 continue
-            h2 = heur(npos)
+            h2 = heur(nxt[0])
             if h2 >= big:
                 continue
-            seen[key] = ng
+            seen[nxt] = ng
+            parent[nxt] = (key, act)
             tock += 1
-            heapq.heappush(heap, (ng + lean * h2, tock, npos, nheld, nvel, ntick, acts + (act,)))
+            heapq.heappush(heap, (ng + lean * h2, tock, nxt))
     return None
 
 
@@ -1058,7 +1081,8 @@ class BlastClockTool:
             # the greedy weight, and that is measured, not assumed: on the one board that reaches
             # here, the ordinary weight finds a 57-press plan in 45 seconds and the greedy weight
             # finds NOTHING in 48. Greedier is the intuitive knob and it was the wrong one.
-            steps = self._search(board, charges, _STAGE_TIME, cap=_STAGE_NODES)
+            steps = self._search(board, charges, _STAGE_TIME, cap=_STAGE_NODES,
+                                 lean=_AFTER_STAGE_LEAN)
         else:
             steps = self._search(board, charges, _TIME_CAP)
         if steps is None:

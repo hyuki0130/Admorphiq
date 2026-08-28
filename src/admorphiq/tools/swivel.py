@@ -52,6 +52,7 @@ import numpy as np
 from admorphiq.tools.base import Step, availability, has_frame, levels_completed
 from admorphiq.tools.telescope import (
     _UNIT,
+    TelescopeArmTool,
     _layers,
     _widget_colours,
     anchored_bars,
@@ -597,10 +598,13 @@ class SwivelArmTool:
         self._pending: tuple[int, int, bool] | None = None
         self._moves: list[tuple[str, int, int]] = []
         self._plan: list[int] = []
+        self._delegate: TelescopeArmTool | None = None
         self._dead = False
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
-        """Stateless: every transition is read off the frames inside propose()."""
+        """Stateless here; the delegate is likewise, but it is told anyway."""
+        if self._delegate is not None:
+            self._delegate.observe(prev, action, changed)
 
     # -- bidding -----------------------------------------------------------
 
@@ -619,12 +623,25 @@ class SwivelArmTool:
         layers = _layers(obs)
         if not layers:
             return 0.0
+        if self._delegate is not None:
+            return self._delegate.detect(frames, obs)
         if self._model is not None:
             return 0.95
         g = layers[-1]
         widgets = read_widgets(g)
-        if not any(not w.two_way for w in widgets) or not any(w.two_way for w in widgets):
+        if not any(w.two_way for w in widgets):
             return 0.0
+        if not any(not w.two_way for w in widgets):
+            # ⛔ TAKE THE WHOLE GAME, INCLUDING THE LEVELS THIS TOOL DOES NOT PLAN ITSELF.
+            # These boards split into ones that only telescope and ones that also turn, and two
+            # tools cover them perfectly well ON THEIR OWN. What is NOT free is the changeover:
+            # when the telescoping tool goes silent on the first turning board, the harness keeps
+            # it selected and fills the queue with its own probe actions — MEASURED, 230 of the
+            # 261 actions spent on that level, none of which land on anything. The level is
+            # cleared in 31. So the board never changes hands: the no-turning levels are played
+            # by the telescoping planner FROM INSIDE THIS TOOL, and the turning ones by this one.
+            self._delegate = TelescopeArmTool()
+            return self._delegate.detect(frames, obs)
         colour = marker_colour(g, _widget_colours(g, widgets))
         if colour is None:
             return 0.0
@@ -648,6 +665,13 @@ class SwivelArmTool:
         if level != self._level:
             self._level = level
             self.reset()
+        if self._delegate is None and self._model is None:
+            widgets = read_widgets(g)
+            if widgets and any(w.two_way for w in widgets) and not any(
+                    not w.two_way for w in widgets):
+                self._delegate = TelescopeArmTool()
+        if self._delegate is not None:
+            return self._delegate.propose(frames, obs)
         if self._model is None:
             if not self._begin(g):
                 self._dead = True
