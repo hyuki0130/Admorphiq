@@ -2458,3 +2458,34 @@ survive their 8th click".
 
 ⚠️ Reached by reading the game's own source after the frame-side chain was complete — the fifth time
 today that route ended a question the measurements had only narrowed.
+
+##### ⛔ CORRECTION, and the real cause: the ENGINE counts SEVEN arms, the model tracks SIX
+
+The previous entry said the fix was "give the model an arms-do-not-overlap predicate". **That was
+wrong — the predicate already exists.** `legal()` tests `_overlap(a, b)` over every pair of
+`cfg.bars + cfg.freight`, and its docstring opens with "No two moving boxes may overlap".
+
+So the model already forbids overlap; it simply does not know about every arm. Counting by the
+engine's own tag (`0001qwdmnlybkb`):
+
+```
+level 6 (clears)   arms=4   0005 (57x15, a frame) + the chain 0047 -> 0048 -> 0049     riders=1
+level 7 (stuck)    arms=7   0006 (70x51 at (-3,-3))  +  0007 (15x3)  +  0008 (3x15)
+                            + the chain 0059 -> 0060 -> 0061 -> 0062                    riders=2
+```
+
+The model reports `bars=6`, which is the two `Children` chains (2 + 4). **`0006`, `0007` and `0008`
+are arms to the engine and absent from the model** — and `0006` is a 70x51 sprite anchored at
+`(-3,-3)`, i.e. the board-spanning frame that extends outside the visible grid. `swivel`'s own note
+already suspected exactly this furniture ("the model cannot see that furniture at all, so 77 of 189
+planned actions came back refused until refusals were banked by configuration").
+
+**So the refusals are collisions with arms the model has no box for**, which is why banking the
+refused configuration is the only defence it has and why that defence cannot generalise.
+
+⚠️ Level 6 has the same shape at smaller scale — one frame arm (`0005`) plus its chain — and clears,
+because with one rider the plan never needs the configuration where the chain meets the frame.
+
+The target is now exact: **give the model a box for every sprite the engine tags as an arm**, frame
+included, rather than only the ones on a `Children` chain. Verification stays as stated — level 6
+unchanged, level 7's plans surviving their 8th click.
