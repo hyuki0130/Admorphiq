@@ -1722,3 +1722,58 @@ lp85 and re86 had gone unassigned all day because they were not on the stale lis
 fully cleared and lose to efficiency on ONE level each — lp85 L4 (59 actions vs 16, worth 0.108 of
 its 0.108 gap) and re86 L2 (46 vs 42, worth 0.009). ka59 is the opposite: six levels all at the cap
 and a seventh never cleared, so its whole 0.25 is one clear.
+
+## 0.8867, seventeen at the cap — and the "regression" was the fix (2026-08-28)
+
+`R101KA`, full-25 on ceph-build: **ka59 0.7500 -> 1.0000, mean 0.8767 -> 0.8867, no game
+regressed.** Seventeen of twenty-five now score at the 1.0 cap.
+
+The change was ka59's agent's **uncommitted** `blastclock`, and it does two things at once — clears
+level 7 in 290 actions against a human's 326, and makes the game **machine-independent**:
+
+```
+blastclock d33922ec (was HEAD)     Mac 1.0000/294   ceph 0.7500/700   diverges
+blastclock 393762f2 (now HEAD)     Mac 1.0000/290   ceph 1.0000/290   portable
+```
+
+⛔ **That file was reported as a regression the day before and nearly reverted.** The report rested
+on a measurement whose instrument was never attached. It was the fix all along, and it sat
+uncommitted while three parties argued about which machine was right.
+
+### Three instrument failures crossed to reach a one-file answer
+
+1. **`PYTHONPATH` does not select the code the runner runs** — `scripts/score_efficiency.py:35`
+   does `sys.path.insert(0, <its own repo>/src)` and precedes it. Two "the clock never fires on
+   ceph" readings were of ceph's *uninstrumented* code, caught only when an unconditional
+   `INSTR-ATTACHED` marker failed to print.
+2. **`scripts/measure_frozen.sh` had the identical defect** — built the day before to prevent
+   exactly this, and "validated" by importing `admorphiq` under `PYTHONPATH` rather than by running
+   the runner. It printed snapshot fingerprints beside live-tree numbers. Now it snapshots
+   `scripts/` too and runs the snapshot's own runner; re-validated through the real runner in both
+   directions.
+3. **A file-list diff without `LC_ALL=C`** buried the single real difference under dozens of
+   ordering artefacts — a trap `CLAUDE.md` already records. Locale-fixed, the entire difference
+   between the two trees was **one file**.
+
+⚠️ The wall-clock explanation published for this on 2026-08-27 is **withdrawn**: instrumented on
+both machines, none of `blastclock`'s clock bounds fire, the node cap is never reached, the
+cumulative budget never refuses, and the tool pick is byte-identical. See
+[[../lessons/wall_clock_budget_20260827]], which now carries its own retraction.
+
+### What the guards bought
+
+Both gate additions from the previous day earned their place on this run: RIDERS named the
+in-flight tools (`blastclock`, `swivel`) so the measurement is honestly joint, and the
+tree-integrity check returned its first green — *identical before/after and on the box* — which is
+what makes the number attributable to a named tree at all.
+
+### Remaining: 0.1133 across eight games
+
+```
+bp35 0.1648   lf52 0.2727   s5i5 0.5833   dc22 0.7143
+ls20 0.7500   wa30 0.8000   lp85 0.8919   re86 0.9908
+```
+
+All eight agents are rate-limited until 2026-09-01 20:00 KST. Open question now being measured:
+**does any other committed tool score differently on the two machines?** ka59 proved one did; a
+card that is not portable across machines cannot predict the Kaggle number either.
