@@ -2356,3 +2356,34 @@ sequential path rather than at its output: for each of the two pairings, does th
 solve succeed and the second fail, or does the first already fail? `_joint` exists only as the
 shared-control fallback and the docstring says this board must not need it — so if `_joint` is what
 is running here, that is the defect.
+
+##### s5i5 level 7 — the planner WORKS. The plans fail in EXECUTION. (⛔ overturns the entry above)
+
+Instrumented inside `_replan`, with the level read from the code rather than hardcoded:
+
+```
+level 6   pairing=[(0,0)]         found=25          (clears)
+level 7   pairing=[(0,2),(1,4)]   found=26
+          pairing=[(0,2),(1,4)]   found=20
+          pairing=[(0,2),(1,4)]   found=0
+```
+
+And inside the sequential solve the designed path engages exactly as its docstring says it should:
+`sequential=True`, every control's reach is 1 rider, both riders solve (`place=0 bar=2 got=yes`,
+`place=1 bar=4 got=yes`), `SOLVED=True plan_len=26`.
+
+⛔ **So "the planner finds no route for either pairing" was WRONG.** It finds a 26-click plan, then
+a 20-click plan. The `refuted=2` I reported earlier was the state at the LAST call — after the
+earlier plans had been found, executed, and refuted by the board. The order is: plan -> execute ->
+the board does not end up solved -> the pairing is refuted -> try the next -> exhausted -> dead.
+
+**The defect is prediction, not search.** The model yields plans it believes solve the board and the
+board disagrees when they are played. That is a much sharper target: `_settle` already compares each
+click's predicted outcome against the frame and kills the tool on a mismatch, so the next
+measurement is which click in the 26 first diverges from its prediction.
+
+⚠️ Two instrument notes from this dive, both mine. I hardcoded `lvl=7` into a marker and the new
+attributor faithfully reported "level 8" — a literal is not a measurement, and the fix was to carry
+the real level in a module global set by `propose`. And the earlier `refuted=2` reading was a
+last-call snapshot presented as the whole story; printing every call is what showed the two plans
+that came before it.
