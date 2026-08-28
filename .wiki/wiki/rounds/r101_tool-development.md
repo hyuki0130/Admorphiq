@@ -2185,3 +2185,38 @@ the board readable for the first time.
 **What dc22 level 6 needs is a different tool or a different mechanic model**, and the useful
 statement for whoever takes it is the negative one: the board is read, the pieces are found, the
 avatar is among them, and no simple action moves any of them.
+
+#### s5i5 level 7: the tool understands the board and cannot route it
+
+The harness fix banked earlier already changed this level materially. Per-action sources, measured:
+
+```
+before   448 of 500 actions were PROBE cur=swivel  -> click (32,32), the board centre
+after    461 tool/linkage  ·  30 tool/swivel  ·  7 PROBE/swivel
+```
+
+**The 448 wasted centre-clicks are gone**; the level is now played with real proposals. It still
+does not clear, and the reason is in s5i5's OWN tool rather than in the fallback that inherits it.
+
+`swivel` clears levels 1-5 by delegating to `TelescopeArmTool` and clears level 6 on its own path.
+On level 7 it runs that same path 31 times and then latches dead — at `REPLAN-FAIL`, not at
+assembly:
+
+```
+level 7   no-pairing  tried=2  planfail=2  solved=0  riders=2  places=2  refuted=2
+```
+
+So the board is read, the controls are probed, the model assembles, and **both possible
+rider-to-place pairings are tried and both fail to yield a route**. The tool then correctly gives
+up rather than spending the level, and `linkage` takes over with 461 actions that also do not solve
+it.
+
+⛔ **This is a PLANNER limit, not a perception one** — the opposite of dc22, where perception was
+broken and the premise turned out false. `plan(model, cfg, moves, banned)` finds nothing for either
+pairing on a board whose budget is 200 actions and whose human baseline is 86.
+
+The useful next question is narrow: with `riders=2, places=2`, is the level genuinely unroutable
+under the moves this tool has learned, or is `plan` missing a move it needs? The `_retry_unknown`
+path already exists for controls that were jammed at probe time — its own note records a board
+where three of nine controls were unreadable when first tried — so the first thing to measure is
+whether level 7's controls are fully known when the two pairings are attempted.
