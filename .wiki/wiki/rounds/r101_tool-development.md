@@ -2154,3 +2154,34 @@ buy **zero score**. The rule against keeping unmeasured changes applies to my ow
 pairs rather than commit to one, and let gantry's existing probe — which already asks which square
 moves — choose. That is a contract change, not a heuristic, and it is the first thing in this game
 that is not guesswork.
+
+#### dc22 level 6 — CLOSED: the tool's core premise is false on that board
+
+The contract change was made and measured: `_pieces` now offers EVERY candidate at the chosen side
+instead of the first congruent pair, and `_settle_move` — which already watches which square moves —
+picks the avatar. Levels 1-5 are unchanged and now show the mechanism working with more candidates
+than two:
+
+```
+level 1  avatar=14 from rare=(11, 14)
+level 4  avatar=14 from rare=(11, 14, 12)
+level 5  avatar=14 from rare=(11, 14, 1)
+level 6  — no avatar line at all —
+```
+
+**On level 6 the candidate list includes colour 11 (the piece the earlier layers were fighting to
+admit) and NOTHING MOVES.** No candidate square responds to any simple action, so `_avatar` is
+never assigned and the tool declines — correctly, and for a reason no read fix can reach.
+
+⛔ **So the premise `phase_grid` is built on — one of the rare squares moves under a simple
+action — is FALSE on dc22 level 6.** Every layer below it was real (the panel split, the stray
+pixel, the two-tone token, the phantom token from a lone pixel on flat ground) and each was worth
+finding, but none of them was the reason the level does not clear.
+
+⛔ Not banked: levels 1-5 identical, level 6 identical, zero score. Six read repairs measured on
+this level today and exactly one banked — the solid-block rule, which was full-25 neutral and made
+the board readable for the first time.
+
+**What dc22 level 6 needs is a different tool or a different mechanic model**, and the useful
+statement for whoever takes it is the negative one: the board is read, the pieces are found, the
+avatar is among them, and no simple action moves any of them.
