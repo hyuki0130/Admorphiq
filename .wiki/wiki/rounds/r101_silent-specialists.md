@@ -255,3 +255,26 @@ effect: threshold, shift range, origin re-fit, pitch re-fit, revival, map-drop-o
 admissibility bypass, and shape matching. The alignment failure is REAL, its cause is REAL and now
 named — and it is not what stops bp35. crag runs out of moves for a reason that has nothing to do
 with seeing the board.
+
+## What the shape fix actually bought: the failure MOVED
+
+The fix scores identically, so the temptation is to file it as inert. It is not — it changes which
+wall bp35 is against, and that is the difference between two very different pieces of future work.
+
+```
+before   RETIRE kind=EMPTY  tool=crag      it cannot place the window, goes blind, proposes nothing
+after    RETIRE kind=STALL  tool=crag      it proposes moves and they reach no new state
+```
+
+With the fallback in, crag never calls `_quit` at all (zero `CRAGWHY` lines where there were eight)
+and never returns an empty proposal (zero `EMPTYAT` lines). It is retired by the STALL path instead.
+
+So bp35's problem is no longer "the tool cannot see the board". It is "the tool can see the board
+and cannot find a way forward on it" — a planner question, on a level whose terrain is now correctly
+mapped across the gravity reversal that used to blind it.
+
+⚠️ Recorded, not kept. The gate says 0.8935 -> 0.8935 with nothing gained anywhere, and the rule is
+to keep nothing that does not move the score. But the DIAGNOSIS is the asset here, and a future
+attempt on bp35 should start by re-applying this fifty-line fallback — it is written out in this
+round's commits — and then work the planner, rather than re-deriving the perception failure from
+scratch.
