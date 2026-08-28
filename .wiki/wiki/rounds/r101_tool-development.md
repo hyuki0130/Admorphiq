@@ -2922,3 +2922,25 @@ So the plans run to completion and **the board does not reach a new state**. Tha
 horizontal-only rule as level 5, which clears at the cap). lf52's remaining 0.727 sits behind a plan
 that executes and does not achieve anything — the same class as bp35, and the sharpest statement
 available without a model of what level 6 asks for.
+
+##### lf52 and bp35 are NOT the same class after all — one wastes a third of its actions
+
+Measured per action at the runner, with the frame compared before and after (score preserved, zero
+propose errors, so the instrument is clean):
+
+```
+lf52   L1-L5 100% effective        L6  500 actions, 329 changed the board  (66%)
+bp35   L1-L5 100% effective        L6  500 actions, 500 changed the board  (100%)
+```
+
+⛔ **lf52 level 6 wastes 171 actions — a third of the level — on moves the engine refuses**, while
+every earlier level is perfectly effective. bp35's stuck level wastes nothing at all.
+
+That splits what I had put in one class last night. bp35 really is "an honest plan that is
+insufficient": every action does something and the level still does not fall. lf52 is a REFUSAL
+problem — the tool proposes moves that leave the board untouched, and it does so only on the level
+it cannot clear.
+
+⚠️ And it corrects the earlier lf52 reading. "Zero probe waste" was true — the harness never
+substitutes a probe there — but zero probe waste is not zero waste: the tool's OWN proposals are
+what the engine declines. Counting only the harness's fallback missed a third of the level.
