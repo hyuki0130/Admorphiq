@@ -253,6 +253,34 @@ that omission. Log every action first; filter afterwards.
   pads to zero without winning** — it is a trap, not a lever, because the win is only checked inside
   the capture handler.
 
+**The protocol, confirmed by reading the colour under each click** (`scripts/_lf52_protocol.py`):
+
+```
+select click  ->  lands on colour 14 (GREEN)  = a PAD
+landing click ->  lands on colour  1          = an empty cell
+```
+
+So a capture needs **two ADJACENT pads with an empty cell beyond** — ordinary peg solitaire. Every
+earlier enumeration in this round selected an empty neighbour instead of a pad, so no selection ever
+happened and the landing click was the second half of an interaction whose first half never ran.
+
+**Level 6 has no capture at entry, and this is now measured rather than inferred**: the pads sit at
+cells (4,3), (8,2), (9,4) and the adjacent-pair list is EMPTY. Arming the power-up (click its
+sprite, then the bottom-left corner) changes nothing either, and arrows leave every pad in place
+across 32 presses.
+
+⚠️ **The one hypothesis left, and it is a real one**: `unfozwvlovdui` is defined with `{"": GREEN}`
+— it maps NO character to a colour, so it renders nothing — while carrying `name: "fozwvlovdui"`.
+The win test counts entities by NAME, not by pixels. If a level places invisible pads, the visible
+count is not the game's count and "three pads, one capture to win" is wrong for level 6. That is the
+next thing to check, and it is checkable: the pad count the game uses can be inferred by watching
+which capture makes the level advance on a level that DOES clear.
+
+⛔ Also worth carrying: the frame is **27 layers**, and every reading in this round used `frame[-1]`
+alone. That happened to be right — the protocol's arithmetic (12 pixels per pad, clears at 24)
+matches that layer — but it was never checked until the end, and a pad variant IS declared on a
+different layer in the source.
+
 **So the tool is not failing to play the game — it is failing to find a SETUP.** railpeg clears
 levels 1-5 with exactly the protocol above, which means it knows the capture; level 6 needs a move
 that is not itself a capture before any capture exists, and its plan is built only of captures. That

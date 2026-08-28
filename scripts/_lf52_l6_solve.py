@@ -76,6 +76,16 @@ def main() -> None:
     def ngreen(o) -> int:
         return int((np.array(o.frame[-1], dtype=np.int16) == GREEN).sum())
 
+    # ⛔ EVERY reading in this round used frame[-1] — the top layer alone — while the source defines
+    # a pad variant at `layer: yxfirncjqy + 1`. A pad on another layer is invisible to a top-layer
+    # count, and "three pads, none adjacent" would then be an artefact of the instrument.
+    print(f"frame layers: {len(obs.frame)}", flush=True)
+    for li in range(len(obs.frame)):
+        gl = np.array(obs.frame[li], dtype=np.int16)
+        ng = int((gl == GREEN).sum())
+        print(f"  layer {li}: {ng} green ({ng // 12} pads) "
+              f"{[(b[0], b[1]) for b in blobs(obs, GREEN)] if li == len(obs.frame) - 1 else ''}",
+              flush=True)
     g = np.array(obs.frame[-1], dtype=np.int16)
     present = {int(v): int((g == v).sum()) for v in np.unique(g)}
     print("level 6 colours:", present, flush=True)
@@ -96,24 +106,31 @@ def main() -> None:
     # defined by the PAD: whatever jumps, it starts one cell to one side of a pad and lands one cell
     # to the other. Enumerating the pads' own flanks needs no theory of the mover at all, and it is
     # 12 pairs rather than a sweep.
-    for py, px, _n in pads:
-        for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
-            sy, sx = py - dy * CELL, px - dx * CELL
-            ly, lx = py + dy * CELL, px + dx * CELL
-            if not (0 <= sy < 64 and 0 <= sx < 64 and 0 <= ly < 64 and 0 <= lx < 64):
-                continue
-            env.step(agent._convert(GameAction.coordinate(int(sx), int(sy))),
-                     data={"x": int(sx), "y": int(sy)})
-            o2 = env.step(agent._convert(GameAction.coordinate(int(lx), int(ly))),
-                          data={"x": int(lx), "y": int(ly)})
-            now = ngreen(o2)
+    # MEASURED: the select click lands on colour 14 (a pad) and the landing click on colour 1 (a
+    # hole), so a capture needs TWO ADJACENT PADS with a hole beyond. Level 6's pads sit at cells
+    # (4,3), (8,2), (9,4) — no two are adjacent — so no capture exists at entry, and no enumeration
+    # of jumps can find one. The only other verb the source has is the power-up: click its sprite to
+    # arm it (line 5345), then spend it with a click in the bottom-left 16x16 corner.
+    cells = [((p[0] - 1) // CELL, (p[1] - 1) // CELL) for p in pads]
+    print("pad cells:", cells, "| adjacent pairs:",
+          [(a, b) for i, a in enumerate(cells) for b in cells[i + 1:]
+           if abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1], flush=True)
+    for v in (5, 9, 11, 12, 8):
+        for by, bx, _n in blobs(obs, v):
+            before = [(q[0], q[1]) for q in blobs(obs, GREEN)]
+            env.step(agent._convert(GameAction.coordinate(int(bx), int(by))),
+                     data={"x": int(bx), "y": int(by)})            # arm
+            o2 = env.step(agent._convert(GameAction.coordinate(4, 60)),
+                          data={"x": 4, "y": 60})                  # spend, bottom-left corner
+            after = [(q[0], q[1]) for q in blobs(o2, GREEN)]
             lvl = int(getattr(o2, "levels_completed", 0) or 0)
-            if now != base:
-                print(f"  select ({sy},{sx}) -> land ({ly},{lx}) over pad ({py},{px}): "
-                      f"green {base} -> {now}", flush=True)
-                base = now
+            if after != before or ngreen(o2) != base:
+                print(f"  armed on c{v} ({by},{bx}) then corner: pads {before} -> {after}",
+                      flush=True)
+                base = ngreen(o2)
+                obs = o2
             if lvl != 5:
-                print(f"LEVEL CLEARED: select ({sy},{sx}) land ({ly},{lx})")
+                print(f"LEVEL CLEARED after arming on c{v} ({by},{bx})")
                 return
     print(f"no capture; green still {base}")
 

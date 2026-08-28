@@ -59,7 +59,12 @@ def main() -> None:
         # capturing clicks landed on odd steps, and inferring what the even steps were is exactly
         # the guess that has cost this round four wrong models.
         if step < 12 or now != prev:
-            where = f"({data['x']},{data['y']})" if data else "simple"
+            if data and "x" in data:
+                gg = np.array(frames[-2].frame[-1], dtype=np.int16)
+                under = int(gg[int(data["y"]), int(data["x"])])
+                where = f"({data['x']},{data['y']}) on colour {under}"
+            else:
+                where = "simple"
             mark = f"  green {prev} -> {now}" if now != prev else ""
             print(f"  step {step} lvl{lvl} act={aid} {where}{mark}", flush=True)
             prev = now
