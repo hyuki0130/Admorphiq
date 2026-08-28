@@ -53,3 +53,27 @@ that an intervention did nothing is backed by a marker showing the intervention 
 ## Related
 
 [[lessons/instrument_validity_20260825]] · [[rounds/r101_probe-fallback]]
+
+## bp35's window, looked at rather than reasoned about
+
+crag reports "window does not belong to this board" and scores 0.60/0.565 against its 0.82
+threshold. Three explanations for a stitch that cannot place a window, each measured on the level-6
+board:
+
+- **moving terrain** — only **12 of 4096 cells** change under twelve inert actions, and all twelve
+  are background. The board is static; the disagreement is not things moving.
+- **a horizontal pan** (crag's stitch searches VERTICAL shifts only — `self._world.get((r + shift,
+  c))` leaves the column alone, because its docstring records a board three to four times deeper
+  than the window) — measured by fitting the best row and column offset after each direction:
+  **best shift 0 on BOTH axes, fit 0.989**. The camera does not pan, and no action moves more than
+  1.1% of the board.
+- **a transitional frame** — the board is already stable at the instant the level is entered.
+
+So the three cheap causes are out, and what remains is inside crag's own `_readings` — the glyph
+quantisation the world is built from. That is where a bp35 dig should start, and it should start by
+dumping those readings rather than by reasoning about them.
+
+⛔ A note on the instrument: the first version of this probe printed nothing and exited 0, because
+an edit that replaced the tail of the file removed `if __name__ == "__main__": main()`. A script
+that defines its work and never calls it looks exactly like a script whose measurement came back
+empty.
