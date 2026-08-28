@@ -2517,3 +2517,39 @@ catch, or with an arm sitting exactly where a bar already stands.
 cells on the board, the way the off-grid case was. The engine's rule is
 `any(arm.collides_with(other) for arm in arms)` over SPRITES, and reproducing it needs the arms'
 actual footprints — not a cell-set approximation reconstructed from refusals.
+
+##### s5i5: the hidden frame IS being learned, and the order rules out the obvious repair
+
+The refused moves' own boxes, printed at the ban, show what the collision is with:
+
+```
+refusal 1  want_bars = [... (6,48,8,65) ... (9,63,14,65)]        x reaches 65, past the grid edge
+refusal 2  want_bars = [(-3,42,14,44) ... (-3,45,-1,50)]         y reaches -3
+```
+
+No pair of the model's own boxes overlaps in either configuration — so the collision is with the
+**arm the model has no box for**: `0006`, the 70x51 sprite anchored at `(-3,-3)`. That is exactly
+what `offblocked` exists to learn, and it IS learning it: **18 cells after the first refusal, 45
+after the second.**
+
+So the hypothesis was "the learning is real but the pairings run out before it converges — clear
+`refuted` whenever the model gains a fact". Implemented, and the branch fires twice:
+
+```
+level 7   offblocked=18  cleared=0
+level 7   offblocked=45  cleared=0
+```
+
+⛔ **`cleared=0` both times: the refutation set is EMPTY at the moment the learning happens.** The
+model gains its facts BEFORE any pairing is refuted, so there is nothing to un-refute and the repair
+cannot help. Score 0.5833, unchanged. Not kept.
+
+**What the order actually says**: by the time pairings are being refuted, the frame is already 45
+cells known — and plans are STILL produced and STILL refused. So the failure is not "too little
+learned too late". Either 45 cells is far short of the frame's real footprint (it is only about a
+fifth opaque, so a superset built from two refusals cannot cover it), or the plans die on something
+else entirely.
+
+⚠️ Three repairs measured on this board tonight — on-board cell learning, un-refuting on new
+knowledge, and (earlier) raising the control-retry budget — all **0.5833, no change**. Each ruled
+out a different story, and all three ran in snapshots; the live tree is untouched.
