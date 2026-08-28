@@ -12,6 +12,15 @@
 #     8cc9e8b8) while three parties measured ka59 and compared notes;
 #   * an agent reported a hash and a score taken at different moments of the same file.
 #
+# ⛔ AND THE FIRST VERSION OF THIS SCRIPT WAS ITSELF AN INSTANCE. It set PYTHONPATH at the
+# snapshot and ran the LIVE `scripts/score_efficiency.py` -- whose line 35 does
+# `sys.path.insert(0, <its own repo>/src)`, which wins over PYTHONPATH. So it printed a
+# snapshot fingerprint next to a number measured from the live tree: the exact false stamp it
+# exists to prevent. It was "validated" by importing admorphiq under PYTHONPATH rather than by
+# running the runner, i.e. the mechanism was tested and the PATH THE TOOL ACTUALLY USES was not.
+# The fix is to snapshot `scripts/` too and run the snapshot's OWN runner, so that line 35
+# resolves inside the snapshot and no environment variable has to win anything.
+#
 # The cause is structural, not carelessness: agents are told NOT to commit, so their work is
 # always live in the shared tree, and any measurement of that tree describes a moment rather
 # than an artefact. Repeating the measurement does not help -- it makes the wrong number more
@@ -25,6 +34,7 @@ cd "$(dirname "$0")/.."
 SNAP="${TMPDIR:-/tmp}/frozen_$$"
 mkdir -p "$SNAP"
 cp -R src "$SNAP/src"
+cp -R scripts "$SNAP/scripts"
 trap 'rm -rf "$SNAP"' EXIT
 
 # The identity of what is about to be measured, printed BEFORE the run so it appears in the log
@@ -34,5 +44,6 @@ FP=$(cd "$SNAP" && find src/admorphiq/tools src/admorphiq/harness -name '*.py' \
 echo "[frozen] tools+harness fingerprint: $FP   (snapshot $SNAP)"
 echo "[frozen] git HEAD: $(git rev-parse --short HEAD)   dirty tools: $(git status --porcelain src/admorphiq/tools | wc -l | tr -d ' ')"
 
-PYTHONPATH="$SNAP/src" uv run python scripts/score_efficiency.py "$@"
+# Run the SNAPSHOT's own runner: its line-35 sys.path.insert then points at "$SNAP/src".
+uv run python "$SNAP/scripts/score_efficiency.py" "$@"
 echo "[frozen] the number above is of fingerprint $FP"
