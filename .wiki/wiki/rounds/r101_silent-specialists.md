@@ -306,3 +306,29 @@ So the chain for bp35 is complete, and every link was measured:
 
 None of this moves the score, and the fix is reverted. But bp35 is no longer an unexplained park:
 the next attempt has a named perception fix to re-apply and a named planner defect to work on.
+
+## Where the bp35 chain ENDS: the oscillation is honest
+
+crag's frontier ranking, read from its own source:
+
+```
+fresh = 2 + min(reveals, 3)     a landing that shows new rows
+fresh = 1                       unvisited
+fresh = 0                       already visited
+```
+
+A visited move scores zero but stays ELIGIBLE. So when nothing on offer reveals a new row and every
+landing has been stood on, every candidate ties at zero, lower terms break the tie, and the tool
+paces. **The oscillation is not a planner bug — it is the tool reporting, in the only way its
+ranking can, that it has nothing new to try.**
+
+Which lands bp35 on exactly the same conclusion as lf52, reached by a completely different route:
+
+- **lf52**: three pads, no two adjacent, so the peg-solitaire capture its model knows has NO LEGAL
+  INSTANCE on that board.
+- **bp35**: every reachable landing already visited and revealing nothing, so the frontier its model
+  knows is EMPTY on that board.
+
+Two games, two tools, two independent diagnostic chains, one answer: **the level asks for a move the
+tool has no word for.** That is the round's central finding, and it is now demonstrated rather than
+inferred.
