@@ -2838,3 +2838,30 @@ level 3 (81 -> 45 actions) and slightly hurt level 2.
 
 **No further ordering work on this tool.** lf52 is untouched by every variant, so its 0.2727 is not
 a ranking problem either.
+
+##### lf52 reads its CAMERA per level, and levels 1-5 are the horizontal-only ones
+
+lf52 builds its board at runtime, so `level_data_diff` and the sprite diff both see one sprite per
+level and say nothing. The game's own code does say something: it branches on the level number
+(`whtqurkphir = _current_level_index + 1`) to choose how far the camera moves:
+
+```
+level 4      (-dx*8, 0)     and (0,0) when grid_y >= 11
+level 5      (-dx*6, 0)
+level 6      (-dx*6, 0)
+levels 7,10  (0, 0)          camera pinned
+level 8      (0, -dy*6)      VERTICAL scroll
+otherwise    (-dx*6, -dy*6)  BOTH axes
+```
+
+**The five levels the tool clears — all at the 1.0 cap and all faster than the human (8/32, 52/81,
+57/60, 64/71, 138/205) — are exactly the horizontal-only ones.** Levels 7 and beyond introduce a
+pinned camera, vertical scrolling, and two-axis scrolling.
+
+⚠️ **But level 6 uses the SAME rule as level 5** `(-dx*6, 0)` and is not cleared, so the camera is
+not what stops the run — something else does, and it stops it one level before the camera changes.
+That is a useful negative: it rules out "the tool cannot handle vertical scroll" as the explanation
+for the FIRST failure, while flagging it as a real wall waiting at level 8.
+
+⛔ It also explains why every `crag` ranking variant left lf52 at exactly 0.2727: the game is stuck
+on something the ranking cannot reach.
