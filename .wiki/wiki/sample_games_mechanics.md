@@ -930,3 +930,28 @@ clear. What survives is what was measured directly:
 number change" answers a different question from "did we win", and the difference is invisible until
 something forces the direction to be named. Three commits and two probes were built on the wrong
 side of it.
+
+### dc22 level 6: every click-then-move combination, and where the board actually responds
+
+4,096 combinations — click each of 1,024 cells, then try all four moves — swept in eight parallel
+bands, with the direction of any level change named explicitly (rule 7f), so a collapse cannot be
+read as a clear:
+
+```
+rows  8-16   18 boards reached      <- the only band that opens the state space
+rows  0-8     9
+rows 24-32    6
+all other bands   3                 (16-24, 32-40, 40-48, 48-56, 56-64)
+```
+
+**No clear, and no collapse either.** Outside rows 0-32 the board is completely inert: clicking
+anywhere and then moving reaches the same three boards the pocket already had.
+
+So the level's responsive machinery sits in a narrow band across the TOP of the board, and rows 8-16
+carry most of it — 18 distinct boards against the pocket's 3. That is where the four colour-11 blocks
+are too, at rows 5-8.
+
+⚠️ What this does NOT show is a way out: 18 boards is still a small closed set, and none of them is a
+win. The honest statement is that dc22's level 6 responds to a small region and nothing found so far
+escapes it — 4,096 click-move pairs, 54,000 random actions, 47 solo tools, 9 tool combinations and
+16 prefix replays, all clearing nothing.
