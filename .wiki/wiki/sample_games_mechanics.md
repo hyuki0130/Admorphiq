@@ -432,3 +432,37 @@ Two of the four then had their obvious explanation tested and REFUTED:
 ⛔ So the silence is not one bug with one knob. Each tool goes quiet for its own structural reason,
 and the two cheapest explanations — a rejection threshold and a search cap — are now measured rather
 than assumed: one changes nothing, the other does not terminate.
+
+## bp35 level 6 — the mechanic, found in the board table (2026-08-29)
+
+Levels 5 and 6 have the SAME legend and the same 11x39 shape, so nothing new is declared. The
+difference is which characters the layout uses:
+
+```
+grid5  x=14  g=2  2=2   u=6   v=7  +=1
+grid6  x=0   g=3  2=11  u=10  v=7  +=1   1=1     <- one instance of a character level 5 never uses
+```
+
+`1` is `yuuqpmlxorv`, and it has **four sprite variants that shrink in stages**:
+
+```
+.oxxxo.        o...o          o   o         o   o
+.xxxxx.   ->   .xxx.    ->     ...     ->
+.xxxxx.        .xxx.           .x.
+```
+
+**It is a CRUMBLING PLATFORM**, and level 6 places exactly one, in the middle of a row of
+pass-through tiles (`oo2222122oo`).
+
+That single tile explains the whole bp35 investigation:
+
+- crag classifies terrain by PIXEL SIGNATURE, so one crumbling entity presents as FOUR kinds — which
+  is exactly the "4 of 7 unclassified" measured on that board.
+- Clicking any of them does nothing, because the change is driven by use, not by clicks — which is
+  why the two the probe did reach were both learned as `inert`.
+- The route depends on a platform that disappears, so the frontier the tool computes is not the
+  frontier the board has.
+
+⛔ **The tool's model is static terrain plus click-driven change. This board needs terrain that
+degrades on its own.** No amount of threshold, patience, vocabulary or alignment work reaches that,
+which is precisely what eleven measured interventions found the hard way.
