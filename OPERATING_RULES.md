@@ -1438,3 +1438,39 @@ Assembled from nine failures in two days; each line cost at least one run and se
 8. ⛔ **Prefer a quantity that IS what it measures.** Load average over a process count (62 matched,
    22 running). `GAME_OVER` over an opening-frame hash (zero recurrences on a level dying 58 times).
    `board_changed` over `(prev != cur).any()` (true on every action on a board with an edge counter).
+
+### 7ak — `_standable` condemns a tile for ONE pixel, and it is shared by three tools (2026-08-30)
+
+dc22's level-6 crane is fully decoded — four drives, each live only while the avatar overlaps its own
+`njvd-rolo` plate, all four measured LIVE 1:1 with zero cross-talk over 69 presses, and the
+precondition is FRAME-VISIBLE (1319 lit panel pixels standing on a plate against 1304 off it,
+toggling reversibly). ⛔ **And what stops the tool is not the game. It is ours.**
+
+`_plan_full` returns a plan of length ZERO between all four plates, from all five cells inside the
+cluster, while a raw two-move walk between exactly those cells works every time. The cause is one
+line — `phase.py:430`:
+
+```python
+return not any(bool((tile == c).any()) for c in self._not_floor)
+```
+
+`_learn_refusal` condemns COLOURS, `_not_floor` holds `[0, 5]`, and every plate is a 2x2 sprite drawn
+`[[1,0],[0,C]]` — it CONTAINS colour 0. **So a tile is unstandable if ANY pixel in it is a condemned
+colour, and the tool condemns the very cells the mechanic needs.** Anything drawn rather than flat
+is at risk, which is most sprites.
+
+⚠️ **THE FILE IS SHARED**: `phase.py` is imported by `gantry` and `sluice`, so this is not a dc22
+repair. And ⛔ **the obvious fix is MEASURED NEGATIVE**: striking a walked-on colour from
+`_not_floor` FIRES (colour 0 is struck) and still stops at five levels, while costing **+23 actions
+on levels 1-5 — and level 3 has only 8 actions of slack.** Two other repairs are also negative:
+re-asking silent controls after a provisional slide fires ZERO times on level 6, and unioning
+`_visited` into `_grid` costs at least 8x the wall clock.
+
+⛔ **dc22 is not landable without a planner over (avatar, crane, slab)** — the oracle needed 297k
+states and a 141-action plan — and levels 1-5 have EIGHT actions of slack, so anything that probes on
+them loses more than level 6 returns. That asymmetry, not the mechanic, is what makes this game hard.
+
+⭐ The agent also corrected itself in the record: it first explained the refusal as "cells never stood
+on read as unstandable after a warp landing", and `standable_here` is TRUE at all five cells. **The
+claim survived; the explanation did not** — and it committed the correction rather than quietly
+replacing it.
