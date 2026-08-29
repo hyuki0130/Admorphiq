@@ -1380,6 +1380,77 @@ level. The human's 186 is 4.6x the level's own 42-unit tank, so it contains refi
 deaths too. Reaching it needs a different way to meet a mover under fog, not another ordering.
 
 
+## ⛔ THE INERT ACTIONS ARE THE TOOLS' OWN PROPOSALS, NOT THE HARNESS FILL (2026-08-29)
+
+Two axes were opened on the belief that the harness wastes actions the tools never asked for — a
+level-transition tax, and the `_probe` fallback pressing the lowest-numbered key. Both are now
+measured and both close. The instrument is `scripts/_handover_control.py`, which tags a fill INSIDE
+`UnifiedAgent._probe` and reads the tag as a boolean immediately after `choose_action`.
+
+**The transition tax (peer's `scripts/_handover_tax.py`, all 25):** 149 transitions, 54 inert
+actions in the 6-action window after a rise = **0.36 per transition**, seventeen games at exactly
+0.00. Even as an upper bound — every action pure waste, perfectly recoverable — that is ~2 actions
+per game against per-level counts of 30-400. It cannot move RHAE. ⚠️ And the re86 sighting that
+motivated the axis ("2 actions per level, push plus undo") does NOT reproduce: re86 is 0.00 across
+7 transitions.
+
+**The fill share, on the two games where inert actions are largest:**
+
+```
+game  level  actions  inert  of which FILLS  of which TOOL-PROPOSED
+lf52    L6      500     209        17                192
+dc22    L6      500     353        16                337
+whole-run totals   lf52 243 inert = 16 fill + 227 proposed · dc22 396 = 14 + 382
+```
+
+⛔ **94% and 96% of the waste is a tool with a plan whose plan does nothing.** No change to the
+fill path can reach it. Who holds those levels:
+
+```
+lf52 L6   railpeg 121 (18 inert, 14%)  ->  pegjump 11 (8 inert, 8 fills)  ->  graph 366 (181 inert, 49%)
+dc22 L6   gantry 12  ->  phase_grid 12  ->  graph 474 (337 inert, 71%)
+```
+
+⭐ **`graph` NEVER fills — it always has a proposal — and between half and three quarters of them
+change nothing.** It is the general searcher, so this is the one shape here that also describes the
+private 110. The contrast is sharp: on games that score 1.0 the holding tool's inert rate is
+**0% (lp85/cyclepress), 0% (m0r0/decouple), 7% (vc33/pillar_transfer)**.
+
+⚠️ **But the direction of that correlation is not established.** A searcher bumping walls it has
+not mapped is what being stuck LOOKS like; the inert rate is at least as likely to be a symptom as
+a cause, and this file already records the s5i5 case where the missing information was handed over
+by an oracle and the score did not move. Rule 7c's own closing negative applies too: removing
+lf52's waste did not open its level (5 levels at 500 actions and 5 at 1000).
+
+⛔ **RULE 7c's "83 of those presses come from the harness" IS STALE.** Measured today on the same
+level: **17 fills of 500 actions**. The lesson it teaches — check who ISSUED an action before
+attributing it — is exactly what produced this entry; its numbers predate the tool line-up that now
+holds the level (railpeg and pegjump did not exist then).
+
+### Two instrument defects found in one afternoon, both failing toward "there is nothing here"
+
+⛔ **`_current is None` IS NOT "the harness filled it".** `loop.py:565` clears `_current` only after
+`_EMPTY_TOLERANCE` = **8 consecutive** empty proposes, while `_fill_from_current` fills the turn on
+every one of them — so seven fills in eight happen under a NAMED tool. A probe using that proxy
+reported `filled` = **0 on all 25 games**, which reads as "the harness fill is not the problem" and
+is a null the data does not support: re86 alone has 5 fills, all named, all invisible to it.
+
+⛔ **AND MY OWN PROBE TRUNCATED EVERY RUN THAT DIED.** `UnifiedAgent.restart_on_game_over` is True
+(`loop.py:138`), so `score_efficiency.py` REVIVES the env and keeps counting; the first version of
+`_handover_control.py` broke out instead. It reported ls20 at 6 levels / 481 actions where the
+gated run clears 7 in 651 — the fuel game loses three lives on level 7 and everything after the
+first restart was simply missing. Caught by running a probe with a KNOWN-GOOD output
+(`scripts/_ls20_verify.py`, 231 actions on level 7) out of the same snapshot and finding they
+disagreed. ⚠️ A probe that stops early does not look broken; it looks like a game that stopped early.
+
+### `pfan.sh` wrote to the shared tree, and two agents chose the same filename
+
+Measured 2026-08-29: two agents given the same brief independently wrote a probe at
+`scripts/_handover_tax.py`, and `pfan.sh` shipped `scripts/` into the SHARED `~/admorphiq`. One
+fan would have swapped the code under the other's in-flight 25-game run, invisibly, in both
+directions — rule 7l's hole, for fans rather than gates. `scripts/snaprun.sh` runs any probe out of
+a private `~/snap_<name>` and never writes the shared path.
+
 ## dc22 level 6 — COLOUR-CYCLING TILES, and it is the round's best target (2026-08-29)
 
 Ranked by what one more level is worth, dc22 leads at **+0.0114** — its next level is its LAST, so
