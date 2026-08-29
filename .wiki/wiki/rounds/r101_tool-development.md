@@ -3108,3 +3108,92 @@ already avoids the edges (it scans `x >= w // 3`), so the offending clicks are o
 `propose` clicks whose coordinates happen to land there once the camera has scrolled. And "detect the
 restart and re-anchor" is only half: re-anchoring without remembering that the third capture was
 fatal buys a second attempt that repeats it.
+
+##### lf52 level 6: the third capture is the DESIGNED losing move, and the model is blind to exactly the two pieces that would show it
+
+Same instrument, one field added: the ENGINE's piece cells beside the model's, matched on the single
+translation that fits the most of them (the same test `_align` uses). At level-action 123 — the
+decision immediately before the fatal capture — the offset `model = (engine_y - 2, engine_x + 3)`
+places four of six:
+
+```
+engine  6 pieces   (6,6) RED   (14,2)  (15,2)  (20,7)  (22,5)  (26,3)
+model   5 pieces               (14,2)  (15,2)  (20,7)  (22,5)          + one cell that maps off-board
+MISSING            (6,6) and (26,3) — and they are the only two that matter
+```
+
+At action 124 the engine's pieces are `(6,6) (16,2) (20,7) (22,5) (26,3)`: a jump from (14,2) over
+(15,2) landing on (16,2), capturing (15,2). Now read the game's own level-6 branch in `cfilhtifcb`:
+
+```python
+elif self.whtqurkphir == 6:
+    if fldpqdkmge == (16, 2) and uywtlohliu.name == "fozwvlovdui":
+        if self.hncnfaqaddg.whdmasyorl("fozwvlovdui_red")[0].chahdtpdoz == (6, 6):
+            self.pchvqimdvj()      # grey the pieces out, float up the restart control
+```
+
+⭐ **Landing a plain piece on (16,2) while the red piece stands on (6,6) is the ONE position this
+level's author marks as lost, and it is exactly the capture railpeg takes.** Both halves of that
+conjunction are the tool's own doing: red starts at (2,2) and nothing but the agent moves it, so the
+tool armed the trap and then sprang it — while its model held neither the red piece nor the
+precondition's meaning. `zvcnglshzcx` goes TRUE on that action and stays TRUE for 143.
+
+⭐ **And the other missing piece, (26,3), is PROVABLY INERT** — which strengthens the earlier
+conclusion rather than weakening it. Its left neighbour (25,3) is `kraubslpehi-up`, rail with no
+hole, so `posalhhmjq` forbids any piece ever standing there to be jumped over; (27,3), (26,1) and
+(26,5) are off the board entirely. It can never jump, never be jumped over, never be captured. **So
+it must be the survivor**, the level asks for exactly six captures of the other six plain pieces, and
+the column the map never reaches is worth exactly nothing to open. What its absence DOES cost is
+arithmetic: `_won` over a model that lacks it is satisfied one capture early — the "a win that did
+not win" case `_ensure_plan` already detects, and `_elsewhere` is set at level-action 4.
+
+**So the corrected picture of lf52 level 6, three measurements deep:**
+
+```
+actions   0- 16   two captures, free, on the visible left of the board
+actions  24- 44   boards the cart at (7,6), rides it out, map 54 -> 98 and complete for its purpose
+actions  45-123   crosses the frontier back and forth; the engine offers <= 2 legal jumps, mostly 0
+action     124    takes the third capture — the position the game itself calls lost
+actions 124-266   143 actions with zero legal jumps and the restart control lit
+action     267    a click lands in the restart zone; the level silently restarts
+actions 267-500   233 actions against a board the model is wrong about
+```
+
+⛔ The lever is the ONE move at action 124, and neither a bigger map nor a looser veto reaches it.
+
+##### The restarting click, MEASURED — and why it is invisible to any tool reasoning in world coordinates
+
+The twelve actions before the counter falls, now with the click coordinates:
+
+```
+256 ACTION6 xy=(40,21)  zv=True legal=0        263 ACTION6 xy=( 4,42)  zv=True legal=0
+258 ACTION6 xy=(43,21)  zv=True legal=0        264 ACTION6 xy=(30,25)  zv=True legal=0
+260 ACTION6 xy=(29,24)  zv=True legal=0        265 ACTION6 xy=(48,25)  zv=True legal=0
+262 ACTION6 xy=(28,30)  zv=True legal=0        266 ACTION6 xy=( 6,56)  zv=True legal=0   <- x<16, y>48
+267 the board is back at 8 pieces and the opening camera
+```
+
+`Lf52.jxyktkxwle` intercepts **any** ACTION6 with `x < 16 and y > 64 - 16` as "restart this level"
+whenever `zvcnglshzcx` is live — before `dghsidbuet` ever looks at what is under the cursor. So the
+click at (6, 56) is an ordinary planned click on a board cell that, at camera offset -57, happens to
+sit under a screen-space control.
+
+⛔ **railpeg's guard cannot catch this and neither can any successor of it.** `propose` already
+refuses a plan whose pixels fall outside the frame — `(6, 56)` is comfortably inside. The hot-zone is
+in SCREEN space and the tool plans in WORLD space; once the camera scrolls, ordinary playfield lands
+under the control. There is no frame-only rule that distinguishes them without first noticing that a
+control appeared.
+
+**Both directions of the control, and this is what makes it a finding rather than a story:**
+
+```
+level   hot-zone clicks   of those, while the control was live   restart
+  3            1                        0                          no
+  4            1                        0                          no
+  6           10                        1                          YES
+```
+
+⭐ The same click shape happens on levels that CLEAR and costs nothing there. It is destructive only
+in the 143-action window where the game has already declared the branch lost — which means the
+exposure disappears the moment the tool stops playing into a position with zero legal moves. **The
+cheap repair is not "avoid a corner"; it is "stop clicking when nothing is legal".**

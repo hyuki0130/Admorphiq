@@ -105,6 +105,8 @@ def _oracle(env) -> dict | None:
         # it throws the level away, and rule 7s says such a restart reads exactly like a level that
         # continues — so it is recorded rather than inferred.
         "zv": bool(getattr(sc, "zvcnglshzcx", False)),
+        # The engine's piece cells, so a model that is one piece short can be asked WHICH one.
+        "pcells": sorted(p.chahdtpdoz for p in pieces),
     }
 
 
@@ -135,7 +137,7 @@ def main() -> None:
     # railpeg's own view, sampled where the tool itself decides — never by calling `detect`
     # off-schedule (rule 7ah: asking railpeg whether it recognises a board spends its give-up budget).
     peg_view: dict = {"known": None, "cols": None, "elsewhere": None, "score": None,
-                      "mpieces": None}
+                      "mpieces": None, "mcells": None}
     raw_plan = rp.RailPegTool._ensure_plan
 
     def wrapped(self, m):
@@ -144,7 +146,7 @@ def main() -> None:
         cols = [c[1] for c in known] or [0]
         peg_view.update(known=len(known), cols=(min(cols), max(cols)),
                         elsewhere=bool(self._elsewhere), score=score,
-                        mpieces=len(m.pieces))
+                        mpieces=len(m.pieces), mcells=sorted(m.pieces))
         return score
 
     rp.RailPegTool._ensure_plan = wrapped
@@ -169,9 +171,17 @@ def main() -> None:
                     o["cols"] = peg_view["cols"]
                     o["elsewhere"] = peg_view["elsewhere"]
                     o["mpieces"] = peg_view["mpieces"]
+                    o["mcells"] = peg_view["mcells"]
                     o["lvl_done"] = int(getattr(obs, "levels_completed", -1))
                     o["state"] = str(getattr(obs, "state", "?")).split(".")[-1]
                     o["act"] = getattr(act, "name", str(act))
+                    # ⛔ The click's COORDINATES, not just its name. lf52 treats any ACTION6 in the
+                    # bottom-left 16x16 of the FRAME as "restart this level" once its own
+                    # dead-position control is live, and once the camera has scrolled that screen
+                    # region is ordinary playfield — so the restart is invisible without the xy.
+                    dat = getattr(act, "action_data", None)
+                    o["xy"] = ((int(getattr(dat, "x", -1)), int(getattr(dat, "y", -1)))
+                               if dat is not None and hasattr(dat, "x") else None)
                     rows.append(o)
                 return act
 
@@ -244,6 +254,11 @@ def main() -> None:
             "reset_actions": sum(1 for r in rs if r.get("act") == "RESET"),
             "mpieces_final": rs[-1].get("mpieces"),
             "zv_points": sum(1 for r in rs if r.get("zv")),
+            # Clicks that land in lf52's restart hot-zone WHILE the control is live.
+            "hotzone_clicks_live": sum(1 for r in rs if r.get("zv") and r.get("xy")
+                                       and r["xy"][0] < 16 and r["xy"][1] > 48),
+            "hotzone_clicks_any": sum(1 for r in rs if r.get("xy")
+                                      and r["xy"][0] < 16 and r["xy"][1] > 48),
         }
     out["levels"] = summ
     print(json.dumps(out), flush=True)
@@ -259,9 +274,34 @@ def main() -> None:
                   f"at level-action {i} — the twelve before it:", file=sys.stderr)
             for j in range(max(0, i - 12), min(len(rs), i + 2)):
                 r = rs[j]
-                print(f"{j:4d} used={r['used']:4d} act={r.get('act')} cam={r['cam']} "
+                print(f"{j:4d} used={r['used']:4d} act={r.get('act')} xy={r.get('xy')} "
+                      f"cam={r['cam']} "
                       f"p={r['pieces']} legal={r['legal']} zv={r.get('zv')} "
                       f"mp={r.get('mpieces')} st={r.get('state')}", file=sys.stderr)
+
+    # ⛔ WHICH piece is the model missing? Engine cells are (x, y); model cells are (row, col) in a
+    # frame fixed at the level's start, so they are compared up to the single translation that
+    # matches the most of them — the same test `_align` uses, and it either matches or it does not.
+    six_rows = by_lvl.get(6, [])
+    for i in (113, 123, 124):
+        if i >= len(six_rows):
+            continue
+        r = six_rows[i]
+        eng = [(x, y) for x, y in r["pcells"]]
+        mod = list(r.get("mcells") or [])
+        best = None
+        for e in eng:
+            for mcell in mod:
+                off = (mcell[0] - e[1], mcell[1] - e[0])
+                hit = sum(1 for a in eng if (a[1] + off[0], a[0] + off[1]) in set(mod))
+                if best is None or hit > best[0]:
+                    best = (hit, off)
+        missing = ([a for a in eng if (a[1] + best[1][0], a[0] + best[1][1]) not in set(mod)]
+                   if best else eng)
+        print(f"\n# level 6 action {i}: engine {len(eng)} pieces {eng}", file=sys.stderr)
+        print(f"#   model {len(mod)} pieces {mod} best-offset {best[1] if best else None} "
+              f"matched {best[0] if best else 0}", file=sys.stderr)
+        print(f"#   ENGINE PIECES THE MODEL DOES NOT HAVE: {missing}", file=sys.stderr)
 
     # A human-readable level-6 timeline on stderr; the JSON line above is the machine answer.
     six = by_lvl.get(6, [])
