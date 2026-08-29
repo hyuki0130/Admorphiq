@@ -1968,3 +1968,45 @@ reaches level 7 having played six levels with the SAME three changers. **`fogsco
 NOTHING, because its `detect` is 0.00 on every unfogged board, so it never plays levels 1-6 and
 never sees the mechanic it will need.** ⚠️ The permissive-conjugation inertness caps that prize at
 the `press` excursions (~20-30 actions), not the walking — so measure the cap before building it.
+
+### 7ax — ls20's ten "handover" actions are NOT A GAP, and 231 is invariant over the lever (2026-08-30)
+
+I briefed that `keymaze` spends 8 of level 7's first 10 actions "pushing into a wall". **Both halves
+are wrong**, and the correction is measured.
+
+⛔ **Only TWO of the ten are `keymaze`'s at all**, and both MOVE the avatar: (19,15)→(19,10)→(19,5).
+The other EIGHT are **the HARNESS's** — `propose` returns `[]` and `_fill_from_current` spends the
+action on `simple_ids[0]`, refused every time, until `_EMPTY_TOLERANCE` (8) retires the tool. ⚠️ Those
+eight probes are the tolerance **doing its job**: uncapped it was s5i5 448 and dc22 499.
+
+⛔ **AND THE FIX WORKS MECHANICALLY AND LOSES THE LEVEL.** Evidence-gated early retirement — retire on
+the Nth empty proposal when another non-failed tool bids strictly higher on that frame — hands
+`fogscout` the board on action 5 with a 34-unit tank, exactly as designed. ls20 scores **0.7500**;
+level 7 never clears. Reverted.
+
+**A SIXTEEN-ARM SWEEP OF BOTH CONSTANTS settles it:**
+
+```
+handover on action  4 5 6 | 7  | 8    | 9 10 11 | 12 13 14 | 15  | 16   | 17  | 18 19
+level 7             LOST  | 327| LOST | 231     | LOST     | 231 | LOST | 231 | LOST
+```
+
+⭐ **231 is INVARIANT for every handover from action 9 to 17 — a nine-action range of exactly this
+lever — and nothing beats it on either side.** Six arms lose the level outright, each in under 32
+seconds, so these are not timeouts.
+
+**WHY THE TEN ACTIONS ARE FREE, which is the part worth carrying:** level 7's first life runs the
+tank DRY on action 21 (lives 3→2 at 22, 2→1 at 44, 1→0 at 67, reset at 69, 3→2 at 156, clear at 231).
+**The handover's 20 fuel units are charged to a life that ends by running dry regardless of who
+spends them.** A fuller tank buys `fogscout` a different slice of a life it loses anyway, and what it
+learns in that slice is chaotic in the tank size — which is why the surface oscillates rather than
+improving.
+
+⛔ So the 45-action gap is NOT "10 handover + 14 execution + ~21 discovery". **The handover third is
+not a gap.** Any future work on it must first explain how it beats a 231 that is already invariant
+over nine actions of exactly that lever.
+
+⚠️ AND THE SHAPE IS GENERAL: **a cost paid inside an attempt that is doomed for another reason is
+not a cost at all.** Saving it moves the failure, not the score. The same logic closed bp35's
+walled-in attempt (which EARNS 140 map cells before it dies) and it is worth checking before
+attributing waste anywhere.
