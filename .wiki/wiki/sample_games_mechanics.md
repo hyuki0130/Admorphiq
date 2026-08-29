@@ -817,3 +817,25 @@ separates by something a pixel comparison cannot see". Two games, same trap.
 That is a much better candidate for what stops dc22 than the cycling tile, which was tested and does
 not block. The next check is whether the goal is reachable at all — `gantry`'s BFS returns no path,
 and a goal that behaves as a switch when touched may not register as reached.
+
+### dc22 level 6 resists blind search — 54,000 actions, zero clears (2026-08-29)
+
+With every tool-set explanation closed, the board was attacked directly: sixty parallel searches,
+900 mixed moves and clicks each, on ceph-build.
+
+```
+searches      60          actions   54,000       clears  0
+distinct boards reached per search:  max 130, and most far below
+```
+
+**130 distinct states in 900 actions** is the load-bearing number. Nearly every action returns to a
+board already seen, so level 6 is a NARROW state space, not a large one that search merely failed to
+cover. Compare lf52's level 6, where 600 random moves reach about 300 distinct boards.
+
+Geometry, for whoever builds next: the level holds **four colour-11 2x2 blocks**, clustered
+top-right at (5,53), (6,46), (8,53) and (8,56) — the goal is one of them, and they are pixel-identical
+to each other and to every earlier level's goal.
+
+So dc22's level 6 does not open by exploring. Something specific has to be done, the board barely
+moves under anything else, and the two things the source singles out — the cycling tile and the
+dual-purpose goal — are the only candidates left standing.
