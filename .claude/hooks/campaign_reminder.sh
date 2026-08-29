@@ -6,8 +6,8 @@
 # construction — measured 2026-08-29 as 76 commits and zero surviving source changes.
 set -u
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
-F="$ROOT/.omc/CAMPAIGN.md"
+F="$ROOT/.wiki/wiki/campaign/ACTIVE.md"
 [ -f "$F" ] || exit 0
-echo "── CAMPAIGN (.omc/CAMPAIGN.md) ──"
+echo "── CAMPAIGN (.wiki/wiki/campaign/ACTIVE.md) ──"
 sed -n '/## NEXT ACTIONS/,/## LOG/p' "$F" | head -14
 exit 0
