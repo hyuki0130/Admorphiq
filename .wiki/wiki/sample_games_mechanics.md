@@ -839,3 +839,28 @@ to each other and to every earlier level's goal.
 So dc22's level 6 does not open by exploring. Something specific has to be done, the board barely
 moves under anything else, and the two things the source singles out — the cycling tile and the
 dual-purpose goal — are the only candidates left standing.
+
+### dc22 level 6: the tool arrives in a POCKET of three boards (2026-08-29)
+
+Testing whether the game has a restoring undo produced something more useful than the answer (it does
+not — neither ACTION5 nor ACTION7 restores):
+
+```
+move 1 (up)    78fdaf6a -> ea6e0a1b
+move 2 (down)  ea6e0a1b -> 78fdaf6a      exactly back
+move 3 (left)  78fdaf6a -> 0cbb687d
+move 4 (right) 0cbb687d -> 78fdaf6a      exactly back
+```
+
+**Up and down are exact inverses; so are left and right. From where the tool arrives, the four
+direction keys reach exactly THREE distinct boards.** That is the whole explanation for the blind
+search reaching only ~130 states in 900 actions: the mover is in a pocket one cell wide in each
+direction, and no amount of moving leaves it.
+
+So dc22's level 6 is not a hard search problem. It is a position from which movement alone can do
+nothing, and the escape — if there is one — has to be a CLICK. That is a much narrower question than
+"why does gantry find no path", and it is the one worth answering.
+
+⚠️ It also explains the shape of `gantry`'s failure honestly: its route BFS returns no path because
+from this pocket there IS no path by movement. The tool is right; it simply has no vocabulary for
+getting out.
