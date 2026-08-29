@@ -535,3 +535,16 @@ level outright rather than merely scoring badly.
 That sizes ls20's efficiency target and makes it concrete: **do not run dry.** The route has to be
 planned through the `npxgalaybz` pickups, which is precisely the constraint `fogscout` does not
 model.
+
+**Level 7 carries SIX pickups, more than any other level** — at (30,21), (50,6), (15,46), (40,6),
+(55,51), (10,6), against two or three on levels 1-6. It is the only fogged level AND the most heavily
+fuelled one, which is what a level designed around fuel management looks like.
+
+The pickup is frame-visible and distinctive: a **3x3 ring of colour 11** with a transparent centre
+(`sprites["npxgalaybz"]`, line 341), `collidable=False`, `layer=-1`. So a fuel-aware router needs no
+privileged information — it needs to look for that ring, treat each as a refill node worth ~21
+actions, and plan a tour that never lets the counter reach zero.
+
+**Everything ls20 needs is now known**: the budget (42 at 2 per action), the refill (touch the ring),
+the penalty (one of three lives, back to the start, items restored), the detector (a full-screen
+repaint), and the six pickup positions. What does not exist is a tool that uses any of it.
