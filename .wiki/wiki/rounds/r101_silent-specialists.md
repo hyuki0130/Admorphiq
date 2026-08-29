@@ -707,3 +707,31 @@ front of it. **A low score is not the same as a big opportunity.**
 
 ⚠️ This ranking cost one command against files the round had already generated. It should have been
 the round's FIRST act, not its last.
+
+## The parallel sweep: 235 (game, tool) pairs, and NO unused asset exists
+
+Rule 7b says sweep for an unused asset before digging. It had never been done at width for these
+games. Every registered tool, forced to own every decision, alone on each stuck game, 60-way parallel
+on ceph-build (`scripts/ceph_sweep.sh`, 234 of 235 pairs recovered):
+
+```
+game    harness   best tool alone
+bp35        5     crag      5L in 741a
+dc22        5     gantry    5L in 926a
+lf52        5     railpeg   5L in 820a   (then pegjump 4L, hop 3L, graph 1L)
+s5i5        6     telescope 5L in 665a   (the HARNESS beats every tool alone here)
+wa30        8     shepherd  8L in 1092a  (then haul 7L)
+```
+
+**No tool in the set reaches further than the harness already does, on any of the five.** The
+unused-asset hypothesis is refuted for these games by measurement rather than by argument — and on
+s5i5 the harness's combination is strictly better than any single tool, so the composition is
+already earning something.
+
+⚠️ Note lf52's runner-up: `pegjump` reaches 4 levels and `hop` reaches 3, independently of railpeg.
+That is the only sign in the whole sweep of a second tool with real competence on a stuck game, and
+it is worth knowing that lf52's mechanic is claimed by three tools rather than one.
+
+⛔ This sweep took eleven minutes of wall-clock on a box that had been sitting at load 7 of 64 while
+the round probed one game at a time for hours. The measurement was always available; what was missing
+was a command, which is now `scripts/ceph_sweep.sh` and the first line of CLAUDE.md.
