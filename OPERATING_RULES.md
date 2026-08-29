@@ -2399,6 +2399,19 @@ harness reaches level 7 with a `fogscout` whose SOLO depth is **0**, which no si
 difference is that ls20's specialist genuinely goes EMPTY and hands over on a board the successor can
 read. On bp35 and lf52 the successor cannot read the board either, so the handover buys nothing.
 
+⭐ **COMPLETED AT 219 OF 230 PAIRS — ALL FIVE GAMES, THE SAME SHAPE, AND ls20 IS DECISIVE:**
+
+```
+bp35  46 pairs  depth 5  ONE action count (727)      dc22  46 pairs  depth 5  ONE count (926)
+lf52  46 pairs  depth 5  ONE action count (824)      s5i5  46 pairs  depth 6  ONE count (695)
+ls20  27 pairs  depth 6  ONE action count (922)
+```
+
+⛔ **ls20's forced pair reaches depth 6 in 922 actions. The FULL HARNESS reaches depth 7 in 645** —
+**shallower AND slower.** So composition is not what fails; **forcing a pair is.** The harness's
+value on that board is choosing the successor at the right moment from the whole roster, which a
+fixed pair cannot reproduce even when it contains the same two tools.
+
 ⛔ **So the remaining gap is not one pairing away.** With rule 7ba (no tool alone), rule 7bb (17 of 47
 never hold a board), rule 7ac (routing cannot lose a tie) and now this, the registry has been
 measured from FOUR independent directions and **none of them locates the remaining 0.0918 in the tool
