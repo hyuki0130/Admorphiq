@@ -61,12 +61,22 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-1. **LIVE**: lp85 (level 4 alone, 19 actions against a human 16 — the smallest target on the board)
-   and lf52 (why does the map stop at 98 cells / column 25 of 28).
+1. **LIVE**: lp85 (level 4 alone, 19 actions against a human 16 — the smallest target on the board).
+   ⛔ lf52's map question is CLOSED — see below; one run is still identifying which piece the model
+   is missing at the decisive action.
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
-### ⛔ CLOSED TODAY WITH PROOFS — three games. Do not re-open without NEW evidence.
+### ⛔ CLOSED TODAY WITH PROOFS — do not re-open without NEW evidence.
+
+- **lf52's MAP is a dead end for the score.** Three of four hypotheses refuted by an engine oracle
+  (negative control reproducing the banked [8,52,60,64,139] exactly): the model does NOT discard the
+  map (`known_drops` 0, final == max == 98); growth IS ranked (boarding moves exist at 22 points and
+  `_rail_reach` already fires); and the camera has exactly three movers, all exhausted — a jump onto
+  the cart at the home offset, eleven laden drives, and a jump the engine never offers again.
+  ⭐ **And opening the last column wins NOTHING**: the win predicate is `len(fozwvlovdui*) == 2`, red
+  is uncapturable, and the piece in the unseen column can simply be the survivor. **The level is
+  decided at the THIRD capture (action 124), after which the engine offers zero legal jumps.**
 
 - **bp35 = 0.2456.** Every attempt is a near-pure traversal with no slack: 7 spike discovery (proven
   irreducible — nothing in the frame says which of the ten drawn kinds kills), 34 building 140 of the
