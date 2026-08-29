@@ -356,10 +356,15 @@ Three levers, in order, each with the number that names it:
    camera and reveal the rest of the board. `_novelty_field` cannot rank that, because the reward
    arrives only after the drive, and the cart cell itself is next to cells pieces have already
    touched.
-3. **A drive that leaves the board byte-identical is a direction this board does not have.**
-   Measured: ACTION3 proposed **73 times** on level 6 and inert every time (ACTION1 18, ACTION2 6,
-   ACTION4 23 — and only ACTION4 moves anything). `_calibrate` excludes an action only while it is
-   the one `_pending` probe; after the map is fixed nothing retires a direction that stops working.
+3. **A cart is being driven into a cell the engine will not accept, 73 times.** ACTION3 (LEFT) is
+   proposed **73 times** on level 6 and is inert every time; ACTION4 23, ACTION1 18, ACTION2 6, and
+   only ACTION4 moves anything. ⛔ The obvious diagnosis — a mislearned direction map — is REFUTED
+   by measuring it: `_dirmap` comes out `{left: 3, right: 4, up: 1, down: 2}`, which is exactly the
+   engine's `tmhxwcojkh` dispatch, `_pending` is None and only ACTION1/2 were ever excluded. The
+   map is RIGHT. What is wrong is the cart model: `tmhxwcojkh` moves a cart only when the cell it
+   FACES holds a `kraubslpehi`, and the cells left of the carts at (7,6) and (8,6) are plain floor,
+   so a leftward drive is refused — while `_shunt` believes it is available. Every plan containing
+   one desyncs on its first action.
 
 4. **Read the game's markers instead of inferring legality.** One click per piece returns the exact
    move set, and it is right even where the model is wrong — including the case above where a

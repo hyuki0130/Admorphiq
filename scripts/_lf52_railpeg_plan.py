@@ -90,6 +90,13 @@ def main() -> None:
         "shapes": dict(kinds), "proposals": len(log),
         "sample": log[:24],
         "tiers": dict(getattr(peg, "_tiers", {})),
+        # ⛔ The direction map is the suspect: on this board the carts leave the ten-cell window
+        # after two or three presses, so `_calibrate` sees no displacement to read and ages out,
+        # EXCLUDING the one action that works. An empty `_dirmap` with ACTION4 in `_excluded` is
+        # that trap, measured rather than inferred.
+        "dirmap": {str(k): v for k, v in getattr(peg, "_dirmap", {}).items()},
+        "excluded": {str(k): sorted(v) for k, v in getattr(peg, "_excluded", {}).items()},
+        "pending": str(getattr(peg, "_pending", None)),
     }), flush=True)
 
 

@@ -37,3 +37,9 @@ FOLLOW-UP: WHY railpeg STOPS (lf52plan.jsonl, scripts/_lf52_railpeg_plan.py)
   [6,6] x79, [6] x23, [1] x18, [2] x6.
   So: the local win is a mirage; travel never BOARDS a cart; and 73 presses go into a direction
   measured to do nothing.
+
+REFUTED IN THE SAME ROUND (lf52dir.jsonl): "railpeg's direction map is mislearned because the
+carts leave the window during calibration". Measured instead: _dirmap = {left:3, right:4, up:1,
+down:2}, which is exactly the engine's tmhxwcojkh dispatch; _pending None; only ACTION1/2 excluded.
+The map is right. The 73 inert LEFT presses are a CART MODEL error — the engine moves a cart only
+into a cell holding a kraubslpehi, and left of (7,6)/(8,6) is plain floor.
