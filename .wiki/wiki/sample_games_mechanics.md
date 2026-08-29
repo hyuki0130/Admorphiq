@@ -715,6 +715,35 @@ gravity reversal three actions later lands the body on them instead of on the sp
 They are supports for an axis that is not yet in force. A rule that offers editable cells which
 WOULD be supports after a reachable reversal buys the route without buying the whole neighbourhood.
 
+### The rule stated in the mechanic's terms works — and costs exactly the same
+
+The right shape for the widening is not a radius: it is *offer an editable cell when it would be the
+SUPPORT after a reversal the body can reach*. Implemented (`_bp35_l6_solve.py <seed> <cap> s`) as
+crag's five, plus every gravity switch on screen, plus every editable cell lying on the fall path
+that the REVERSED axis would take from any resting place the body can reach by WALKING ALONE:
+
+```
+candidate rule                       best   clicks   states     nodes      verdict
+crag's five                           --      --      24,644     74,615    EXHAUSTED, no win
++ Chebyshev 1                         --      --      25,092     82,679    EXHAUSTED, no win
++ Chebyshev 2                         43       8     117,145    476,824    win
+support-after-reversal                43       8     113,240*   470,000*   win
+```
+
+`*` mean of three BFS runs; the two rules agree on the optimum and are within 3% of each other on
+both cost columns. The rule does capture the two clicks that open the plan — `C(6,25)` and `C(7,25)`
+are on the reversed-axis fall path from `(6,23)` and `(7,23)`, which the body can walk to — and it
+names them in terms of the mechanic rather than in pixels, so it should carry to boards where the
+distance is different.
+
+⚠️ **But it is NOT cheaper.** Both admitting rules cost about **4.6x the searched states and 6.3x
+the nodes** of the rule crag ships. That cost is a property of the ROUTE, not of how the candidate
+set is phrased — a searcher that can build a floor it is not standing on has a bigger frontier, and
+no phrasing avoids paying for it. So the honest read of the whole curve is that bp35's level 6 is
+bought with a 4.6x search, an edit cap raised from 6 to 8, and an expansion cap raised from 40,000
+to about 120,000 — and crag's own record (one extra candidate cost it two levels) says that bill
+lands on the other twenty-four games, which only a full-25 gate can price.
+
 ⛔ A fourth thing has to be true and is not measured yet: crag must KNOW where the exit is before it
 will plan a route at all (`_search(targets, "exit", ...)` needs `targets`), and the gem sits eight
 rows and two gravity reversals away from the start. Reaching it costs more than the 64-action

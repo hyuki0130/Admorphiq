@@ -35,6 +35,49 @@ BUDGET = 64
 GEM_XY = {6: (2, 31)}
 
 
+_PASS_NAMES = frozenset({"", "oonshderxef", "aknlbboysnc"})
+_EDITABLE = frozenset({"oonshderxef", "yuuqpmlxorv", "qclfkhjnaac", "etlsaqqtjvn"})
+
+
+def _support_sites(s):
+    """crag's five, plus every editable cell that WOULD be a support after a reversal the body can
+    reach by walking. This is the rule stated in the mechanic's terms rather than in pixels of
+    radius: the two clicks that open the optimum build a floor two cells in the ANTI-gravity
+    direction, so that the reversal three actions later lands the body on them instead of on the
+    spike row — they are supports for an axis not yet in force, and no neighbourhood of the body
+    names them for that reason.
+    """
+    dy = -1 if s.grav_up else 1
+    out = {(s.px, s.py + dy), (s.px - 1, s.py), (s.px + 1, s.py),
+           (s.px - 1, s.py + dy), (s.px + 1, s.py + dy)}
+    # every resting place reachable by walking alone, under the axis in force
+    reach = {(s.px, s.py)}
+    frontier = [(s.px, s.py)]
+    while frontier:
+        cur = frontier.pop()
+        for right in (False, True):
+            w = s.clone()
+            w.px, w.py = cur
+            w.move(right)
+            if w.lost or w.won:
+                continue
+            if (w.px, w.py) not in reach:
+                reach.add((w.px, w.py))
+                frontier.append((w.px, w.py))
+    dy2 = -dy
+    for rx, ry in reach:
+        cur = (rx, ry + dy2)
+        for _ in range(64):
+            n = next(iter(s.at(*cur)), "")
+            if n in _EDITABLE:
+                out.add(cur)
+            if n not in _PASS_NAMES:
+                break
+            cur = (cur[0], cur[1] + dy2)
+    return [c for c in out
+            if s.on_screen(*c) and next(iter(s.at(*c)), "") in _EDITABLE]
+
+
 def _clicks_on_path(par, depth, idx):
     """The actions on the path to `idx`, as a list of "is this a click" flags."""
     out = []
@@ -46,7 +89,7 @@ def _clicks_on_path(par, depth, idx):
 
 
 def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius: int = 0,
-          click_cap: int = 0):
+          click_cap: int = 0, support: bool = False):
     """mode 0 = plain BFS inside the engine's own 64-action allowance (finds the SHORTEST win);
     mode 1 = greedy best-first on distance to the gem (finds A win fast, not the shortest);
     mode 2 = BFS with the allowance lifted to 200 — "winnable at all?" is a DIFFERENT claim from
@@ -94,7 +137,11 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
         if d >= limit - 1:
             continue
         cand = s.clickables()
-        if local:
+        if support:
+            keep = set(_support_sites(s))
+            cand = [c for c in cand
+                    if c in keep or next(iter(s.at(*c)), "") == "lrpkmzabbfa"]
+        elif local:
             dy = -1 if s.grav_up else 1
             near = {(s.px, s.py + dy), (s.px - 1, s.py), (s.px + 1, s.py),
                     (s.px - 1, s.py + dy), (s.px + 1, s.py + dy)}
@@ -147,7 +194,8 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
         if best is not None or nodes > cap:
             break
 
-    out = {"seed": seed, "mode": mode, "local": local, "radius": radius, "click_cap": click_cap,
+    out = {"seed": seed, "mode": mode, "local": local, "support": support, "radius": radius,
+           "click_cap": click_cap,
            "limit": limit, "level": level, "nodes": nodes,
            "states": len(sims), "secs": round(time.time() - t0, 1)}
     if best is not None:
@@ -188,7 +236,9 @@ def main() -> None:
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     cap = int(sys.argv[2]) if len(sys.argv) > 2 else 40_000_000
     arg = sys.argv[3] if len(sys.argv) > 3 else ""
-    if arg.startswith("c"):
+    if arg.startswith("s"):
+        solve(seed, cap, support=True)
+    elif arg.startswith("c"):
         # "c" walks the CLICK cap: seeds 1-3 cap at 6 (crag's `_MAX_EDITS`), 4-6 add radius 2.
         cc = 6
         solve(seed, cap, force_local=(seed > 3), radius=(2 if seed > 3 else 0), click_cap=cc)
