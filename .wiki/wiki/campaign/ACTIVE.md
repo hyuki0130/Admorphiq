@@ -60,83 +60,49 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
-## ⭐ THE ONE AXIS THAT DESCRIBES THE PRIVATE 110, not the public 25 (2026-08-29)
+## ⭐ THE PRIVATE-110 AXIS — and the headline it used to carry is REFUTED (2026-08-30)
+
+⛔ This block used to say "`graph` is what a stuck game looks like" and offer >40% inert as a
+game-agnostic stall detector. **Measured at the harness's own re-decide point, on the CURRENT tree,
+with all nine games reproducing the R101WA30 baseline TO THE ACTION — it is true of TWO of the four
+stuck games, not four:**
 
 ```
-no tool that is SOLVING a board is more than 7% inert   0% 0% 1% 1% 2% 7%
-`graph` is NEVER below 41%                              41% 49% 71%
+lf52 L6   graph holds 366 of 500      41-49% inert     <- fits
+bp35 L6   graph holds 486 of 500      41% inert        <- fits
+dc22 L6   gantry holds 500, ZERO HANDOVERS ALL GAME    <- the 70.6% inert is the SPECIALIST's
+s5i5 L7   linkage holds 461, graph never runs          <- same
 ```
 
-`graph` is the fallback that inherits every board no specialist claims, so **`graph` is what a stuck
-game looks like**. That is a free, frame-independent, game-agnostic STALL DETECTOR — >40% inert over
-a tenure says "no specialist owns this board" without knowing the game.
+`gantry` bids 0.86 against `_PRIMARY_CONF` 0.70, so it is never stall-retired, and returns a legal
+plan on 924 of 925 refills. The earlier attribution predated the gated `phase.py` base. ⚠️ **A table
+must reproduce its own baseline before it is believed.**
 
-⛔ The direction of the correlation is NOT established: a searcher bumping walls it has not mapped is
-exactly what being stuck looks like, so the inert rate is at least as likely a symptom as a cause,
-and removing lf52's waste did not open its level. **The question worth funding is SELECTIVITY — why
-does the board fall through to graph — not graph's hit rate.** Measure which tools bid, and what,
-AT THE HANDOVER FRAME (`bid_matrix.py` reads FIRST frames only and cannot answer it). ⚠️ On dc22
-`gantry` bids and then latches dead at action 6, so measure the bid AND whether the bidder survived.
+### What the selectivity measurement DID settle, permanently
 
-## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101WA30 8 4000
+5 retirements, ALL through the EMPTY path.  ZERO stall-swaps.  ZERO death-clock.
+3 ties, ALL broken by REGISTRATION ORDER; registry.py puts every specialist ahead of graph (43/48).
+41-43 of ~48 tools bid 0.00 at EVERY decision point.
 ```
-⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
-agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
-`snapgate.sh` archives HEAD into a private dir on the box; two gates run at once and a rider cannot
-ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
-## CLOSED BY MEASUREMENT — do not reopen without new evidence
-- **the raw-frame opening hash CANNOT detect a restart** — zero recurrences on a level that dies
-  FIFTY-EIGHT times, because a death RESETs the game to level 0 so the level's opening can never
-  recur while `levels_completed` still reads it. `obs.state == GAME_OVER` is the only reliable
-  signal. ⚠️ This VOIDS "lf52 level 6 never restarts"; it dies 5 times in 3678 actions.
-- **lf52's stall position is genuinely CLOSED**, measured by FORCING every legal move the tool's own
-  successor function offers (`scripts/_lf52_stall.py`): 6 moves, best opens ONE cell, all four drives
-  open ZERO, and no boarding move EXISTS — so the two-step board-and-drive plan is refuted at its
-  root, not merely unsupported. The map is still the lever (the veto has never been asked with all 8
-  pads visible) but it cannot be opened FROM THERE. Six measurements; no frontier tier for this board.
-- **`_reborn` does not transfer to bp35**: its eight attempts are eight DISTINCT sequences. And the
-  re-seed repair WORKS and is worth nothing — crag then emits the identical 64-action loser three
-  times. ⛔ Repairing an EMPTY path can expose a REPLAY problem underneath it.
-- **the level-transition handover tax**: 149 transitions over 25 games, 54 inert actions in the
-  6-action window, **0.36 per transition**, seventeen games at exactly ZERO. Even the upper bound —
-  every one of those actions pure waste and perfectly recoverable — is ~2 actions per game against
-  per-level counts of 30-400. And the re86 claim that started the axis measures 0.00.
-- **the give-up budget**: `HARNESS_NOPROGRESS` 500 -> 3500 gives all five dying games ~7x the
-  actions on their wall level and clears NOTHING (bp35 740->3787a, dc22 925->3928a, lf52 823->3828a,
-  s5i5 694->3709a, wa30 1091->4000a, every score identical). ⛔ In RHAE an UNCLEARED level scores
-  zero however long it runs, so this was pure upside if it worked at all. The wall is not a budget.
-  Corroborated independently: 54,000 blind actions on dc22 level 6 clear nothing.
-- **dc22's 70% inert actions are a SYMPTOM, not a lever**: `gantry` latches dead at action 6 and the
-  500 actions are graph/world_model on an 18-cell island with gated exits. Saving them buys 0.0000
-  because the level scores zero either way. (Elsewhere the same waste on a level that DOES clear
-  would be a real efficiency lever — the number is right, the game is wrong.)
-- **frame_2d reading the last layer**: the measurement was RIGHT (layer 0 is stale at 100% of level
-  transitions in all 21 games) and the change cost **0.8962 -> 0.6525, fourteen games**. Rule 7o.
-- **bp35 level 6**: reachable in 41 actions, and getting there costs 4.6x search states +
-  `_MAX_EDITS` 6->8 + `_MAX_EXPAND` 40k->120k, for +0.0053. Declined. Exhaustion proofs recorded.
-- **the pixel allowance reader**: of twelve games declaring an allowance, exactly ONE draws it
-  readably. Refuted. The DEATH CLOCK replaces it and recovers nine, four of them undeclared.
-- 47 tools solo x 5 stuck games, and 9 tool combinations: none goes deeper than the harness.
-- Thirteen repairs built, measured, reverted (patience, alignment threshold, shift range, pitch
-  re-fit, tool revival, map-drop-on-flip, admissibility bypass, shape matching, probe-order memory,
-  lethal-glyph probing, vocabulary carry, switch-reset, gauge speed-up).
+⛔ **Routing is not the defect and cannot be** — a specialist losing a tie to `graph` is structurally
+impossible. The boards have no second claimant, so the answer is a TOOL, not a tie-break. Nobody
+should look for a routing defect again.
 
-## ASSETS FOUND TODAY, unused — check these before writing anything new
-- **A game may RENDER ITS OWN LEGAL-MOVE ORACLE.** lf52 draws a ring on a selectable piece and
-  markers at each legal landing. ⚠️ The markers are FOUR TWO-PIXEL BLOBS, so a min-blob-size-4
-  filter reads exactly like "there is no oracle". Look for one before writing a search.
-- **The death clock**: `allowance = min(death_lengths) - 1`, learnable from ONE death, no source
-  access. Nine games, four of them undeclared. Trust it only when two deaths agree.
-- **43 of 43 fallback presses are NOPLAN** — zero ILLEGAL, zero THREW. The tool genuinely has
-  nothing; the action vocabulary is not the problem.
-- `scripts/_bp35_sim.py` — differential-tested bp35 simulator, 0 mismatches over 40 sequences.
+⚠️ The harness's stderr MISREPORTS the reason: it printed `feedback='action no new state x3'` at an
+EMPTY retirement. `_feedback` is the last message set, not the cause.
 
-## THE FAILURE MODE THAT COSTS THE MOST
-⛔ **An instrument that lies toward "there is nothing here."** Three today: a min-blob-size-4 filter
-hid lf52's oracle; a `!=` level test read a collapse to level 0 as a clear; and a layer-staleness
-instrument took SIX versions, five of which scored its own known positive at ZERO — four of those
-would have been written up as "no other game has this problem", the exact opposite of the truth.
-**Run every checker on input whose verdict you already know, in BOTH directions.**
+### Two transfer facts, both measured 2026-08-30
+
+- **The gains reach the submission path**: `--agent unified` 0.9069 and `--agent kaggle_unified`
+  (the official wrapper the notebook would ship) 0.9069, 25 games, none differing. The wrapper
+  MIRRORS `_make_agent("unified")` and a mirror drifts — five research commits once shipped in the
+  deployed fallback unmeasured and the card moved 0.20 -> 0.18 with no attributable cause.
+- **The tools do not overfit their version hash**: on `environment_files_archive/` (a DIFFERENT
+  hash of 15 games — a re-render with different sprite tags and coordinates), **14 of 15 are
+  identical to four decimals**, including every 1.0000; s5i5 alone moves -0.0240. Mean 0.9532 ->
+  0.9516. ⚠️ Weak evidence, and it must not be oversold: a re-render is the same game with different
+  tags, and the 13 hand-written adapters passed this same test 7/7 while moving the hidden score by
+  nothing. It rules out the cheapest failure — a tool keyed to a sprite name or a coordinate.
+
