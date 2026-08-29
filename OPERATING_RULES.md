@@ -512,3 +512,25 @@ which is the code nobody reviews.
 ⛔ A collapse and a clear look IDENTICAL to a boolean, and the favourable reading is the one that
 gets written down. Name the direction in the probe, and print the resulting level, so the record
 cannot be read two ways later.
+
+### 7g — the source says what is POSSIBLE; only the run says what HAPPENS (2026-08-29)
+
+Three retractions in one round, all the same shape: a fact read out of a game's source was treated as
+a description of the game's behaviour, without checking that the code path executes.
+
+- **wa30**: level 9 declares `StepCounter: 70` and the source has `elif not current_steps:
+  self.lose()`. Concluded "the level is lost on its budget". MEASURED: one unbroken 507-action
+  attempt, no restart, 506 actions moving the board — **the branch never fires**. The budget does not
+  bite, and the whole "efficiency not mechanic" reading went with it.
+- **dc22**: a click was reported as clearing level 6 on `levels_completed != 5`. It had FALLEN BACK
+  to level 0 (see rule 7f).
+- **bp35 / ls20**: mechanics recovered correctly from source — a crumbling platform, a fuel budget —
+  and both turned out not to be what stops the tool.
+
+⛔ **Reading the source is still the cheapest way to find a mechanic** — it has ended questions in one
+read that frame probing could not settle in a session. But a mechanic FOUND is not a mechanic that
+BINDS. Before building for it, run the game and show the branch executing: the counter reaching zero,
+the tile being consumed, the level actually ending.
+
+⚠️ The failure is seductive because the source reading is usually CORRECT. wa30 really does declare
+70 and really does contain a lose(); it simply never reaches it in play.
