@@ -766,3 +766,36 @@ So both cheap hypotheses about the tool SET are now closed by measurement at wid
 ⛔ That leaves exactly one honest reading of the remaining 0.0919: it needs capability that does not
 exist in the tool set, not better use of what is there. Every cheaper explanation has now been tested
 rather than argued.
+
+## re86 CONQUERED — 0.9908 -> 1.0000, and the four actions were the SEAT and the FIRST FRAME (2026-08-29)
+
+The smallest of the eight targets and the closest to done: re86 cleared every level and lost only
+**level 2, 46 actions against a human 42**. It is now **1.0000, 8/8, 696 actions**, gated on the
+full 25 (`snapgate.sh`, mean 0.8935 -> 0.8962, no game regressed; dc22 0.7143 and lf52 0.2727
+unchanged, which were the two the change could plausibly have touched).
+
+The 46 actions, classified from engine truth: **move 40, select 6, INERT 0, refused 0, one attempt,
+never lost.** Every action effective — so nothing to prune, and the whole gap was in choosing WHAT
+to drive and WHICH WAY to nudge it. `_walk` spent exactly the 34 moves the chosen placement needs;
+the other 12 were discovery (7), select cycling (4) and one harness fill.
+
+Three generic defects in `cover_targets`, each measured, each landed:
+
+1. the discovery nudge took whichever action came first in the learned control map — ACTION1 (up) on
+   a board where two of three pieces had to go down, and a wrong nudge is paid for twice;
+2. the FIRST move of a level had no heading at all (no piece measured yet), so it fell to
+   `known[0]` — ACTION1 again. ⛔ Gated to `not self._parts`: offered on every wheel-less turn it
+   took the game from eight levels to FOUR;
+3. the plan was taken cheapest-move-first while the select control is a RING, so the tool cycled
+   past a piece with work left and back again — four presses where two do. This is 44 -> 42.
+
+⛔ **The control map is NOT re-learned per level** — all four direction vectors and the select
+control are already known at level 2's first frame. The plausible cause "it re-establishes the
+controls each level" is FALSE; what cannot be carried is piece identity, which comes from motion.
+
+Follow-up measured across the set: **`frame_2d` reads the OLDEST sub-frame, and every level
+transition of every game is stale** — full table and the six-version instrument story in
+[[../sample_games_mechanics]] and [[../lessons/instrument_cannot_see_its_own_positive_20260829]].
+The conclusion is NOT to change `frame_2d`: fourteen of twenty-one games pay nothing for it, and
+the games that do split between transition fills (the layer question) and mid-level inert fills
+(the probe pressing a refused key), which want different fixes.
