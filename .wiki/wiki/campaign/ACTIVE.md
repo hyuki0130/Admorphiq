@@ -138,21 +138,31 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > never called. ⛔ Widening is NOT licensed. ⚠️ What survives for the 110 is the shape: a game that
 > renders feedback in the band AND is driven by `graph` would have its working actions withheld.
 >
-> **So the work is: find and name render-dependence, not chase the last 0.09.** Three things are in
-> flight, and a fresh session should continue one of them rather than open a seventh arm on a closed
-> game:
-> 1. **s5i5 L4** — what does the solving path read that is a render fact rather than a mechanic
->    fact? Worth 0.0240 of dev score and far more as a defect class.
-> 2. **The ten games with NO archived hash** — bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87,
->    wa30 — have **zero transfer evidence of any kind**, and four are among the six still short. A
->    render-mutation instrument (AST identifier rename, colour permutation, board offset) is being
->    built to manufacture the re-render. ⛔ Its hard part is proving the mutation preserves the
->    MECHANIC: a broken mutation is indistinguishable from a transfer failure.
-> 3. **Inert actions on levels that CLEAR.** Measured on lf52 L6: 131 of 500 actions produced ONE
->    board change between `world_model`, `deadsig` and `llm_goal`. On a level that never clears that
->    is worth zero; on a level that clears it is squared efficiency loss, on every one of the 110.
->    ⛔ An inert action is not automatically waste — `deadsig` EXISTS to discover inertness, and
->    discovering it costs the action.
+> **So the work is: find and name render-dependence, not chase the last 0.09.** ⭐ **FOUR THINGS ARE
+> IN FLIGHT (2026-08-30 09:00). Continue one of them rather than open a seventh arm on a closed
+> game** — and re-read the three rules above first, because three of the four exist BECAUSE of them:
+>
+> 1. **Z-ORDER MUTATION, all 25.** 7cd's defect was found only because s5i5 happened to have an
+>    archive whose sprite list order differed. ⛔ The colour and rename arms CANNOT reproduce it — a
+>    bijection preserves which sprite is drawn on top — so the campaign's only measured transfer
+>    defect is the one the new instrument is blind to. Permute SAME-LAYER siblings only; validity
+>    check is `scripts/_s5i5_srcdiff.py`; **positive control is s5i5's own 39 -> 61 on L4.**
+> 2. **THE VISIBILITY-IDENTITY CENSUS.** 7cd named a defect CLASS; nobody knows its POPULATION. How
+>    many tools filter candidates by whether an object is currently DRAWN, and does the filter
+>    actually change the candidate set on a run (rule 7g)? ⚠️ Keep it separate from the eight
+>    colour-INDEX-ordering sites, which 7ce measured harmless.
+> 3. **THE ABLATION TABLE — the closest proxy to an unseen game we can build.** Every transfer
+>    instrument we have perturbs the RENDERING of a game whose mechanic a tool already implements.
+>    None perturbs the MECHANIC, and that is the actual private-110 condition. So: remove the tool
+>    that ACTUALLY plays each game (from the decision log, not `detect()`) and score. ⛔ The decisive
+>    question is not the number but whether a wrong tool LATCHES — `_PRIMARY_CONF = 0.70` makes a
+>    confident tool unretirable, and a wrong tool that cannot be displaced is worse than no tool.
+> 4. **THE LLM ARM, on a GPU** (rule 7ca). The target draw has NEVER once succeeded in any
+>    environment we have measured — 404 on the box for an unpulled model name, connection refused on
+>    Kaggle — so 0.9082 is tools + signature routing with the LLM contributing exactly zero, and the
+>    six measurements that closed the tool-set axis never touched it. ⛔ Not on ceph-build (rule 7cc:
+>    37 cores, load 110, and `snapgate.sh` now refuses). The instrument already exists:
+>    `bash kaggle_bench/build_and_run.sh` — two arms, a real GPU, and no submission slot spent.
 
 ⛔ **EVERY SHORT GAME AND EVERY TOOL-SET AXIS IS NOW CLOSED WITH PROOFS.** The remaining 0.0918 is
 not reachable by tuning, routing, pairing, retiring differently, or repairing a tool — **SIX**
