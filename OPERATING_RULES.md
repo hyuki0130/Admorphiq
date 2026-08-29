@@ -1108,9 +1108,14 @@ comparison was structurally incapable of firing. ⚠️ It would only work on a 
 restarts the LEVEL in place, which is what wa30 does — and wa30 still scores 0, because the harness's
 own RESET intervenes first.
 
-**`obs.state == GAME_OVER` is the only reliable restart signal.** It is free, exact, and needs no
-frame comparison at all. Both wa30's conquest and the allowance ledger already use it; the census
-should have from the start.
+**`obs.state == GAME_OVER` is the reliable signal WHERE A DEATH ENDS THE ATTEMPT.** It is free, exact,
+and needs no frame comparison; wa30's conquest and the allowance ledger both use it.
+
+⛔ **AND IT IS NOT UNIVERSAL — see rule 7as, measured the same night and against this rule.** lf52
+level 6 restarts at action 267 with `obs.state == NOT_FINISHED` on all 500 actions, `levels_completed`
+never moving, and zero resets issued: the game raises its own dead-position control and any click
+landing bottom-left throws the level away. On a scrolling board there is currently NO cheap general
+restart test — three detectors, three different reasons, no survivor.
 
 ⚠️ CONSEQUENCE FOR A PUBLISHED FINDING: lf52's agent concluded "level 6 never restarts" from
 `OPENING RECURRENCES 0`. That evidence is void. lf52's level 6 **does** die — 5 times in 3678 actions,
@@ -1736,7 +1741,34 @@ rule 7ab) and 10 by repetition. Every gated number in `scripts/rounds/R101BP35` 
 ⛔ Cheap and worth repeating after any wave of per-game tool work. ⚠️ And it stays a DIFFERENT claim
 from transfer: the ten remain untested against different mechanics by any means we have.
 
-### 7ap — a level can restart with NO signal at all: `GAME_OVER` is not the backstop either (2026-08-30)
+### 7as — a level can restart with NO SIGNAL AT ALL; `GAME_OVER` is not the backstop either (2026-08-30)
+
+⛔ **THIS IS A COUNTEREXAMPLE TO RULE 7z, WHICH I WROTE.** 7z concluded that the raw-frame opening
+hash cannot detect a restart and that `obs.state == GAME_OVER` is "the only reliable signal". On
+lf52 level 6 there is NO signal:
+
+```
+obs.state == NOT_FINISHED on all 500 actions · levels_completed never moves · the agent issues
+ZERO resets · and the level RESTARTS at action 267
+```
+
+The game raises its OWN dead-position control (`zvcnglshzcx` true for 143 actions, starting at the
+fatal third capture) and **any click landing bottom-left restarts the level** — so an ordinary
+planned click threw the level away. `railpeg` then held a FIVE-piece model against an EIGHT-piece
+board for 233 actions. **376 of level 6's 500 actions — 75% — are spent after the game itself
+declared the branch lost.**
+
+⛔ So the honest position is: **on a scrolling board there is currently NO cheap general restart
+test.** The model-level test is unsound (rule 7u), the raw-frame opening hash cannot fire (7z), and
+`GAME_OVER` does not cover a game that restarts a level in place without ending the attempt. Three
+detectors, three different reasons, no survivor.
+
+⚠️ Naming what a real one would need: it must notice the BOARD changing under a model that did not
+predict the change — which is the same signal `_sync` already looks for and resolves the other way
+(rule: "a refused action and a lagging frame are the same picture"). That is a design question, not a
+constant.
+
+
 
 Rule 7s said a restarting level reads like a continuing one. Rule 7z answered it: the raw-frame
 opening hash cannot fire, and **`obs.state == GAME_OVER` is the only reliable restart signal**.
