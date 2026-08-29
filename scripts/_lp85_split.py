@@ -41,6 +41,25 @@ FEATURES = {
     4: {"ADOPT0"}, 5: {"ADOPT2"}, 6: {"TIGHT"}, 7: set(),
     8: {"INC", "APP", "TIGHT"}, 9: {"ADOPT2", "TIGHT"}, 10: {"INC", "APPALL", "TIGHT"},
     11: {"NONUDGE"}, 12: {"INC", "APP", "NONUDGE"},
+    13: {"POOL"}, 14: {"POOL", "INC"}, 15: {"POOL", "INC", "APP"},
+    16: {"INV"}, 17: {"POOL", "INV"}, 18: {"POOL", "INV", "INC"},
+    19: {"DEPTH"}, 20: {"DEPTH", "INC"}, 21: {"DEPTH", "POOL", "INC"},
+    22: {"DEPTH", "POOL", "INV", "INC"},
+    23: {"INCC"}, 24: {"POOL", "INCC"}, 25: {"DEPTH", "POOL", "INCC"},
+    26: {"DEPTH", "POOL", "INV", "INCC"}, 27: {"POOL", "INCC", "APP"},
+    28: {"DEPTHB"}, 29: {"DEPTHB", "INC"}, 30: {"DEPTHB", "INV", "INC"},
+    31: {"INV", "INC", "APPALL"}, 32: {"INV", "TIGHT"},
+    33: {"DEPTHB", "INV", "INC", "APPALL"}, 34: {"DEPTHB", "INV"},
+    35: {"DEPTHB", "INV", "TIGHT"},
+    36: {"DEPTHB", "INV", "INCC", "APPALL"}, 37: {"DEPTHB", "INC", "APPALL"},
+    38: {"DEPTHB", "INV", "INC", "APP"},
+    39: {"DEPTHB", "INV", "INC", "APPALL", "TIGHT"},
+    40: {"DEPTHB", "INV", "INC", "APPALL", "NONUDGE"},
+    41: {"DEPTHB", "INC", "APPALL", "TIGHT"},
+    42: {"DEPTHB", "INV", "INCC", "APPALL", "TIGHT"},
+    43: {"DEPTHB", "INV", "INC", "APPALL", "POOL"},
+    44: {"DEPTHB", "APPALL"}, 45: {"DEPTHB", "INV", "APPALL"},
+    46: {"DEPTHB", "INV", "APPALL", "TIGHT"}, 47: {"DEPTHB", "INV", "INC"},
 }
 
 
@@ -66,10 +85,63 @@ def _class_of(g, cell):
 def install(feat: set[str]) -> dict:
     from admorphiq.tools import cyclepress as cp
 
+    if "INCC" in feat:
+        feat = feat | {"INC"}
+
     log: dict = {"acts": []}
     base_probe = cp.CyclePressTool._next_probe
     base_propose = cp.CyclePressTool.propose
     base_nudge = cp.CyclePressTool._nudge
+    base_learn = cp.CyclePressTool._learn
+
+    def replays_all(perm, pairs):
+        return bool(pairs) and all(cp._replays(perm, b, a) for b, a in pairs)
+
+    def learn(self, tiles):
+        """Fold the press in, then look for controls the SAME permutation already explains.
+
+        ⛔ The point measured on lp85 level 4: sixteen buttons drive four controls, one press each
+        recovers SIX distinct permutations (two of them wrong) and NO press sequence to the
+        markers exists until the twenty-sixth action. Recovery from one press is ambiguous, and
+        the four presses that are really the same control are four separate single presses. Pooling
+        their evidence makes the recovery as strong as four presses of one button, without
+        spending an action — and it rests on observed transitions, never on how a button LOOKS,
+        which is unsound here: seven of the eight levels draw different controls identically.
+        """
+        control = self._pending
+        base_learn(self, tiles)
+        if control is None or control not in self._pairs:
+            return
+        if "POOL" in feat:
+            mine = self._pairs[control]
+            for other in list(self._pairs):
+                if other == control or self._pairs[other] is mine:
+                    continue
+                joint = self._pairs[other] + [p for p in mine if p not in self._pairs[other]]
+                if len(joint) <= len(self._pairs[other]):
+                    continue
+                perm = cp.recover_permutation(self._slots, joint, self._pitch)
+                if perm is None:
+                    continue
+                for c in (control, other):
+                    self._perm[c] = perm
+                    self._pairs[c] = joint
+                    if len(joint) >= 2:
+                        self._streak[c] = cp._CONFIRM_STREAK
+                break
+        if "INV" in feat:
+            mine = self._perm.get(control)
+            if mine is None:
+                return
+            back = {v: k for k, v in mine.items()}
+            for other, perm in list(self._perm.items()):
+                if other == control or perm != back:
+                    continue
+                if replays_all(mine, self._pairs[control]) and \
+                        replays_all(perm, self._pairs[other]):
+                    self._streak[control] = cp._CONFIRM_STREAK
+                    self._streak[other] = cp._CONFIRM_STREAK
+                    break
 
     def classes(self, controls):
         g = self._last_frame
@@ -83,8 +155,46 @@ def install(feat: set[str]) -> dict:
                 out[c] = c
         return out
 
+    def stop_now(self, tiles, marks):
+        """Is the model on hand good enough to stop probing and start pressing?
+
+        ⛔ "A plan exists" is NOT good enough, and this is measured: on level 1 -- two controls,
+        budget thirteen -- stopping at the first plan took the level from 7 actions to 27, because
+        a permutation that replays one press always exists and the plan built on it is fiction.
+        INCC additionally requires every control the plan USES to have predicted a press.
+        """
+        if not self._perm:
+            return False
+        ready = cp.plan_presses(tiles, marks, self._perm)
+        if not ready:
+            return False
+        if "INCC" in feat:
+            return all(self._streak.get(c, 0) >= cp._CONFIRM_STREAK for c in set(ready))
+        return True
+
     def next_probe(self, controls, tiles, marks):
         unpressed = [c for c in controls if c not in self._pairs and c not in self._inert]
+        if feat & {"DEPTH", "DEPTHB"}:
+            # ⛔ Breadth-first probing presses every button once before any of them is trusted,
+            # and on lp85 level 4 that is sixteen actions against a human budget of sixteen.
+            # Depth-first spends the same evidence on ONE control until its permutation predicts
+            # a press, which is also the only press order that can be on-plan by accident: the
+            # level's exact solution is one control four times and another eight times.
+            self._settle()
+            owed = [c for c in controls
+                    if c in self._pairs and self._streak.get(c, 0) < cp._CONFIRM_STREAK
+                    and len(self._pairs[c]) < cp._MAX_PRESSES]
+            if owed:
+                # ⛔ Depth-first has to answer to the same allowance the shipped confirmations
+                # do. Ungated it takes level 1 -- two controls, thirteen actions -- from 7 to 59,
+                # because the level is LOST and retried and the score pays for both attempts.
+                left = self._budget.remaining(self._last_frame)
+                afford = "DEPTHB" not in feat or (
+                    left is not None and left >= len(owed) + cp._PROBE_RESERVE)
+                if afford:
+                    if "INC" in feat and stop_now(self, tiles, marks):
+                        return None
+                    return owed[0]
         if unpressed and (feat & {"ADOPT0", "ADOPT2"}):
             cls = classes(self, controls)
             for c in list(unpressed):
@@ -104,7 +214,7 @@ def install(feat: set[str]) -> dict:
                     if "APPALL" in feat:
                         return fresh[0]
                     unpressed = fresh + [c for c in unpressed if c not in fresh]
-            if self._perm and cp.plan_presses(tiles, marks, self._perm):
+            if stop_now(self, tiles, marks):
                 return None
             return unpressed[0]
         got = base_probe(self, controls, tiles, marks)
@@ -148,6 +258,7 @@ def install(feat: set[str]) -> dict:
     cp.CyclePressTool._next_probe = wrapped
     cp.CyclePressTool.propose = propose
     cp.CyclePressTool._nudge = nudge
+    cp.CyclePressTool._learn = learn
     return log
 
 

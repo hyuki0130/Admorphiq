@@ -192,6 +192,29 @@ def press_points(g: Any, tiles: dict[Cell, int], side: int) -> list[Cell]:
     return sorted(out)
 
 
+def _look(g: Any, cell: Cell) -> tuple[int, int, int, int]:
+    """A control's appearance: colour, area and bounding box of the region under the press point.
+
+    Used ONLY to decide which control to press next. It is not evidence — see
+    `CyclePressTool._unsampled`.
+    """
+    n = len(g)
+    y0, x0 = cell
+    colour = int(g[y0][x0])
+    seen = {(y0, x0)}
+    stack = [(y0, x0)]
+    while stack:
+        y, x = stack.pop()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < n and 0 <= nx < n and (ny, nx) not in seen and int(g[ny][nx]) == colour:
+                seen.add((ny, nx))
+                stack.append((ny, nx))
+    ys = [c[0] for c in seen]
+    xs = [c[1] for c in seen]
+    return (colour, len(seen), max(ys) - min(ys), max(xs) - min(xs))
+
+
 def _regions(cells: set[Cell]) -> list[set[Cell]]:
     """4-connected pieces of a set of cells."""
     unseen = set(cells)
@@ -532,10 +555,26 @@ class CyclePressTool:
                     marks: list[tuple[Cell, int]]) -> Cell | None:
         """The next control to press for evidence, or None when the model is worth planning on.
 
-        Every control is pressed once first — the cheapest complete model there is. A control is
-        then pressed AGAIN until its recovered permutation PREDICTS the press, which is the only
-        honest test available without an oracle: a permutation that replays the presses seen so
-        far always exists, and the wrong one stops replaying as soon as one more press is taken.
+        A control is pressed until its recovered permutation PREDICTS the press, which is the
+        only honest test available without an oracle: a permutation that replays the presses seen
+        so far always exists, and the wrong one stops replaying as soon as one more press is
+        taken. Once the model on hand already yields a press sequence to the markers, probing
+        stops — a further control can only shorten a plan that already exists by less than the
+        press it costs to learn.
+
+        ⛔ EVIDENCE BEFORE BREADTH, and the order is the whole of one board's efficiency. Pressing
+        every control ONCE before trusting any of them is the cheapest COMPLETE model, and it is
+        also the most expensive one to act on: measured on lp85 level 4, which draws SIXTEEN
+        buttons over only FOUR controls, one press each recovers SIX distinct permutations — two
+        of them wrong — and NO press sequence to the markers exists until the twenty-sixth action.
+        The level costs 33 actions against a human 16 and its own cycle data says twelve presses
+        suffice. Confirming what is already pressed before pressing anything new takes it to 19,
+        with only FOUR of the sixteen buttons ever touched.
+
+        ⛔ Which four is not left to chance: a control whose LOOK has not been sampled yet goes
+        first. That is an ORDERING only — appearance is measured UNSOUND as evidence here, since
+        seven of the eight boards draw different controls with identical pixels, so a permutation
+        is never adopted from it.
 
         ⛔ The re-presses are gated on the budget indicator, and the gate is what keeps the tool
         off the boards it cannot afford. The first board of this game allows THIRTEEN actions and
@@ -544,9 +583,22 @@ class CyclePressTool:
         falsification is relied on instead.
         """
         unpressed = [c for c in controls if c not in self._pairs and c not in self._inert]
-        if unpressed:
-            return unpressed[0]
         self._settle()
+        owed = [c for c in controls
+                if c in self._pairs and self._streak.get(c, 0) < _CONFIRM_STREAK
+                and len(self._pairs[c]) < _MAX_PRESSES]
+        left = self._budget.remaining(self._last_frame)
+        if owed and left is not None and left >= len(owed) + _PROBE_RESERVE:
+            if self._ready(tiles, marks):
+                return None
+            return owed[0]
+        if unpressed:
+            fresh = self._unsampled(controls, unpressed)
+            if fresh:
+                return fresh[0]
+            if self._ready(tiles, marks):
+                return None
+            return unpressed[0]
         unconfirmed = [c for c in controls
                        if c in self._pairs and self._streak.get(c, 0) < _CONFIRM_STREAK
                        and len(self._pairs[c]) < _MAX_PRESSES]
@@ -572,6 +624,24 @@ class CyclePressTool:
                 return None
         self._confirms += 1
         return unconfirmed[0]
+
+    def _ready(self, tiles: dict[Cell, int], marks: list[tuple[Cell, int]]) -> bool:
+        """Does the model on hand already reach the markers? Then stop probing and press."""
+        return bool(self._perm) and bool(plan_presses(tiles, marks, self._perm))
+
+    def _unsampled(self, controls: list[Cell], unpressed: list[Cell]) -> list[Cell]:
+        """Unpressed controls whose LOOK no pressed control shares.
+
+        ⚠️ Ordering only. Two controls that look alike are NOT assumed to do the same thing —
+        measured on this game's own sprite table, seven of its eight boards draw two or more
+        DIFFERENT controls with identical pixels, and adopting a permutation across a look
+        installs the wrong model and costs three levels.
+        """
+        g = self._last_frame
+        if g is None:
+            return []
+        seen = {_look(g, c) for c in controls if c in self._pairs or c in self._inert}
+        return [c for c in unpressed if _look(g, c) not in seen]
 
     def _learn(self, tiles: dict[Cell, int]) -> None:
         """Fold the press just taken into what is known about that control."""
@@ -609,8 +679,29 @@ class CyclePressTool:
             found = recover_permutation(self._slots, self._pairs[control], self._pitch)
         if found is not None:
             self._perm[control] = found
+            self._confirm_inverse(control, found)
         else:
             self._perm.pop(control, None)
+
+    def _confirm_inverse(self, control: Cell, perm: dict[Cell, Cell]) -> None:
+        """Two controls that undo each other confirm each other, for no extra press.
+
+        A cycle is turned both ways, so the controls come in opposed pairs, and a permutation
+        being the EXACT inverse of another already recovered is evidence no single press can
+        manufacture: the two were recovered from different presses of different controls and had
+        to agree slot for slot. Both are then treated as predicted rather than re-pressed.
+        MEASURED on this game: 219 actions over the eight boards fall to 189 with this alone,
+        three boards cheaper and none dearer.
+        """
+        back = {v: k for k, v in perm.items()}
+        for other, theirs in self._perm.items():
+            if other == control or theirs != back:
+                continue
+            if all(_replays(perm, b, a) for b, a in self._pairs[control]) and \
+                    all(_replays(theirs, b, a) for b, a in self._pairs.get(other, [])):
+                self._streak[control] = _CONFIRM_STREAK
+                self._streak[other] = _CONFIRM_STREAK
+                return
 
     def _settle(self) -> None:
         """Adopt, for free, every control a confirmed permutation already explains.

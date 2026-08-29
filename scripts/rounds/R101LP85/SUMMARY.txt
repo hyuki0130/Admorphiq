@@ -1,0 +1,31 @@
+R101LP85 — cyclepress: evidence before breadth        2026-08-29 17:20 KST
+
+FULL 25, A/B on ceph-build out of PRIVATE snapshots in $HOME (~/lp85gA, ~/lp85gB), the two arms
+differing in EXACTLY ONE FILE (src/admorphiq/tools/cyclepress.py: arm A = the change, arm B =
+git HEAD). --agent unified @4000. games/ holds all 50 result files.
+
+    mean  HEAD 0.8962   ->  0.8986      delta +0.0023
+    exactly ONE game moves:  lp85 0.9099 -> 0.9677
+    the other 24 are IDENTICAL to four decimals (ar25 cd82 cn04 ft09 g50t ka59 m0r0 r11l re86
+    sb26 sc25 sk48 sp80 su15 tn36 tr87 tu93 vc33 = 1.0000; ls20 0.9040; wa30 0.8000;
+    dc22 0.7143; s5i5 0.5833; lf52 0.2727; bp35 0.2220)
+
+lp85 per level (actions), before -> after:
+    L1  7 -> 7     L2 28 -> 35    L3 32 -> 19    L4 33 -> 19
+    L5 21 -> 17    L6 35 -> 40    L7 25 -> 19    L8 37 -> 33
+    every level scores 1.0000 except L4, which is 0.7091 (19 actions against a human 16).
+    Level 4's ORACLE minimum is 12 presses (scripts/_lp85_oracle.py, from the game's own
+    cycle data), so 19 is 7 over the floor and the human is 4 over it.
+
+WHAT MOVED IT: the probing ORDER, not the algorithm. Confirm the controls already pressed before
+pressing a new one (gated on the budget indicator, which is what keeps level 1's thirteen-action
+allowance safe), stop probing once the model on hand yields a plan, prefer a control whose LOOK
+has not been sampled, and treat an exact INVERSE pair as mutual confirmation.
+Level 4 now touches FOUR of its SIXTEEN buttons.
+
+47 candidate rules were measured first, one process per rule (lp85_v*.log). Refuted, with numbers:
+    adopt a permutation across an appearance class   0.3296  (7 of 8 levels draw different
+                                                              controls with identical pixels)
+    pool the evidence of jointly-explainable controls 0.8932  (level 4 rises to 55)
+    stop at the first plan without confirming it      0.8982  (level 1 goes 7 -> 27)
+    confirm-first WITHOUT the budget gate             0.8972  (level 1 goes 7 -> 59; lost+retried)
