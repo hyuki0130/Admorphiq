@@ -1,0 +1,53 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.453175,
+  "total_score_pct": 45.318,
+  "games": [
+    {
+      "game_id": "ka59-38d34dbb",
+      "win_levels": 7,
+      "levels_completed": 5,
+      "elapsed_s": 251.18,
+      "total_actions": 1381,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 12,
+          "human_actions": 28,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 44,
+          "human_actions": 109,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 33,
+          "human_actions": 51,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 39,
+          "human_actions": 51,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 45,
+          "human_actions": 33,
+          "score": 0.537778
+        }
+      ],
+      "game_score": 0.453175,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "KA59"
+    }
+  ]
+}

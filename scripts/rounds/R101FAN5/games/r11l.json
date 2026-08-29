@@ -1,0 +1,29 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.004325,
+  "total_score_pct": 0.432,
+  "games": [
+    {
+      "game_id": "r11l-495a7899",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 83.49,
+      "total_actions": 4000,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 73,
+          "human_actions": 22,
+          "score": 0.090824
+        }
+      ],
+      "game_score": 0.004325,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "R11L"
+    }
+  ]
+}

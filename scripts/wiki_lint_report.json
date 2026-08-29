@@ -1,5 +1,6 @@
 {
   "orphans": [
+    "campaign/ACTIVE.md",
     "concepts/card_portability.md",
     "concepts/geometry_as_one_sprite.md",
     "concepts/probe_cost_vs_human_baseline.md",
@@ -19,6 +20,11 @@
   ],
   "stale_claims": [],
   "r23c_gaps": [],
-  "missing_summary": [],
+  "missing_summary": [
+    {
+      "page": "campaign/ACTIVE.md",
+      "detail": "no summary source at all \u2014 index prints '(no description)'"
+    }
+  ],
   "duplicate_titles": []
 }

@@ -558,25 +558,23 @@ tested, so the first result that is consistent with it gets accepted — "wa30 d
 508, therefore budget" — and the alternatives that would have refuted it were never on the list.
 Enumerating first is the same discipline that prevents both failures.
 
-### 7i — the box's tree was a SHARED resource, and 60 cores is a TOTAL (2026-08-29)
+### 7i — ONE tree on the box; the conflict is the SYNC, not the tree (2026-08-29)
 
-Two defects surfaced the moment eight agents ran at once, and both had been invisible while work was
-serial.
+With eight agents running at once I concluded the box's single `~/admorphiq` checkout was a shared
+resource that needed per-worker copies, and built `ceph_worktree.sh` to give each one its own. That
+was over-engineering a non-problem, and it is deleted.
 
-**The tree.** `~/admorphiq` was the only checkout on ceph-build, and every sync overwrote it with a
-whole-tree tar. That is why `gate_tool.sh` grew a check that REFUSES its verdict when the tree moves
-mid-measurement — a guard wrapped around a shared resource instead of a fix for it. With eight agents
-each syncing, they overwrite each other's source WHILE measuring, so every number is suspect.
+**One tree is correct.** Game logic is read-only, and every process constructs its own engine
+instance, so N processes reading the same source do not conflict. What conflicts is the **SYNC** —
+overwriting the tree while something is measuring against it. So the rule is about timing, not
+topology:
 
-```
-bash scripts/ceph_worktree.sh <name>      # ~/wt/<name>, its own source, env files symlinked
-```
+- sync ONCE, then let everything read it;
+- never sync while a measurement is in flight — that is exactly what `gate_tool.sh`'s tree-hash check
+  is protecting, and it is the right guard;
+- a gate re-syncs by design, so a gate must not overlap another gate or a sweep.
 
-⛔ A worker that measures must own its bytes. `environment_files` is large, read-only and identical
-for everyone, so it is linked rather than copied.
-
-**The 60-core cap is a TOTAL, not a per-worker budget.** The cap has been stated repeatedly and was
-still broken: each agent fanned out 60-way, and the box reached **129 processes at load 64.6** —
-above 60 SSH stops answering and the round cannot even be checked on. `ceph_idle_alarm.sh` now
-reports the overload in every turn, because a ceiling that lives in a document is a ceiling nobody
-sees at the moment they exceed it.
+**The 60-core cap is a TOTAL, not a per-worker budget.** Stated repeatedly and still broken: each
+agent fanned out 60-way and the box reached **129 processes at load 64.6**, above which SSH stops
+answering and the round cannot be checked on. `ceph_idle_alarm.sh` now reports the overload into
+every turn, because a ceiling in a document is one nobody sees at the moment they exceed it.
