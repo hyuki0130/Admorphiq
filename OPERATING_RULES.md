@@ -459,7 +459,8 @@ is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our ow
 7ah (asking a tool spends its patience), 7p/7ac (waste attributed to the wrong owner).
 
 **Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
-is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bc** (lf52 —
+is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bf** (why the
+strong tool goes empty, and why handing the board back is INERT), **7bc** (lf52 —
 read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an (bp35), 7ao (s5i5), 7ak (dc22).
 
 **Is the level even still winnable?** → **7bc**. An engine state fed to an offline solver answers it;
