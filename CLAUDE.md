@@ -5,30 +5,47 @@
 > This file is 2,300 lines. A fresh session does not read it, which is a measured cause of work
 > being redone. Everything you need to ACT is here or in the campaign file.
 >
-> **State**: generic tools, full 25 on ceph-build = **0.8935**, 17 games at the 1.0 cap, cumulative
-> regressions 0, both machines byte-identical. Eight games incomplete.
+> **State**: generic tools, full 25 on ceph-build = **0.8962**, EIGHTEEN games at the 1.0 cap,
+> cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101RE86/games`.
+> Seven games short: lf52 0.2727 · bp35 0.2220 · s5i5 0.5833 · dc22 0.7143 · wa30 0.8000 ·
+> ls20 0.9040 · lp85 0.9677.
 >
 > **Every incomplete game has its own background agent.** Do not write probes for them — orchestrate:
 > integrate what they return, gate it, and keep the box busy. See the campaign file for the table.
 >
 > ```
-> bash scripts/ceph_sweep.sh                  # tools x games, 60-way on ceph
-> bash scripts/pfan.sh NAME PROBE.py 30 ARG 24 # ANY probe, fanned — NAME is required (results collide without it)
-> bash scripts/rounds/gate_tool.sh NAME BASE vc33 TOOL   # gate one change on the full 25
+> bash scripts/snapgate.sh NAME scripts/rounds/R101RE86 8 4000   # GATE a change on the full 25
+> bash scripts/ptest.sh --dirty tests/test_x.py                  # tests run on the BOX, not here
+> bash scripts/pfan.sh NAME PROBE.py 30 ARG 6  # ANY probe, fanned — NAME required (else collision)
+> bash scripts/ceph_sweep.sh                   # tools x games, on ceph
 > bash scripts/kaggle_bench.sh status|results|push       # no --submit by design; the user decides
-> bash scripts/measure_frozen.sh              # PYTHONPATH does NOT select the code the runner runs
 > ```
 >
-> **The five rules that were each learned by losing a day** (full text in `OPERATING_RULES.md`):
-> - **7e** a probe that prints nothing and exits 0 has lost its `if __name__ == "__main__"`.
+> ⛔ **The Mac is editor + grep + ruff. NOTHING ELSE.** Not pytest, not a solver, not a replay, not a
+> "quick offline enumeration". A PreToolUse hook REFUSES local runs and prints the box command — it
+> exists because the written rule was obeyed correctly and three concurrent pytest suites melted the
+> laptop anyway, then two more respawned after being killed (rules 7k, 7m).
+>
+> ⛔ **Do NOT use `scripts/rounds/gate_tool.sh`** — it syncs the SHARED `~/admorphiq`, so it ships
+> every agent's work-in-progress and the tree moves under it. `snapgate.sh` archives HEAD into a
+> private directory on the box: two gates run at once, and a rider cannot ride (rule 7l).
+>
+> **The rules that were each learned by losing a day** (full text in `OPERATING_RULES.md`):
+> - **7o** a measurement of a MECHANISM does not license a change of BEHAVIOUR. `frame_2d` really
+>   does read a stale layer at 100% of level transitions in all 21 games — and fixing it cost
+>   **0.8962 -> 0.6525 across fourteen games**. Two claims; only the gate supplies the second.
 > - **7f** "the level number changed" is NOT "we won" — a collapse looks identical. Test `> start`.
 > - **7g** the source says what is POSSIBLE; only a run says what HAPPENS. Verify the branch fires.
 > - **7h** working serially is caused by generating ONE hypothesis at a time. Enumerate, then fan out.
 > - **7b** sweep for an asset already present before digging — that is where every past gain came from.
+> - **7e** a probe that prints nothing and exits 0 has lost its `if __name__ == "__main__"`.
 >
-> ⛔ **2026-08-29 cost**: 76 commits, **zero surviving source changes**, 14 of them retractions. The
-> remaining 0.1065 is **depth 0.0919 + efficiency 0.0147**, and both halves need capability the tool
-> set does not have — 47 tools solo and 9 combinations were measured and none goes deeper.
+> ⛔ **THE INSTRUMENT THAT LIES TOWARD "NOTHING HERE" IS THE EXPENSIVE ONE.** Three on 2026-08-29: a
+> min-blob-size-4 filter hid a game's own rendered move oracle (its markers are two-pixel blobs); a
+> `!=` level test read a collapse to level 0 as a clear, surviving three commits; and a staleness
+> instrument took SIX versions, five of which scored its own KNOWN POSITIVE at zero — four would have
+> been written up as "no other game has this problem", the exact opposite of the truth. **Run every
+> checker on input whose verdict you already know, in BOTH directions.**
 
 
 > ## ⛔ THE LLM WIKI IS THE SINGLE SOURCE OF TRUTH — GO THROUGH IT, ALWAYS
