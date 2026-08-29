@@ -3657,4 +3657,70 @@ in the repository yet. That is the honest boundary of the 1.0000 above.
 
 ### 7cf — the discarded outer band costs zero — its one consumer fires on the one game where the discard is right (2026-08-30)
 
-_(stub claimed by scripts/newrule.sh — fill this in)_
+Rule 7cb's own numbers raised this: `segment.board_changed` throws away the frame's outer band on
+purpose (rule 7c), and the census found r11l producing its only visible effect out there on **39 of
+82 actions of levels it CLEARS**, bp35 on 205 of 499, cd82 on 28 of 131. So what does the harness
+actually DO differently when it believes an action did nothing? Round `scripts/rounds/R101BAND`,
+`scripts/_band_cost.py`, **25 of 25 games reproducing their banked per-level counts and scores.**
+
+**READ THE CONSUMER, NOT THE GUARD — the chain, off the source before measuring
+(`harness/loop.py:715-760`):**
+
+```
+changed       = (prev != frame).any()        BAND INCLUDED  -> the ACTIVE tool's observe()
+board_changed = segment.board_changed(...)   BAND DISCARDED -> tools with augmenter = True
+novelty       = base_hash(frame)             BAND INCLUDED  -> _since_progress, stall, retirement
+_empty_runs                                  reads NEITHER; it counts propose() returning []
+```
+
+⭐ **EXACTLY ONE TOOL IN THE REGISTRY SETS `augmenter = True`: `deadsig`.** So the entire cost of the
+discarded band flows down one path — `deadsig.observe` → `globally_dead` → `GraphSearchTool._drop_dead`,
+which **withholds** the class from the searcher's candidate list. Nothing else consumes it. Tenure and
+retirement do not; the active tool does not.
+
+**AND THE CONSUMER FIRES ON ONE GAME.** `_drop_dead` was called 2,049 times across the 25 and
+withheld something on **918 — all 918 on bp35**, every one on level 6, **and not once on a level that
+clears**. lf52 calls it 227 times and it withholds nothing; on the other 23 games `graph` never holds
+the board and it is never called. Worth **zero** on the public 25, for rule 7cb's structural reason.
+
+⛔ **AND THE REASON IT IS ZERO IS NOT LUCK: the one place the discard is CONSUMED is the one place it
+is RIGHT.** Classifying the band by BEHAVIOUR at the region level — does it advance on every action of
+every class, or does it depend which action was taken:
+
+```
+band moves on ~EVERY action of EVERY class (a counter)   bp35 1.000  r11l 1.000  sb26 1.000
+                                                          su15 1.000  tu93 1.000  ls20 0.998  ar25 0.955
+band rate DEPENDS on the action class (real content)      dc22 0.218  sk48 0.260  cn04 0.285
+                                                          m0r0 0.465  re86 0.485  cd82 0.649
+```
+
+bp35 has fifteen action classes and **all fifteen move the band at rate 1.00** — a pure counter, so
+discarding it is correct and the four classes `deadsig` kills there really do change nothing else.
+The games whose band carries action-dependent content (cd82 0.61/0.50/0.64 by class, dc22
+0.13/0.11/0.19) are exactly the games where `_drop_dead` is **never called at all**.
+
+⛔ **AND MY OWN RULE 7cb IS CORRECTED BY THIS, in the generous direction, which is the dangerous
+one.** 7cb reported "r11l's 47.6% inert is 0 dead and 39 edge-only, therefore 0% waste". **r11l's band
+is a counter at rate 1.000 on every class**, so `edge-only` there means "only the counter ticked" —
+those 39 actions ARE inert. **`edge-only` is not a safe harbour; whether it is real content depends on
+whether the band is a counter, and that has to be measured per game.** Recomputed, cleared-level dead
+actions go 68 → 124 of 6381 (1.07% → 1.94%); the score conclusion does not move, because r11l is at
+1.0 on every level and ls20's are on capped ones.
+
+⚠️ **THE PER-PIXEL ">= 80% OF PROBES" HUD TEST CANNOT SEE A COUNTER, and `segment.py`'s own docstring
+says why** — *"a bar that shrinks or a counter that marches touches each cell once, so no cell reaches
+a 'changes under most actions' threshold"*. The first pass used it and returned **zero HUD pixels on
+all 25 games**, which reads exactly like "there is no HUD anywhere" and is the failure direction rule
+7z names. Ask it at the REGION level and PER ACTION CLASS instead.
+
+⛔ **A SECOND DISCARD EXISTS AND IS NOT THIS ONE.** `GraphSearchTool.state_key` masks pixels changing
+under `_HUD_FRAC` of observations — a BEHAVIOURAL, position-free discard — and it feeds the harness's
+progress signal while `graph` is active. Measured: **its mask is never set on any of the 25** (0 pixels
+everywhere). Do not conflate the two; the positional band is `board_changed`'s and nothing else's.
+
+**VERDICT: the band costs zero, and widening it is NOT licensed** (rule 7o). The measurement is of a
+mechanism whose only consumer fires 918 times on one never-cleared level of one game, where the
+discard is correct. ⚠️ What survives for the private 110 is the SHAPE, not a repair: a game that
+renders its feedback in the outer band AND is driven by `graph` would have its working actions
+withheld — none of the 25 is that game, and one command (`band_rate_by_class`) says whether a new one
+is.
