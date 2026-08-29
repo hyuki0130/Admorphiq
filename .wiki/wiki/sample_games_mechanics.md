@@ -1602,6 +1602,12 @@ frames, not just on it returning a number.
 
 ### ⛔ RETRACTED — wa30 is NOT lost on its budget; the budget never bites
 
+⛔ **AND THIS RETRACTION IS ITSELF WRONG — see "wa30 LEVEL 9 IS CLEARABLE IN 70 ACTIONS" below.**
+The budget DOES bite: nine GAME_OVERs in a 700-action run, every policy, and the raw engine reaches
+`GameState.GAME_OVER` on action 70 under a constant press. The section below stands; everything in
+this one that follows from "the branch never fires" does not.
+
+
 Last tick I concluded wa30's level 9 is "an EFFICIENCY problem, not a missing mechanic", because the
 level declares 70 steps and shepherd spends 508. Measuring what those 508 actually are:
 
@@ -1624,6 +1630,128 @@ measures actually binds.**
 ⛔ Third retraction of the round, and all three share a shape: a number read from the game's SOURCE
 (a declared StepCounter, a lose() branch) taken as a description of what the game DOES, without
 checking that the branch runs. The source says what is possible; only the run says what happens.
+
+## ⛔ wa30 LEVEL 9 IS CLEARABLE IN 70 ACTIONS — witness verified, and the budget DOES bite (2026-08-29)
+
+Both of the round's earlier readings of this board were wrong, and the second one — the retraction —
+was the more expensive, because it turned a solved-looking efficiency problem into a "capability
+wall" and sent the next tick looking for a missing mechanic.
+
+```
+retracted claim   "one unbroken 507-action attempt, no restart -> the branch never fires"
+MEASURED          every policy, 700 actions, level 9:  losses 9, attempts 10
+                  the raw engine reaches GameState.GAME_OVER on action 70 under a constant press
+                  the shipped harness: attempt 0..5, "70 actions" each, every one
+```
+
+`elif not self.kuncbnslnm.current_steps: self.lose()` **fires, on the seventieth action, every
+time.** What the earlier probe read as one long attempt was ten attempts of seventy: a
+`level_reset` restores the board, which keeps "the board changed" true, so counting frame changes
+cannot see an attempt boundary. ⛔ Split attempts on the game's OWN state (`_state ==
+GAME_OVER`, or the step counter returning to its maximum), never on whether the frame moved.
+
+**And the level clears.** `scripts/_wa30_search.py` hill-climbs the CARRIER'S SCHEDULE — which
+pieces it takes, in what order, into which bay, how long it stands still first — replaying every
+candidate in the real `Wa30` object for the full 70-action allowance. Eleven of twelve seeds found
+a clear; the best takes **66 actions with four to spare**. One witness replayed independently
+outside the search: 9 of 9 resting, `GameState.WIN`, on action 70 of 70.
+
+```
+seed  4: CLEARED  66 actions   311 candidates
+seed  5: CLEARED  66 actions 11346
+seed  6: CLEARED  68           2966       clears at 66,66,68,68,69x5,70,70
+seed  1: CLEARED  70            863
+```
+
+⚠️ **So wa30 is worth the FULL +0.0080, not a fraction of it.** The human baseline for this level
+is 415 actions against an attempt of 70 — the human lost about five times before clearing — and
+RHAE pays `min(415/ours, 1)^2`. A tool that clears on its fifth attempt (350 actions) still scores
+**1.0000** on the level. The efficiency question is settled before it is asked; only the clear is
+missing.
+
+### What the board is, in cells
+
+```
+   0123456789012345      p piece (9)      B bay cell (13, two sealed)
+ 0 .........#......      M mover (2)      D den cell (4)
+ 1 .........#.M....      T thief (1)      X no-go   # wall/occupied
+ 2 .........#...BB.      C carrier
+ 3 ..p..BBB.#XXXXXX
+ 4 .....BBB.#......      pieces  (1,5) (1,7) (1,8) (2,3) (2,7) (3,5) | (11,5) (12,7) (14,8)
+ 5 .p.p.BBB.#.p....      bays    3x3 at cols 5-7 rows 3-5, plus (13,6),(14,6)
+ 6 .........#...BB.      sealed  (13,2),(14,2) above the no-go band — unusable
+ 7 .pp.M....#..p...      den     (1,7),(2,7),(1,8),(2,8) — THREE pieces start inside it
+ 8 .pD.....C.....p.
+ 9 ................      row 9 is the only way between the two halves
+10 ..#.############
+11 ..#.#...#...#...      the thief starts at (15,14), deep in this comb
+12 ..#.#.#.#.#.#.#.
+13 ..#.#.#.#.#.#.#.
+14 ..#.#.#.#.#.#.#T
+15 ..#...#...#...#.
+```
+
+The wall at column 9 spans rows 0-7 only, so the two halves meet on rows 8-9. The second mover at
+(11,1) is sealed above the no-go band with the two unusable bays and **moves zero cells in seventy
+actions** — the board has one working mover, and eleven usable bays for nine pieces. `shepherd`'s
+docstring already had all of this right; what it did not have is that the level is winnable.
+
+### What FAILS, and it is the interesting half
+
+Every one of these ran in the exact engine, so none of them is a modelling artefact:
+
+```
+policy sweep, 6 policies x 5 seeds, 700 actions each   best coverage in ONE attempt
+  carrier passes (movers work alone)                     4 of 9
+  carrier kills the thief, then passes                   5
+  carrier acts at random                                 4-5
+  carrier hauls greedily, nearest first                  8
+  the shipped harness (shepherd)                         8
+  kill the thief first, then haul                        5
+eight FIXED ranking rules x three thief policies         max 7  (never 8)
+primitive-action beam, exact engine, width 150-1000      max 8
+beam over whole DELIVERIES, width 60-500, 1-3 bays each  max 8
+schedule hill-climb, exact engine                        9 — CLEARS
+```
+
+⛔ **No fixed ranking rule reaches even the incumbent's eight.** Dearest-drag-first, dearest-total-
+job-first, farthest-from-the-mover-first, our-half-only, orphans-only — the eight rules tried top
+out at seven. And the two beams fail for a shared reason worth naming: **they rank a partial
+schedule by what it has banked so far**, and the delivery that decides this board is the piece on
+the far side of the split wall, which costs about sixteen actions and returns one. A search that
+prefers the cheapest next delivery spends the allowance on near pieces and strands it — which is
+exactly the failure `shepherd`'s own park predicted, in those words, before any of this was run.
+
+⚠️ The eleven winning schedules **do not agree on an order**. Their first target is the far-left
+column piece in four of eleven and the far-right piece in four; their pauses (0-7 actions before a
+target, and standing still is a real move because the mover retargets to the nearest free piece)
+are scattered. Every one of them handles the thief — kill radius 2, 4 or 6, never 0. So what is
+recoverable as a RULE is only "take the awkward ones, let the mover have the middle, deal with the
+thief"; the schedule that actually fits into seventy is found, not derived.
+
+### The next step, stated as work
+
+`shepherd` cannot run this search: it needs to score a candidate schedule before committing, and
+the only scorer used here is the engine. But the three actors it would have to model are the three
+it **already reads correctly** (its docstring records the hazard band, both bay shapes and the
+thief region all checked against the engine), and their rules are small: a mover walks to the
+nearest free piece by breadth-first search, grips it when adjacent, walks so the piece lands on a
+bay, lets go; the thief is the same toward the den; a grip costs the actor its whole turn.
+
+So the build is: a forward model of movers-and-thief inside the tool, and the hill-climb above run
+against it offline — median 3,000 candidates, which is seconds of compute, not actions. ⛔ It
+cannot be run against the LIVE board instead: a candidate costs 70 actions there, and 3,000 of them
+is 210,000 actions for a level whose baseline is 415.
+
+Probes, all committed: `scripts/_wa30_l9.py` (six policies), `_wa30_last.py` (which piece is left,
+and whether it is reachable — always "reachable"), `_wa30_beam.py`, `_wa30_macro.py`,
+`_wa30_plan.py`, `_wa30_search.py` (the one that clears).
+
+⚠️ **`scripts/pfan.sh` destroyed this round's first 30-way fan** — it wrote to a fixed
+`/tmp/pfan.jsonl` and `rm -f`'d it at launch, so a peer's fan wiped mine and I read back somebody
+else's game. Fixed since to `/tmp/pfan_<name>.jsonl`; the lesson is the general one, that a shared
+scratch path between concurrent agents is a silent data corruption, not a collision that announces
+itself.
 
 ## s5i5 level 7 is ONE target away — and the count never moves (2026-08-29)
 
