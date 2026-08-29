@@ -88,7 +88,20 @@ defect — every one is an EMPTY retirement — so the question is **why the str
 ⚠️ And a successor weak alone can still be the one that finishes: ls20's `fogscout` has solo depth 0
 and the harness reaches level 7 with it, which no single tool does.
 
-⛔ **THE REGISTRY IS NOW MEASURED FROM THREE INDEPENDENT DIRECTIONS AND NONE FINDS THE GAP THERE:**
+⛔ **THE REGISTRY IS NOW MEASURED FROM FIVE INDEPENDENT DIRECTIONS AND NONE FINDS THE GAP THERE:**
+- **Forced PAIRS, 219 of 230**: each specialist plus every other tool, one at a time. Every game
+  returns **ONE distinct action count** — bp35 727, lf52 824, dc22 926, s5i5 695, ls20 922. Not "no
+  partner helps": **no partner ACTS.** ⛔ And ls20 is decisive the other way — its forced pair reaches
+  depth 6 in 922 actions while the FULL HARNESS reaches depth 7 in 645, **shallower AND slower**. So
+  composition is not what fails; **forcing a pair is.** The harness's value is choosing the successor
+  at the right moment from the whole roster.
+- **Why the strong tool goes EMPTY** (rule 7bh): 459 traced `propose` calls, **zero ILLEGAL**. bp35's
+  `crag` quits on "window does not belong to this board" and the ONLY field that moves is
+  `self._rows` **10 → 9** — the hazard its own docstring names, guarded in the band and left exposed
+  in the stitch. ⛔ And the tool had not given up: its first threshold is 16 idles, the harness
+  retires at **8**. ⭐ But `crag` recovers only because the SUCCESSOR drives it back into a readable
+  window — **being displaced is what fixes it**, and the `hold` arm is measured INERT.
+
 - 47 tools × 5 stuck games = 235 pairs, forced alone: **no tool beats the harness anywhere**, and
   **exactly ONE does anything at all on each board** (43–46 of 47 clear NOTHING). On ls20 the
   harness reaches level 7 while no single tool passes 6 — the composition earns a level none of its
