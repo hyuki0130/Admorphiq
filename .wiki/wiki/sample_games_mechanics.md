@@ -597,3 +597,30 @@ routing, not its absence.**
 probe was the first. Both times the claim came from reading the tool's OUTPUT (it behaves as if it
 has no fuel model) instead of its SOURCE. The tools in this repo carry their measured history in
 their docstrings; reading them first is cheaper than inferring their design from a trace.
+
+### The fuel model exists and is EMPTY — measured at every level boundary
+
+Built the obvious repair — carry the refill vocabulary across a level change, since the glyphs are a
+property of the game and not of the level, the same argument crag records for its lattice pitch.
+Measured on ls20: **0.8442 -> 0.8442, unchanged.**
+
+Because there is nothing to carry. Printing what the tool holds at each of the thirteen resets in a
+full ls20 run:
+
+```
+RESET carrying refills=0 kinds=0 bar=None      (x13, every one)
+```
+
+**fogscout finishes seven levels having learned nothing** — no refill glyphs, no glyph kinds, not
+even the gauge's colour. And yet at the moment it dies on level 7 it reports `bar_len=42 full=42
+drop=2`, so `_read_bar` is working *within* a level. Both facts together say the learned state is
+already empty before the reset, not wiped by it.
+
+So the diagnosis moves once more, and it is now sharper than "the routing is poor": **the tool's fuel
+model runs, reads the gauge correctly, and accumulates nothing that outlives the moment.** Where
+that state goes is the next thing to find, and it is a question about fogscout's own bookkeeping, not
+about ls20.
+
+⚠️ Third time this round the repair I built was aimed at a stage downstream of the real defect —
+after crag's alignment threshold and its vocabulary probe. The pattern is the same each time: I
+inferred the gap from behaviour, built for it, and the measurement showed the gap was further back.
