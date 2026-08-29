@@ -2740,7 +2740,27 @@ avatar cell   panel hash   the ONE drive that answers    delta     further press
   floor rule about the cell the avatar was demonstrably standing in. **A mechanism that explains a
   measurement is not thereby the mechanism.**
 
-### One repair built, measured and NOT committed
+### Three repairs built, measured, and NONE committed
+
+⛔ **Uncondemning a walked-on colour FIRES and buys nothing** (`scripts/_dc22_floor.py` repair 2).
+A colour the avatar has walked ONTO is struck from `_not_floor` — read from the PREVIOUS frame at
+the cell just entered, because a tile under the avatar is drawn as the avatar. It works: colour
+**0 is struck** on level 6. And the game still stops at five levels, 0.714286, while levels 1-5 cost
+**+23 actions** (level 3 59 -> 63, level 5 195 -> 214). ⚠️ Level 3 has only **8 actions of slack**
+against its human count of 67, so that repair spends half of dc22's entire safety margin for
+nothing. Without the previous pass's monkeypatch arms it is INERT — the baseline tool never walks
+onto a condemned colour at all (`uncondemned: []`, run byte-identical to the control).
+**So uncondemning is necessary and nowhere near sufficient**: the floor map opens and the crane is
+still not learned, because pressing each drive from its own plate and learning the rail are
+separate problems.
+
+⛔ **Unioning `_visited` into `_grid` is NOT SHIPPABLE ON WALL CLOCK** (repair 1). The control run
+finishes in about 110 seconds; both repair-1 arms were still running at **814 seconds** and had to
+be killed at the probe's 1800-second cap without producing a result. Widening the standable set
+widens the (cell, phase, rail) search at every node, and this family's search is already the level's
+clock.
+
+### One more repair built, measured and NOT committed
 
 `_confirm_probe` gives each idle control exactly one chance per level (`_gprobed` is a set of
 clicks), so a control silent at one rail position is condemned for the level.

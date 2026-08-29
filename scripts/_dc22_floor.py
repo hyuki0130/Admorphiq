@@ -18,7 +18,8 @@ The repair under test is the repo's own "observation trumps inference": a cell t
 STOOD IN is floor, whatever colour it is drawn in.  `_grid` unions `self._visited`, `_blocked`
 still subtracts.
 
-  arg 1 = repetition.  arg 2 = 1 to apply the repair, 0 for the control arm.
+  arg 1 = repetition.  arg 2 = repair: 0 = control, 1 = `_grid` unions `_visited`,
+                                 2 = a colour the avatar has WALKED ONTO is struck from `_not_floor`.
   arg 3 = `_dc22_percep` mask, arg 4 = `_dc22_gantryx` mask.
 Rule 7x: the scorer's own `run_game` drives it.  Rule 7f: the level count prints as a number.
 """
@@ -56,6 +57,45 @@ def apply_repair():
     GantryCraneTool._grid = _grid
 
 
+def apply_uncondemn():
+    """A colour the avatar has walked ONTO is floor, whatever a refusal elsewhere concluded.
+
+    ⛔ The window under the avatar cannot be read while the avatar is standing in it — its own
+    pixels are what is drawn there.  So the colours are taken from the PREVIOUS frame, at the cell
+    the avatar has just arrived in, which is the last frame that shows that tile uncovered.
+    """
+    import numpy as np
+
+    from admorphiq.tools.base import frame_2d
+    from admorphiq.tools.gantry import GantryCraneTool
+
+    orig = GantryCraneTool.propose
+    prev = {"board": None, "at": None, "struck": set()}
+
+    def propose(self, frames, obs):
+        g = np.asarray(frame_2d(obs), dtype=int)
+        geom = self._read(g)
+        if geom is not None and self._avatar >= 0:
+            board = np.asarray(geom["board"], dtype=int)
+            here = self._at(board, self._avatar)
+            was, wb = prev["at"], prev["board"]
+            if (here is not None and was is not None and here != was
+                    and wb is not None and wb.shape == board.shape):
+                side = max(1, self._side)
+                win = wb[here[0]:here[0] + side, here[1]:here[1] + side]
+                if win.size == side * side:
+                    for c in {int(v) for v in win.ravel()}:
+                        if c in self._not_floor:
+                            self._not_floor.discard(c)
+                            prev["struck"].add(c)
+                            self._dirty = True
+            prev["board"], prev["at"] = board, here
+        return orig(self, frames, obs)
+
+    GantryCraneTool.propose = propose
+    return prev
+
+
 def main():
     rep = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     repair = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -67,8 +107,11 @@ def main():
     if gmask:
         from _dc22_gantryx import apply as apply_gantryx
         apply_gantryx(gmask)
-    if repair:
+    struck = None
+    if repair == 1:
         apply_repair()
+    elif repair == 2:
+        struck = apply_uncondemn()
     from arc_agi import Arcade, OperationMode
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
     envs = [e for e in arcade.get_environments()
@@ -83,7 +126,8 @@ def main():
                       "levels_completed": int(res.get("levels_completed") or 0),
                       "total_actions": res.get("total_actions"),
                       "game_score": res.get("game_score"),
-                      "per_level": res.get("per_level")}), flush=True)
+                      "per_level": res.get("per_level"),
+                      "uncondemned": sorted(struck["struck"]) if struck else None}), flush=True)
 
 
 if __name__ == "__main__":
