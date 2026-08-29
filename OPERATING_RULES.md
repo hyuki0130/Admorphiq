@@ -1838,3 +1838,39 @@ longer by at least what it saved.**
 ⚠️ INSTRUMENT DEFECT, and it is the fail-toward-nothing shape again: `pfan.sh` collects with `>>`
 appends, so a probe printing a JSON line over ~4KB INTERLEAVES and every run but one reads as
 "produced nothing". **Keep the stdout line short; write detail to a per-arm file.**
+
+### 7au — lf52's whole remaining 0.7273 is ONE MOVE, and the tool arms its own trap (2026-08-30)
+
+⭐ **THE THIRD CAPTURE IS THE LEVEL'S DESIGNED LOSING MOVE, read from the game's own source.** At
+level-6 action 124 the tool jumps (14,2) over (15,2) onto (16,2) — and `cfilhtifcb`'s level-6 branch
+says: landing on (16,2) **while red stands on (6,6)** calls `pchvqimdvj()`, the author's own "this
+branch is lost" marker. **Red starts at (2,2) and only the agent moves it**, so `railpeg` ARMED the
+trap earlier in the level and then sprang it, blind to both halves of the conjunction.
+
+⛔ AND THE RESTARTING CLICK IS MEASURED, NOT DERIVED. Action 266 is `ACTION6 xy=(6,56)`.
+`Lf52.jxyktkxwle` treats ANY `ACTION6` with `x<16 and y>48` as "restart this level" while its control
+is live — **before it looks at what is under the cursor**. `propose`'s bounds guard cannot catch it:
+(6,56) is inside the 64×64 frame. ⚠️ **The hot zone is SCREEN space and `railpeg` plans in WORLD
+space**, so once the camera scrolls, ordinary playfield sits under a control.
+
+Both directions of that control, per rule 7ai:
+
+```
+level 3   1 click in the zone, control NOT live   -> no restart
+level 4   1 click in the zone, control NOT live   -> no restart
+level 6  10 clicks in the zone, ONE while LIVE    -> restart
+```
+
+⭐ **So the repair is not "avoid a corner" — it is "stop clicking when nothing is legal"**, which
+removes the exposure entirely AND recovers the 143 actions `railpeg` spends clicking into a position
+with zero legal moves.
+
+⭐ AND (26,3) IS PROVABLY INERT, which STRENGTHENS the map closure rather than weakening it: its left
+neighbour is rail with no hole so nothing can ever stand there to be jumped over, and (27,3)/(26,1)/
+(26,5) are off the board. It can never jump, be jumped over, or be captured — **it MUST be the
+survivor**, so opening the unseen column is worth nothing. Its only cost is arithmetic: `_won` over a
+model lacking it is satisfied one capture early, which `_elsewhere` already handles.
+
+⛔ **The target for whoever takes lf52: make the third capture the eighth candidate rather than the
+first**, and stop the 376 wasted actions that follow the wrong one. Not a bigger map (closed), not a
+looser veto (the veto is right), not the frontier (six measurements).

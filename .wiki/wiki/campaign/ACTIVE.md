@@ -4,8 +4,8 @@
 
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
-**MEAN = 0.9078**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101BP35/games` — use it as the gate's BASE.
+**MEAN = 0.9082**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101LP85GATE/games` — use it as the gate's BASE.
 
 ⭐ **AND THE GAINS REACH THE SUBMISSION PATH**, measured 2026-08-30 after fifteen source changes:
 `--agent unified` 0.9069 and `--agent kaggle_unified` (through the official wrapper the notebook
@@ -100,7 +100,7 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101BP35 8 4000
+bash scripts/snapgate.sh <name> scripts/rounds/R101LP85GATE 8 4000
 bash scripts/ptest.sh --dirty tests/test_x.py     # tests, on the BOX; TARGET it (whole suite = 24 cores)
 bash scripts/pfan.sh <name> <probe.py> <n> "<arg>" 6   # any probe, snapshotted; NAME is required
 ```
