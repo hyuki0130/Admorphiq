@@ -1071,3 +1071,43 @@ exactly the way rule 7x names: it did not break on WIN, so it kept playing and r
 game was already won, and reported sc25 — which scores 1.0000 — with **143 GAME_OVERs**. Fixed. It
 was caught only because the number was absurd; on a game that does not win, the same defect is
 invisible.
+
+### 7z — the raw-frame opening hash CANNOT detect a restart, and rule 7u overstated it (2026-08-30)
+
+Rule 7u said the model-level restart test is unsound and named the raw-frame opening hash as "the
+cheap general test". **Measured across the six games that die, from a private snapshot of HEAD:**
+
+```
+game  wall  actions  GAME_OVER  opening_recurrences
+bp35   L5     3772       58              0
+s5i5   L6     3809       19              0
+lf52   L5     3678        5              0
+dc22   L5     3576        3              0
+wa30   L8      135        1              0     (and WINS 9/9 — the conquest reproduces)
+ls20   L6      230        1              0     (and WINS 7/7)
+```
+
+⛔ **ZERO opening recurrences on a level that dies FIFTY-EIGHT times.** The test never fires, so it
+cannot support either verdict — and it reads as "no restarts", which is the direction nobody
+double-checks. Eighth instrument in two days to fail toward "there is nothing here".
+
+**The mechanism, and it is a design defect rather than a property of the games**: on GAME_OVER the
+harness RESETs, and a reset returns the game to LEVEL 0. So the level's opening frame is never
+revisited *while `levels_completed` still reads that level* — the counter has already dropped. The
+comparison was structurally incapable of firing. ⚠️ It would only work on a game whose death
+restarts the LEVEL in place, which is what wa30 does — and wa30 still scores 0, because the harness's
+own RESET intervenes first.
+
+**`obs.state == GAME_OVER` is the only reliable restart signal.** It is free, exact, and needs no
+frame comparison at all. Both wa30's conquest and the allowance ledger already use it; the census
+should have from the start.
+
+⚠️ CONSEQUENCE FOR A PUBLISHED FINDING: lf52's agent concluded "level 6 never restarts" from
+`OPENING RECURRENCES 0`. That evidence is void. lf52's level 6 **does** die — 5 times in 3678 actions,
+about 1 in the scored run. The agent's wider conclusions (the closed stall position, the veto correct
+at all 18 refusals) rest on forced-move measurements and are untouched; only the restart claim falls.
+
+⛔ AND THE FIRST RUN OF THIS CENSUS WAS TAKEN FROM THE SHARED `~/admorphiq` BY SSH, not a snapshot,
+so it measured whatever bytes the box held — reporting wa30 as `won=False` with 48 deaths hours after
+wa30 was gated at 1.0000 for 9/9. Rule 7l applies to a coordinator's own probes, and I broke it
+within an hour of writing rule 7r to fix the same hole in `pfan.sh`.
