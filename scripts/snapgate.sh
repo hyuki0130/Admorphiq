@@ -75,6 +75,10 @@ set -u
 SNAP="$1"; PAR="$2"; BUDGET="$3"
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
+# ⛔ Sweep stale snapshots (rule 7d, on the box): ~94MB each, 15GB accumulated by 2026-08-30.
+# Two hours untouched means finished; a live fan writes continuously.
+find "$HOME" -maxdepth 1 \( -name "pfan_*" -o -name "snap_*" -o -name "*_out" \) -type d -mmin +120 \
+     -exec rm -rf {} + 2>/dev/null
 rm -rf "$HOME/$SNAP" "$HOME/${SNAP}_out"
 mkdir -p "$HOME/$SNAP" "$HOME/${SNAP}_out"
 tar xzf "$HOME/$SNAP.tgz" -C "$HOME/$SNAP"

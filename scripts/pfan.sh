@@ -49,6 +49,12 @@ rm -f "/tmp/_$SNAP.tgz"
 "${SSH[@]}" "SNAP='$SNAP' PROBE='$PROBE' N='$N' REST='$REST' PAR='$PAR' bash -s" <<'EOS'
 set -u
 export PATH=$HOME/.local/bin:$PATH
+# ⛔ SWEEP OUR OWN LEAVINGS FIRST. Each snapshot is ~94MB and every fan makes one; measured
+# 2026-08-30 the box held 15GB of them at 89% full. That is rule 7d (the Mac's disk filled with our
+# own sync tarballs) on the other machine. Anything untouched for two hours is finished — a live fan
+# writes continuously — so it goes, and a fan in flight is never at risk.
+find "$HOME" -maxdepth 1 \( -name "pfan_*" -o -name "snap_*" -o -name "*_out" \) -type d -mmin +120 \
+     -exec rm -rf {} + 2>/dev/null
 rm -rf "$HOME/$SNAP"; mkdir -p "$HOME/$SNAP"
 tar xzf "$HOME/_$SNAP.tgz" -C "$HOME/$SNAP" && rm -f "$HOME/_$SNAP.tgz"
 # Read-only links: the venv, the games, the recorded traces, the official framework dir.

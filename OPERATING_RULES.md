@@ -2533,3 +2533,25 @@ move.
 a named cause, in the tool that reaches bp35's best depth. ⛔ But rule 7o applies in full — the arm
 that keeps `crag` on the board after such a fix is the `hold` arm, and **`hold` is measured inert**,
 so a perception repair has to earn its level on its own.
+
+### 7bi — the BOX's disk filled with our own snapshots — rule 7d on the other machine (2026-08-30)
+
+⛔ Rule 7d recorded the MAC's disk filling with our own sync tarballs. The same thing happened on
+ceph-build, one machine over, and nobody was watching for it:
+
+```
+15 GB of ~/pfan_* and ~/snap_* snapshots · disk at 89% · 484G with 56G free
+```
+
+Every snapshot is ~94MB and **every fan, gate and test run makes one** — that is the price of rule
+7l (a measurement must not write to a shared path), and it was paid without anyone budgeting for it.
+Sweeping everything untouched for two hours recovered **14GB**.
+
+⭐ **THE FIX IS THAT EACH TOOL CLEANS UP AT LAUNCH, NOT THAT SOMEONE REMEMBERS.** `pfan.sh` and
+`snapgate.sh` now sweep stale snapshots before creating their own. **Two hours untouched means
+finished** — a live fan writes continuously, so a fan in flight is never at risk.
+
+⚠️ THE SHAPE, and it is the same one as rules 7ad and 7av: **a fix creates a cost somewhere nobody is
+looking.** Rule 7l moved every measurement onto private snapshots and solved a real contamination
+problem; the disk bill arrived silently a day later on a different machine. **When you move work to
+escape a problem, ask what the new place is now paying.**
