@@ -534,3 +534,26 @@ the tile being consumed, the level actually ending.
 
 ⚠️ The failure is seductive because the source reading is usually CORRECT. wa30 really does declare
 70 and really does contain a lose(); it simply never reaches it in play.
+
+### 7h — ROOT CAUSE of working one-at-a-time: hypotheses are generated one at a time (2026-08-29)
+
+The user asked three times for parallel work on ceph-build, the watchdog tick asks for it every nine
+minutes, two scripts now exist for it (`ceph_sweep.sh`, `pfan.sh`) — and I still worked serially.
+Adding a third script would not have fixed it either, because the tooling was never the bottleneck.
+
+**The bottleneck is that I form ONE hypothesis at a time.** The loop is: measure, get a surprising
+result, derive the single next question from it, write a probe for that question, run it. Question
+N+1 depends on answer N, so there is nothing to parallelise — not because the box is unavailable, but
+because at any moment I am holding exactly one question.
+
+Measured cost of this pattern on 2026-08-29: **76 commits, ZERO surviving source changes, 14 of them
+retractions**, box at load 9 of 64.
+
+⛔ **THE RULE: before writing any probe, enumerate every hypothesis that could explain the
+observation, and test them all at once.** Not seeds of one question — DIFFERENT questions, run
+together. If the list has one entry, that is the tell that the enumeration was skipped.
+
+⚠️ This also explains the retractions. A single hypothesis, once formed, is the only one being
+tested, so the first result that is consistent with it gets accepted — "wa30 declares 70 and spends
+508, therefore budget" — and the alternatives that would have refuted it were never on the list.
+Enumerating first is the same discipline that prevents both failures.
