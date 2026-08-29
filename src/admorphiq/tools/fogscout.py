@@ -978,15 +978,29 @@ class FogScoutTool:
         return agree > 0
 
     def _search(self, shape: tuple[int, int], want: Any, learn: bool) -> int | None:
-        """BFS in (cell, token) space; returns the first action of the route."""
+        """BFS in (cell, token) space; returns the first action of the route.
+
+        ⛔ A SATISFIED route also reports HOW LONG IT IS, in `_plan_dist`, exactly as `_walk`
+        does. `propose` skips the tank only when "the plan's target distance is KNOWN and within
+        reach", and this search used to leave that number unset — so every tick spent executing a
+        winning route took the cautious branch and `_refuel` decided on its own terms, blind to the
+        level being about to end. Measured on the fogged board's execution phase: at three steps
+        from the win with seven moves in the tank the tool turned around, spent three actions
+        reaching a refill and six walking back. Reporting the distance is 237 actions -> 231,
+        deterministic, still 7/7 (`scripts/_ls20_winfuel.py`).
+
+        ⚠️ Only the two `want`-satisfied returns set it. The `learn` shortcut is a DISCOVERY target
+        whose worth is not its distance, and the press clause that uses it must keep the cautious
+        branch — bundling the two was measured separately and is not what this buys.
+        """
         if self.pos is None or self.tok is None:
             return None
         start = (self.pos, self.tok)
         seen = {start}
-        q: deque[tuple[Cell, Tok, int | None]] = deque([(self.pos, self.tok, None)])
+        q: deque[tuple[Cell, Tok, int | None, int]] = deque([(self.pos, self.tok, None, 0)])
         acts = [a for a in self.dirs if a in _MOVE_IDS]
         while q:
-            c, t, first = q.popleft()
+            c, t, first, d = q.popleft()
             for a in acts:
                 nb = self._step_to(c, a)
                 if nb == self.goal:
@@ -1002,6 +1016,7 @@ class FogScoutTool:
                     # it refused to consider. A mark on the target can never be
                     # learned, because learning it means the level is over.
                     if t == self.target and want(nb, t):
+                        self._plan_dist = d + 1
                         return a if first is None else first
                     continue
                 if not self._passable(nb, shape):
@@ -1014,12 +1029,13 @@ class FogScoutTool:
                         return head
                     continue
                 if want(nb, nt):
+                    self._plan_dist = d + 1
                     return head
                 key = (nb, nt)
                 if key in seen:
                     continue
                 seen.add(key)
-                q.append((nb, nt, head))
+                q.append((nb, nt, head, d + 1))
         return None
 
     def _reach(self, shape: tuple[int, int]) -> dict[Cell, int]:

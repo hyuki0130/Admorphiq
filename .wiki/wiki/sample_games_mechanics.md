@@ -1294,6 +1294,82 @@ own floor and the remaining loss is structural. The one measured gap worth a fut
 **32 ticks between the third changer's table closing (138) and the first winning route (170)** —
 everything the route needs is known at 138 and the search does not return one until 170.
 
+### ⛔ THAT 32-TICK GAP DOES NOT EXIST — the closure is the clock (2026-08-29, later the same day)
+
+The open item above was measured and it is wrong. `scripts/_ls20_gap32.py` splits the two things a
+winning route needs and times them separately, every tick: `reach` (can the avatar walk to a cell
+one step from the target, token ignored) and `clos` (is the demanded token in the closure of the
+rules currently believed, geometry ignored).
+
+```
+reach@54    the target cell is walkable from tick 54, and stays walkable
+clos@168    the demanded token enters the closure at 168
+win@168     the winning route appears on THAT EXACT TICK
+```
+
+So the search never refused a route it could return; the closure simply did not contain the token
+until 168. "The tables close at 138" was the wrong reading of the trace — what closes at 138 is the
+THIRD mark's first pair. Its 6-entry shape table and 4-entry colour table are filled between 150
+and 168, and the win appears on the tick the last one lands.
+
+**Seen versus pressed, per mark** (`scripts/_ls20_marklag.py`): colour sighted@9 pressed@66, shape
+sighted@10 pressed@68, and the third mark **sighted at tick 30 and pressed at 137** — a 107-tick
+lag on the one mark that gates the closure. It is the changer that PATROLS a rail in the far
+corner; the two static ones sit two cells apart and are pressed as soon as the frontier lets go.
+
+⛔ **AND ORDERING HAS NOW BEEN SWEPT IN BOTH DIRECTIONS AND BOTH LOSE.** The earlier round measured
+six ways of exploring LESS, all ending 6/7 at ~502 actions. This round measured ten ways of
+pressing MORE or SOONER, and they fail the same way:
+
+```
+rank unlearned marks ahead of the frontier          6/7  ~503a   the third mark never learned
+the same, only after goal+target are known          6/7   502a   learned@92 and still lost
+finish a changer's table while standing on it       6/7   504a   at EVERY radius 2, 3, 4, 6, 8, 12
+translation-invariant mark identity                 7/7   237a   exactly INERT
+_SIGHT_RETRY 20 (re-check a sighting sooner)        7/7   237a   exactly INERT
+ambush a SIGHTED mover at its remembered beat       7/7   237a   exactly INERT
+motion-conjugated mask tables (verified/unverified) 7/7   237a   exactly INERT
+the mask x mask commutation loop run 16x            7/7   237a   exactly INERT
+_MOTION_MIN 2 (believe a motion on two pairs)       7/7   237a   exactly INERT
+_MOTION_MIN 4                                       6/7   502a   3 is the boundary, and load-bearing
+```
+
+The "finish the table under your feet" loss is the sink the tool's own `_plan` docstring names: a
+press teaches ONE entry of a table over a token space a hundred wide, so a clause that prefers a
+nearby unmeasured press never stops preferring one. Its census shows 121-223 press-near actions and
+two marks ever learned.
+
+### ⭐ WHAT DID PAY: the winning route never told anyone how long it was (237 -> 231)
+
+Pricing the EXECUTION phase tick by tick — the winning route's remaining length beside the tank —
+shows the tool turning the wrong way three times:
+
+```
+t=214  refuel  win=3  left=7      three steps from the end, seven moves in the tank
+t=215  refuel  win=4  left=6
+t=216  refuel  win=5  left=5
+t=217  win     win=6  left=21     refilled, and now SIX steps out instead of three
+```
+
+One missing number, not a bad rule. `propose` skips the tank only when "the plan's target distance
+is KNOWN and within reach"; `_walk` sets that distance and `_search` did not, so every tick spent
+executing a winning route took the cautious branch and `_refuel` decided on its own terms, blind to
+the level being about to end. Reporting the route length from the two `want`-satisfied returns of
+`_search` — and only those, the `learn` shortcut is a discovery target whose worth is not its
+distance — is **237 -> 231 actions, level 7 0.6159 -> 0.6483, game 0.9040 -> 0.9121**, levels 1-6
+byte-identical at 17/101/63/66/67/100 and all still at the cap. Verified on the SHIPPED file out of
+a private snapshot, not on a probe subclass (`scripts/_ls20_verify.py`).
+
+⚠️ Making the win search FUEL-AWARE — (cell, token, tank), a known refill resetting the tank — was
+measured in the same fan and is WORSE, 241 actions: the fuelled route is longer than the greedy one
+plus its detours. The cheap fix is the whole of the gain.
+
+**What is left on ls20, honestly.** 231 = 10 handover (keymaze holds the board across the level-up
+and spends 9 actions on it) + 158 discovery + 63 execution. Discovery is `map` 59 + `tread` 56, and
+treading is how the patrolling changer gets met at all — every variant that shortens it loses the
+level. The human's 186 is 4.6x the level's own 42-unit tank, so it contains refills and probably
+deaths too. Reaching it needs a different way to meet a mover under fog, not another ordering.
+
 
 ## dc22 level 6 — COLOUR-CYCLING TILES, and it is the round's best target (2026-08-29)
 
