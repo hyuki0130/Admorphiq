@@ -11,18 +11,29 @@
 set -u
 KEY="$HOME/VM/keys/nfw-dev.pem"
 [ -f "$KEY" ] || exit 0
+# ⛔ COUNT THE INTERPRETER, NOT THE LAUNCHER — and DECIDE ON THE LOAD, not the count.
+# The first version counted `uv run python`. Then snapgate/ptest/pfan moved to private snapshots
+# that invoke `.venv/bin/python` DIRECTLY (rules 7l/7m/7r), and the hook went blind to every one of
+# them: measured 2026-08-30 it reported "⛔ ceph-build is IDLE — 2 processes" while the box was at
+# LOAD 65 with 17 script processes and a full pytest suite eating 24 cores. **My own infrastructure
+# fix blinded my own watchdog**, and it failed toward "do more work", which is the direction that
+# overloads the box.
+#
+# Load average is the honest signal: it needs no pattern to match and cannot be defeated by a change
+# of launcher. The process count is kept, but only as detail.
 OUT=$(ssh -o ConnectTimeout=4 -o BatchMode=yes -i "$KEY" ubuntu@ceph-build \
-        'n=$(pgrep -fc "uv run python" 2>/dev/null || echo 0); l=$(cut -d" " -f1 /proc/loadavg); echo "$n $l"' 2>/dev/null) || exit 0
+        'n=$(pgrep -fc "python[0-9.]* " 2>/dev/null || echo 0); l=$(cut -d" " -f1 /proc/loadavg); echo "$n $l"' 2>/dev/null) || exit 0
 PROCS=${OUT%% *}
 LOAD=${OUT##* }
+LOADI=${LOAD%%.*}
 # ⛔ 60 IS A CEILING, NOT A TARGET. The box has 64 cores and saturating them locks out SSH, so the
 # round becomes unreachable while it runs. With one agent per game each fanning out 60-way, the
 # TOTAL is what matters — measured 2026-08-29: eight agents took it to 129 processes at load 64.6.
-if [ "${PROCS:-0}" -gt 60 ]; then
+if [ "${LOADI:-0}" -gt 55 ] || [ "${PROCS:-0}" -gt 60 ]; then
   echo "⛔ ceph-build is OVERLOADED — $PROCS processes, load $LOAD. The cap is 60 of 64 cores;"
   echo "   above it SSH stops answering and the box cannot even be checked on. Agents each fan out"
   echo "   60-way, so the TOTAL is what breaks the cap. Throttle before launching anything else."
-elif [ "${PROCS:-0}" -lt 8 ]; then
+elif [ "${LOADI:-0}" -lt 8 ] && [ "${PROCS:-0}" -lt 8 ]; then
   echo "⛔ ceph-build is IDLE — $PROCS processes, load $LOAD of 64 cores."
   echo "   Do not run a probe once. Enumerate every hypothesis that could explain what you are"
   echo "   looking at (rule 7h) and fan them out:  bash scripts/pfan.sh PROBE.py 60 ARG"

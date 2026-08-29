@@ -1228,3 +1228,30 @@ not the retirement reason. ⛔ Anything anyone has concluded from that line is u
 - ⚠️ `graph_search.py:589` returns 0.8 as soon as any observed transition changed a small localized
   region — "there is an avatar" — which exceeds `_PRIMARY_CONF` 0.70, so `_primary_owns` latches and
   the stall path can never retire graph on the boards where it is wrong.
+
+### 7ad — my own infrastructure fix blinded my own watchdog (2026-08-30)
+
+`.claude/hooks/ceph_idle_alarm.sh` counted `pgrep -fc "uv run python"`. Then `snapgate.sh`,
+`ptest.sh` and `pfan.sh` all moved to private snapshots that invoke **`.venv/bin/python` directly**
+(rules 7l / 7m / 7r) — and the hook went blind to every one of them.
+
+Measured 2026-08-30, the hook and the box in the same minute:
+
+```
+hook:  ⛔ ceph-build is IDLE — 2 processes, load 65.33 of 64 cores.
+box:   load 62.18 · 17 script processes · a full `pytest tests -q` at 2397% CPU (24 cores)
+```
+
+⛔ It reported IDLE *while printing a load of 65*, and its advice on IDLE is "fan out sixty ways".
+**It failed toward doing MORE work, on a box already past its ceiling** — the exact direction that
+locks out SSH and makes the round unreachable while it runs.
+
+**Decide on the LOAD, not on a pattern match.** Load average needs no pattern, cannot be defeated by
+a change of launcher, and is what the cap is actually about. The count is kept as detail only, and
+the IDLE branch now requires load AND count to be low, while the OVERLOADED branch fires on either.
+
+⚠️ Note the shape, because it is the day's recurring one and this time it is mine end to end: I
+wrote the guard, then I changed the thing it was watching, and the guard kept reporting confidently.
+Nothing in the process would have caught it — the contradiction (IDLE at load 65) was visible in the
+hook's own output for several ticks before I read it. **A guard that names the quantity it decides on
+can be checked against reality in one glance; one that decides on a pattern cannot.**
