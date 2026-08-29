@@ -7,12 +7,26 @@
 **MEAN = 0.9082**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
 Baseline dir: `scripts/rounds/R101LP85GATE/games` — use it as the gate's BASE.
 
-⭐ **AND THE GAINS REACH THE SUBMISSION PATH**, measured 2026-08-30 after fifteen source changes:
-`--agent unified` 0.9069 and `--agent kaggle_unified` (through the official wrapper the notebook
-would ship) 0.9069, 25 games compared, none differing. Run that check after any day of harness work —
-the wrapper MIRRORS `_make_agent("unified")` and a mirror drifts; five research commits once shipped
-in the deployed fallback unmeasured and the card moved 0.20 -> 0.18 with no attributable cause.
-⚠️ Not a leaderboard prediction: the hidden score of the generic path is UNMEASURED.
+⭐ **THE GAINS REACH THE SUBMISSION PATH — GATED AS SHIPPED, 2026-08-30** (rule 7bv). The gate now
+takes `AGENT=`, which it did not until today, so this file's own "measure the card AS SHIPPED"
+instruction named a flag the runner refused:
+
+```
+AGENT=kaggle_unified bash scripts/snapgate.sh shipped scripts/rounds/R101LF52PART 12 4000
+  MEAN 0.9082 over 25   ZERO games differing from the bench member   canaries hold
+```
+
+`notebooks/kaggle_submission.py` ships `KaggleUnifiedAgent` (`f1067554`) — ⚠️ CLAUDE.md claimed for
+days that it ships `KaggleDetectAgent`/`KaggleChainedAgent`; both blocks are corrected. Re-run this
+after any day of harness work: the wrapper MIRRORS `_make_agent("unified")` and a mirror drifts.
+
+⭐ **AND THE TOOLS READ MECHANICS, NOT PIXELS — 24 of 25 games IDENTICAL on a re-render** (rule 7by,
+`bash scripts/xfergate.sh`, procedure now a committed script because it had been re-derived by hand
+three times). All fifteen archived version hashes substituted: mean 0.9072 vs 0.9082, ratio 0.9989,
+and the ONLY difference in the whole set is s5i5 L4 at 39 -> 61 actions (still clears). The ten
+games with no archive are the determinism control and are identical too.
+⚠️ Still weak evidence — a re-render is the SAME GAME. ⛔ Do not quote 0.9989 as a leaderboard
+transfer coefficient; the hidden score of the generic path remains UNMEASURED.
 
 Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
 lp85 0.9099 -> 0.9677. First movement in a day.
