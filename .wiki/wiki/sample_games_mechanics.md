@@ -1075,3 +1075,28 @@ measures actually binds.**
 ⛔ Third retraction of the round, and all three share a shape: a number read from the game's SOURCE
 (a declared StepCounter, a lose() branch) taken as a description of what the game DOES, without
 checking that the branch runs. The source says what is possible; only the run says what happens.
+
+## s5i5 level 7 is ONE target away — and the count never moves (2026-08-29)
+
+s5i5's win is the game's own predicate: every `0087vvmblxkzdi` target must have a `0064ocqkuqacti`
+mover at the same x,y. Instrumenting that predicate during a real run (rule 7g: the source said what
+the condition is, this is what happens):
+
+```
+level 6 -> 7 after 31 actions
+  level 7: 1/2 targets covered at action 1
+stopped on level 7 after 503 actions; best coverage (1, 2)
+```
+
+**There are only TWO targets, and one is already covered when the level starts.** Clearing the game's
+seventh level means covering one more — and across 503 actions the count never rises above 1, not
+once.
+
+That makes s5i5 different from dc22 and wa30, where nothing at all opens: here the distance to a win
+is a single target, and the tool spends five hundred actions without ever moving it. The handover is
+visible too — `swivel` gives way to `linkage` on "action no new state x3".
+
+⚠️ It also sharpens what to measure next, and it is not "why is this level hard". It is: **what is the
+second target, where is the mover that must reach it, and is that mover reachable at all** — three
+questions with concrete answers, on the game that is closest to a clear of any stuck game on the
+board.
