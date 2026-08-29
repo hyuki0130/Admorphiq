@@ -736,3 +736,34 @@ interaction changes a particular cell's type, and that the right type is a preco
 
 ⚠️ `gantry` routes to a goal over static terrain, which is why levels 1-5 fall and this one does not.
 But note what is NOT required: no timing, no clock, no hazard. One switch, one tile, four states.
+
+### dc22 level 6 — the switch is REACHABLE, and the target is fully specified
+
+Sweeping the board at four-pixel spacing and watching the neighbourhood of the tile the source
+names, (row 48, col 18):
+
+```
+click (24,48): 4 px changed at the tile, 120 on the whole board
+click (24,52): 4 px changed at the tile, 121 on the whole board
+```
+
+**Exactly two clicks drive the switch**, and four pixels is precisely a 2x2 tile flipping phase. So
+the mechanic is not only real but reachable from the frame with no privileged information.
+
+**dc22's remaining level is therefore fully specified** — the most valuable single target on the
+board at **+0.0114**, and the only stuck game whose next level is its last:
+
+| what | value |
+|---|---|
+| win condition | two sprites reach the same cell (`qnnpcoyzd` == `hfuqkxulm`) |
+| the obstacle | one tile at (18,48) whose type must be right for the route |
+| the switch | a click at (24,48) or (24,52) advances it one step of four |
+| the cycle | `["tewfutpibpar", "tewfutrefgps", "tewfutyefmyf", "tewfutblrmbx"]` |
+| the tool's gap | `gantry` routes over STATIC terrain; its BFS returns no path and it goes silent |
+| the game's budget | 1024 steps, five times level 1 — not a constraint |
+
+What a tool needs is small: notice that a click changes one cell's type, treat that cell's type as
+part of the search state, and plan over (position, tile-state) instead of position alone.
+
+⚠️ Every claim here was checked before anything was built — the discipline this round learned after
+thirteen repairs that were built first and measured inert.
