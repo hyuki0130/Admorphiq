@@ -6,7 +6,7 @@
 > being redone. Everything you need to ACT is here or in the campaign file.
 >
 > **State**: generic tools, full 25 on ceph-build = **0.9082**, NINETEEN games at the 1.0 cap,
-> cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101LP85GATE/games`.
+> cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101SHIPPED` (the SHIPPED-configuration run).
 > SIX games short: bp35 0.2456 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143 · ls20 0.9121 · lp85 0.9767.
 >
 > ✅ **AND THE SHIPPED CONFIGURATION MEASURES THE SAME** (2026-08-30, rule 7bv): `AGENT=kaggle_unified
@@ -34,7 +34,10 @@
 > 0.20 -> 0.18 with no attributable cause.
 >
 > ```
-> bash scripts/snapgate.sh NAME scripts/rounds/R101LP85GATE 8 4000   # GATE a change on the full 25
+> bash scripts/snapgate.sh NAME scripts/rounds/R101SHIPPED 8 4000    # GATE a change on the full 25
+> AGENT=kaggle_unified bash scripts/snapgate.sh NAME scripts/rounds/R101SHIPPED  # gate AS SHIPPED
+> bash scripts/xfergate.sh NAME scripts/rounds/R101SHIPPED 12 4000   # TRANSFER: archived re-renders
+> bash kaggle/build_and_push.sh                 # run the card on KAGGLE — costs no submission slot
 > bash scripts/ptest.sh --dirty tests/test_x.py                  # tests run on the BOX, not here
 > bash scripts/pfan.sh NAME PROBE.py 30 ARG 6  # ANY probe, fanned — NAME required (else collision)
 > bash scripts/ceph_sweep.sh                   # tools x games, on ceph
