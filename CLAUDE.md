@@ -120,9 +120,15 @@
 > depth loss — they clear EVERY level and are merely slow. Reading a stuck game as one number hides
 > that; `per_level` in `scripts/rounds/*/games/*.json` shows it in one command.
 >
-> ⛔ **Every stuck game retires its specialist through the EMPTY path** — the tool proposes NOTHING
-> at the level that stops it, and the general searcher inherits the remaining ~500 actions. The
-> tools' MODELS are correct, checked line by line against each game's own win predicate.
+> ⛔ **REFUTED 2026-08-29 (rule 7p).** This block used to say every stuck game retires its specialist
+> through the EMPTY path — the tool proposing NOTHING and the general searcher inheriting ~500
+> actions. Measured on all seven at once (`scripts/_next_level_wall.py`): **the tool never goes
+> silent; it acts for the entire budget**, and on dc22 and lf52 **more than 70% of what it does
+> changes nothing** (353/500 and 359/500 inert, against 2-6% on ar25 which scores 1.0000). bp35 41%,
+> s5i5 38%. ⭐ And it separates wa30 from the rest: 493 moved, ZERO inert, 7 collapses — wa30 plays
+> its level competently and DIES. Those need different fixes; "stuck" hides which one you have.
+> The premise survived because nobody measured what the harness DOES at the wall, only that it
+> failed to advance.
 >
 > ⛔ **THIRTEEN repairs built, measured and reverted** — patience x2, alignment threshold, shift
 > range, pitch re-fit, tool revival, map-drop-on-flip (cost 0.12), admissibility bypass, shape
