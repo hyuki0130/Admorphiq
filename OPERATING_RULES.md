@@ -2294,3 +2294,36 @@ kept.
 **WHAT REMAINS ON lf52 IS PERCEPTION, NOT RANKING.** railpeg's census had its model missing the red
 and (26,3) with a phantom; pegjump's holds two pieces of six. The level is never LOST at the end — it
 is never FINISHED, and the run stops on a winnable board with a third of its actions unspent.
+
+### 7bc — on all four stuck games the harness hands the board to a tool that is WEAKER ALONE (2026-08-30)
+
+Crossing the solo sweep (47 tools forced alone) against the tenure census (who actually holds each
+board in the harness) produces a pattern nobody had looked for, and it is the same on every game:
+
+```
+game   who holds most of the run          SOLO depth      the strongest tool on that board
+bp35   graph      486 actions                  0          crag     5   (holds only 229)
+s5i5   linkage    463 actions                  2          swivel   6   (holds only 228)
+lf52   railpeg    444 / graph 366              5 / 1      railpeg  5
+ls20   keymaze    423 / fogscout 220           6 / 0      keymaze  6
+```
+
+⛔ **On bp35 and s5i5 the tool that spends the MAJORITY of the run clears NOTHING or almost nothing
+by itself, while the tool that reaches the game's best depth is retired after a quarter of the
+actions.** On lf52 `graph` takes 366 actions with a solo depth of 1.
+
+⚠️ **AND THIS IS NOT (YET) A ROUTING DEFECT — rule 7ac already measured that no handover was ever
+lost to a tie, and none can be.** Every one of these is an EMPTY retirement: the strong tool stops
+proposing and the harness gives the board to whoever is left. So the question is not "why was the
+weak tool chosen" but **"why does the strong tool go empty, and is the successor better than
+nothing?"** ⛔ Rule 7ax already answered the second half once and the answer was surprising — ls20's
+`fogscout` has a SOLO depth of 0 and yet the harness reaches level 7 with it, which no single tool
+does. **A tool that is useless alone can be the one that finishes the job.**
+
+⭐ AND ONE CONCRETE ANOMALY WORTH CHASING: **`telescope` clears FIVE levels of s5i5 alone** and
+appears in the seventeen that never hold a board on any of the 25 (rule 7bb). The harness's actual
+s5i5 succession is `swivel` (6 alone) → `linkage` (2 alone), with `telescope` (5 alone) never asked.
+⚠️ Do NOT read that as a free level: rule 7ao proved s5i5's win requires moving a rider that is
+already home, which `swivel`'s decomposition cannot propose — a tool that reaches depth 5 alone may
+be stopped by the same wall at 6. But it has never been tried in succession, and that is one cheap
+pair away.
