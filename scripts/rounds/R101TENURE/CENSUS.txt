@@ -1,0 +1,82 @@
+=== CONTROL: per-level counts vs banked R101LP85GATE
+  ar25   OK  lv=8/8 act=268/268 [16, 13, 42, 24, 30, 55, 39, 49] vs [16, 13, 42, 24, 30, 55, 39, 49]
+  bp35   OK  lv=5/5 act=726/726 [18, 87, 45, 23, 46] vs [18, 87, 45, 23, 46]
+  cd82   OK  lv=6/6 act=132/132 [50, 6, 33, 14, 13, 16] vs [50, 6, 33, 14, 13, 16]
+  cn04   OK  lv=6/6 act=261/261 [18, 46, 28, 37, 60, 72] vs [18, 46, 28, 37, 60, 72]
+  dc22   OK  lv=5/5 act=925/925 [31, 53, 59, 87, 195] vs [31, 53, 59, 87, 195]
+  ft09   OK  lv=6/6 act=79/79 [4, 9, 16, 16, 21, 13] vs [4, 9, 16, 16, 21, 13]
+  g50t   OK  lv=7/7 act=296/296 [26, 31, 64, 31, 52, 49, 43] vs [26, 31, 64, 31, 52, 49, 43]
+  ka59   OK  lv=7/7 act=290/290 [12, 44, 33, 39, 24, 46, 92] vs [12, 44, 33, 39, 24, 46, 92]
+  lf52   OK  lv=5/5 act=823/823 [8, 52, 60, 64, 139] vs [8, 52, 60, 64, 139]
+  lp85   OK  lv=8/8 act=182/182 [7, 34, 18, 18, 16, 39, 18, 32] vs [7, 34, 18, 18, 16, 39, 18, 32]
+  ls20   OK  lv=7/7 act=645/645 [17, 101, 63, 66, 67, 100, 231] vs [17, 101, 63, 66, 67, 100, 231]
+  m0r0   OK  lv=6/6 act=188/188 [19, 23, 54, 13, 39, 40] vs [19, 23, 54, 13, 39, 40]
+  r11l   OK  lv=6/6 act=83/83 [4, 9, 11, 14, 24, 21] vs [4, 9, 11, 14, 24, 21]
+  re86   OK  lv=8/8 act=696/696 [25, 42, 49, 59, 113, 139, 101, 168] vs [25, 42, 49, 59, 113, 139, 101, 168]
+  s5i5   OK  lv=6/6 act=694/694 [13, 30, 47, 39, 32, 31] vs [13, 30, 47, 39, 32, 31]
+  sb26   OK  lv=8/8 act=124/124 [9, 15, 15, 15, 17, 19, 17, 17] vs [9, 15, 15, 15, 17, 19, 17, 17]
+  sc25   OK  lv=6/6 act=145/145 [17, 6, 12, 31, 40, 39] vs [17, 6, 12, 31, 40, 39]
+  sk48   OK  lv=8/8 act=270/270 [14, 30, 34, 27, 41, 56, 41, 27] vs [14, 30, 34, 27, 41, 56, 41, 27]
+  sp80   OK  lv=6/6 act=112/112 [6, 8, 11, 26, 29, 32] vs [6, 8, 11, 26, 29, 32]
+  su15   OK  lv=9/9 act=89/89 [11, 9, 13, 11, 13, 10, 5, 8, 9] vs [11, 9, 13, 11, 13, 10, 5, 8, 9]
+  tn36   OK  lv=7/7 act=137/137 [14, 11, 13, 16, 21, 21, 41] vs [14, 11, 13, 16, 21, 21, 41]
+  tr87   OK  lv=6/6 act=145/145 [14, 27, 21, 24, 24, 35] vs [14, 27, 21, 24, 24, 35]
+  tu93   OK  lv=9/9 act=187/187 [18, 10, 19, 17, 29, 28, 14, 23, 29] vs [18, 10, 19, 17, 29, 28, 14, 23, 29]
+  vc33   OK  lv=7/7 act=199/199 [3, 8, 24, 26, 55, 25, 58] vs [3, 8, 24, 26, 55, 25, 58]
+  wa30   OK  lv=9/9 act=720/720 [27, 58, 77, 67, 120, 46, 55, 134, 136] vs [27, 58, 77, 67, 120, 46, 55, 134, 136]
+  -> 25/25 reproduce; MISMATCH: []
+
+=== Q1: tenure-ending events, all 25
+  ar25   tools_held= 1 events=  0 {}  tenure={'reflect_cover': 267, 'HARNESS': 1}
+  lp85   tools_held= 1 events=  0 {}  tenure={'cyclepress': 181, 'HARNESS': 1}
+  ls20   tools_held= 2 events=  1 {'EMPTY': 1}  tenure={'keymaze': 423, 'fogscout': 219, 'HARNESS': 2}
+  m0r0   tools_held= 1 events=  0 {}  tenure={'decouple': 187, 'HARNESS': 1}
+  r11l   tools_held= 1 events=  0 {}  tenure={'tether': 82, 'HARNESS': 1}
+  re86   tools_held= 2 events=  1 {'STALL': 1}  tenure={'cover_targets': 379, 'reforge': 316, 'HARNESS': 1}
+  s5i5   tools_held= 2 events=  1 {'EMPTY': 1}  tenure={'linkage': 462, 'swivel': 228, 'HARNESS': 2}
+  sb26   tools_held= 1 events=  0 {}  tenure={'subroutine': 123, 'HARNESS': 1}
+  sc25   tools_held= 1 events=  0 {}  tenure={'sigilgate': 144, 'HARNESS': 1}
+  sk48   tools_held= 1 events=  0 {}  tenure={'tube_order': 269, 'HARNESS': 1}
+  sp80   tools_held= 1 events=  0 {}  tenure={'sluice': 111, 'HARNESS': 1}
+  bp35   tools_held= 2 events=  1 {'EMPTY': 1}  tenure={'graph': 485, 'crag': 229, 'HARNESS': 2}
+  su15   tools_held= 1 events=  0 {}  tenure={'orderforge': 88, 'HARNESS': 1}
+  tn36   tools_held= 1 events=  0 {}  tenure={'progbits': 136, 'HARNESS': 1}
+  tr87   tools_held= 1 events=  0 {}  tenure={'rule_rewrite': 144, 'HARNESS': 1}
+  tu93   tools_held= 1 events=  0 {}  tenure={'lattice_maze': 186, 'HARNESS': 1}
+  vc33   tools_held= 1 events=  0 {}  tenure={'pillar_transfer': 198, 'HARNESS': 1}
+  wa30   tools_held= 1 events=  0 {}  tenure={'shepherd': 718, 'HARNESS': 1}
+  cd82   tools_held= 1 events=  0 {}  tenure={'stamppaint': 131, 'HARNESS': 1}
+  cn04   tools_held= 1 events=  0 {}  tenure={'assemble': 260, 'HARNESS': 1}
+  dc22   tools_held= 1 events=  0 {}  tenure={'gantry': 924, 'HARNESS': 1}
+  ft09   tools_held= 1 events=  0 {}  tenure={'stencil': 78, 'HARNESS': 1}
+  g50t   tools_held= 1 events=  0 {}  tenure={'clonewalk': 295, 'HARNESS': 1}
+  ka59   tools_held= 1 events=  0 {}  tenure={'blastclock': 289, 'HARNESS': 1}
+  lf52   tools_held= 6 events=  5 {'EMPTY': 4, 'STALL': 1}  tenure={'railpeg': 444, 'graph': 225, 'world_model': 116, 'pegjump': 19, 'llm_goal': 7, 'deadsig': 7, 'HARNESS': 5}
+  TOTALS: {'EMPTY': 7, 'STALL': 2}
+  games with ZERO tenure-ending events: 20 -> ['ar25', 'cd82', 'cn04', 'dc22', 'ft09', 'g50t', 'ka59', 'lp85', 'm0r0', 'r11l', 'sb26', 'sc25', 'sk48', 'sp80', 'su15', 'tn36', 'tr87', 'tu93', 'vc33', 'wa30']
+
+=== Q3: empty-run SHAPE (near misses the tool recovered from vs runs that reached 8)
+  total propose round-trips: 7049   tenure segments: 34
+  runs of consecutive empties that RECOVERED (len -> count): {1: 15, 7: 1}
+  runs that reached 8 (a retirement): 6
+  total empty proposes: 70  (1.0% of all propose round-trips)
+
+=== Q2: the diag at each EMPTY retirement
+  bp35   a= 232 L5 EMPTY  crag->None sp=0 owns=False
+         diag: {'_pitch': 6, '_left': 3, '_right': 4, '_refuted': False, '_mute': 0, '_origin': 0, '_rows': 9, '_cols': 10, '_known': 15, '_grade': 2, '_clocked': True, '_waiting': 0, '_gdir': -1, '_bump': 1, '_oy': 0, '_ox': 0, '_idle': 8, '_level': 5}
+  lf52   a= 444 L5 EMPTY  railpeg->None sp=0 owns=True
+         diag: {'_doubt': 0, '_misaligned': 0, '_driving': 0, '_ncarts': 3, '_barren': 0, '_known': 98, '_closest': 1, '_claiming': False, '_elsewhere': True, '_npieces': 5, '_sincecapture': 0, '_ntouched': 37, '_peaked': 6, '_settles': 0, '_retried': False}
+  lf52   a= 464 L5 EMPTY  pegjump->None sp=0 owns=True
+         diag: {'_doubt': 0, '_misaligned': 0, '_ncarriers': 2, '_barren': 3, '_known': 24, '_peaked': 2, '_settles': 0, '_retried': False}
+  lf52   a= 690 L5 STALL  graph->llm_goal sp=0 owns=True
+         diag: {'max_clicks': 14, '_unlocked_tier': 2, '_prev_action_key': 4, '_region_tick': 224, '_pool': 1, '_propose_calls': 225, '_nchg': 16, '_goal_obs_count': 225, '_target_res': 8, '_prox_calls': 0, '_best_prox': -inf, '_last_improve_call': 0}
+  lf52   a= 697 L5 EMPTY  llm_goal->None sp=6 owns=True
+         diag: {'_goal_attempted': True}
+  lf52   a= 705 L5 EMPTY  deadsig->None sp=6 owns=False
+         diag: {'threshold': 6, 'block': 8}
+  ls20   a= 423 L6 EMPTY  keymaze->None sp=0 owns=True
+         diag: {'pitch': 5, 'floor': 3, 'glyph_k': 3, 'bar_colour': 11, 'full_units': 84, 'calibration_spent': 4, '_prev_action': 0, '_prev_count': 0, '_idle': 10, 'unit_cost': 4}
+  re86   a= 379 L5 STALL  cover_targets->reforge sp=0 owns=True
+         diag: {'_select': 5, '_wheel': 0, '_acted': 5, '_probes': 3, '_edge': 63, '_handover': True, '_rigid': False, '_idle': 0, '_stuck': True, '_noplan': True}
+  s5i5   a= 228 L6 EMPTY  swivel->None sp=0 owns=True
+         diag: {'_level': 6, '_marker': 13, '_probe': 9, '_dead': True}
