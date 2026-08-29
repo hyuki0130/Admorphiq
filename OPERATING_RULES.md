@@ -1111,3 +1111,29 @@ at all 18 refusals) rest on forced-move measurements and are untouched; only the
 so it measured whatever bytes the box held — reporting wa30 as `won=False` with 48 deaths hours after
 wa30 was gated at 1.0000 for 9/9. Rule 7l applies to a coordinator's own probes, and I broke it
 within an hour of writing rule 7r to fix the same hole in `pfan.sh`.
+
+### 7aa — the deployable wrapper still agrees with the harness, after a day of source changes (2026-08-30)
+
+⛔ WHY THIS IS CHECKED AND NOT ASSUMED. `notebooks/kaggle_submission.py` is the only path to the
+leaderboard, and `src/admorphiq/kaggle_unified_agent.py` is the wrapper that would carry the generic
+tools there. It MIRRORS `_make_agent("unified")` line for line — and a mirror is a thing that drifts.
+This repository has already paid for that once: five research commits shipped in the deployed
+fallback between v3 and the 2026-08-25 submission, none aimed at the card, none measured against it,
+and the card moved 0.20 -> 0.18 with no attributable cause.
+
+Fifteen source changes landed on 2026-08-29. Measured on the full 25 from a private snapshot of HEAD:
+
+```
+--agent unified          (the harness, as gated)      0.9069
+--agent kaggle_unified   (through the official wrapper) 0.9069     25 games compared, none differing
+```
+
+**The day's gains reach the deployable path.** re86's conquest, wa30's conquest, ls20 and lp85 are
+all in it. ⚠️ That is NOT a statement about the leaderboard — the hidden score of the generic path is
+UNMEASURED, and the only calibration point available is an adapter card at public 0.2772 -> hidden
+0.18. ⛔ Do not quote 0.65x the public number as a prediction.
+
+**Run this after any day of harness work.** It costs one 25-game run and it is the only thing
+standing between "the tools improved" and "the submission improved". `--agent kaggle_unified`
+REFUSES to run while `GF_GIVEUP` / `HARNESS_STALL` / `HARNESS_CTX` are set, because a deployed
+default that the environment overrides makes "as shipped" a fiction.
