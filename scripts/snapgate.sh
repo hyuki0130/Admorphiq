@@ -91,6 +91,16 @@ echo "GATEDONE $n games"
 [ "$n" -ge 25 ] || { echo "⛔ only $n of 25 games produced a result — see \$HOME/${SNAP}_out/*.log"; exit 1; }
 EOS
 
+# ⛔ REFUSE TO WRITE INTO A DIRECTORY THAT ALREADY HOLDS RESULTS. Measured 2026-08-30: an agent's
+# 50-file A/B already sat in scripts/rounds/R101LP85/games, the gate's 25 landed beside them, and
+# compare.py dutifully reported "no game regressed (75 games compared)" — a verdict over three
+# different experiments. The comparator's own no-verdict guard could not catch it because nothing was
+# MISSING; there was simply too much. A round name is cheap; reusing one is not.
+if [ -d "$OUT/games" ] && [ -n "$(ls -A "$OUT/games" 2>/dev/null)" ]; then
+  echo "⛔ REFUSING: $OUT/games already holds $(ls "$OUT/games" | wc -l | tr -d ' ') files."
+  echo "   A gate must not mix its results with another experiment's. Pick an unused name."
+  exit 1
+fi
 mkdir -p "$OUT/games"
 scp -q -i "$KEY" "$REMOTE:~/${SNAP}_out/*.json" "$OUT/games/" 2>/dev/null
 echo "$COMMIT" > "$OUT/COMMIT"
