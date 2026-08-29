@@ -26,3 +26,14 @@ TWO INSTRUMENT FAILURES WORTH CARRYING
   THE FRAME. "states: 1" read as a tiny state space and was the instrument reporting on itself.
   The GRAY marker arrives as four two-pixel blobs; a size-4 blob filter finds nothing and reads
   as "the oracle does not exist".
+
+FOLLOW-UP: WHY railpeg STOPS (lf52plan.jsonl, scripts/_lf52_railpeg_plan.py)
+  It is not misplaying. Every select click lands on colour 14 or 8 and every landing click on
+  colour 1 — the protocol exactly. It walks the green down the left column using the RED PAD AS A
+  LADDER, takes both available captures, and ends at green 12 / red 12: one green, one red, which
+  IS its own `_won` condition. The level does not end because four pads are off screen.
+  tiers win 43 / travel 32 / capture 4 / none 1, _elsewhere already true.
+  Action shapes proposed on the level: [3] x73 (ACTION3 is INERT on this board), [4] x23,
+  [6,6] x79, [6] x23, [1] x18, [2] x6.
+  So: the local win is a mirage; travel never BOARDS a cart; and 73 presses go into a direction
+  measured to do nothing.

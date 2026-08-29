@@ -337,14 +337,33 @@ sets `_elsewhere = True`, and spends its planning on `win 45 / travel 36 / captu
 `why` dominated by `plan:no-capture-reachable 25`. It declares a local win forty-five times on a
 board whose visible region cannot produce one, and never puts a piece on a cart.
 
-Two levers, in order:
+⛔ **AND IT IS NOT MISPLAYING — it plays the opening CORRECTLY and then has nowhere to go.**
+`scripts/_lf52_railpeg_plan.py` logs the colour under every pixel it clicks. Its select clicks land
+on colour 14 or colour 8 and its landing clicks on colour 1, which is the protocol exactly; it walks
+the green down the left column using the RED PAD AS A LADDER, takes both available captures, and
+finishes with **green 36 -> 12 and red 12** — one green and one red, which is precisely its own
+`_won` condition. The level does not end, because four pads and three stepping stones are off
+screen. Then it has one mobile piece and no partner, and it stops.
 
-1. **Read the game's markers instead of inferring legality.** One click per piece returns the exact
-   move set, and it is right even where the model is wrong.
-2. **The local win is a MIRAGE while `_elsewhere` is true.** `_won` counts the colours it can see;
-   on this board that is satisfiable and worthless. The measured tell is already in the tool — a
-   win that did not win — but it fires after the plan is played, and here the plan is played 45
-   times.
+Three levers, in order, each with the number that names it:
+
+1. **The local win is a MIRAGE while `_elsewhere` is true.** `_won` counts the colours it can SEE,
+   and on this board that condition is reachable in six moves and worth nothing. Measured: 43-45
+   win-tier plans, `_elsewhere` already true, and the board really does arrive at the local win.
+2. **Travel has to be able to BOARD A CART, not merely ride one.** 32 travel plans, zero boardings.
+   The line that clears walks the last green five cells right along row 6 — leapfrogging it with
+   the red — and lands it on the cart at (8,6); the five drives after that are what scroll the
+   camera and reveal the rest of the board. `_novelty_field` cannot rank that, because the reward
+   arrives only after the drive, and the cart cell itself is next to cells pieces have already
+   touched.
+3. **A drive that leaves the board byte-identical is a direction this board does not have.**
+   Measured: ACTION3 proposed **73 times** on level 6 and inert every time (ACTION1 18, ACTION2 6,
+   ACTION4 23 — and only ACTION4 moves anything). `_calibrate` excludes an action only while it is
+   the one `_pending` probe; after the map is fixed nothing retires a direction that stops working.
+
+4. **Read the game's markers instead of inferring legality.** One click per piece returns the exact
+   move set, and it is right even where the model is wrong — including the case above where a
+   select click landed on colour 1 because the model had already advanced past a lagging frame.
 
 ## lp85 — the efficiency loss was DISCOVERY, and the game's own data prices it (2026-08-29)
 
