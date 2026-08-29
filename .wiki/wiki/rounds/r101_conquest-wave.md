@@ -95,6 +95,36 @@ rider cannot ride, and the verdict names a commit. `ptest.sh` and `pfan.sh` foll
 ⚠️ And a comparison with nothing to compare printed **"no game regressed"** over 25 missing games.
 A guard that cannot see must SAY SO.
 
+## ⛔ Three games CLOSED with proofs (2026-08-30) — do not re-open without NEW evidence
+
+- **bp35 = 0.2456.** Its 87-action board decomposes with no slack in any attempt: 7 spike discovery
+  (irreducible — nothing in the frame says which of the ten drawn kinds kills), 34 building 140 of
+  the board's 370 map cells, 44 clearing in **43 against a human 48**. `_stranded` refuted (the run
+  strands TWICE, body in the pocket for ONE turn); a pre-entry veto has nothing to key on (a dead end
+  cannot be asserted over an incomplete map); the flat turns TRAVERSE and revisiting is
+  ANTI-correlated with the score. ⚠️ The human clears in ONE attempt, so the gap is entirely "does
+  not die to the spike, does not get walled in".
+- **s5i5 = 0.5833, out of reach for `swivel` as built.** Thirty arms, five fans, all 0.5833. An
+  engine A* with nothing banned wins in 45 clicks **opening by moving a rider that is already home** —
+  a move `swivel`'s decomposition can never propose, because each subproblem gets only the controls
+  touching its own bar. All 41 runs banning that control are EXHAUSTED. Banked instead: a margin
+  bound worth **219s → 45s of wall clock**, score and all six per-level counts identical.
+- **dc22 = 0.7143.** Crane fully decoded — 4 plates measured 1:1 over 69 presses, zero cross-talk,
+  precondition frame-visible. ⛔ The blocker is OURS: `phase.py:430` condemns a tile if ANY pixel is a
+  banned colour, and every plate sprite contains colour 0. Censused across the 25 it reaches ONE
+  game; the proof is one cell, **(55,34) condemned at turn 582 and stood in at turn 680**.
+
+## ⭐ Three findings that are not about their games
+
+- **"Unobserved space is empty" is every frame-only planner's prior, and it is wrong** (rule 7ap).
+  Fingerprint: plans found in seconds → executed cleanly for a dozen actions → REFUSED → nothing
+  findable at any budget.
+- **Asking a tool whether it recognises a board can SPEND ITS GIVE-UP BUDGET** (rule 7ah).
+  `railpeg.detect` runs the planner and advances two counters whose threshold is three. 19 of 49
+  tools have a `detect` that reaches a mutating line; the count is now pinned by a test.
+- **A mechanism correctly described does not tell you which edit removes it** (rule 7am). The repair
+  I specified for the above was built, validated in both directions, measured INERT, and reverted.
+
 ## Related
 
 [[r101_wa30-level-restart]] · [[r101_bp35-attempts]] · [[r101_allowance-ledger]] ·
