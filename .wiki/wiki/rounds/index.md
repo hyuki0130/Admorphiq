@@ -232,3 +232,5 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   attempt already beats the human both times, so the whole loss is exploratory deaths, worth
   **0.2220 -> 0.3304, +0.0043 on the mean**, and it needs lethality read from the FRAME before
   contact, not restart bookkeeping.
+
+- **R101CONQUEST** ([[r101_conquest-wave]]) — 0.8935 -> 0.9069, re86 and wa30 CONQUERED, nineteen at the cap. The durable half: a level that RESTARTS is invisible to `levels_completed`; the gate itself was the contamination (snapshot it); nine instruments lied and all in the same direction.
