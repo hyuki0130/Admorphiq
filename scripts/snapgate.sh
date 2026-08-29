@@ -28,6 +28,11 @@ NAME="${1:?a name for this gate, e.g. re86}"
 BASE="${2:-scripts/rounds/R101REACH}"
 PAR="${3:-8}"
 BUDGET="${4:-4000}"
+# ⛔ THE GATE MUST BE ABLE TO MEASURE THE CONFIGURATION THAT SHIPS. `--agent unified` was hardcoded
+# here, so every gate scored the BENCH member while the notebook ships `KaggleUnifiedAgent` — two
+# different wrappers, and CLAUDE.md has a standing warning that they are measured separately.
+#   AGENT=kaggle_unified bash scripts/snapgate.sh shipped <baseline>
+AGENT="${AGENT:-unified}"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -77,9 +82,9 @@ find /tmp -maxdepth 1 -name "*.tgz" -mmin +30 -delete 2>/dev/null
 git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" <<'EOS'
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
 # ⛔ Sweep stale snapshots (rule 7d, on the box): ~94MB each, 15GB accumulated by 2026-08-30.
@@ -111,7 +116,7 @@ PYTHONPATH="$HOME/$SNAP/src" .venv/bin/python -c \
   || { echo "⛔ the snapshot is shadowed by the box's install — refusing to gate"; exit 1; }
 
 ls environment_files | xargs -P "$PAR" -I{} sh -c \
-  "timeout 2400 .venv/bin/python \$HOME/$SNAP/scripts/score_efficiency.py --agent unified \
+  "timeout 2400 .venv/bin/python \$HOME/$SNAP/scripts/score_efficiency.py --agent "$AGENT" \
      --titles {} --max-actions $BUDGET --out \$HOME/${SNAP}_out/{}.json \
      > \$HOME/${SNAP}_out/{}.log 2>&1"
 
