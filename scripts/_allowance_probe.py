@@ -32,6 +32,7 @@ import sys
 import numpy as np
 
 BANDS = ("row0", "row63", "col0", "col63")
+SCALES = (1, 2, 3, 4, 6, 8)
 
 
 def _band(g: np.ndarray, name: str) -> np.ndarray:
@@ -88,6 +89,7 @@ def main() -> None:
     stepped = dict.fromkeys(BANDS, 0)
     prev_n = dict.fromkeys(BANDS, 0)
     resets: dict[str, list[int]] = {b: [] for b in BANDS}
+    scale_hits: dict[str, dict[int, int]] = {b: dict.fromkeys(SCALES, 0) for b in BANDS}
     maxn = dict.fromkeys(BANDS, 0)
     lvl = int(getattr(obs, "levels_completed", 0) or 0)
     start_lvl = lvl
@@ -98,9 +100,11 @@ def main() -> None:
         act = agent.choose_action(frames, obs)
         data = act.action_data.model_dump() if getattr(act, "action_data", None) else None
         obs = env.step(act, data=data) if data else env.step(act)
+        # ⛔ do NOT trim this list. A first version capped it at 8 to save memory and ls20 — which
+        # normally clears six levels — finished the run on level 0 with seventeen restarts. The
+        # tools read their own history out of it, so trimming changes the run being measured, and
+        # the probe would have reported a distorted game as a property of the game.
         frames.append(obs)
-        if len(frames) > 8:
-            frames.pop(0)
         steps += 1
         g = grid(obs)
         if g is None:
@@ -124,6 +128,12 @@ def main() -> None:
                 ref[b] = _band(g, b).copy()
                 since[b] = 0
                 n = 0
+            # ⛔ scale 1 is bp35's rendering, not a law: a 30-pixel bar for an 80-action allowance
+            # advances once every three actions. Testing only `n == t` would score every game that
+            # draws its allowance at any other scale as having no counter at all.
+            for sc in SCALES:
+                if n == since[b] // sc:
+                    scale_hits[b][sc] += 1
             if n == since[b]:
                 exact[b] += 1
             if n == prev_n[b] + 1:
@@ -133,7 +143,11 @@ def main() -> None:
         if steps % 200 == 0:
             print(f"# {title}: {steps} actions, level {lvl}", file=sys.stderr, flush=True)
 
-    best = max(BANDS, key=lambda b: exact[b])
+    def best_scale(b):
+        sc = max(SCALES, key=lambda k: scale_hits[b][k])
+        return sc, round(scale_hits[b][sc] / max(1, steps), 3)
+
+    best = max(BANDS, key=lambda b: best_scale(b)[1])
     out = {
         "index": idx, "title": title, "actions": steps,
         "start_level": start_lvl, "end_level": lvl, "advanced": lvl > start_lvl,
@@ -142,9 +156,13 @@ def main() -> None:
                       "stepped": round(stepped[b] / max(1, steps), 3),
                       "resets": len(resets[b]),
                       "reset_lengths": resets[b][:10],
-                      "max": maxn[b]} for b in BANDS},
+                      "max": maxn[b],
+                      "scale": best_scale(b)[0],
+                      "scale_hit": best_scale(b)[1]} for b in BANDS},
         "best_band": best,
         "best_exact": round(exact[best] / max(1, steps), 3),
+        "best_scale": best_scale(best)[0],
+        "best_scale_hit": best_scale(best)[1],
     }
     print(json.dumps(out), flush=True)
 
