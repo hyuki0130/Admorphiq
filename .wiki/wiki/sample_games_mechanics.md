@@ -649,3 +649,27 @@ level where it is fatal.
 ⚠️ This also retires two of my own repairs from this round: carrying the vocabulary across a level
 (nothing to carry) and not resetting a tool that returns mid-level (fogscout has exactly one tenure
 on ls20, so there is no return). Both were aimed at preserving a state that was never created.
+
+### ⛔ CORRECTION — fogscout's detector is RIGHT; it is a fog specialist
+
+"The tool that owns the fuel model never gets tenure" reads as a selection defect. It is not.
+`fogscout.detect` returns **0.0 unless `fog_view(g)` finds a fog** (line 630), and levels 1-6 carry
+`"Fog": False`. It declines those levels correctly — bidding on a board it does not own is the false
+positive this repo gates at 0/24.
+
+So the sharpened statement is:
+
+- the **fuel mechanic is on every level** — every level has a gauge and two or three pickups
+- the **tool that models fuel plays only the fogged level**, correctly, because that is its mechanic
+- tools do not share state, so nothing keymaze sees on levels 1-6 can reach fogscout
+- therefore the fuel model must be learned INSIDE the one level where running dry is fatal, and
+  `_read_bar` alone needs four frames of watching a colour fall before it can locate the gauge —
+  four of about twenty-one actions.
+
+That is the real shape of ls20's remaining 0.1558, and it is not fixable by changing who plays what.
+Either the gauge must be identifiable in fewer frames, or fuel knowledge has to be a property of the
+harness rather than of one tool.
+
+⚠️ Three of my repairs this round now stand retired by the same measurement: carry the vocabulary
+(nothing to carry), do not reset a returning tool (no return), and let the fog tool learn earlier
+(it correctly declines those levels). Each was built on a mechanism I had not yet checked.
