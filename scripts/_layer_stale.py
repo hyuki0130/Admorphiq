@@ -10,8 +10,8 @@ That is a HARNESS fact, not a tool fact, so the question is how many of the othe
 pay it. This probe answers, per game and without changing anything:
 
   layers        how many layers the game emits, and how often more than one
-  stale0        frames where layer 0 is IDENTICAL to the previous frame's layer 0 while some later
-                layer is not — i.e. layer 0 is behind the board
+  stale0        frames where a later layer showed something layer 0 did not AND the NEXT
+                frame's layer 0 is exactly that — layer 0 was one frame BEHIND the board
   trans_stale   the same, restricted to the frame right after `levels_completed` rises
   fills         actions the active tool did not propose, so the harness probe filled them
   trans_fills   fills on the frame right after a level rose (the re86 case exactly)
@@ -83,6 +83,7 @@ def main() -> None:
     seen_layers: dict[int, int] = {}
     stale0 = trans_stale = trans_fills = fill_inert = 0
     at_transition = True          # the very first frame of the game counts as one
+    was_transition = False        # whether the frame BEING judged for staleness was one
     prev = _layers(obs)
     n = 0
     for n in range(cap):
@@ -94,19 +95,24 @@ def main() -> None:
         was_fill = filled["n"] > before
         board = _layers(obs)
         seen_layers[len(board)] = seen_layers.get(len(board), 0) + 1
-        stale = (
-            len(board) > 1 and prev
-            and board[0].shape == prev[0].shape
-            and (board[0] == prev[0]).all()
-            and any(b.shape == p.shape and not (b == p).all()
-                    for b, p in zip(board[1:], prev[1:]))
-        )
-        if stale:
+        # ⛔ "Layer 0 is BEHIND" is only demonstrated by the layer 0 that CATCHES UP. The first
+        # version of this test asked whether layer 0 held still while a later layer moved
+        # SINCE THE LAST FRAME — and it scored re86, the board it was written from, at zero,
+        # because re86's frames carry one layer until the transition, so there is no previous
+        # later layer to compare against. An instrument that cannot see its own known positive
+        # measures nothing (rule 7b). The test now spans two frames and is decisive: this frame
+        # shows something in a later layer that layer 0 does not, and the NEXT frame's layer 0
+        # is exactly that. An overlay or an animation cannot satisfy the second half.
+        if prev and len(prev) > 1 and prev[0].shape == prev[-1].shape \
+                and (prev[0] != prev[-1]).any() and board \
+                and board[0].shape == prev[-1].shape \
+                and (board[0] == prev[-1]).all():
             stale0 += 1
-            if at_transition:
+            if was_transition:
                 trans_stale += 1
         if was_fill and at_transition:
             trans_fills += 1
+        was_transition = at_transition
         prev = board
         obs = env.step(act, data=data) if data else env.step(act)
         frames.append(obs)
