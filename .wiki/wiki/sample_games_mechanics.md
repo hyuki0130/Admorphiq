@@ -795,6 +795,50 @@ in it is not reachable from a four-candidate frontier two clicks deep, whatever 
 ⛔ So the standing conclusion — *"this board needs terrain that degrades on its own"* — is withdrawn.
 Nothing degrades on its own. The board needs a searcher that will click a cell it is not standing on.
 
+## TWELVE games declare a per-level ALLOWANCE, and the HUMAN BASELINE exceeds it on 26 levels (2026-08-29)
+
+Found while closing bp35, and it generalises well past that game. Eleven games carry a
+`"StepCounter"` or `"MaxSteps"` literal in their level data; bp35 carries the same thing as a bare
+constant in `render_interface` instead. Set each level's allowance beside the baseline the metric
+scores us against (`metadata.json: baseline_actions`):
+
+```
+game   lvls  levels whose HUMAN BASELINE is ABOVE the level's own allowance      worst
+wa30      9  L2 119/70  L3 183/100  L5 368/125  L8 442/150  L9 415/70            5.93x
+ls20      7  L2 123/42  L3 73/42  L4 84/42  L5 96/42  L6 192/42  L7 186/42       4.57x
+tu93      9  L4 42/20  L5 123/50  L6 80/60  L9 111/50                            2.46x
+cn04      6  L4 300/125  L5 208/150                                              2.40x
+lp85      8  L1 17/13  L8 159/80                                                 1.99x
+ka59      7  L7 326/200                                                          1.63x
+re86      8  L7 424/300                                                          1.41x
+bp35      9  L6 87/64  L8 131/128  L9 163/128                                    1.36x
+vc33      7  L4 61/50                                                            1.22x
+s5i5      8  L5 162/150                                                          1.08x
+ar25      8  (none)
+dc22      6  (none)
+```
+
+**26 of those 92 levels have a baseline larger than the level's own allowance**, and a baseline
+larger than the allowance cannot be a single attempt. ⛔ **So the human baselines already contain
+RETRIES on ten of the twelve games**, and the consequences run the other way from the obvious
+reading:
+
+- On those levels, "match the human" does NOT mean "solve it inside the allowance". The human died
+  too. wa30's level 9 allows 70 and the baseline is 415 — that is roughly six attempts.
+- Because a lost level is silently restarted while the score keeps every action already spent, the
+  lever on these games is **the NUMBER of failed attempts**, not the length of the winning one.
+  That is what `scripts/attempt_probe.py` prices, and it is why bp35's headroom (+0.1283) is an
+  attempt problem: its L2 cost 87 actions against an allowance of 64, so it is two attempts, not
+  one slow one.
+- And it says what the first attempt is FOR on a level nobody clears in one: mapping. A tool whose
+  world map survives the restart is playing the level the way its baseline was set.
+
+⚠️ ar25 and dc22 declare allowances that no baseline exceeds, so they are the control: an allowance
+existing is not the same as an allowance biting (rule 7g, and wa30's declared 70 was measured NOT to
+fire at all on level 9 — the branch never ran). Which of the twelve actually END on overrun has to
+be measured per game, and bp35's is the only one shown firing so far
+(`action 63 NOT_FINISHED / action 64 GAME_OVER`).
+
 ## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
 
 Read from `environment_files/ls20/9607627b/ls20.py` after three pixel-based attempts to size ls20's
