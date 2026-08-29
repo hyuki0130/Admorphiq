@@ -76,7 +76,16 @@ def restore(g, sn):
 
 
 def key(g):
-    return tuple(sorted((s.name, s.x, s.y, s.width, s.height) for s in movable(g)))
+    """Exact — the PIXELS, not the box.
+
+    ⛔ A 3x3 bar that turns keeps its box and changes only which edge carries the anchor stripe,
+    and the anchor edge decides which way the next lengthening pushes. Keying on (x, y, w, h)
+    therefore merges configurations the engine treats as different, and the search silently
+    prunes the successors that would have escaped. Measured: with the box key the space came
+    back EXHAUSTED at every length cap up to 10 and the target unreachable — a conclusion
+    produced entirely by this defect.
+    """
+    return tuple(sorted((s.name, s.x, s.y, s.pixels.tobytes()) for s in movable(g)))
 
 
 def coverage(g):
@@ -214,11 +223,12 @@ def job2():
     print(json.dumps({"job": 2, "survived": 1000, "steps_left": g.gwiuiwqizb.current_steps}))
 
 
-def search(no_collide: bool, weight: int, cap: int, hmode: int, max_open: int, deadline: float):
+def search(no_collide: bool, weight: int, cap: int, hmode: int, max_open: int,
+           deadline: float, banned: tuple = (10,)):
     mod, g = load()
     if no_collide:
         g.qownxibuiy = lambda: False
-    alpha = [a for a in alphabet(g) if a[1] not in (10,)]
+    alpha = [a for a in alphabet(g) if a[1] not in banned]
     field = maze_field(g)
     h = (lambda: maze_gap(g, field)) if hmode else (lambda: gap(g))
     start = g.level_index
@@ -233,9 +243,12 @@ def search(no_collide: bool, weight: int, cap: int, hmode: int, max_open: int, d
     tick = 0
     opened = 0
     best = h()
+    tips: dict = {}
     while heap:
         if time.time() > deadline or opened > max_open:
-            return {"found": False, "opened": opened, "best_gap": best, "reason": "cap"}
+            return {"found": False, "opened": opened, "best_gap": best, "reason": "cap",
+                    "n_tips": len(tips),
+                    "nearest_tips": sorted(tips, key=lambda t: tips[t])[:8]}
         _, _, _, sn, path = heappop(heap)
         for ai, (kind, colour, x, y) in enumerate(alpha):
             restore(g, sn)
@@ -258,8 +271,12 @@ def search(no_collide: bool, weight: int, cap: int, hmode: int, max_open: int, d
             seen.add(k)
             gg = h()
             best = min(best, gg)
+            _, _, _, _, fm = coverage(g)
+            for t in fm:
+                tips[t] = min(tips.get(t, 999), gg)
             heappush(heap, (len(path) + 1 + weight * gg, gg, len(seen), snap(g), path + (ai,)))
-    return {"found": False, "opened": opened, "best_gap": best, "reason": "exhausted"}
+    return {"found": False, "opened": opened, "best_gap": best, "reason": "exhausted",
+            "n_tips": len(tips), "nearest_tips": sorted(tips, key=lambda t: tips[t])[:8]}
 
 
 def main() -> None:
@@ -280,14 +297,19 @@ def main() -> None:
         print(json.dumps({"job": 4, "alphabet": alphabet(g), "gap": gap(g),
                           "coverage": [list(map(list, c)) for c in coverage(g)]}))
         return
-    weights = [1, 2, 3, 4, 6, 8, 12, 20]
-    caps = [5, 7, 10, 14, 20]
+    # Four alphabets: the two controls that touch the ALREADY-COVERED target's arm (slider c10)
+    # and the unattached bar (turn c8) are excluded by default, and re-admitted in the other
+    # three so "the level needs the covered rider moved out of the way" is tested, not assumed.
+    bans = [(10, 8), (10,), (8,), ()]
+    weights = [2, 4, 8, 20]
+    caps = [8, 12, 16, 24]
     j = job - 5
     hmode = j % 2
     w = weights[(j // 2) % len(weights)]
-    cap = caps[(j // 16) % len(caps)]
-    r = search(False, w, cap, hmode, 3_000_000, deadline)
-    print(json.dumps({"job": job, "weight": w, "cap": cap, "hmode": hmode, **r}))
+    cap = caps[(j // 8) % len(caps)]
+    ban = bans[(j // 32) % len(bans)]
+    r = search(False, w, cap, hmode, 4_000_000, deadline, ban)
+    print(json.dumps({"job": job, "weight": w, "cap": cap, "hmode": hmode, "ban": list(ban), **r}))
 
 
 if __name__ == "__main__":
