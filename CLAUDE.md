@@ -31,7 +31,16 @@
 >
 > ```
 > bash scripts/ceph_sweep.sh              # 5 stuck games x every registered tool, 60-way on ceph
+> bash scripts/measure_frozen.sh           # score a FROZEN copy — PYTHONPATH does NOT select the code
+> bash scripts/kaggle_bench.sh status      # kernel state, submission history, GPU-run dates
+> bash scripts/kaggle_bench.sh results     # download the last run, print BOTH arms' totals
+> bash scripts/kaggle_bench.sh push        # run the notebook server-side; does NOT spend the daily slot
+> bash scripts/rounds/gate_tool.sh NAME BASE vc33 TOOL   # gate one change on the full 25
 > ```
+>
+> ⛔ **These four scripts exist so the flow is never re-derived.** `kaggle_bench.sh` has NO `--submit`
+> path by design — submissions are the user's call. If you are about to write a probe, a sync loop or
+> a kaggle CLI invocation by hand, one of these already does it.
 >
 > **The user has asked for parallel ceph work at least three times, and `OPERATING_RULES.md` rule 7b
 > already says the box was left idle — and it happened AGAIN**: hours of one-game-at-a-time probing
