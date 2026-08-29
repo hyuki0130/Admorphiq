@@ -12,8 +12,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from admorphiq.harness.loop import _PRIMARY_CONF
 from admorphiq.tools.base import base_hash
-from admorphiq.tools.graph_search import GraphSearchTool
+from admorphiq.tools.graph_search import _LOCALIZED_CONF, GraphSearchTool
 
 
 @dataclass
@@ -51,7 +52,13 @@ def test_detect_high_on_movement_signature():
     f2 = _grid_with_dot(2, 3)  # avatar shifted one cell — 2 cells changed
     frames = [_Obs(f1, [1, 2, 3, 4]), _Obs(f2, [1, 2, 3, 4])]
     conf = tool.detect(frames, frames[-1])
-    assert conf >= 0.7
+    # ⛔ Was `>= 0.7`, which pinned the exact defect measured in R101SELECT: 0.7 is
+    # `loop._PRIMARY_CONF`, so a bid at or above it makes graph the game's un-retirable PRIMARY
+    # OWNER. The claim this test protects is "graph recognises its own turf", not "graph owns it" —
+    # so it asserts the localized bid is the tool's TOP band and strictly below that threshold.
+    assert conf == _LOCALIZED_CONF
+    assert conf > tool.detect(frames[:1], frames[0])   # top band: above the no-evidence 0.45
+    assert conf < _PRIMARY_CONF
 
 
 def test_detect_moderate_on_click_only_lowest_without_any_action():

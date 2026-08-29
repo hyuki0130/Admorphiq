@@ -61,6 +61,31 @@ _MAX_CLICKS = 14
 # Locality gates for the movement (avatar-mobility) detection signature.
 _LOCAL_CELL_FRAC = 0.05   # changed cells must be <= this fraction of the grid
 _LOCAL_BBOX_FRAC = 0.15   # changed bbox area must be <= this fraction of the grid
+
+# The bid this tool returns once it has SEEN a localized change. It was 0.8, and 0.8 is above
+# `loop._PRIMARY_CONF` (0.70) — the threshold at which the harness marks a tool the game's PRIMARY
+# OWNER and stops retiring it on a stall for the rest of the level.
+#
+# MEASURED 2026-08-30 at the harness's own re-decide point (round R101SELECT; per-game numbers are
+# on that round page, deliberately NOT here — this file must stay free of game identifiers): this
+# bid is not evidence that the searcher has a plan. It fires as soon as ANY observed transition
+# moved a small region — i.e. "there is an avatar" — which is true of nearly every board offering
+# movement. So on the two stuck games where a specialist's `propose` went empty and the board fell
+# through, this tool won the handover at 0.80, latched `_primary_owns`, and could no longer be
+# retired: it then held those levels for 486 and 366 actions without a clear. Its own bid on the
+# FIRST frame of the same games is 0.45; the rise to 0.80 is a fact about having watched a few
+# frames, not about the level it inherited.
+#
+# ⛔ The value is the LARGEST one strictly below `_PRIMARY_CONF`, deliberately: the intent is to deny
+# OWNERSHIP, not to demote this tool. It cannot avoid demoting it a little — any value under 0.70
+# also reverses the ranking against specialists bidding in [x, 0.80), and the round measured two
+# such tools (a movement specialist at 0.75 and the goal-drawing tool at 0.70). No value below the
+# threshold can exclude 0.70, so 0.699 and 0.69 admit the SAME set and the readable one is chosen.
+# ⚠️ The one observed flip goes TOWARD a specialist that scores 1.0000 on its own game, but a
+# direction that looks safe is still a change and only the full-25 gate can say so (rule 7o).
+# ⛔ Two homes for one constant is how the no-progress bail was silently overridden, so
+# `tests/test_graph_ownership.py` pins this against the harness threshold and fails if either moves.
+_LOCALIZED_CONF = 0.69
 # HUD masking: after this many observed transitions, freeze a mask of cells that
 # changed in >= _HUD_FRAC of them (step counters / timers / animated overlays)
 # and hash the frame with those cells zeroed, so aliasing (a churning HUD that
@@ -557,7 +582,7 @@ class GraphSearchTool:
     def detect(self, frames: list[Any], obs: Any) -> float:
         """Frame-only confidence that this is a graph/navigation game.
 
-        HIGH (0.8) when simple movement actions (ids 1-4) are available AND the
+        HIGH (``_LOCALIZED_CONF``) when simple movement actions (ids 1-4) are available AND the
         observed frame-to-frame transitions change small, localized regions
         (the signature of a mobile avatar moving on a static board). Movement
         without such evidence yet is still graph territory (0.45). No movement
@@ -586,7 +611,7 @@ class GraphSearchTool:
             if n <= max(1, _LOCAL_CELL_FRAC * size) and bh * bw <= max(4, _LOCAL_BBOX_FRAC * size):
                 localized = True
                 break
-        return 0.8 if localized else 0.45
+        return _LOCALIZED_CONF if localized else 0.45
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Fold the just-taken transition ``prev --action--> ?`` into the graph.
