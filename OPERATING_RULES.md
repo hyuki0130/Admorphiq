@@ -730,3 +730,36 @@ leaves the silent case silent.
 ⚠️ `snapgate.sh` was never affected, for a reason worth knowing: `score_efficiency.py:35`
 `sys.path.insert(0, ...)`s its own repo's `src` at position 0, ahead of anything site-packages adds.
 The gate is immune by accident of the runner's design, not by anything the gate does.
+
+### 7o — "layer 0 is stale in 100% of transitions" was TRUE and the fix cost a third of the score (2026-08-29)
+
+The strongest-looking measurement of the day, gated, and it is the round's most useful negative.
+
+MEASURED, and none of it is wrong: `frame_2d` returns the observation's FIRST layer; an observation
+is several grids when an action has a scripted consequence; the layers are OLDEST FIRST. Across 21
+games, the LAST layer is closer than layer 0 to the board handed back next at **100% of level
+transitions in every game**, and at 1591 of 1927 multi-layer frames away from them (tu93 186/186,
+g50t 293/293). A foundational reader, demonstrably reading the state emitted BEFORE the consequence.
+
+THE ONE-LINE FIX — `arr[0]` → `arr[-1]` — gated on the full 25 (`R101LAYER` vs `R101RE86`):
+
+```
+MEAN 0.8962 -> 0.6525.  FOURTEEN games regressed.
+g50t 1.0000 -> 0.0000   m0r0 1.0000 -> 0.2857   re86 1.0000 -> 0.4117
+lp85 0.9099 -> 0.3418   su15 1.0000 -> 0.4882   sc25 1.0000 -> 0.4762
+```
+
+⛔ **THE ORDER WAS PROVEN. WHAT THE LAST LAYER *IS* WAS NOT.** The measurement establishes that
+layer 0 lags; it says nothing about whether the final layer is a SETTLED board or a frame caught
+mid-consequence — an animation's last emitted grid is the most transient one there is. Fourteen
+games say it is the latter. The tools were not reading a stale board by accident; they were reading
+the only board in the sequence that is stable.
+
+⭐ The agent that produced the measurement REFUSED to recommend the change on it — *"what is proven
+is the ORDER; what is unmeasured is whether the last layer is the board a tool WANTS"* — and named
+the full-25 A/B as the only thing that could answer it. That refusal is why this cost twelve minutes
+of box time instead of a day of tool rewrites chasing a reader that was never the problem.
+
+**The general rule: a measurement of a MECHANISM does not license a change of BEHAVIOUR.** "X is
+wrong" and "not-X is right" are two claims, and on a 25-game board only the gate can supply the
+second. Fifteen repairs this round were built on the first and reverted on the second.
