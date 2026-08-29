@@ -20,10 +20,16 @@ lp85 0.9099 -> 0.9677. First movement in a day.
 The seven still short, largest gap first:
 
 ```
-bp35    0.2456   gap 0.7544   ⭐ L2 = 7 discovery + 34 WALLED-IN + 43 clear (43 < human 48). `_stranded` is the whole headroom.
+bp35    0.2456   gap 0.7544   ⛔ `_stranded` and pre-entry veto both REFUTED. The one surviving
+                             correlate: longest UNBROKEN flat run (4->1.0, 5->1.0, 10->0.96,
+                             25->0.51, 40->0.30) — but the 40-turn plateau is INSIDE the attempt
+                             that clears in 43 vs a human 48.
 lf52    0.2727   gap 0.7273   ⛔ the stall position is CLOSED — six forced moves, best opens ONE cell, no boarding move EXISTS.
 s5i5    0.5833   gap 0.4167   ⛔ raising `_MAX_OPEN` is REFUTED — 3.3x budget is byte-identical. `_settle` banks a SUPERSET.
-dc22    0.7143   gap 0.2857   the crane: four drives DRAWN and INERT, alive only while the avatar stands on their plate.
+dc22    0.7143   gap 0.2857   crane fully decoded (4 plates measured 1:1, precondition frame-visible).
+                             ⛔ The blocker is OURS: `phase.py:430` condemns a tile if ANY pixel is a
+                             banned colour, and every plate sprite contains colour 0. Shared by
+                             gantry+sluice. The obvious fix costs +23 actions on L1-5, where L3 has 8.
 ls20    0.9121   gap 0.0879   L7 alone; ordering swept in BOTH directions and closed. Needs a new way to meet a mover under fog.
 lp85    0.9677   gap 0.0323
 ```
@@ -54,8 +60,9 @@ allowance (87/131/163 against 64/128/192), so those baselines already contain a 
 vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. Agents live on: **dc22** (the crane's pressure plate), **bp35** (`_stranded` — 34 of L2's 87
-   actions are spent inside a pocket the agent walked into), **s5i5** (`_settle` banks a SUPERSET of
+1. Agents live on: **dc22** (the crane's pressure plate), **bp35** (⛔ `_stranded` REFUTED — the run
+   strands TWICE and the body is in the pocket for 1 turn, not 34; and the walled-in attempt earns
+   140 of the board's 370 cells, so deleting it does not leave the clearing attempt intact), **s5i5** (`_settle` banks a SUPERSET of
    off-grid cells and the win is reachable ONLY off-grid), **railpeg** (`detect` runs the planner and
    spends the tool's own give-up budget).
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
