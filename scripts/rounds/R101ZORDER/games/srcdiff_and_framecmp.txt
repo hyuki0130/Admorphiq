@@ -1,0 +1,32 @@
+sprites: live 92  arch 92
+art signatures identical as a SET: True
+levels: live 8  arch 8
+  L1: n=10/10  same_placements=True  same_LIST_ORDER=False
+  L2: n=12/12  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(15, 36)]
+  L3: n=20/20  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(6, 27), (48, 3)]
+  L4: n=17/17  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(30, 42)]
+  L5: n=18/18  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(9, 9)]
+  L6: n=12/12  same_placements=True  same_LIST_ORDER=False
+  L7: n=20/20  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(21, 6)]
+  L8: n=24/24  same_placements=True  same_LIST_ORDER=False
+       z-order FLIPPED at a shared position for: [(48, 32)]
+
+level 0: cells differing=2  marker cells live=10 arch=8
+   marker only on LIVE [(10, 31), (34, 10)] -> live shows [14, 11] there
+level 1: cells differing=1  marker cells live=5 arch=4
+   marker only on LIVE [(37, 16)] -> live shows [14] there
+level 2: cells differing=2  marker cells live=10 arch=8
+   marker only on LIVE [(4, 49), (28, 7)] -> live shows [7, 10] there
+level 3: cells differing=1  marker cells live=5 arch=4
+   marker only on LIVE [(43, 31)] -> live shows [11] there
+level 4: cells differing=6  marker cells live=10 arch=4
+   marker only on LIVE [(10, 10), (24, 37), (25, 36), (25, 37), (25, 38), (26, 37)] -> live shows [14, 10, 10, 10, 10, 10] there
+level 5: cells differing=1  marker cells live=5 arch=4
+   marker only on LIVE [(13, 49)] -> live shows [9] there
+level 6: cells differing=5  marker cells live=10 arch=5
+   marker only on LIVE [(6, 22), (7, 21), (7, 22), (7, 23), (8, 22)] -> live shows [10, 10, 10, 10, 10] there

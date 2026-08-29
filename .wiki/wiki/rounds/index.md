@@ -306,3 +306,19 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   ⭐ Rule 7bw's memo-plus-give-up livelock appears ONLY on never-cleared levels (runs of 116 and 49;
   the longest on any cleared level is 7). ⚠️ And of the five zero-margin canary levels, sc25 L2 is
   the one that is not tight — 6 actions against a human 6 with one of them DEAD. Rule **7cb**.
+
+- **z-order / paint order / occlusion / rider not drawn / why s5i5 L4 costs 22 more on a re-render /
+  does the tool read mechanics or pixels** → [[r101_zorder-rider]] — the follow-up
+  [[r101_shipped-and-transfer]] asked for, and the answer is ⭐ **a frame-only tool that identifies an
+  object by whether it is DRAWN is reading PAINT ORDER**. The two s5i5 serializations are identical
+  by construction (same art, same positions, same `Children`; only the sprite LIST ORDER differs, and
+  the engine paints same-layer sprites in list order), and on the level in question **exactly ONE
+  cell of the opening frame differs** — the rider, painted over by its own bar. `telescope._begin`
+  then falls back from a pinned rider to EVERY bar as a candidate: nine of them for one destination,
+  nine plans, four pairings knocked down by the board, +22 actions. ⭐ **The contrast is the
+  finding** — the fallback fires on ALL FIVE levels and is FREE on four, so the dependence is
+  QUANTITATIVE, and 7by's 0.9989 is a floor measured on small candidate sets, ⛔ not a forecast.
+  PROVED BY INTERVENTION, three runs in one process: restoring the rider evidence inside `_begin`
+  alone returns the level to 39 actions and the game to 0.5833. ⛔ Nondeterminism REFUTED first
+  (3/3 identical on both boards). No repair shipped and the reason is measured: the guess is not
+  avoidable, only its price, and that is a redesign against four levels already optimal. Rule **7cd**.

@@ -471,6 +471,11 @@ strong tool goes empty, and why handing the board back is INERT), **7bn + 7bo** 
 lost to the CAMERA, no filter drops one, and widening perception changes the CLAIM not the MOVE),
 **7bc** (lf52 — read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an + **7bj** (bp35 — 7bj corrects 7bh's
 named field and prices the repair at zero), 7ao (s5i5), 7ak (dc22).
+
+**Asking whether the tools read MECHANICS or PIXELS** → 7by (24 of 25 re-renders identical) then
+⛔ **7cd**, which is what the twenty-fifth is made of: ONE occluded pixel, and a tool that reads
+object identity out of PAINT ORDER. The dependence is quantitative — free at two candidates,
+22 actions at nine — so 7by's ratio is a floor measured on small candidate sets, not a forecast.
 ⛔ **On lf52 specifically, read 7bw + 7bx BEFORE proposing anything**: `pegjump` is a THREE-LATCH
 livelock whose every latch is measured worth ZERO, and "the tool cannot see the rest of the board" is
 REFUTED — the scroll is armed on 376 of 378 decisions and `railpeg` already rides the whole board and
@@ -3463,3 +3468,174 @@ rule two files away. **A rule that has been broken with the runner in hand belon
 
 ⚠️ The axis 7ca opened is still open and still worth measuring — it just needs a GPU host, and the
 cost estimate stands: the whole 25-game Kaggle run made only FOUR draw attempts.
+
+⭐ **AND THE GPU HOST ALREADY EXISTS, BUILT AND DOCUMENTED — `bash kaggle_bench/build_and_run.sh`.**
+`kaggle_bench/r101_llm_full25.py` boots vLLM offline from mounted wheels on a Kaggle GPU kernel,
+points the harness at it with `HARNESS_LLM_BACKEND=openai`, and runs all 25 games in TWO ARMS that
+differ in one thing only: whether a model is served. It costs **no submission slot**, and it has no
+`--submit` path by design. ⛔ I spent an afternoon's box capacity and a load-110 incident on the
+question it answers, without looking for the instrument first — rule 7b's shape exactly, applied to
+instruments instead of assets: **sweep for the runner that already exists before building the
+measurement by hand.** Its own header even records why its last number is not comparable to today's
+(the budget was 500 and the tools outgrew it), which is a second thing I would have had to rediscover.
+
+### 7cd — s5i5's 22 lost actions are a Z-ORDER read — rider identity comes from whether the rider is DRAWN (2026-08-30)
+
+⭐ **THE DEFECT, NAMED: a frame-only tool that identifies an object by whether it is DRAWN is
+reading PAINT ORDER, not mechanics.** Rule 7by measured that 24 of 25 games are action-for-action
+identical on an archived re-render and that exactly one level of one game moves — s5i5 L4, 39 -> 61
+actions. This is what that level is made of.
+
+**ONE PIXEL.** The two boards' opening frames on that level differ in exactly one cell:
+
+```
+level 4 opening frame, live vs archived:  cells differing = 1
+   (43,31)  live = 13 (the marker colour)      arch = 11 (the bar's colour)
+```
+
+The board is otherwise identical by construction — `scripts/_s5i5_srcdiff.py` canonicalises both
+serializations with the names taken away and reports **same sprite art, same positions, same
+`Children`, on all eight levels**; only the list ORDER differs, and the engine paints same-layer
+sprites in list order. The archived file lists the rider before the bar it rides, so the bar covers
+it.
+
+**WHAT THE ONE CELL COSTS.** `TelescopeArmTool._begin` (`telescope.py:1179`) — which is what plays
+s5i5's first six levels, `swivel` delegating to it on every level with no one-way control:
+
+```python
+pinned = [b for b in bars if tip_centre(self._pieces[b[0]].box, b[1]) in drawn]  # drawn = marker cells
+riders = pinned if len(pinned) >= len(m.places) else bars                        # else: EVERY bar
+```
+
+Measured inside the tool, both boards, levels 1-5 (`scripts/_s5i5_tele.py`):
+
+```
+             drawn riders   bars   pinned   riders used   plans   pairings refuted   actions
+live  L1..L5   2 1 2 1 2    2 4 4 9 5   =drawn   2 1 2 1 2      1 1 1 1 1      0 0 0 0 0     13 30 47 39 32
+arch  L1..L5   0 0 0 0 0    2 4 4 9 5      0     2 4 4 9 5      1 2 1 9 2      0 1 0 4 0     13 30 47 61 32
+```
+
+⭐ **THE CONTRAST IS THE FINDING.** The fallback fires on ALL FIVE levels of the archived board and
+costs NOTHING on four of them — one of those (L2) even refutes a pairing and still lands on 30
+actions. It costs only where the candidate set is large: **nine bars for one destination**, five
+pairings tried, four knocked down by the board, and every refuted pairing's plan had already been
+CLICKED. A property of the level that costs more is not a cause until the levels that cost the same
+share it, and here they do.
+
+**THE PROOF IS AN INTERVENTION, NOT A CORRELATION** (`scripts/_s5i5_oracle.py`, three runs in ONE
+process, same planner, same budget, the rider cells the live board draws put back into
+`read_markers`'s `movers` FOR THE DURATION OF `_begin` ONLY):
+
+```
+live,  recording        [13, 30, 47, 39, 32, 31]   0.583333
+arch,  untouched        [13, 30, 47, 61, 32, 31]   0.559296     <- the control reproduces 7by
+arch,  riders injected  [13, 30, 47, 39, 32, 31]   0.583333     <- the whole gap, gone
+```
+
+The injection is confined to `_begin` on purpose: `_agrees` checks drawn movers against the model's
+own predictions on every action, so injecting there would be feeding the verifier its answer.
+
+⛔ **THIS IS NOT A BUG IN THE TOOL AND THERE IS NO ONE-LINE FIX.** The tool's docstrings say
+outright that riders are optional evidence and that the pairing is a hypothesis the board must
+knock down; `_targets` already chooses by FEASIBILITY rather than by proximity and already retires
+refuted pairings cheapest-first. On the archived board the rider is genuinely not in the frame, so
+the guess is not avoidable — only its PRICE is, and lowering that means discriminating between
+candidate pairings with something shorter than the pairing's own plan. That is a redesign, it must
+be gated on the full 25, and four of the five levels it would touch are already optimal.
+
+⚠️ **THE GENERAL WARNING, which is why this is worth a rule at 0.024 of dev score.** The dependence
+is QUANTITATIVE, not binary: the same tool, the same missing evidence, is free at two candidates
+and expensive at nine. On the 110 private games nothing bounds the candidate count, and a board
+with twenty carriers would pay far more than twenty-two actions for the same one hidden cell.
+⛔ So "the tools transfer" (7by, ratio 0.9989) is a floor measured where the candidate sets happen
+to be small. Any tool that says *"where it IS drawn it pins the choice for free; where it is not,
+everything is a candidate"* has this shape, and `swivel._begin` carries the identical two lines.
+
+⚠️ And the instrument nearly lied, in the usual direction. The first frame dump used `frame_2d`
+(layer 0) while every tool in this family reads `_layers(obs)[-1]`, and it reported ten differing
+marker cells on the level where the truth is one — a plausible number for a quantity it was not
+measuring (rule 7z). It was caught because the tool's own reader said `movers=1` where the dump
+implied two destinations.
+
+### 7ce — render-mutation transfer: the tools are colour-blind, and 24 of 25 boards are full-bleed (2026-08-30)
+
+Rule **7by**'s transfer number covers only the games that HAVE an archived re-render, and
+`bash scripts/rendergate.sh` closes that gap by MANUFACTURING the re-render instead of finding one.
+It mutates the agent's OBSERVATION — the game object is never touched — so validity is by
+construction rather than by reading a 41,000-line game: the mutation is applied to a copy after
+`env.step()` returns, the click is mapped back into the game's own coordinates, and the level
+structure, the win predicate and the `baseline_actions` denominator are all untouched.
+
+⭐ **THE ARCHIVE COVERS FOURTEEN GAMES, NOT FIFTEEN.** `environment_files_archive/sk48` is version
+hash `41055498` — the SAME hash the live tree holds, byte-identical. Substituting it is a
+self-substitution and contributes no evidence; rule 7by's "all fifteen archived re-renders" is
+fourteen. bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87 and wa30 still have no archive.
+
+⭐ **COLOUR PERMUTATION: FULL 25, THREE ARMS, ONE ACTION MOVES IN THE WHOLE SET.**
+`bash scripts/rendergate.sh r1 "identity cperm cperm2 cpermbg" 8 4000`, `--agent unified`, at
+`d3247b37`:
+
+```
+identity (control)   mean 0.9082   — reproduces R101SHIPPED on all 25, zero code drift
+cperm    c->(7c+3)%16    0.9082   24 of 25 identical ACTION FOR ACTION; cd82 L3 33 -> 34
+cperm2   c->(5c+1)%16    0.9082   25 of 25 identical action for action
+cpermbg  cperm, background pinned  0.9082   the same lone cd82 L3 33 -> 34
+every arm: 25/25 games "applied", 16,810 frames mutated, 211M cells relabelled, alphabet 0..15
+```
+
+Both permutations are fixed-point-free, so **every colour any game shows was moved** and "identical"
+cannot be the luck of which labels happened to swap. The mean does not move at four decimals in any
+arm. cd82's extra action does not change its score (level 3 is far under the human count either way),
+and it appears under `cperm` and `cpermbg` — which differ only in the background's image — so it is a
+colour-ORDER tie-break, not a dependence on the background value. ⚠️ **EIGHT** sites under
+`src/admorphiq/tools/` order a colour set by its index (`crag`, `gantry`, `decouple` ×2, `ledge`,
+`mirror`, `shaft`, `stencil`), which is exactly where such a tie-break lives — and there is not ONE
+numeric colour literal compared against a frame anywhere in the tool set or the harness. That is why
+the arms come back flat: `base.py` derives the background as the modal value rather than as `0`, and
+nothing downstream names a colour.
+
+⛔ **TRANSLATION IS NOT CONSTRUCTIBLE ON THIS GAME SET, AND THAT IS A MEASUREMENT.**
+`scripts/_render_margin.py`, 25-way, each run carrying its own positive control (a synthetic 4-wide
+border reads 4 in all 25): **24 of 25 games have ZERO uniform margin** — the board reaches the canvas
+edge on all four sides at the opening frame and stays that way over a 120-action walk. tn36 alone has
+a margin of 1. So a rigid shift cannot be applied without pushing board content off the canvas, and
+the ARC boards are full-bleed by design.
+
+⛔ **AND THE ONE GAME THAT COULD BE TRIED IS THE REASON THE REFUSAL PATH EXISTS.** tn36 under
+`shift1`: the frame check passed on all 1,053 frames, the score fell **1.0000 -> 0.1071**, and it
+means NOTHING — four of the agent's clicks landed at y=0, inside the synthetic band, where no game
+coordinate exists. A broken mutation and a brittle tool produce the same lower number, and only the
+accounting separates them. `rendergate_compare.py` prints NO VERDICT for it rather than a 90% loss.
+
+⭐ **THE IDENTIFIER RENAME — the API's own rotation — IS INERT WHERE IT CAN BE BUILT.**
+`scripts/_render_idrename.py` renames every string in a game's `sprites` dict plus its `name=` and
+game-specific `tags`, then compares RENDERED FRAMES over a fixed 60-action sequence. Frames rather
+than scores because the tools are frame-only (grep-verified: nothing under `tools/` or `harness/`
+reads a sprite name, tag or game attribute), so byte-identical frames prove the rename inert for ANY
+frame-only agent — a stronger statement than one identical score, and it costs minutes not hours.
+
+```
+14 games render BYTE-IDENTICALLY under a full rename  (13 of them with a working negative control)
+ 1 game  bp35 — its negative control FAILS (1 poisonable pixel constant); result unmeasurable
+ 1 game  sb26 — first 3 frames identical, then the run ENDS 57 frames early: behaviour, so the
+                rename is not render-only there and it is a BROKEN MUTATION, not a finding
+10 games not constructible, each with a stated reason (prefix families; engine vocabulary)
+```
+
+⛔ **TWO EARLIER VERSIONS OF THAT RENAME WERE BROKEN AND BOTH FAILED THE SAME WAY — BY RENAMING PART
+OF A WHOLE.** The first renamed attribute ACCESSES without their definitions, so `self.foo()` lost
+its `def foo` and **all 25 games diverged at FRAME ZERO**. The second selected keys by a name
+pattern, which matched 7 of cd82's 13 sprite keys and 26 of sc25's 50; a partially renamed board
+splits prefix families (`clcbko-1`, `clcbko-2`), and cd82, sb26 and sc25 came back DIFFERENT for that
+reason and no reason about the tools. **A column of DIFFERENTs reads as a spectacular transfer
+failure and was twice a bug in the instrument** — the tell both times was that the divergence was
+UNIVERSAL and at index 0, which is the signature of a broken mutation. The rule is now all-or-nothing:
+take the sprites dict entire, and refuse the game when any other string in the module contains or is
+contained by a key.
+
+⚠️ **WHAT THIS DOES NOT PROVE, SAID PLAINLY.** A recoloured board is the SAME BOARD with the same
+mechanic, the same geometry and the same solution. It rules out the cheapest brittleness — a tool
+keyed to a literal colour value or a sprite name — and nothing more. The evaluation is 110 games with
+different MECHANICS, and ⛔ 1.0000 is not a transfer coefficient. What it buys: rule 7by's evidence
+now reaches all 25 games instead of 14, and a future tool that scores well here and collapses under
+`cperm` is caught for the price of one run.
