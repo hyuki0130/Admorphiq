@@ -392,3 +392,34 @@ sufficient, whose perception can be fixed, and whose vocabulary can be completed
 not information about this board — it is a MECHANIC this board uses that no tool in the set models.
 Finding that mechanic means reading bp35's own source for what level 6 does differently, which is
 where rule 0 has ended five questions already this session.
+
+## Where R101 ends: the mechanic is known, the repair is not a patch
+
+The last three interventions, all measured, all with the treatment verified:
+
+| change | bp35 |
+|---|---|
+| let the probe reach lethal-looking glyphs | 0.2206 — vocabulary grows 3->5 classified, both new kinds INERT |
+| volatile ground is not solid ground | 0.2220 — and `UNSOLID` never fires: nothing in `_solid` is ever marked volatile |
+| both, plus the occupancy fallback that restores `_absorb` | 0.2220 |
+
+The `UNSOLID` silence is the informative one. `_volatile` is learned only inside `_absorb`, `_absorb`
+runs only on a successful alignment, and level 6's alignment fails — so **the crumbling tile is never
+even noticed as changing.** The three fixes are coupled, and applying all three still moves nothing.
+
+**Thirteen interventions this round, every one verified to have taken effect, and the score is
+0.8935 exactly as it started.** What that buys is a complete causal account of one stuck board:
+
+1. `yuuqpmlxorv`, a crumbling platform with four shrinking sprites, appears ONCE on level 6 and
+   never on the five levels crag clears.
+2. crag classifies terrain by pixel signature, so that one entity reads as four kinds — the "4 of 7
+   unclassified" measured on that board.
+3. Its change is driven by USE, not by clicks, so the probe learns `inert` for every state it
+   reaches.
+4. Its own gravity reversal breaks the signature alignment, which stops `_absorb`, which stops
+   volatile detection — so the tool cannot even observe that the tile changes.
+
+⛔ **This is not reachable by patching.** The tool's model is static terrain plus click-driven
+change; the board needs terrain that degrades on use, tracked as one entity across four appearances.
+That is a tool to write, not a knob to turn, and R101's honest verdict is that the remaining 0.1065
+is that kind of work on every one of the eight games.
