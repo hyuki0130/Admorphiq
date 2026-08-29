@@ -265,6 +265,24 @@ def swivel(model: _Model, cfg: Config, colour: int) -> Config | None:
 
 _PAD = 72
 
+# ⛔ HOW FAR A BAR MAY LEAVE THE VISIBLE FRAME. A frame-only tool sees none of the furniture
+# outside the 64x64 grid, so an unbounded search treats ALL of it as empty and plans through it.
+# MEASURED on the seventh board of the jointed-arm game: the configurations the engine refuses
+# carry **30 to 111 cells outside the frame**. The model is not making a small excursion into the
+# margin — it is planning to swing a bar bodily off the board and bring it back, because it
+# believes everything it cannot see is free. The engine refuses all of it, so the whole of that
+# region is search cost spent on states that cannot be reached.
+#
+# ⛔ A BOUND, NEVER A BAN. The board before that one swings a bar off the TOP edge and is ALLOWED
+# to (see `_settle`), and a strictly-on-grid search over the seventh board is EXHAUSTED with a
+# best gap of 6 — so forbidding the margin outright loses one board and wins nothing on the other.
+# One unit of the game's own geometry is what both of them need.
+#
+# MEASURED, whole game, one arm per value, `scripts/_s5i5b_margin.py`. The score and all six
+# per-level action counts are IDENTICAL at every value; only the wall clock moves:
+#     unbounded 219s · 9 cells 66s · 6 cells 52s · **3 cells 45s** · 0 cells 132s
+_MARGIN = _UNIT
+
 
 def legal(model: _Model, cfg: Config) -> bool:
     """No two moving boxes may overlap, none may enter the furniture, none may be refused.
@@ -279,6 +297,9 @@ def legal(model: _Model, cfg: Config) -> bool:
     if cfg.key() in model.illegal:
         return False
     boxes = [b for b, _e in cfg.bars] + list(cfg.freight)
+    for y0, x0, y1, x1 in boxes:
+        if y0 < -_MARGIN or x0 < -_MARGIN or y1 > 63 + _MARGIN or x1 > 63 + _MARGIN:
+            return False
     if model.offblocked:
         for y0, x0, y1, x1 in boxes:
             if y0 >= 0 and x0 >= 0 and y1 <= 63 and x1 <= 63:
