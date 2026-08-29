@@ -110,9 +110,19 @@ deleted from the repo** — the third time in this campaign, after `data/traces`
   permutation, board offset) is being built; ⛔ its hard part is not the mutation but proving the
   mutation preserves the MECHANIC, because a broken mutation is indistinguishable from a transfer
   failure.
-- **The hidden score of the generic path.** Kernel version 5 pushed at HEAD for free server-side
-  validation (a push does not consume the daily slot). ⛔ The submission itself is the user's call
-  and no `--submit` is passed automatically.
+- **The hidden score of the generic path.** ⭐ **CLOSED ON THE PROXY SIDE, 2026-08-30** (rule
+  **7bz**): kernel version 5 ran server-side at HEAD, logged `Registered agent 'admorphiq' ->
+  KaggleUnifiedAgent`, and reproduced the local card on **all 25 games — same levels, and the same
+  TOTAL ACTION COUNT on every one of the 21 it wins**. The four it does not win reach the same level
+  and differ only in how much larger budget they spend afterwards. So the chain local gate → shipped
+  wrapper → Kaggle's own machine is closed end to end, each link measured. ⚠️ It says NOTHING about
+  the hidden 110. ⛔ The submission itself is the user's call and no `--submit` is passed
+  automatically. Artefacts: `scripts/rounds/R101KAGGLE/`.
+- ⛔ **The kernel log also corrects the sk48 cleanup above**: Kaggle serves
+  `environment_files/sk48/d8078629`, which is the directory archived off ceph-build as "the
+  duplicate". Harmless — 270 actions there and 270 locally, a third confirmation of equivalence —
+  but the local layout names directories by DOWNLOAD id and Kaggle names them by GAME hash, so check
+  the kernel log before deciding which of two version dirs is stale.
 
 ## Related
 

@@ -3278,3 +3278,35 @@ the question it was built for.**
 ⚠️ `game_id` is IDENTICAL across both s5i5 arms (`s5i5-18d95033`) even though the content differs —
 the same trap rule 7bu names. The artefact cannot tell you which board it scored; only the procedure
 can, which is why the procedure is now a committed script.
+
+### 7bz — the Kaggle server reproduces the local card action-for-action (2026-08-30)
+
+`bash kaggle/build_and_push.sh` (no `--submit` — a push does not consume the daily slot), kernel
+version 5 at `c81d68cd`, run server-side and COMPLETE in 12 minutes. The log confirms
+`Registered agent 'admorphiq' -> KaggleUnifiedAgent` and then plays all 25 offline games.
+
+⭐ **EVERY GAME MATCHES THE LOCAL CARD. Same levels_completed on all 25, and on the 21 that WIN the
+SAME TOTAL ACTION COUNT** — ar25 268, cd82 132, cn04 261, ft09 79, g50t 296, ka59 290, lp85 182,
+ls20 645, m0r0 188, r11l 83, re86 696, sb26 124, sc25 145, sk48 270, sp80 112, su15 89, tn36 137,
+tr87 145, tu93 187, vc33 199, wa30 720. The four NOT_FINISHED games (bp35 5, dc22 5, lf52 5, s5i5 6)
+reach the SAME level and differ only in total actions, because the kernel's budget is larger and
+they keep spending it after their last clear.
+
+**So 0.9082 is not a property of ceph-build.** The chain local gate → shipped wrapper → Kaggle
+server is now closed end to end, and each link was measured rather than assumed: `--agent unified`
+== `--agent kaggle_unified` (rule 7bv), and `kaggle_unified` local == `KaggleUnifiedAgent` on
+Kaggle's own machine (here). ⚠️ This says NOTHING about the hidden 110; it says the 25 travel.
+
+⛔ **AND IT CORRECTS 7bu's CLEANUP.** Kaggle serves **`environment_files/sk48/d8078629`** — the very
+directory I archived off ceph-build as "the duplicate". The Mac's `41055498` is the older download
+(the metadata's `game_id` is `sk48-d8078629` in BOTH, which is why the id could not tell them
+apart). No harm: sk48 scores 270 actions here and 270 locally, a third independent confirmation that
+the two sources are equivalent. But **the hash the competition serves is the one to keep** — check
+the kernel log before deciding which of two version dirs is stale, because the local layout names
+directories by download id and Kaggle names them by game hash.
+
+⭐ **THE CHEAPEST VALIDATION AVAILABLE, AND IT HAD NEVER BEEN RUN.** A push costs no submission slot,
+takes twelve minutes, and answers "does the card that ships behave like the card we measure" — the
+exact question that went unanswered while five research commits drifted into the deployed fallback
+and the hidden score moved 0.20 -> 0.18 with no attributable cause. **Push after any day of harness
+work.** Artefacts banked in `scripts/rounds/R101KAGGLE/`.

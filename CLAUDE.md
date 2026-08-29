@@ -25,8 +25,11 @@
 > are deterministic across three repeats. ⚠️ Determinism is NOT transfer; the evaluation is 110 games
 > with different MECHANICS and nothing here measures that.
 >
-> ⭐ **THE GAINS REACH THE SUBMISSION PATH** — `--agent kaggle_unified` measures 0.9078 too, 25 games,
-> none differing. Re-run that after any day of harness work: the wrapper MIRRORS `_make_agent`, and
+> ⭐ **THE GAINS REACH THE SUBMISSION PATH, AND KAGGLE'S OWN MACHINE AGREES** — `AGENT=kaggle_unified
+> bash scripts/snapgate.sh` measures 0.9082, 25 games, none differing; and kernel version 5, run
+> SERVER-SIDE at HEAD, reproduces the local card on **all 25 games — same levels, and the same TOTAL
+> ACTION COUNT on every one of the 21 it wins** (rule 7bz). A push costs no submission slot and takes
+> twelve minutes. Re-run that after any day of harness work: the wrapper MIRRORS `_make_agent`, and
 > five research commits once shipped in the deployed fallback unmeasured while the card moved
 > 0.20 -> 0.18 with no attributable cause.
 >
