@@ -1,0 +1,28 @@
+R101LS20HANDOVER — ls20 level 7 handover: MEASURED NEGATIVE, nothing shipped   2026-08-30
+
+CONTROL (shipped loop, mirrored runner): per_level [17,101,63,66,67,100,231]  game 0.912085
+
+THE TEN ACTIONS, from scripts/_ls20_handover.py (baseline_census_head.json):
+  tick 1-2   keymaze  proposes [UP]  -> avatar MOVES (19,15)->(19,10)->(19,5)   keymaze's own
+                                        (_choose's `_idle <= 2` blind step)
+  tick 3-10  keymaze  proposes []    -> the HARNESS spends the action: _fill_from_current's
+                                        `self._queue = legal or self._probe(...)`, ACTION1 every
+                                        time, all EIGHT REFUSED by the engine (avatar unmoved)
+  tick 11    fogscout takes the board, tank 22 of 42
+  detect: keymaze 0.00 all level; fogscout 0.00 on the level-up frame, 0.80 from tick 2 on.
+
+SWEEP, both sides of the empty-proposal constants (evidence_side.jsonl / tolerance_side.jsonl):
+  handover on action  4  5  6 | 7  | 8 | 9 10 11 | 12 13 14 | 15 | 16 | 17 | 18 19
+  level 7             LOST    |327 |LOST| 231    | LOST     |231 |LOST|231 | LOST
+  231 is INVARIANT for handovers from 9 to 17 actions; nothing beats it on either side; six of
+  sixteen arms lose the level to is_done's no-progress bail (every run under 32 s, not a timeout).
+
+WHY IT IS FREE: the level's first life runs the tank DRY on action 21 (lives 3->2 at 22, 2->1 at 44,
+1->0 at 67, reset at 69, 3->2 at 156, clear at 231). The handover's 20 fuel units are charged to a
+life that ends by running dry regardless of who spends them.
+
+SCOPE (scripts/bid_matrix.py, all 25 first frames): keymaze own 0.90 (ls20) / elsewhere 0.00;
+fogscout 0.00 on every first frame. The handover exists on ls20 alone.
+
+VERDICT: the "10 handover" third of the 45-action gap is NOT A GAP. The early-retirement patch that
+produced these numbers was REVERTED (it scores ls20 0.7500).

@@ -247,6 +247,10 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   14 execution, ~21 discovery), not one defect. ⛔ Twelve arms across four axes all lose or are
   exactly inert: cycle-closure inference (324 / level LOST), motion conjugation (36 fires, EXACTLY
   INERT — so the token model's completeness is not what gates this level), fuel-first mark seeking
-  (level LOST x2, 343), refuel ranked by round-trip detour (307 x2, level LOST). Open: the handover,
-  and cross-level mechanic carry (a first-time human reaches level 7 having played six levels with
+  (level LOST x2, 343), refuel ranked by round-trip detour (307 x2, level LOST). ⭐ **The handover is
+  now CLOSED as NOT A GAP**: only 2 of its 10 actions are `keymaze`'s (its `_idle` blind step) — the
+  other EIGHT are the harness `_probe` fallback firing while the tool proposes nothing — and a
+  sixteen-arm sweep of both empty-proposal constants shows **231 is invariant for handovers from 9 to
+  17 actions**, with six arms LOSING the level, because the tank those actions burn belongs to a
+  first life that runs dry on action 21 regardless. Open: cross-level mechanic carry (a first-time human reaches level 7 having played six levels with
   the same three changers; `fogscout` cannot, because `detect` is 0.00 on every unfogged board).

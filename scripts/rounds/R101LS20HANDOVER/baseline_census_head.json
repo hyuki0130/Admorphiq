@@ -1,0 +1,555 @@
+{
+ "seed": "1",
+ "levels": 7,
+ "total": 645,
+ "per_level": [
+  [
+   1,
+   17,
+   22,
+   1.0
+  ],
+  [
+   2,
+   101,
+   123,
+   1.0
+  ],
+  [
+   3,
+   63,
+   73,
+   1.0
+  ],
+  [
+   4,
+   66,
+   84,
+   1.0
+  ],
+  [
+   5,
+   67,
+   96,
+   1.0
+  ],
+  [
+   6,
+   100,
+   192,
+   1.0
+  ],
+  [
+   7,
+   231,
+   186,
+   0.6483
+  ]
+ ],
+ "game_score": 0.912085,
+ "rows": [
+  {
+   "lv": 6,
+   "n": 1,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "keymaze",
+   "plan": [
+    [
+     1,
+     null
+    ]
+   ],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    15
+   ],
+   "p1": [
+    19,
+    10
+   ],
+   "moved": true,
+   "fuel": [
+    42,
+    40,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.0
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 2,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "keymaze",
+   "plan": [
+    [
+     1,
+     null
+    ]
+   ],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    10
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": true,
+   "fuel": [
+    40,
+    38,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 3,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 0,
+   "empty1": 1,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    38,
+    36,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 4,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 1,
+   "empty1": 2,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    36,
+    34,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 5,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 2,
+   "empty1": 3,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    34,
+    32,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 6,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 3,
+   "empty1": 4,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    32,
+    30,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 7,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 4,
+   "empty1": 5,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    30,
+    28,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 8,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 5,
+   "empty1": 6,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    28,
+    26,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 9,
+   "cur0": "keymaze",
+   "cur1": "keymaze",
+   "empty0": 6,
+   "empty1": 7,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    26,
+    24,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": []
+  },
+  {
+   "lv": 6,
+   "n": 10,
+   "cur0": "keymaze",
+   "cur1": null,
+   "empty0": 7,
+   "empty1": 0,
+   "q": 0,
+   "src": "probe/none",
+   "proposer": "keymaze",
+   "plan": [],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": false,
+   "fuel": [
+    24,
+    22,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": [
+    "keymaze"
+   ]
+  },
+  {
+   "lv": 6,
+   "n": 11,
+   "cur0": null,
+   "cur1": "fogscout",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "fogscout",
+   "plan": [
+    [
+     2,
+     null
+    ]
+   ],
+   "act": "ACTION2",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    19,
+    10
+   ],
+   "moved": true,
+   "fuel": [
+    22,
+    20,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": [
+    "keymaze"
+   ]
+  },
+  {
+   "lv": 6,
+   "n": 12,
+   "cur0": "fogscout",
+   "cur1": "fogscout",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "fogscout",
+   "plan": [
+    [
+     1,
+     null
+    ]
+   ],
+   "act": "ACTION1",
+   "p0": [
+    19,
+    10
+   ],
+   "p1": [
+    19,
+    5
+   ],
+   "moved": true,
+   "fuel": [
+    20,
+    18,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.8
+   },
+   "failed": [
+    "keymaze"
+   ]
+  },
+  {
+   "lv": 6,
+   "n": 13,
+   "cur0": "fogscout",
+   "cur1": "fogscout",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "fogscout",
+   "plan": [
+    [
+     3,
+     null
+    ]
+   ],
+   "act": "ACTION3",
+   "p0": [
+    19,
+    5
+   ],
+   "p1": [
+    14,
+    5
+   ],
+   "moved": true,
+   "fuel": [
+    18,
+    16,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.86
+   },
+   "failed": [
+    "keymaze"
+   ]
+  },
+  {
+   "lv": 6,
+   "n": 14,
+   "cur0": "fogscout",
+   "cur1": "fogscout",
+   "empty0": 0,
+   "empty1": 0,
+   "q": 0,
+   "src": "plan",
+   "proposer": "fogscout",
+   "plan": [
+    [
+     2,
+     null
+    ]
+   ],
+   "act": "ACTION2",
+   "p0": [
+    14,
+    5
+   ],
+   "p1": [
+    14,
+    10
+   ],
+   "moved": true,
+   "fuel": [
+    16,
+    14,
+    42
+   ],
+   "lives": 3,
+   "det": {
+    "keymaze": 0.0,
+    "fogscout": 0.86
+   },
+   "failed": [
+    "keymaze"
+   ]
+  }
+ ],
+ "_note": "baseline census, SHIPPED loop: only the first 14 level-7 ticks are kept \u2014 the handover is over by tick 11 and the full 230-row trace is reproducible from scripts/_ls20_handover.py"
+}
