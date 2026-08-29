@@ -900,12 +900,19 @@ actions, shipped harness, `scripts/rounds/R101ALLOW/deathclock.jsonl`). No pixel
 
 ```
 game  level   death lengths   the game's own declaration
-bp35    L6      64, 65         64   (a bare constant in render_interface)
+bp35    L6      64,  65        64   (a bare constant in render_interface)
 cn04    L4     125, 126       125   ("MaxSteps": 125)
 re86    L2     100, 101       100   ("StepCounter": 100)
+ka59    L3     100, 101       100   ("StepCounter": 100)
+s5i5    L7     200, 201       200   ("StepCounter": 200)
 m0r0    L6     151, 152       150   (its documented budget)
+tn36    L3      61,  62        --   (declares none; effective 61)
+tr87    L1     129, 129        --   (declares none; effective 129 — see the cross-check below)
 r11l    L6      60,  61        --   (declares none; effective allowance 60)
 ```
+
+**NINE of the twenty-four games measured hand the number over after one death**, four of them matching
+a literal the game declares and five supplying one the game never states anywhere.
 
 Always `declared + 1`, because the death is observed one action AFTER the counter trips — so the
 rule a tool needs is `allowance = min(death_lengths) - 1`, learned from a single death, on any game,
