@@ -886,3 +886,20 @@ sixty blind searches, 47 solo tools and every pairing all inherit the same pocke
 The next measurement is therefore about level 6's ENTRY, not its interior: whether the pocket is the
 level's designed start (in which case the escape is a specific action nobody has found) or an
 artefact of how the tool finishes level 5.
+
+**The pocket is not a transitional-frame artefact.** Every measurement of it was taken at the instant
+`levels_completed` reached 5, and this repository has already paid once for reading a board on a
+level-up frame (ar25 went from 1 level to 8/8 when that was fixed). Letting it settle first:
+
+```
+after  0 settling actions: 3 distinct boards from 24 moves
+after  4 settling actions: 3 distinct boards
+after 12 settling actions: 3 distinct boards
+```
+
+Identical. So the pocket is the real arrival state, and dc22's remaining question is exactly one:
+**is that pocket the level's designed opening, or where this particular route through level 5 leaves
+the mover?** The game rebuilds each level from a clean copy in `on_set_level`
+(`self.current_level._sprites = copy.deepcopy(self._clean_levels[self.level_index]._sprites)`), which
+argues for designed — and if so, the escape is one specific action that 54,000 blind actions, 1024
+clicks and 47 tools have all missed.
