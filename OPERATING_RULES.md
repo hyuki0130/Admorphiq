@@ -802,3 +802,41 @@ game as "stuck" hides which one you are looking at.
 ⚠️ The premise survived because nobody measured what the harness DOES at the wall — only that it
 failed to advance. **"It stopped making progress" and "it stopped acting" are different claims**, and
 one budget's worth of instrumented run separates them for every game at once.
+
+### 7q — the give-up is NOT too tight, and a gate reported PASS over zero evidence (2026-08-29)
+
+Two results from one hour, one a clean negative and one a guard failing open.
+
+**(a) `HARNESS_NOPROGRESS` 500 -> 3500 clears NOTHING.** Every stuck game spends exactly 500 actions
+on the level it cannot pass and then the run ends — `is_done` returns True at
+`_steps - _last_clear_step >= no_progress`. That looked like a budget being thrown away, because the
+per-game budget is 4000 and dc22's own oracle clears 6/6 in 566 actions. And ⛔ in RHAE an UNCLEARED
+level scores zero however long it runs, so more actions there cannot cost score — the change is pure
+upside if it works at all. It does not:
+
+```
+              no_progress=500          no_progress=3500
+bp35     0.2220 lv5   740a        0.2220 lv5  3787a
+dc22     0.7143 lv5   925a        0.7143 lv5  3928a
+lf52     0.2727 lv5   823a        0.2727 lv5  3828a
+s5i5     0.5833 lv6   694a        0.5833 lv6  3709a
+wa30     0.8000 lv8  1091a        0.8000 lv8  4000a
+```
+
+Seven times the actions, five games, not one extra level. ⭐ The knob was ALREADY THERE
+(`scripts/score_efficiency.py:128`) — rule 7b's sweep found it in one grep — and corroborated
+independently the same hour by the dc22 agent, which had measured 54,000 blind actions on that level
+clearing nothing. **The wall is not a budget.**
+
+**(b) ⛔ A GATE PRINTED "no game regressed" OVER TWENTY-FIVE MISSING GAMES.** The allowance gate's
+runs all died on `ModuleNotFoundError: No module named 'arc_agi'` — `uv run` inside the snapshot
+BUILDS A FRESH ENV, because the snapshot carries no venv and no pyproject. `compare.py` printed
+every row as `(missing)`, skipped them all, and finished with its pass line.
+
+That is the third fail-open guard in this repository's history and they all read identically: the
+bash-3.2 `wait -n` throttle that reported success while throttling nothing, the audit script that
+reused stale frames and called a working tool a zero-bidder, and this. **A guard that cannot see must
+SAY SO.** `compare.py` now returns NO VERDICT when any baseline game is missing, `snapgate.sh` links
+the venv, proves the snapshot is not shadowed, and refuses to reach the comparator below 25 results.
+Both verified in both directions — the empty round now refuses, the real one still passes and says
+how many games it compared.
