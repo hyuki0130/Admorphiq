@@ -1474,3 +1474,44 @@ them loses more than level 6 returns. That asymmetry, not the mechanic, is what 
 on read as unstandable after a warp landing", and `standable_here` is TRUE at all five cells. **The
 claim survived; the explanation did not** — and it committed the correction rather than quietly
 replacing it.
+
+### 7al — "34 of L2's 87 actions are walled-in" was my briefing and it is REFUTED (2026-08-30)
+
+I read bp35's L2 decomposition as "7 discovery + 34 WALLED-IN + 43 clear" and assigned `_stranded` as
+the whole remaining headroom. Measured, wrapping `_act` and `_stranded` and driving through the
+scorer's own `run_game`:
+
+```
+board 2   85 crag turns:  81 explore route · 2 exit route · 1 measure · 1 WALLED IN
+board 5   45 crag turns:  43 explore route · 1 exit route ·            1 WALLED IN
+```
+
+⛔ **The whole 726-action run strands TWICE, and the body is inside the pocket for ONE turn on board 2
+and TWO on board 5 — not 34.** The 34-action attempt is 33 actions of ordinary exploration and then
+one turn where `_search` returns nothing and `_stranded` ends it, which is what it is for. I had read
+"the attempt that ended in a strand" as "the actions spent stranded".
+
+⭐ **AND THE LOST ATTEMPT IS NOT WASTE.** The map does not shrink on a restart, so cells-known-per-turn
+settles it. Board 2: attempt 1 `100 → 180`; **attempt 2 — the walled-in one — `180 → 320`, 140 of the
+board's 370 cells**; attempt 3 `320 → 320` for forty turns, then `320 → 370` and the clear.
+**Deleting attempt 2 does not leave attempt 3 intact.** This is the lf52 lesson in a second form: the
+veto was correct, and so was the attempt it ended.
+
+⛔ AND A PRE-ENTRY VETO HAS NOTHING TO KEY ON. A dead end cannot be asserted over an incomplete map,
+so the test is a boundary count and not a search. Board 2's pocket is ONE state with 3 known-solid
+neighbours and **1 unknown-or-open**; board 5's are 4 and 2. **The region is never provably closed
+even AT strand time** — `_region` follows what walking can reach, and what walking cannot leave still
+has an open neighbour beside it. Recomputing under both gravity axes changes the region and not the
+verdict.
+
+⚠️ THE ONE DISCRIMINATOR THAT SURVIVED, offered as a correlation and not a cause: total flat turns
+FAIL (board 3 is flat 39 of 45 turns and scores 0.9560), but the longest UNBROKEN flat run separates
+cleanly — 4 → 1.0000, 5 → 1.0000, 10 → 0.9560, 25 → 0.5147, 40 → 0.3044. ⛔ And the 40-turn plateau
+lies INSIDE the attempt that clears in 43 against a human 48; a flat map during a long walk to a known
+exit is also what a correct traversal of a 39-row board looks like. The open question is whether those
+turns REVISIT states or traverse new ones — only the first is waste.
+
+⚠️ AND `crag.detect` IS NOT IN THE `railpeg` FAMILY, checked rather than assumed: diffing every
+instance attribute across every `detect` call over a whole run, exactly ONE call mutated — the
+documented pitch latch on the first frame. `_idle`, `_mute`, `_refuted` are untouched because only
+`_quit` writes them and `detect` never calls it.
