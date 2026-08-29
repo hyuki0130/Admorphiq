@@ -767,3 +767,30 @@ part of the search state, and plan over (position, tile-state) instead of positi
 
 ⚠️ Every claim here was checked before anything was built — the discipline this round learned after
 thirteen repairs that were built first and measured inert.
+
+### ⛔ AND THE SWITCH IS NOT THE BLOCKER — the payoff test, before any build
+
+The mechanic is real, reachable and fully specified. The one thing left unverified was whether
+DRIVING it opens the level. Pressing the switch k times and handing the board back to the tools:
+
+```
+switch pressed 0x -> levels_completed 5
+switch pressed 1x -> levels_completed 5
+switch pressed 2x -> levels_completed 5
+switch pressed 3x -> levels_completed 5
+```
+
+**No tile state clears the level.** All four were tried; the game does not advance in any of them.
+
+So dc22's cycling tile is a real mechanic that gantry genuinely cannot model — and modelling it would
+not have cleared the level. A tool built on this specification would have been the round's fourteenth
+wasted repair, and the test that prevented it cost four runs and no code.
+
+**What this leaves**: dc22's level 6 stops the game for a reason still unfound. The tile was the only
+thing the source singles out about that level (`if self.level_index == 5:` appears exactly once), so
+the next question is what ELSE differs — nine other sprite families appear only there, and none has
+been looked at.
+
+⚠️ Note the shape, because it recurs: a mechanic that is genuinely new, genuinely unmodelled, and
+genuinely NOT the blocker. bp35's crumbling platform has not been tested this way, and the same
+question is open there.
