@@ -691,3 +691,27 @@ That leaves the second route as the only one with a plausible size: fuel knowled
 the HARNESS rather than of whichever tool happens to hold the fogged level. That is not a two-line
 change, and this round has now established what it would have to carry — the gauge colour, the
 refill glyphs, and the fact that a full tank plus a teleport means a death.
+
+## dc22 level 6 — COLOUR-CYCLING TILES, and it is the round's best target (2026-08-29)
+
+Ranked by what one more level is worth, dc22 leads at **+0.0114** — its next level is its LAST, so
+clearing it takes the game from 0.7143 to 1.0000. Read from `environment_files/dc22/*/dc22.py`:
+
+- The levels differ in exactly one setting: `StepCounter` 128, 192, 192, 192, 512, and **1024 for
+  level 6**. The game itself budgets level 6 at five times level 1.
+- Comparing sprite families per level, **ten appear only on level 6**, and three of them are one
+  group: `tewfutpibpar`, `tewfutyefmyf`, `tewfutblrmbx` (plus `tewfutrefgps`).
+- Those are 2x2 checkerboards of colours 9 and 10 in two phases, `collidable=True`, tagged
+  `tewfut-color-cycle`, and `mzuiagpcmy` advances one to the NEXT entry of
+
+```
+awhuyiogsr = ["tewfutpibpar", "tewfutrefgps", "tewfutyefmyf", "tewfutblrmbx"]
+```
+
+**So level 6 introduces tiles that cycle through four types in a fixed order.** They exist on no
+earlier level, which is why the five levels before it clear and this one does not: `gantry` routes
+to a goal cell over static terrain and has no model of a tile whose type advances.
+
+⚠️ Same shape as bp35's crumbling platform, found the same way and in the same number of reads: the
+level that stops a game introduces exactly one mechanic the tool has never met. That is now TWO for
+two — worth treating as the first thing to check on any stuck level.
