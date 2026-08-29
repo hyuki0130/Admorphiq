@@ -1,0 +1,8 @@
+lf52: 5 levels in 824 actions   acted {'railpeg': 622, 'graph': 184, 'pegjump': 15}
+   L1: paid    8  won in   8 (8 clicks, 0 moves)  binned   0  human   32   [8c]
+   L2: paid   52  won in  52 (21 clicks, 31 moves)  binned   0  human   81   [52c]
+   L3: paid   60  won in  60 (40 clicks, 20 moves)  binned   0  human   60   [60c]
+   L4: paid   64  won in  64 (46 clicks, 18 moves)  binned   0  human   71   [64c]
+   L5: paid  139  won in 139 (49 clicks, 90 moves)  binned   0  human  205   [139c]
+   scored 0.2727   ceiling if no attempt were binned 0.2727   -> the cost is SEARCH
+EXIT=0
