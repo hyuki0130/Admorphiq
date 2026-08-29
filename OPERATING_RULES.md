@@ -3053,3 +3053,39 @@ writing the rule cost a minute and moved the claim from a wrong attribute to the
 (`_stuck`), which happens to make the same point more sharply. **Read the assignment sites, not the
 name** — an attribute called `_handover` in a tool about handing over is exactly the shape that gets
 believed on sight.
+
+### 7bu — the duplicate-env hazard recurred and was INERT (2026-08-30)
+
+The r59s15 incident — stale duplicate version dirs sharing one `game_id`, the loader picking by
+filesystem order, a game scored against content the other machine does not have — **recurred**.
+ceph-build's `environment_files/sk48` held TWO version dirs where the Mac holds one:
+
+```
+41055498/sk48.py  44925 bytes  md5 9880b46…   downloaded 2026-04-20   ← the Mac's only copy
+d8078629/sk48.py  44840 bytes  md5 d31e19a…   downloaded 2026-07-15   ← box only
+both metadata.json declare  "game_id": "sk48-d8078629"   ← same id, different bytes
+```
+
+⛔ **`score_efficiency.py`'s `--titles` filter dedupes on `game_id` (`seen_ids`), so it keeps whichever
+came first out of `rglob` and silently discards the other.** The recorded `game_id` in the result
+JSON is identical either way, so **the artefact cannot tell you which one ran** — the provenance
+field that exists is exactly the one that cannot answer the question.
+
+⭐ **AND THE ANSWER WAS INERT — MEASURED, NOT ASSUMED.** Both arms run alone at the gate's own budget:
+
+```
+41055498   1.0000   8 levels   14 · 30 · 34 · 27 · 41 · 56 · 41 · 27 actions
+d8078629   1.0000   8 levels   14 · 30 · 34 · 27 · 41 · 56 · 41 · 27 actions   ← identical
+```
+
+Action-for-action identical on all eight levels, so no gate on this box was ever corrupted and
+`sk48 = 1.0000` stands under either source. The duplicate is archived anyway (both machines back to
+25) because parity that holds by luck is not parity.
+
+⚠️ **THE RULE IS ABOUT THE ORDER I DID THIS IN.** The temptation was to record "the box loads a
+different sk48, the number is suspect" the moment the two md5s differed — a scary, plausible,
+UNMEASURED claim, and it would have thrown doubt over every gate this week. Two arms and four
+minutes turned it into a closed hazard. ⛔ **A discrepancy is not yet a defect: run the arm that
+prices it before writing it down.** Same shape as the parks that turned out to be measurement
+artefacts (CLAUDE.md's "verify-don't-trust" note) — but pointed the other way, at a false ALARM
+rather than a false wall.
