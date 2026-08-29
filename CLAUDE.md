@@ -27,6 +27,39 @@
 > whole days.
 
 
+> ## ⛔ 0.8935 — AND THE REMAINING 0.1065 IS NOT MADE OF FIXABLE DEFECTS (2026-08-29)
+>
+> **Generic tools alone, full 25 on ceph-build: `0.8935`, SEVENTEEN at 1.0000, cumulative
+> regressions ZERO, both machines byte-identical.** Round R101SILENT spent a day on the remaining
+> eight and moved the score by NOTHING. What it bought is a map of why, and that map is worth more
+> than another attempt at the same walls: [[.wiki/wiki/rounds/r101_silent-specialists.md]].
+>
+> **Where the 0.1065 sits — decompose before digging.** From the scorer's own per-level output:
+> **depth 0.0919, efficiency 0.0147.** ls20 (0.8442), lp85 (0.9099) and re86 (0.9908) have ZERO
+> depth loss — they clear EVERY level and are merely slow. Reading a stuck game as one number hides
+> that; `per_level` in `scripts/rounds/*/games/*.json` shows it in one command.
+>
+> ⛔ **Every stuck game retires its specialist through the EMPTY path** — the tool proposes NOTHING
+> at the level that stops it, and the general searcher inherits the remaining ~500 actions. The
+> tools' MODELS are correct, checked line by line against each game's own win predicate.
+>
+> ⛔ **THIRTEEN repairs built, measured and reverted** — patience x2, alignment threshold, shift
+> range, pitch re-fit, tool revival, map-drop-on-flip (cost 0.12), admissibility bypass, shape
+> matching, probe-order memory, lethal-glyph probing, vocabulary carry, switch-reset, gauge speed-up.
+> Each one verified to have actually taken effect. **The obvious defects were already found and fixed
+> by whoever wrote these tools' docstrings** — read the docstring before concluding a tool lacks
+> something; twice this round it already had it (crag's vocabulary probe, fogscout's fuel model).
+>
+> **Mechanics recovered from the games' OWN SOURCE, which ended in one read what frame probes could
+> not**: lf52 is peg solitaire (select a pad, land two cells away, win at 2 pads) and its level 6 has
+> no adjacent pair, so NO legal capture exists; bp35 level 6 adds one crumbling platform whose four
+> shrinking sprites read as four glyph kinds; ls20 is a FUEL game (42 units at 2/action, refill by
+> touching a colour-11 ring, three lives, restart-to-start) whose level 7 is the only fogged one.
+>
+> ⚠️ **TWELVE instrument failures in one round, all one family**: an instrument returning a plausible
+> number for a quantity it is not measuring. A centroid read as an avatar gave "the floor is 12 vs
+> 302 walked". Rules 7c and 7d in `OPERATING_RULES.md` carry the survivors.
+
 > ## ⛔ 0.8929 — 17/25 AT THE CAP, AND HOW THE GAINS WERE ACTUALLY FOUND (2026-08-29)
 >
 > **Generic tools alone, full 25 on ceph-build: `0.8929`, SEVENTEEN at 1.0000, cumulative
