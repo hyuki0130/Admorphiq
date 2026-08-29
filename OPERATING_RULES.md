@@ -2893,21 +2893,48 @@ tenure-ending events in the ENTIRE corpus:   9      (EMPTY 7 · STALL 2)
 games that NEVER end a tenure:              20 of 25
 total propose round-trips:               7,049
 empty proposes among them:                  70      = 1.0%
-runs of consecutive empties that RECOVERED: 16      (fifteen of length 1, one of length 7)
-runs that reached 8 and retired:             6
+runs of consecutive empties that RECOVERED: 15      — EVERY ONE OF LENGTH 1
+runs that reached 8 and retired:             7
 ```
 
 ⛔ **Twenty of twenty-five games are played start to finish by ONE tool and never hand over at all.**
 The mechanism I called "the last axis" fires nine times in the whole set. There is no distribution to
-tune — `_EMPTY_TOLERANCE` decides six outcomes.
+tune — `_EMPTY_TOLERANCE` decides seven outcomes.
 
-⭐ AND THE SHAPE ANSWERS THE "IS 8 THE RIGHT NUMBER" QUESTION WITHOUT AN ARM: **fifteen of the sixteen
-recovered runs are length ONE.** The empties do not creep toward the threshold and stop — a tool
-either blips once or goes silent for good. Only one run of length 7 ever came back. **A tool that has
-proposed nothing eight times running really has run out**, which is why both "retire later" (the
-`hold` arm, inert) and "retire sooner" (evidence-gated, LOST ls20 a level) were refuted.
+⭐ AND THE SHAPE ANSWERS "IS 8 THE RIGHT NUMBER" WITHOUT AN ARM: **every one of the fifteen recovered
+runs is length ONE, and runs of length 2–7 do not exist anywhere.** A tool blips once or goes silent
+for good; there is nothing in between. **A tool that has proposed nothing eight times running really
+has run out**, which is why "retire later" (the `hold` arm, inert) and "retire sooner"
+(evidence-gated, LOST ls20 a level) were both refuted.
 
-⚠️ AND THE DIAGNOSTICS AT THE SIX RETIREMENTS SAY THE SAME: bp35's `crag` has `_refuted` False,
+⛔ **AND THE ARM I CALLED UNNECESSARY WAS RUN ANYWAY, CORRECTLY** — because *"no value beats 8"* and
+*"8 was never compared"* are different claims and only one was true. Seven tolerance arms × 25 games
+= 175 runs, the shipped arm reproducing every banked per-level count:
+
+```
+arm       tol1     tol2     tol4    tol8=SHIPPED   tol16    tol32    perT8
+MEAN    0.7756   0.9017   0.9049      0.9082      0.9017   0.9017   0.9082
+moved       5        1        1           -           1        1        0
+```
+
+**8 is the measured ARGMAX and every other value loses.** Outside `tol1` the ONLY game that ever
+moves is ls20 — on 24 of 25 the lever's dynamic range is exactly **ZERO**. ⚠️ And `tol1` prices the
+fifteen singles: they become fifteen retirements and **ar25, ft09 and re86 fall from 1.0000 to
+0.0278, 0.0476 and 0.0278** — three games that never end a tenure at all under the shipped value.
+
+⭐ **THE NUMBER THAT ACTUALLY CLOSES IT: SIX OF THE SEVEN EMPTY RETIREMENTS LAND ON A LEVEL THE GAME
+NEVER CLEARS** — bp35 L6 of 5, s5i5 L7 of 6, lf52 L6 of 5 four times over. Scored zero however they
+are spent (rule 7ax's shape). The seventh is ls20's, already swept to invariance. **The entire empty
+channel has one game's worth of score attached and that game is measured flat.**
+
+⚠️ AND A DEFECT FOUND IN THE CORRECTION: **`_empty_runs` is AGENT-scoped, not tenure-scoped** —
+nothing in `_reset_level` or `_redecide` clears it, so lf52's `llm_goal` inherited `graph`'s trailing
+single and was retired at seven of its own empties. That is what the earlier "one recovered run of
+length 7" really was. ⛔ The fix (`perT8`) is **EXACTLY INERT — all 25 identical in score AND action
+count** — so it is reported and NOT shipped (rule 7o): correctness with no measured benefit, weighed
+against exposure on the private 110.
+
+⚠️ AND THE DIAGNOSTICS AT THE RETIREMENTS SAY THE SAME: bp35's `crag` has `_refuted` False,
 `_mute` 0, `_idle` 8 — the harness fires at exactly half the tool's own 16-idle patience — but its
 map is 15 known cells against a board it cannot stitch. lf52's `railpeg` retires with `_elsewhere`
 True and `_barren` 0. **These are tools that cannot read the board, not tools that were interrupted.**
@@ -2928,9 +2955,20 @@ with backticked identifiers and every one of them is a command substitution wait
 ### 7br — I briefed two agents onto the same axis and a peer closed it under both (2026-08-30)
 
 Within twenty minutes I sent one agent at "why does `pegjump` hold 19 of 500 on lf52" and another at
-"tenure as a general defect across the 25". **They are the same question at two scales**, and a third
-agent — already working — landed the corpus-wide census that answered both while they were still
-setting up. Two agents spent box time on a closed axis and I had to stop them.
+"tenure as a general defect across the 25". **They are the same question at two scales.**
+
+⛔ **AND THE CORRECTION IS WORSE THAN THE ORIGINAL MISTAKE.** I then read the corpus-wide census
+commit (`1bbc1f42`) as a THIRD agent's work, wrote rule 7bq from it, and told the agent that produced
+it to stop — **against its own result.** Its reply: *"there was no peer census; the numbers you quoted
+back are verbatim my census output. So the axis has had ONE look, not two, and 'two agents reached
+the same verdict by different routes' does not apply."* ⚠️ **Attributing an agent's finding to a
+peer destroys the very thing that makes a second look valuable** — I had recorded a single
+measurement as two independent confirmations.
+
+⭐ It then ran the arm I had called unnecessary, **because "no value beats 8" and "8 was never
+compared" are different claims and only one was true**: 7 tolerance arms × 25 games = 175 runs, the
+shipped `tol8` reproducing every banked per-level count. **8 is the measured ARGMAX and every other
+value loses.**
 
 ⛔ **THE COST IS NOT THE DUPLICATION, IT IS THE STOPPING.** Both were mid-instrument; both now have
 to bank a partial result and stand down, which is exactly the outcome rule 0 exists to prevent
@@ -2946,7 +2984,9 @@ one assignment. This is the third coordination cost in two days — two agents w
 IDENTICAL path (rule 7t), three rule numbers collided (fixed by `scripts/newrule.sh`), and now this.
 
 ⭐ AND THE CONSOLATION IS REAL, so a stopped agent should still report: **a negative that arrives
-after the axis is closed is the SECOND INDEPENDENT LOOK.** Twice this round two agents reached the
+after the axis is closed is the SECOND INDEPENDENT LOOK — **but only if it really is a second one.**
+⛔ Check the commit's author before calling a result a confirmation; I called an agent's own census a
+peer's and briefed it to stop against itself. Twice this round two agents genuinely did reach the
 same verdict by different routes — the ls20 handover (a sixteen-arm sweep and an A/B isolation) and
 the `crag` retirement (a shadow census and an offline replay) — and that is the strongest form a
 verdict comes in.
