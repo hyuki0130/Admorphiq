@@ -2720,16 +2720,25 @@ avatar cell   panel hash   the ONE drive that answers    delta     further press
   sixty-nine presses, zero cross-talk, and the second and third presses stop the moment the drawn
   track ends — which is the `vcha` gate showing itself. The whole crane is learnable from ONE warp
   landing at (57,34) for about sixteen presses and ten moves.
-* ⛔ **`_plan_full` CANNOT ROUTE INSIDE THE WARP POCKET, and that is a tool defect rather than a
-  board fact.** It called all eight plate cells unreachable from the start cell (49,28) — correct,
-  the pocket is reached only through the aimed teleport — but it ALSO called every one of them
-  unreachable from (51,32) and from (57,34), *inside the pocket*, including the cell the avatar had
-  just left. The reason is the tool's own conservatism: "cells it has never left stay unknown and
-  are read as the board's ground, which is not standable", so a warp landing puts the avatar in a
-  region where nothing is known standable and no route exists to anywhere. Raw simple moves along
-  the tool's own measured `_deltas` walk between all four plates without trouble — which is how the
-  table above was produced. **Any build on this level needs the world model to seed standability
-  around a warp landing, or the planner will refuse to take one step.**
+* ⛔ **THE UPSTREAM CAUSE: the floor rule condemns the tiles the plates are drawn on.** The
+  planner refuses to move inside the plate cluster — `_plan_full` returns a plan of length **0** to
+  every one of the four plates, from every one of the five cells, while the raw two-move walk
+  between exactly those cells succeeds every time. Standing at (57,34), in the middle of the
+  cluster, the tool believes **none of its four one-step neighbours is standable**
+  (`nbrs_in_grid` all false, `deltas` complete at ±2, `step` 2, `settled` true).
+
+  The chain: `_learn_refusal` condemns COLOURS, and at the cluster `_not_floor` holds **`[0, 5]`**;
+  every `njvd-rolo` plate is a 2x2 sprite drawn **`[[1,0],[0,C]]`** (C = 12/15/14/10) and therefore
+  CONTAINS colour 0; `_standable` refuses any avatar-sized window carrying one condemned pixel. So
+  the tool cannot plan a route to, through, or out of the cells the mechanic requires it to stand
+  on — and the crane's four drives are unreachable BY PLAN even though every one of them works.
+
+  ⚠️ **A correction to this page's own first version, made the same day.** The refusal was first
+  explained as "cells never stood on read as unstandable ground after a warp landing". That is
+  wrong: `standable_here` is **true** at all five cells, with 11-29 standable cells in each 13x13
+  window. The claim survived; the explanation did not, and it was only caught by asking the tool's
+  floor rule about the cell the avatar was demonstrably standing in. **A mechanism that explains a
+  measurement is not thereby the mechanism.**
 
 ### One repair built, measured and NOT committed
 
@@ -2744,8 +2753,10 @@ re-ask has nothing to re-ask after. Correct in principle, inert here, so it stay
 
 ```
 (a) a route to the plate cluster        exists ONLY through the aimed teleport (unlocked by a key)
-(a2) standability after a warp          MEASURED BLOCKER: _plan_full refuses every cell in the
-                                        pocket, so the tool cannot walk between plates at all
+(a2) the FLOOR RULE                     MEASURED BLOCKER and the upstream one: `_not_floor` holds
+                                        colour 0, every plate is drawn with colour 0 in it, so
+                                        `_standable` condemns the cells the mechanic needs and
+                                        `_plan_full` returns length 0 between all four plates
 (b) a per-control PRECONDITION          "this click is live only at cell P" — measured 1:1 for all
                                         four plates, each with its own panel hash
 (c) a rail that is a DRAWN TRACK        MEASURED: up 1 step, down 2, left 1, right 2 from the

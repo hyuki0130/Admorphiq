@@ -101,7 +101,39 @@ def instrument(per_cell: int):
         if S["phase"] == "route":
             if here == want:
                 S["phase"], S["left"] = "press", per_cell * 4
-                OUT.append({"ARRIVED": list(want), "panel": ph})
+                # ⛔ Ask the tool's OWN floor rule about the cell the avatar is demonstrably
+                # standing in.  If it answers "not floor", the rule is wrong here and that — not
+                # the board — is why `_plan_full` refuses to move inside the warp pocket.
+                lay = self._world(board, self._config(), self._off)
+                grid = self._standable(lay)
+                win = [(y, x) for y in range(max(0, here[0] - 6), min(grid.shape[0], here[0] + 7))
+                       for x in range(max(0, here[1] - 6), min(grid.shape[1], here[1] + 7))
+                       if grid[y][x]]
+                OUT.append({"ARRIVED": list(want), "panel": ph,
+                            "standable_here": bool(grid[here[0]][here[1]])
+                            if here[0] < grid.shape[0] and here[1] < grid.shape[1] else None,
+                            "standable_in_window": len(win),
+                            "floor_colour_here": int(board[here[0]][here[1]]),
+                            "bg": int(self._bg), "not_floor": sorted(self._not_floor),
+                            "visited": len(self._visited),
+                            # ⛔ The claim "the planner cannot route inside the pocket" was first
+                            # made from an arming cell in a DIFFERENT pocket. Ask it here, where
+                            # the raw walk demonstrably works, before believing it.
+                            "plan_len": {f"{t[0]},{t[1]}":
+                                         len(self._plan_full(board, here, {t}))
+                                         for t in ((55, 34), (59, 34), (57, 32), (57, 36))
+                                         if t != here},
+                            "deltas": {str(a): list(d) for a, d in sorted(self._deltas.items())},
+                            "step": int(self._step()),
+                            "settled": bool(self._settled_model()),
+                            # Which of the avatar's own one-step neighbours the tool believes it
+                            # may stand in.  If this is empty the BFS cannot leave the origin and
+                            # every goal is "unreachable" for a reason that is not the goal.
+                            "nbrs_in_grid": {str(a): bool(
+                                0 <= here[0] + d[0] < grid.shape[0]
+                                and 0 <= here[1] + d[1] < grid.shape[1]
+                                and grid[here[0] + d[0]][here[1] + d[1]])
+                                for a, d in sorted(self._deltas.items())}})
                 return propose(self, frames, obs)
             # ⛔ Not `_plan_full`: from a warp destination the tool's own world model calls every
             # cell unreachable — including the one the avatar came from — because a cell it has
