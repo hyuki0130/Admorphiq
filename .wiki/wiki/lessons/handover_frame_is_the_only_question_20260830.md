@@ -66,3 +66,4 @@ side-effect-free. The handover probe, which samples only at decisions, is exact 
 ## Related
 
 - [[detect_is_not_a_plan_claim_20260830]] — what the bids at those frames turned out to mean
+- [[detect_must_not_spend_the_tool_20260830]] — the tool the side-effect note above names, found by bisecting one arm per tool: `railpeg`, and `detect` spends its give-up budget

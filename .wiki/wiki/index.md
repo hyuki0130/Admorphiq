@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 271.
+**Total pages**: 273.
 
 ## Games (26)
 
@@ -102,7 +102,7 @@ category, drill into specific pages.
 - [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (61)
+## Lessons (engineering wisdom from past incidents) (62)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -116,6 +116,7 @@ category, drill into specific pages.
 - [[lessons/dc22_confined_avatar_discriminator_falsified_20260713.md]] — Discovery incident log for the `tools/graph_search.py` region-mask family
 - [[lessons/deployment_path_is_not_the_measured_path_20260826.md]] — The benched configuration and the shipped one differ; a number measured on one is not a number about the other.
 - [[lessons/detect_is_not_a_plan_claim_20260830.md]] — One number is asked two questions, and the two disagree at exactly the moment that matters —
+- [[lessons/detect_must_not_spend_the_tool_20260830.md]] — `detect` is a question. One tool answers by moving — and what it moves is the counter that
 - [[lessons/duck_harness_teardown_20260714.md]] — The Duck (Tufa, M1 #1, 1.21%) is a Qwen 3.6 27B FP8 code-REPL agent: the game is
 - [[lessons/dynamic_obstacle_execution_20260723.md]] — A moving obstacle poisons EVERY static inference layer in turn — wall
 - [[lessons/env_metadata_duplicate_game_id_20260719.md]] — 15 of 25 games kept a stale old-hash dir whose metadata.json claimed the NEW game_id; arc_agi resolves duplicate ids by rglob scan order, so APFS (Mac) and ext4 (ceph-build) silently loaded DIFFERENT game content under the SAME reported game_id.
@@ -186,7 +187,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (122)
+## Top-level dispatch (architecture, selector, log, schema) (123)
 
 - [[campaign/ACTIVE.md]] — The plan that survives a context compaction. Read this before choosing a direction.
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
@@ -278,6 +279,7 @@ category, drill into specific pages.
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
 - [[rounds/r101_allowance-ledger.md]] — (no description)
 - [[rounds/r101_bp35-attempts.md]] — bp35's seven collapses are seven DIFFERENT attempts, so the wa30 mechanism does not apply. The
+- [[rounds/r101_conquest-wave.md]] — Eight parallel per-game agents took the generic tools from 0.8935 to 0.9069 in a day, conquering
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
 - [[rounds/r101_probe-fallback.md]] — A fallback that always pressed the lowest-numbered key spent 83 of lf52's 117 refused ACTION1
 - [[rounds/r101_silent-specialists.md]] — Every stuck game retires its specialist because the tool proposes NOTHING, and five separate

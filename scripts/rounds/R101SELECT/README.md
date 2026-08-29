@@ -206,3 +206,94 @@ limit, not a licence.**
 lf52 from 823 to 827 actions while leaving its score identical. `detect` is supposed to be a
 question, not a move. WHICH tool is unmeasured and is worth its own run: bisect by sampling one
 tool's `detect` at a time on lf52 and comparing the action count against 823.
+
+
+---
+
+# Part 3 — WHICH tool's `detect` is not side-effect-free? It is `railpeg`.
+
+Part 2 left an honesty note: the every-10th-action sweep moved lf52 from **823 to 827** actions,
+score identical, so at least one tool answers a question by moving. `scripts/_select_detectfx.py`
+bisects it — one arm per registered tool, all arms in one fan, plus two controls.
+
+⛔ **BOTH CONTROLS ARE THE POINT.** Without the negative control an all-clean fan is
+indistinguishable from a fan that measured nothing; without the positive control a clean result may
+just mean the perturbation stopped reproducing.
+
+```
+CONTROL  sample nothing   expect 823   got 823   OK
+CONTROL  sample all 47     expect 827   got 827   OK   <- reproduces at HEAD
+```
+
+```
+OFFENDERS (1 of 47 tools measured)
+  railpeg            827 actions   delta +4   score 0.272727   83 samples
+
+CLEAN at exactly 823 (46): assemble blastclock clonewalk cover_targets crag cyclepress deadsig dealias decouple fogscout gantry graph haul hop keymaze lattice_maze linkage llm_goal maze mirror orderforge paint pattern_cast pegjump phase_grid pillar_transfer progbits reflect_cover reforge rule_rewrite shepherd sigilgate slotlaunch sluice socketmerge spill stamppaint stencil subroutine swivel telescope tether toggle track tube_order world_model
+unused arms: 1
+```
+
+**ONE tool accounts for the ENTIRE perturbation, and it is lf52's own incumbent.**
+
+## What `railpeg.detect` mutates
+
+`src/admorphiq/tools/railpeg.py`. `detect` is four lines and two of them mutate:
+
+- `:1482` `self._peaked = max(self._peaked, len(m.pieces))` — a high-water mark.
+- `:1485` `return self._ensure_plan(m)` — **`detect` runs the PLANNER.** `_ensure_plan` returns
+  early only when a plan already exists (`:1312`), so when the plan is empty — exactly when the
+  tool has just spent it — an extra `detect` builds and STORES a plan against a frame the tool was
+  never asked to act on, and on the way:
+  - `:1343` `self._sincecapture += 1`, which gates `:1334 stuck = self._elsewhere and
+    self._sincecapture >= _LOCAL_PATIENCE`, and `_LOCAL_PATIENCE` is **3**;
+  - `:1402` `self._barren += 1`, which gates `:1370 if self._barren >= 3` — the tool's own give-up;
+  - `:1326` `self._elsewhere = True`, `:1327 self._claiming = False`.
+
+⛔ So **asking `railpeg` whether it recognises a board spends a third of the patience that decides
+when it stops proposing and hands the board over** — the very handover part 1 of this round
+measured. On lf52 level 5 `railpeg` retires through the EMPTY path.
+
+⭐ **The defect is a known one, half-fixed, in the same file by the same author.** The other thing
+`detect` calls, `_sync`, already carries an explicit idempotence guard at `:1073`: *"⛔ Idempotent
+per frame. The harness asks `detect` and then `propose` about the SAME board, and this method LEARNS
+— running it twice makes a frame look as if it had settled ... and installs a stale board over a
+correct model."* `_ensure_plan` was left unguarded. `pegjump` has the identical structure and
+measures CLEAN here, which is the next point.
+
+## The population is far larger than the arm that fired
+
+`bash scripts/detect_purity_scan.sh` — grep only, no engine, no box:
+
+```
+railpeg  26   pegjump 24   tube 15   haul 12   reforge 10   paint_flood 5   socketmerge 3
+crag 3   orderforge 2   cover_targets 2   + 9 more at 1
+19 of 49 tools have a detect that reaches a mutating line
+```
+
+⚠️ Most of those score a clean 823 here only because they early-return on a board that is not
+theirs — `pegjump` is the proof, same code shape as `railpeg` and clean on this game. ⛔ **The eval
+is 110 boards nobody has seen and the tool set is the same one, so "clean on lf52" is not "pure".**
+
+⭐ `socketmerge` is the pattern worth copying and it is already in the tree: `detect` saves the state
+tuple, mutates freely while reading, and restores it in a `finally` — pure by construction rather
+than by luck. A line-counting scan cannot tell that apart from a real leak, which is why the scan
+reports and never fails.
+
+## ⛔ What this does NOT license
+
+Rule 7o. `detect`-then-`propose` on the same board is the harness's NORMAL call pattern, so
+`_ensure_plan` running inside `detect` and being reused by `propose` is plausibly load-bearing for
+the tool's efficiency — the plan is deliberately built one call early. A naive "make detect
+read-only" could cost a plan per action. Only the full-25 gate can decide it, and `railpeg` belongs
+to whoever owns lf52.
+
+The narrow claim that IS established: **an instrument sampling `detect` more often than the harness
+does is measuring a run it perturbed, and it will not look wrong.**
+
+⚠️ **One instrument note from this fan, because it nearly corrupted the write-up.** Two background
+waiters were redirecting the box's results to the SAME temp path, and the second one truncated the
+file while the append script was reading it — the script died on a missing control key rather than
+silently writing a table with no controls. That it failed loudly is luck, not design: a race that
+drops the OFFENDER rows instead would have produced a clean-looking all-clear. ⛔ Namespace every
+temp path per fan, exactly as `pfan.sh` already forces for its own output after the same class of
+collision cost a peer's results on 2026-08-29.

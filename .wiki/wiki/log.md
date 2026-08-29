@@ -714,3 +714,22 @@ all game, so their inert actions are the specialist's, not the searcher's.
 Pages touched: `lessons/detect_is_not_a_plan_claim_20260830.md`,
 `lessons/handover_frame_is_the_only_question_20260830.md`, `games/{BP35,LF52}.md`.
 Provenance: commit `2081eda0`; `scripts/rounds/R101SELECT/`.
+
+## [2026-08-30 round R101SELECT part 3] `detect` is a question, and one tool answers by moving
+
+Bisected the 823 -> 827 perturbation from part 2, one arm per registered tool over the whole
+registry, with a negative control (sample nothing, must be 823) and a positive control (sample all,
+must be 827) — both exact. **The sole offender is `railpeg`**, lf52's own incumbent: its `detect`
+runs the planner, and `_ensure_plan` advances `_sincecapture` and `_barren`, the two three-unit
+counters that decide when the tool stops proposing. Asking it whether it recognises a board spends
+a third of the patience that produces the handover.
+
+⭐ Half-fixed already by the same author: `_sync` carries an explicit idempotence guard whose comment
+is this exact lesson; `_ensure_plan` was left unguarded. `socketmerge` shows the pattern that works —
+save the state tuple, mutate while reading, restore in a `finally` — and measures clean.
+`scripts/detect_purity_scan.sh` reports 19 of 49 tools whose `detect` reaches a mutating line; most
+are clean on lf52 only because they early-return on a board that is not theirs.
+
+Pages touched: `lessons/detect_must_not_spend_the_tool_20260830.md`, `games/LF52.md`,
+`lessons/handover_frame_is_the_only_question_20260830.md`.
+Provenance: `scripts/rounds/R101SELECT/detect_purity.jsonl` (50 arms, ceph-build).
