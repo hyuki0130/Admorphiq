@@ -31,6 +31,7 @@
 >
 > ```
 > bash scripts/ceph_sweep.sh              # 5 stuck games x every registered tool, 60-way on ceph
+> bash scripts/pfan.sh PROBE.py 60 ARG      # run ANY probe 60-way — the DEFAULT shape of a probe
 > bash scripts/measure_frozen.sh           # score a FROZEN copy — PYTHONPATH does NOT select the code
 > bash scripts/kaggle_bench.sh status      # kernel state, submission history, GPU-run dates
 > bash scripts/kaggle_bench.sh results     # download the last run, print BOTH arms' totals
@@ -48,7 +49,13 @@
 > that a rule DESCRIBES and therefore needs me to decide; a command does not. So the sweep is now a
 > script and this is the first thing in this file.
 >
-> ⛔ **The failure mode is specifically POST-COMPACTION**: after a context compaction I resume the
+> ⛔ **CHECKING IS NOT DOING.** The watchdog tick already says "check whether parallel agents are
+> running". The answer was repeatedly "no" and I carried on serially anyway, because each
+> investigation needs a bespoke probe and I never asked whether it could be sixty processes. Measured
+> 2026-08-29: **76 commits in a day, ZERO surviving source changes, box at load 9 of 64.** If you are
+> about to run a probe once, run it through `pfan.sh` instead.
+>
+> > ⛔ **The failure mode is specifically POST-COMPACTION**: after a context compaction I resume the
 > narrow thread I was on and re-derive the method instead of reading it. The defence is that the
 > default action is a single command at the top of the file a fresh session opens first — not a
 > paragraph in a round page.
