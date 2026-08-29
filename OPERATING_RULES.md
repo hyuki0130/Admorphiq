@@ -1031,3 +1031,43 @@ with no error, is not a game that ended early.
 ⛔ `arcengine.GameAction.RESET` is an Enum MEMBER; `.reset()` is `admorphiq.types`' API. Calling the
 wrong one raises ONLY on a death, so games that never die run clean and games that do exit 0 with an
 empty log. Two silent failures in one afternoon, both on a path only some games take.
+
+### 7y — ask the board by DOING, not by inspecting: the stall oracle (2026-08-29)
+
+lf52's last three plausible tiers all died on contact, so its agent stopped proposing mechanisms and
+asked the position directly. At the first moment railpeg's OWN `_ensure_plan` returns 0.0 — the stall
+is the tool's verdict, not the prober's — one arm per run FORCES one of the moves the tool's own
+successor function offers at that instant, through the harness's own converter so a forced move is
+exactly what a tier would have emitted, then hands control back and measures what it opened.
+
+```
+known 98 · pieces 5 · carts 3 · ABOARD 0 · SIX legal moves and no more
+best move on offer: +1 cell        ALL FOUR DRIVES: 0
+```
+
+⛔ And it refuted the standing hypothesis AT ITS ROOT rather than failing to support it: "get a piece
+onto a cart and drive it outward" requires a BOARDING MOVE TO EXIST, and neither available jump lands
+on a cart. So `ferry_moves` firing zero times was never a defect in the ferry — the position has
+nothing for it. One piece has any legal jump at all; the other four are frozen for want of anything
+to jump over. **The same verdict `refuse_fatal` reaches by search, reached by playing every
+alternative.** Two independent methods agreeing is worth more than either.
+
+**The general instrument is `scripts/_lf52_stall.py`** — "is there any single action that would
+help", answered by doing. Use it before designing a tier. Six measurements on lf52 now say the
+frontier is not what is missing; ⛔ nobody builds a frontier tier for that board.
+
+⚠️ THE CONTROL ARM WAS DEFECTIVE AND ITS AUTHOR STRUCK IT RATHER THAN REPORTING IT: it forces nothing,
+so `known_after` is never written and prints 0 — the variable's initial value, sitting in a column
+beside six real zeros where it reads exactly like a seventh. Seventh instrument in one day to fail
+toward "there is nothing here", and it would have "confirmed" that doing nothing equals the best move.
+
+**Three reusable instruments came out of this round and they are generic to any tool:**
+`scripts/_lf52_spread.py` (does a ranking term actually rank — spread across candidates within ONE
+decision), `scripts/_lf52_restart.py` (raw-frame restart detection, the sound rule-7s test),
+`scripts/_lf52_stall.py` (force each legal move at a stall).
+
+⚠️ `scripts/_restart_census.py` is the coordinator's version of the second and it shipped BROKEN in
+exactly the way rule 7x names: it did not break on WIN, so it kept playing and resetting after the
+game was already won, and reported sc25 — which scores 1.0000 — with **143 GAME_OVERs**. Fixed. It
+was caught only because the number was absurd; on a game that does not win, the same defect is
+invisible.
