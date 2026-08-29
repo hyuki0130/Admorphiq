@@ -9,6 +9,12 @@
 > cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101LP85GATE/games`.
 > SIX games short: bp35 0.2456 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143 · ls20 0.9121 · lp85 0.9767.
 >
+> ✅ **AND THE SHIPPED CONFIGURATION MEASURES THE SAME** (2026-08-30, rule 7bv): `AGENT=kaggle_unified
+> bash scripts/snapgate.sh …` → **0.9082, zero games differing**. `notebooks/kaggle_submission.py`
+> ships `KaggleUnifiedAgent`, so every gain of this campaign is in the notebook. Until today the gate
+> hardcoded `--agent unified` and this file's own "measure the card AS SHIPPED" warning named a flag
+> the runner did not accept.
+>
 > ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
 > CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
 > Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,

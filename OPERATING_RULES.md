@@ -3089,3 +3089,29 @@ minutes turned it into a closed hazard. ⛔ **A discrepancy is not yet a defect:
 prices it before writing it down.** Same shape as the parks that turned out to be measurement
 artefacts (CLAUDE.md's "verify-don't-trust" note) — but pointed the other way, at a false ALARM
 rather than a false wall.
+
+### 7bv — the shipped wrapper measures the same as the bench (2026-08-30)
+
+CLAUDE.md has carried a standing warning for days — *"measure the card AS SHIPPED
+(`--agent kaggle_unified`), not as benched (`--agent unified`); they are different configurations"*
+— and **the gate could not do it**: `--agent unified` was hardcoded in `snapgate.sh`. So the warning
+was unactionable for as long as it had been written down. `AGENT=` now overrides it, and the first
+run of the shipped configuration on the full 25:
+
+```
+AGENT=kaggle_unified bash scripts/snapgate.sh shipped scripts/rounds/R101LF52PART
+MEAN new = 0.9082 over 25      MEAN old = 0.9082 over 25      ZERO games differing
+19 of 25 at the 1.0000 cap.   bp35 0.2456 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143
+                              ls20 0.9121 · lp85 0.9767
+```
+
+⭐ **The wrapper has not drifted from its own scoreboard, and every gain of this campaign reaches
+the notebook.** `notebooks/kaggle_submission.py` ships `KaggleUnifiedAgent` (`f1067554`), so the
+0.9082 is the shipped path's number, not a bench-only one. That closes the gap the card block warns
+about — the one that let a public card multiply while the hidden score did not move.
+
+⚠️ **A WARNING NOBODY CAN ACT ON IS NOT A CONTROL.** The instruction to measure the shipped
+configuration existed, was correct, was load-bearing, and named a flag the tooling did not accept.
+That is the same failure as rule 7bm's guards: written discipline that the commands do not support
+gets skipped, and it looks like carelessness afterwards. **When a rule names a measurement, check
+that the runner takes the argument.**
