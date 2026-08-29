@@ -661,3 +661,23 @@ measurement. **The remaining gap is not made of separately-fixable defects** —
 this round's own shape: thirteen repairs built, thirteen inert or harmful, because the obvious
 defects were already found and fixed by whoever wrote these docstrings. What is left is the
 composition, not any one part.
+
+## The fourteenth repair, SIZED BEFORE BUILDING — and declined
+
+The census showed fifty actions in `map` mode with `goal=False`: a sixth of level 7 spent before the
+exit is even identified. That is a composition fact, not a part defect, and it looked like the round's
+remaining lead. So this time the question was measured BEFORE anything was built:
+
+```
+GOAL identified at action 57; its mark first visible at 46
+```
+
+**The fog held the exit until action 46.** The tool's own recognition delay is ELEVEN actions, not
+fifty-seven — the rest is the game withholding it. Eleven of 302 is 3.6%, which on the squared metric
+moves level 7 from 0.379 to 0.408, the game by +0.007, and the 25-game mean by **+0.0003**.
+
+Declined. Not because it cannot be done, but because it is worth three ten-thousandths.
+
+⛔ This is the first item this round that was sized before it was built. The previous thirteen were
+inferred from behaviour, built, and then measured inert — the same loop each time. The difference
+costs one probe: ask what the repair would be WORTH before asking how to write it.
