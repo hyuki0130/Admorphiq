@@ -527,13 +527,25 @@ class CoverTargetsTool:
         if plan is None:
             # Discovery first: a colour that looks absent from the board may just belong to a
             # piece not met yet, and dipping before then drove one piece onto another.
-            hunt = self._discover(blobs)
+            hunt = self._discover(blobs, pips)
             if hunt:
                 return hunt
             plan = self._scheme(pips, blobs)
         if plan is None:
             self._noplan = True
             return self._park()
+        # ⛔ Serve the piece already in the seat. The plan is ordered cheapest-move-first, and
+        # taking it in that order made the tool cycle PAST a piece that still had work to do
+        # and cycle back for it later: the select control advances one seat per press, so a
+        # visiting order that ignores the ring pays for the detour. Measured on the board this
+        # tool carries: four presses where two would do, on a level that cost 46 against a
+        # human 42. Whoever is seated and still has a move gets it; only a seated piece with
+        # nothing left hands the controls on.
+        seated = next(
+            (v for i, v in plan if i == self._wheel and v != (0, 0)), None
+        )
+        if self._wheel is not None and seated is not None:
+            return self._walk(self._wheel, seated)
         for i, vec in plan:
             if vec == (0, 0):
                 continue
@@ -699,18 +711,28 @@ class CoverTargetsTool:
                 known |= _mask(part)
         return frozenset(blobs.get(colour, set()) - known)
 
-    def _discover(self, blobs: dict[int, set[Cell]]) -> list[Step]:
+    def _discover(
+        self, blobs: dict[int, set[Cell]], pips: list[tuple[int, int, int]] | None = None
+    ) -> list[Step]:
         """No plan yet — finish learning the piece in hand, then take the next one.
 
         A piece is only fully seen once it has moved on BOTH axes: one axis exposes only the
         arms that cross it. So the piece in hand is nudged along the axis it has not moved on
         — and if no action is yet known to push that way, an untried action is spent finding
         one, rather than repeating a move that cannot teach anything new.
+
+        ⛔ The nudge is not direction-free. Measured on the board this tool carries: the nudge
+        took whichever action happened to be first in the learned control map, which sent two
+        of three pieces AWAY from the marks they were about to be walked to — six moves spent
+        going out and coming back on a level that cost 46 against a human 42. A piece that must
+        be moved to be measured can be measured on its way, so the nudge now goes toward the
+        middle of the still-uncovered marks wearing the piece's own colour.
         """
         if self._wheel is not None:
             part = self._parts[self._wheel]
+            goal = self._mark_for(part, pips)
             for axis in sorted({0, 1} - part["axes"]):
-                pick = self._toward(axis, _mask(part), blobs)
+                pick = self._toward(axis, _mask(part), blobs, goal)
                 if pick is not None:
                     return self._emit(pick)
             inward = self._inward(part)
@@ -723,8 +745,64 @@ class CoverTargetsTool:
         blind = self._blind()
         if blind is not None:
             return self._emit(blind)
+        head = self._heading(blobs, pips) if not self._parts else None
+        if head is not None:
+            return self._emit(head)
         known = [a for a in self._effect if a in self._usable()]
         return self._emit(known[0]) if known else []
+
+    def _heading(
+        self, blobs: dict[int, set[Cell]], pips: list[tuple[int, int, int]] | None
+    ) -> int | None:
+        """Which known push carries the driven piece toward a mark, before ANY piece is known.
+
+        ⛔ Only before any piece is measured. Offered on every wheel-less turn instead, it took
+        a game from eight levels to four: with a piece already known the same choice recurs deep
+        in a level, where an action that closes on a mark can be one the board REFUSES, and three
+        refusals retire a control the tool still needs.
+
+        The first move of a level is made with no measured piece at all, so the choice used to
+        fall to whichever action came first in the learned control map. Measured: that was up,
+        on a board where two of the three pieces had to go down, and each such move is paid for
+        twice — once going out and once coming back. The driven piece is not a mystery even
+        then: it wears a single odd-coloured cell at its middle, so the push that closes on the
+        nearest mark of that piece's colour is the one to spend.
+        """
+        want = [(r, c, v) for r, c, v in pips or [] if not self._covered(r, c, v)]
+        if not want or not self._effect:
+            return None
+        goal: tuple[float, float] | None = None
+        here: tuple[float, float] | None = None
+        seat = self._odd[0] if self._odd else None
+        if seat is not None:
+            near = [
+                (min(abs(y - seat[0]) + abs(x - seat[1]) for y, x in cells), colour)
+                for colour, cells in blobs.items()
+                if cells
+            ]
+            if near:
+                mine = [w for w in want if w[2] == min(near)[1]]
+                if mine:
+                    here = (float(seat[0]), float(seat[1]))
+                    pick = min(mine, key=lambda w: abs(w[0] - seat[0]) + abs(w[1] - seat[1]))
+                    goal = (float(pick[0]), float(pick[1]))
+        if goal is None or here is None:
+            cells = [c for group in blobs.values() for c in group]
+            if not cells:
+                return None
+            here = (sum(c[0] for c in cells) / len(cells),
+                    sum(c[1] for c in cells) / len(cells))
+            goal = (sum(w[0] for w in want) / len(want),
+                    sum(w[1] for w in want) / len(want))
+        gap = abs(goal[0] - here[0]) + abs(goal[1] - here[1])
+        best: tuple[float, int] | None = None
+        for action, vec in self._effect.items():
+            if action not in self._usable():
+                continue
+            after = abs(goal[0] - here[0] - vec[0]) + abs(goal[1] - here[1] - vec[1])
+            if best is None or gap - after > best[0]:
+                best = (gap - after, action)
+        return None if best is None else best[1]
 
     def _inward(self, part: dict[str, Any]) -> int | None:
         """Bring a piece that hangs off the board far enough in to be measured.
@@ -756,18 +834,60 @@ class CoverTargetsTool:
                 return a
         return None
 
+    def _mark_for(
+        self, part: dict[str, Any], pips: list[tuple[int, int, int]] | None
+    ) -> Cell | None:
+        """Where the still-uncovered marks of this piece's colour lie, as one heading.
+
+        Only a heading, and deliberately a weak one: which piece takes which mark is not
+        settled until a plan exists, so this asks for nothing more than the middle of the marks
+        wearing the piece's own colour. ⚠️ The NEAREST such mark was tried first and is worse —
+        a piece usually has to cover several, and the closest one pointed one piece backwards
+        on a level the middle got right (level 3 of the board this carries: 52 actions against
+        50). When no mark of that colour is left there is no heading and the nudge falls back
+        to the direction it used before.
+        """
+        if not pips:
+            return None
+        if not _mask(part):
+            return None
+        want = [(r, c) for r, c, v in pips
+                if v == part["colour"] and not self._covered(r, c, v)]
+        if not want:
+            return None
+        return (sum(w[0] for w in want) // len(want), sum(w[1] for w in want) // len(want))
+
     def _toward(
-        self, axis: int, mask: frozenset[Cell], blobs: dict[int, set[Cell]]
+        self,
+        axis: int,
+        mask: frozenset[Cell],
+        blobs: dict[int, set[Cell]],
+        goal: Cell | None = None,
     ) -> int | None:
-        """A push along this axis that keeps the piece on the board, or a way to find one."""
+        """A push along this axis that keeps the piece on the board, or a way to find one.
+
+        With a heading, the push that CLOSES on it is preferred over the one that opens: both
+        teach the piece's shape equally, and only one of them has to be undone afterwards.
+        """
         board = next(iter(blobs.values()), None)
         limit = 0 if board is None else max(max(c) for c in board) + 1
+        cy = (min(c[0] for c in mask) + max(c[0] for c in mask)) / 2 if mask else 0.0
+        cx = (min(c[1] for c in mask) + max(c[1] for c in mask)) / 2 if mask else 0.0
+        here = (cy, cx)
+        best: tuple[float, int] | None = None
         for action, vec in self._effect.items():
             if action not in self._usable() or bool(vec[0]) != (axis == 0):
                 continue
             after = [(y + vec[0], x + vec[1]) for y, x in mask]
-            if any(0 <= y < limit and 0 <= x < limit for y, x in after):
+            if not any(0 <= y < limit and 0 <= x < limit for y, x in after):
+                continue
+            if goal is None:
                 return action
+            gain = abs(goal[axis] - here[axis]) - abs(goal[axis] - (here[axis] + vec[axis]))
+            if best is None or gain > best[0]:
+                best = (gain, action)
+        if best is not None:
+            return best[1]
         return self._blind()
 
     # --- controls ----------------------------------------------------------

@@ -387,8 +387,60 @@ def mode_repeat() -> dict:
     return {"mode": "repeat", "per_level": per, "cleared": done}
 
 
+
+# ------------------------------------------------------------- mode 7: which branch
+def mode_branch() -> dict:
+    """Same trace, but tagging WHICH method of the tool emitted each action.
+
+    ⛔ Written after a change to the discovery heading moved two other levels and left level 2
+    byte-identical: without the tag, "the nudge is direction-blind" is a reading of the source,
+    not of the run (rule 7g).
+    """
+    env = _arcade().make("re86")
+    agent = _agent()
+    obs, frames, pre = _drive_to_level(env, agent, LEVEL)
+    tool = agent.tools["cover_targets"]
+    tag = {"who": None}
+
+    def wrap(name):
+        real = getattr(tool, name)
+
+        def inner(*a, **k):
+            out = real(*a, **k)
+            if out not in (None, []):
+                tag["who"] = name
+            return out
+        return inner
+
+    for nm in ("_toward", "_blind", "_inward", "_cycle", "_park", "_walk", "_discover"):
+        setattr(tool, nm, wrap(nm))
+
+    start = int(getattr(obs, "levels_completed", 0) or 0)
+    rows = []
+    game = env._game
+    prev_pos = _positions(game)
+    for n in range(CAP):
+        tag["who"] = None
+        act = agent.choose_action(frames, obs)
+        name = str(getattr(act, "name", act))
+        data = act.action_data.model_dump() if getattr(act, "action_data", None) else None
+        obs = env.step(act, data=data) if data else env.step(act)
+        frames.append(obs)
+        pos = _positions(game)
+        rows.append({"i": n, "act": name, "who": tag["who"], "pos": pos,
+                     "moved": pos != prev_pos})
+        _log(f"  L2 {n:3d} {name:<8} who={tag['who']} pos={pos}")
+        prev_pos = pos
+        if int(getattr(obs, "levels_completed", 0) or 0) > start:
+            break
+    who: dict[str, int] = {}
+    for r in rows:
+        who[str(r["who"])] = who.get(str(r["who"]), 0) + 1
+    return {"mode": "branch", "level2_actions": len(rows), "who": who, "rows": rows}
+
+
 MODES = {1: mode_trace, 2: mode_ground, 3: mode_optimal,
-         4: mode_attempts, 5: mode_fallback, 6: mode_repeat}
+         4: mode_attempts, 5: mode_fallback, 6: mode_repeat, 7: mode_branch}
 
 
 def main() -> None:
