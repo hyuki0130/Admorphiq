@@ -2372,3 +2372,33 @@ right about the wrong board.**
 ⚠️ INSTRUMENT TRAP: v1 took the first row with MORE pads as the attempt's last row — that row is
 already POST-restart, so it answered about a board just handed back whole and reported "never lost".
 Fixed, re-measured, both seeds agree.
+
+### 7bf — a second tool is not merely unhelpful, it is BYTE-IDENTICAL: 46 partners, one action count (2026-08-30)
+
+Rule 7ba measured every tool ALONE. This measures each stuck game's specialist paired with **every
+other tool, one at a time** — the question being whether a partner unlocks what neither reaches
+alone (which is exactly what ls20 does: the harness reaches level 7 while no single tool passes 6).
+
+```
+bp35   crag + one other, 46 pairs   ->  46 of 46 reach depth 5   and ALL 46 take 727 actions
+lf52   railpeg + one other, 46      ->  46 of 46 reach depth 5   and ALL 46 take 824 actions
+```
+
+⛔ **ONE distinct action count across forty-six different partners.** Not "no partner helps" — **no
+partner does ANYTHING AT ALL.** A partner that changed the run and failed would show a different
+action count; these are byte-identical, so the second tool never acts.
+
+⭐ THE REASON, and it is already measured elsewhere: **exactly ONE tool does anything on each of
+these boards** (rule 7ba — 43 to 46 of 47 clear nothing), and **41–43 of ~48 bid 0.00 at every
+decision point** (rule 7ac). A partner that never outbids the incumbent and never gets an EMPTY
+handover is a passenger.
+
+⚠️ **THIS IS NOT "COMPOSITION DOES NOT WORK".** ls20 is the counterexample and it is decisive: the
+harness reaches level 7 with a `fogscout` whose SOLO depth is **0**, which no single tool reaches. The
+difference is that ls20's specialist genuinely goes EMPTY and hands over on a board the successor can
+read. On bp35 and lf52 the successor cannot read the board either, so the handover buys nothing.
+
+⛔ **So the remaining gap is not one pairing away.** With rule 7ba (no tool alone), rule 7bb (17 of 47
+never hold a board), rule 7ac (routing cannot lose a tie) and now this, the registry has been
+measured from FOUR independent directions and **none of them locates the remaining 0.0918 in the tool
+set as it stands.**
