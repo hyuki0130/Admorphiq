@@ -291,3 +291,18 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   round dir ever carried its `run.sh` (now `scripts/xfergate.sh`). Rules **7bv** + **7by**, plus
   **7bu** — the r59s15 duplicate-`game_id` hazard RECURRED on ceph-build and is measured INERT
   (both sk48 sources, same score, same action count on all eight levels).
+
+- **inert action / dead action / wasted action / efficiency of a cleared level / board_changed vs raw
+  diff / edge counter / livelock / RHAE cap / canary margin** → [[r101_inert-actions]] — the
+  follow-up to rule 7bw's lf52 finding, asked of every game and restricted to levels that CLEAR.
+  ⭐ **A dead action is 9.2x more likely on a level that never clears** (9.82% of 1996 uncleared
+  actions vs 1.07% of 6381 cleared ones); removing every repeat-dead action from every cleared level
+  is worth **+0.000056 of the mean, all of it ls20**, and 24 of 25 games gain exactly zero. ⛔ The
+  bound is structural and computable before any census: only FIVE cleared levels in the whole 25
+  score below 1.0, so **+0.00796 is the ceiling on efficiency work over cleared levels**. ⚠️ The
+  three-way split (dead / edge-only / live) is load-bearing — `board_changed` discards the frame's
+  outer band on purpose, so r11l's "47.6% inert" is 0 dead and 39 edge-only, and the raw `!=` test
+  reports ZERO inert on bp35 where the interior test finds 205. Neither test alone is sound.
+  ⭐ Rule 7bw's memo-plus-give-up livelock appears ONLY on never-cleared levels (runs of 116 and 49;
+  the longest on any cleared level is 7). ⚠️ And of the five zero-margin canary levels, sc25 L2 is
+  the one that is not tight — 6 actions against a human 6 with one of them DEAD. Rule **7cb**.

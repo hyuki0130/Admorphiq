@@ -1,0 +1,6066 @@
+[
+ {
+  "game": "ar25",
+  "per_level": [
+   16,
+   13,
+   42,
+   24,
+   30,
+   55,
+   39,
+   49
+  ],
+  "total_actions": 268,
+  "game_score": 1.0,
+  "banked_per_level": [
+   16,
+   13,
+   42,
+   24,
+   30,
+   55,
+   39,
+   49
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 267,
+  "pos_raw_changed": 263,
+  "pos_raw_inert": 4,
+  "pos_brd_changed": 263,
+  "pos_brd_inert": 4,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 32,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "reflect_cover": 1
+    },
+    "by_tool": {
+     "reflect_cover": 16
+    },
+    "inert_by_tool": {
+     "reflect_cover": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "reflect_cover"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 50,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "reflect_cover": 1
+    },
+    "by_tool": {
+     "reflect_cover": 13
+    },
+    "inert_by_tool": {
+     "reflect_cover": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "reflect_cover"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 42,
+    "human_actions": 75,
+    "score": 1.0,
+    "sampled": 42,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "reflect_cover": 1
+    },
+    "by_tool": {
+     "reflect_cover": 42
+    },
+    "inert_by_tool": {
+     "reflect_cover": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "reflect_cover"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 37,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "reflect_cover": 1
+    },
+    "by_tool": {
+     "reflect_cover": 24
+    },
+    "inert_by_tool": {
+     "reflect_cover": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "reflect_cover"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 30,
+    "human_actions": 89,
+    "score": 1.0,
+    "sampled": 30,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reflect_cover": 30
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 55,
+    "human_actions": 159,
+    "score": 1.0,
+    "sampled": 55,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reflect_cover": 55
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 233,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reflect_cover": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 49,
+    "human_actions": 73,
+    "score": 1.0,
+    "sampled": 48,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reflect_cover": 48
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "bp35",
+  "per_level": [
+   18,
+   87,
+   45,
+   23,
+   46
+  ],
+  "total_actions": 726,
+  "game_score": 0.24556,
+  "banked_per_level": [
+   18,
+   87,
+   45,
+   23,
+   46
+  ],
+  "banked_score": 0.24556,
+  "control_ok": true,
+  "rows": 715,
+  "pos_raw_changed": 715,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 509,
+  "pos_brd_inert": 206,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 21,
+    "score": 1.0,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 87,
+    "human_actions": 48,
+    "score": 0.3044,
+    "sampled": 85,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 85
+    },
+    "inert_by_tool": {
+     "crag": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "crag"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 45,
+    "human_actions": 44,
+    "score": 0.956049,
+    "sampled": 45,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 45
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 23,
+    "human_actions": 38,
+    "score": 1.0,
+    "sampled": 23,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 23
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 46,
+    "human_actions": 33,
+    "score": 0.51465,
+    "sampled": 45,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 45
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": false,
+    "agent_actions": null,
+    "human_actions": null,
+    "score": null,
+    "sampled": 499,
+    "inert": 205,
+    "inert_first_strict": 22,
+    "inert_repeat_strict": 183,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 203,
+    "dead": 0,
+    "edge_only": 205,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "crag": 13,
+     "HARNESS": 1,
+     "graph": 485
+    },
+    "inert_by_tool": {
+     "crag": 3,
+     "HARNESS": 1,
+     "graph": 201
+    },
+    "repeat_by_tool": {
+     "crag": 2,
+     "HARNESS": 1,
+     "graph": 180
+    },
+    "longest_inert_run": 49,
+    "run_tool": "graph"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 3,
+      "a": 45,
+      "k": 0,
+      "score": 0.956049,
+      "score_cf": 0.9560493827160493
+     },
+     {
+      "lvl": 5,
+      "a": 46,
+      "k": 0,
+      "score": 0.51465,
+      "score_cf": 0.5146502835538752
+     }
+    ]
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 3,
+      "a": 45,
+      "k": 0,
+      "score": 0.956049,
+      "score_cf": 0.9560493827160493
+     },
+     {
+      "lvl": 5,
+      "a": 46,
+      "k": 0,
+      "score": 0.51465,
+      "score_cf": 0.5146502835538752
+     }
+    ]
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 3,
+      "a": 45,
+      "k": 0,
+      "score": 0.956049,
+      "score_cf": 0.9560493827160493
+     },
+     {
+      "lvl": 5,
+      "a": 46,
+      "k": 0,
+      "score": 0.51465,
+      "score_cf": 0.5146502835538752
+     }
+    ]
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 3,
+      "a": 45,
+      "k": 0,
+      "score": 0.956049,
+      "score_cf": 0.9560493827160493
+     },
+     {
+      "lvl": 5,
+      "a": 46,
+      "k": 0,
+      "score": 0.51465,
+      "score_cf": 0.5146502835538752
+     }
+    ]
+   }
+  }
+ },
+ {
+  "game": "cd82",
+  "per_level": [
+   50,
+   6,
+   33,
+   14,
+   13,
+   16
+  ],
+  "total_actions": 132,
+  "game_score": 1.0,
+  "banked_per_level": [
+   50,
+   6,
+   33,
+   14,
+   13,
+   16
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 131,
+  "pos_raw_changed": 115,
+  "pos_raw_inert": 16,
+  "pos_brd_changed": 87,
+  "pos_brd_inert": 44,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 50,
+    "human_actions": 55,
+    "score": 1.0,
+    "sampled": 50,
+    "inert": 21,
+    "inert_first_strict": 4,
+    "inert_repeat_strict": 17,
+    "inert_first_coarse": 4,
+    "inert_repeat_coarse": 17,
+    "dead": 9,
+    "edge_only": 12,
+    "dead_repeat_strict": 7,
+    "dead_repeat_coarse": 7,
+    "dead_by_tool": {
+     "stamppaint": 9
+    },
+    "by_tool": {
+     "stamppaint": 50
+    },
+    "inert_by_tool": {
+     "stamppaint": 21
+    },
+    "repeat_by_tool": {
+     "stamppaint": 17
+    },
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 6,
+    "human_actions": 8,
+    "score": 1.0,
+    "sampled": 6,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stamppaint": 6
+    },
+    "inert_by_tool": {
+     "stamppaint": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 33,
+    "human_actions": 41,
+    "score": 1.0,
+    "sampled": 33,
+    "inert": 11,
+    "inert_first_strict": 5,
+    "inert_repeat_strict": 6,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 9,
+    "dead": 3,
+    "edge_only": 8,
+    "dead_repeat_strict": 2,
+    "dead_repeat_coarse": 3,
+    "dead_by_tool": {
+     "stamppaint": 3
+    },
+    "by_tool": {
+     "stamppaint": 33
+    },
+    "inert_by_tool": {
+     "stamppaint": 11
+    },
+    "repeat_by_tool": {
+     "stamppaint": 6
+    },
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 21,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 4,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 2,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 2,
+    "dead": 2,
+    "edge_only": 2,
+    "dead_repeat_strict": 1,
+    "dead_repeat_coarse": 1,
+    "dead_by_tool": {
+     "stamppaint": 2
+    },
+    "by_tool": {
+     "stamppaint": 14
+    },
+    "inert_by_tool": {
+     "stamppaint": 4
+    },
+    "repeat_by_tool": {
+     "stamppaint": 2
+    },
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 23,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 4,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 2,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 2,
+    "dead": 2,
+    "edge_only": 2,
+    "dead_repeat_strict": 1,
+    "dead_repeat_coarse": 1,
+    "dead_by_tool": {
+     "stamppaint": 2
+    },
+    "by_tool": {
+     "stamppaint": 13
+    },
+    "inert_by_tool": {
+     "stamppaint": 4
+    },
+    "repeat_by_tool": {
+     "stamppaint": 2
+    },
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 23,
+    "score": 1.0,
+    "sampled": 15,
+    "inert": 3,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 1,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 1,
+    "dead": 0,
+    "edge_only": 3,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stamppaint": 15
+    },
+    "inert_by_tool": {
+     "stamppaint": 3
+    },
+    "repeat_by_tool": {
+     "stamppaint": 1
+    },
+    "longest_inert_run": 1,
+    "run_tool": "stamppaint"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "cn04",
+  "per_level": [
+   18,
+   46,
+   28,
+   37,
+   60,
+   72
+  ],
+  "total_actions": 261,
+  "game_score": 1.0,
+  "banked_per_level": [
+   18,
+   46,
+   28,
+   37,
+   60,
+   72
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 260,
+  "pos_raw_changed": 260,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 260,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 29,
+    "score": 1.0,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 46,
+    "human_actions": 54,
+    "score": 1.0,
+    "sampled": 46,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 46
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 28,
+    "human_actions": 85,
+    "score": 1.0,
+    "sampled": 28,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 28
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 37,
+    "human_actions": 300,
+    "score": 1.0,
+    "sampled": 37,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 37
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 60,
+    "human_actions": 208,
+    "score": 1.0,
+    "sampled": 60,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 60
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 72,
+    "human_actions": 113,
+    "score": 1.0,
+    "sampled": 71,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "assemble": 71
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "dc22",
+  "per_level": [
+   31,
+   53,
+   59,
+   87,
+   195
+  ],
+  "total_actions": 925,
+  "game_score": 0.714286,
+  "banked_per_level": [
+   31,
+   53,
+   59,
+   87,
+   195
+  ],
+  "banked_score": 0.714286,
+  "control_ok": true,
+  "rows": 924,
+  "pos_raw_changed": 877,
+  "pos_raw_inert": 47,
+  "pos_brd_changed": 870,
+  "pos_brd_inert": 54,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 31,
+    "human_actions": 59,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "gantry": 1
+    },
+    "by_tool": {
+     "gantry": 31
+    },
+    "inert_by_tool": {
+     "gantry": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "gantry"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 53,
+    "human_actions": 102,
+    "score": 1.0,
+    "sampled": 53,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "gantry": 1
+    },
+    "by_tool": {
+     "gantry": 53
+    },
+    "inert_by_tool": {
+     "gantry": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "gantry"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 59,
+    "human_actions": 67,
+    "score": 1.0,
+    "sampled": 59,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "gantry": 1
+    },
+    "by_tool": {
+     "gantry": 59
+    },
+    "inert_by_tool": {
+     "gantry": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "gantry"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 87,
+    "human_actions": 98,
+    "score": 1.0,
+    "sampled": 87,
+    "inert": 3,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 3,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 2,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "gantry": 1
+    },
+    "by_tool": {
+     "gantry": 87
+    },
+    "inert_by_tool": {
+     "gantry": 3
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "gantry"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 195,
+    "human_actions": 324,
+    "score": 1.0,
+    "sampled": 195,
+    "inert": 37,
+    "inert_first_strict": 8,
+    "inert_repeat_strict": 29,
+    "inert_first_coarse": 4,
+    "inert_repeat_coarse": 33,
+    "dead": 32,
+    "edge_only": 5,
+    "dead_repeat_strict": 24,
+    "dead_repeat_coarse": 28,
+    "dead_by_tool": {
+     "gantry": 32
+    },
+    "by_tool": {
+     "gantry": 195
+    },
+    "inert_by_tool": {
+     "gantry": 37
+    },
+    "repeat_by_tool": {
+     "gantry": 29
+    },
+    "longest_inert_run": 3,
+    "run_tool": "gantry"
+   },
+   {
+    "lvl": 6,
+    "cleared": false,
+    "agent_actions": null,
+    "human_actions": null,
+    "score": null,
+    "sampled": 499,
+    "inert": 11,
+    "inert_first_strict": 6,
+    "inert_repeat_strict": 5,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 9,
+    "dead": 11,
+    "edge_only": 0,
+    "dead_repeat_strict": 5,
+    "dead_repeat_coarse": 9,
+    "dead_by_tool": {
+     "gantry": 11
+    },
+    "by_tool": {
+     "gantry": 499
+    },
+    "inert_by_tool": {
+     "gantry": 11
+    },
+    "repeat_by_tool": {
+     "gantry": 5
+    },
+    "longest_inert_run": 4,
+    "run_tool": "gantry"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "ft09",
+  "per_level": [
+   4,
+   9,
+   16,
+   16,
+   21,
+   13
+  ],
+  "total_actions": 79,
+  "game_score": 1.0,
+  "banked_per_level": [
+   4,
+   9,
+   16,
+   16,
+   21,
+   13
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 78,
+  "pos_raw_changed": 78,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 78,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 4,
+    "human_actions": 43,
+    "score": 1.0,
+    "sampled": 4,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 4
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 9,
+    "human_actions": 12,
+    "score": 1.0,
+    "sampled": 9,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 9
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 23,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 16
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 28,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 16
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 21,
+    "human_actions": 65,
+    "score": 1.0,
+    "sampled": 21,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 21
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 37,
+    "score": 1.0,
+    "sampled": 12,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "stencil": 12
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "g50t",
+  "per_level": [
+   26,
+   31,
+   64,
+   31,
+   52,
+   49,
+   43
+  ],
+  "total_actions": 296,
+  "game_score": 1.0,
+  "banked_per_level": [
+   26,
+   31,
+   64,
+   31,
+   52,
+   49,
+   43
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 295,
+  "pos_raw_changed": 293,
+  "pos_raw_inert": 2,
+  "pos_brd_changed": 292,
+  "pos_brd_inert": 3,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 26,
+    "human_actions": 78,
+    "score": 1.0,
+    "sampled": 26,
+    "inert": 3,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 3,
+    "inert_repeat_coarse": 0,
+    "dead": 2,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "clonewalk": 2
+    },
+    "by_tool": {
+     "clonewalk": 26
+    },
+    "inert_by_tool": {
+     "clonewalk": 3
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 2,
+    "run_tool": "clonewalk"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 31,
+    "human_actions": 175,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 31
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 64,
+    "human_actions": 179,
+    "score": 1.0,
+    "sampled": 64,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 64
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 31,
+    "human_actions": 230,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 31
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 52,
+    "human_actions": 96,
+    "score": 1.0,
+    "sampled": 52,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 52
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 49,
+    "human_actions": 54,
+    "score": 1.0,
+    "sampled": 49,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 49
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 43,
+    "human_actions": 67,
+    "score": 1.0,
+    "sampled": 42,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "clonewalk": 42
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "ka59",
+  "per_level": [
+   12,
+   44,
+   33,
+   39,
+   24,
+   46,
+   92
+  ],
+  "total_actions": 290,
+  "game_score": 1.0,
+  "banked_per_level": [
+   12,
+   44,
+   33,
+   39,
+   24,
+   46,
+   92
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 289,
+  "pos_raw_changed": 289,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 288,
+  "pos_brd_inert": 1,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 12,
+    "human_actions": 28,
+    "score": 1.0,
+    "sampled": 12,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 12
+    },
+    "inert_by_tool": {
+     "blastclock": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "blastclock"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 44,
+    "human_actions": 109,
+    "score": 1.0,
+    "sampled": 44,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 44
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 33,
+    "human_actions": 51,
+    "score": 1.0,
+    "sampled": 33,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 33
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 51,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 33,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 24
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 46,
+    "human_actions": 132,
+    "score": 1.0,
+    "sampled": 46,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 46
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 92,
+    "human_actions": 326,
+    "score": 1.0,
+    "sampled": 91,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "blastclock": 91
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "lf52",
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "banked_per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "banked_score": 0.272727,
+  "control_ok": true,
+  "rows": 822,
+  "pos_raw_changed": 645,
+  "pos_raw_inert": 177,
+  "pos_brd_changed": 479,
+  "pos_brd_inert": 343,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 8,
+    "human_actions": 32,
+    "score": 1.0,
+    "sampled": 8,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "railpeg": 8
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 52,
+    "human_actions": 81,
+    "score": 1.0,
+    "sampled": 52,
+    "inert": 10,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 8,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 8,
+    "dead": 0,
+    "edge_only": 10,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "railpeg": 52
+    },
+    "inert_by_tool": {
+     "railpeg": 10
+    },
+    "repeat_by_tool": {
+     "railpeg": 8
+    },
+    "longest_inert_run": 6,
+    "run_tool": "railpeg"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 60,
+    "human_actions": 60,
+    "score": 1.0,
+    "sampled": 60,
+    "inert": 7,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 4,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 6,
+    "dead": 0,
+    "edge_only": 7,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "railpeg": 60
+    },
+    "inert_by_tool": {
+     "railpeg": 7
+    },
+    "repeat_by_tool": {
+     "railpeg": 4
+    },
+    "longest_inert_run": 6,
+    "run_tool": "railpeg"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 64,
+    "human_actions": 71,
+    "score": 1.0,
+    "sampled": 64,
+    "inert": 9,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 6,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 8,
+    "dead": 0,
+    "edge_only": 9,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "railpeg": 64
+    },
+    "inert_by_tool": {
+     "railpeg": 9
+    },
+    "repeat_by_tool": {
+     "railpeg": 6
+    },
+    "longest_inert_run": 6,
+    "run_tool": "railpeg"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 139,
+    "human_actions": 205,
+    "score": 1.0,
+    "sampled": 139,
+    "inert": 8,
+    "inert_first_strict": 4,
+    "inert_repeat_strict": 4,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 7,
+    "dead": 0,
+    "edge_only": 8,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "railpeg": 139
+    },
+    "inert_by_tool": {
+     "railpeg": 8
+    },
+    "repeat_by_tool": {
+     "railpeg": 4
+    },
+    "longest_inert_run": 6,
+    "run_tool": "railpeg"
+   },
+   {
+    "lvl": 6,
+    "cleared": false,
+    "agent_actions": null,
+    "human_actions": null,
+    "score": null,
+    "sampled": 499,
+    "inert": 309,
+    "inert_first_strict": 39,
+    "inert_repeat_strict": 270,
+    "inert_first_coarse": 4,
+    "inert_repeat_coarse": 305,
+    "dead": 177,
+    "edge_only": 132,
+    "dead_repeat_strict": 156,
+    "dead_repeat_coarse": 177,
+    "dead_by_tool": {
+     "graph": 46,
+     "llm_goal": 6,
+     "HARNESS": 2,
+     "deadsig": 7,
+     "world_model": 116
+    },
+    "by_tool": {
+     "railpeg": 121,
+     "HARNESS": 4,
+     "pegjump": 19,
+     "graph": 225,
+     "llm_goal": 7,
+     "deadsig": 7,
+     "world_model": 116
+    },
+    "inert_by_tool": {
+     "railpeg": 18,
+     "HARNESS": 4,
+     "pegjump": 10,
+     "graph": 148,
+     "llm_goal": 6,
+     "deadsig": 7,
+     "world_model": 116
+    },
+    "repeat_by_tool": {
+     "railpeg": 9,
+     "HARNESS": 4,
+     "pegjump": 10,
+     "graph": 118,
+     "llm_goal": 6,
+     "deadsig": 7,
+     "world_model": 116
+    },
+    "longest_inert_run": 116,
+    "run_tool": "world_model"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "lp85",
+  "per_level": [
+   7,
+   34,
+   18,
+   18,
+   16,
+   39,
+   18,
+   32
+  ],
+  "total_actions": 182,
+  "game_score": 0.97668,
+  "banked_per_level": [
+   7,
+   34,
+   18,
+   18,
+   16,
+   39,
+   18,
+   32
+  ],
+  "banked_score": 0.97668,
+  "control_ok": true,
+  "rows": 181,
+  "pos_raw_changed": 181,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 181,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 7,
+    "human_actions": 17,
+    "score": 1.0,
+    "sampled": 7,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 7
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 34,
+    "human_actions": 38,
+    "score": 1.0,
+    "sampled": 34,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 34
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 31,
+    "score": 1.0,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 16,
+    "score": 0.790123,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 41,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 16
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 60,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 32,
+    "human_actions": 159,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cyclepress": 31
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 4,
+      "a": 18,
+      "k": 0,
+      "score": 0.790123,
+      "score_cf": 0.7901234567901234
+     }
+    ]
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 4,
+      "a": 18,
+      "k": 0,
+      "score": 0.790123,
+      "score_cf": 0.7901234567901234
+     }
+    ]
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 4,
+      "a": 18,
+      "k": 0,
+      "score": 0.790123,
+      "score_cf": 0.7901234567901234
+     }
+    ]
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": [
+     {
+      "lvl": 4,
+      "a": 18,
+      "k": 0,
+      "score": 0.790123,
+      "score_cf": 0.7901234567901234
+     }
+    ]
+   }
+  }
+ },
+ {
+  "game": "ls20",
+  "per_level": [
+   17,
+   101,
+   63,
+   66,
+   67,
+   100,
+   231
+  ],
+  "total_actions": 645,
+  "game_score": 0.912085,
+  "banked_per_level": [
+   17,
+   101,
+   63,
+   66,
+   67,
+   100,
+   231
+  ],
+  "banked_score": 0.912085,
+  "control_ok": true,
+  "rows": 643,
+  "pos_raw_changed": 642,
+  "pos_raw_inert": 1,
+  "pos_brd_changed": 629,
+  "pos_brd_inert": 14,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 22,
+    "score": 1.0,
+    "sampled": 17,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 17
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 101,
+    "human_actions": 123,
+    "score": 1.0,
+    "sampled": 101,
+    "inert": 2,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 1,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 1,
+    "dead": 0,
+    "edge_only": 2,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 101
+    },
+    "inert_by_tool": {
+     "keymaze": 2
+    },
+    "repeat_by_tool": {
+     "keymaze": 1
+    },
+    "longest_inert_run": 2,
+    "run_tool": "keymaze"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 63,
+    "human_actions": 73,
+    "score": 1.0,
+    "sampled": 63,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 63
+    },
+    "inert_by_tool": {
+     "keymaze": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "keymaze"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 66,
+    "human_actions": 84,
+    "score": 1.0,
+    "sampled": 66,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 66
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 67,
+    "human_actions": 96,
+    "score": 1.0,
+    "sampled": 67,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 67
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 100,
+    "human_actions": 192,
+    "score": 1.0,
+    "sampled": 100,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "keymaze": 100
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 231,
+    "human_actions": 186,
+    "score": 0.648339,
+    "sampled": 229,
+    "inert": 11,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 8,
+    "inert_first_coarse": 3,
+    "inert_repeat_coarse": 8,
+    "dead": 1,
+    "edge_only": 10,
+    "dead_repeat_strict": 1,
+    "dead_repeat_coarse": 1,
+    "dead_by_tool": {
+     "fogscout": 1
+    },
+    "by_tool": {
+     "keymaze": 9,
+     "HARNESS": 1,
+     "fogscout": 219
+    },
+    "inert_by_tool": {
+     "keymaze": 7,
+     "HARNESS": 1,
+     "fogscout": 3
+    },
+    "repeat_by_tool": {
+     "keymaze": 6,
+     "HARNESS": 1,
+     "fogscout": 1
+    },
+    "longest_inert_run": 7,
+    "run_tool": "keymaze"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.011838,
+    "mean_gain_over_25": 0.000474,
+    "levels_improved": [
+     {
+      "lvl": 7,
+      "a": 231,
+      "k": 8,
+      "score": 0.648339,
+      "score_cf": 0.6956906432866133
+     }
+    ]
+   },
+   "coarse": {
+    "game_score_gain": 0.011838,
+    "mean_gain_over_25": 0.000474,
+    "levels_improved": [
+     {
+      "lvl": 7,
+      "a": 231,
+      "k": 8,
+      "score": 0.648339,
+      "score_cf": 0.6956906432866133
+     }
+    ]
+   },
+   "dead_strict": {
+    "game_score_gain": 0.001412,
+    "mean_gain_over_25": 5.6e-05,
+    "levels_improved": [
+     {
+      "lvl": 7,
+      "a": 231,
+      "k": 1,
+      "score": 0.648339,
+      "score_cf": 0.6539886578449905
+     }
+    ]
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.001412,
+    "mean_gain_over_25": 5.6e-05,
+    "levels_improved": [
+     {
+      "lvl": 7,
+      "a": 231,
+      "k": 1,
+      "score": 0.648339,
+      "score_cf": 0.6539886578449905
+     }
+    ]
+   }
+  }
+ },
+ {
+  "game": "m0r0",
+  "per_level": [
+   19,
+   23,
+   54,
+   13,
+   39,
+   40
+  ],
+  "total_actions": 188,
+  "game_score": 1.0,
+  "banked_per_level": [
+   19,
+   23,
+   54,
+   13,
+   39,
+   40
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 187,
+  "pos_raw_changed": 187,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 187,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 19,
+    "human_actions": 30,
+    "score": 1.0,
+    "sampled": 19,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 19
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 23,
+    "human_actions": 111,
+    "score": 1.0,
+    "sampled": 23,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 23
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 54,
+    "human_actions": 203,
+    "score": 1.0,
+    "sampled": 54,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 54
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 13
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 500,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 40,
+    "human_actions": 237,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "decouple": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "r11l",
+  "per_level": [
+   4,
+   9,
+   11,
+   14,
+   24,
+   21
+  ],
+  "total_actions": 83,
+  "game_score": 1.0,
+  "banked_per_level": [
+   4,
+   9,
+   11,
+   14,
+   24,
+   21
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 82,
+  "pos_raw_changed": 82,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 43,
+  "pos_brd_inert": 39,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 4,
+    "human_actions": 22,
+    "score": 1.0,
+    "sampled": 4,
+    "inert": 3,
+    "inert_first_strict": 3,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 2,
+    "dead": 0,
+    "edge_only": 3,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 4
+    },
+    "inert_by_tool": {
+     "tether": 3
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 2,
+    "run_tool": "tether"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 9,
+    "human_actions": 33,
+    "score": 1.0,
+    "sampled": 9,
+    "inert": 4,
+    "inert_first_strict": 4,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 3,
+    "dead": 0,
+    "edge_only": 4,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 9
+    },
+    "inert_by_tool": {
+     "tether": 4
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "tether"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 11,
+    "human_actions": 51,
+    "score": 1.0,
+    "sampled": 11,
+    "inert": 5,
+    "inert_first_strict": 5,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 4,
+    "dead": 0,
+    "edge_only": 5,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 11
+    },
+    "inert_by_tool": {
+     "tether": 5
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "tether"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 7,
+    "inert_first_strict": 7,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 6,
+    "dead": 0,
+    "edge_only": 7,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 14
+    },
+    "inert_by_tool": {
+     "tether": 7
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "tether"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 52,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 12,
+    "inert_first_strict": 12,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 11,
+    "dead": 0,
+    "edge_only": 12,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 24
+    },
+    "inert_by_tool": {
+     "tether": 12
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "tether"
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 21,
+    "human_actions": 49,
+    "score": 1.0,
+    "sampled": 20,
+    "inert": 8,
+    "inert_first_strict": 8,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 7,
+    "dead": 0,
+    "edge_only": 8,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tether": 20
+    },
+    "inert_by_tool": {
+     "tether": 8
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "tether"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "re86",
+  "per_level": [
+   25,
+   42,
+   49,
+   59,
+   113,
+   139,
+   101,
+   168
+  ],
+  "total_actions": 696,
+  "game_score": 1.0,
+  "banked_per_level": [
+   25,
+   42,
+   49,
+   59,
+   113,
+   139,
+   101,
+   168
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 695,
+  "pos_raw_changed": 695,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 695,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 25,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 25,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 25
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 42,
+    "human_actions": 42,
+    "score": 1.0,
+    "sampled": 42,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 42
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 49,
+    "human_actions": 86,
+    "score": 1.0,
+    "sampled": 49,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 49
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 59,
+    "human_actions": 108,
+    "score": 1.0,
+    "sampled": 59,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 59
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 113,
+    "human_actions": 189,
+    "score": 1.0,
+    "sampled": 113,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 113
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 139,
+    "human_actions": 139,
+    "score": 1.0,
+    "sampled": 139,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "cover_targets": 91,
+     "reforge": 48
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 101,
+    "human_actions": 424,
+    "score": 1.0,
+    "sampled": 101,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reforge": 101
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 168,
+    "human_actions": 241,
+    "score": 1.0,
+    "sampled": 167,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "reforge": 167
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "s5i5",
+  "per_level": [
+   13,
+   30,
+   47,
+   39,
+   32,
+   31
+  ],
+  "total_actions": 694,
+  "game_score": 0.583333,
+  "banked_per_level": [
+   13,
+   30,
+   47,
+   39,
+   32,
+   31
+  ],
+  "banked_score": 0.583333,
+  "control_ok": true,
+  "rows": 691,
+  "pos_raw_changed": 683,
+  "pos_raw_inert": 8,
+  "pos_brd_changed": 675,
+  "pos_brd_inert": 16,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 20,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 13
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 30,
+    "human_actions": 89,
+    "score": 1.0,
+    "sampled": 30,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 30
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 47,
+    "human_actions": 106,
+    "score": 1.0,
+    "sampled": 47,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 47
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 54,
+    "score": 1.0,
+    "sampled": 39,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 39
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 32,
+    "human_actions": 162,
+    "score": 1.0,
+    "sampled": 32,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 32
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 31,
+    "human_actions": 38,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "swivel": 31
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": false,
+    "agent_actions": null,
+    "human_actions": null,
+    "score": null,
+    "sampled": 499,
+    "inert": 16,
+    "inert_first_strict": 8,
+    "inert_repeat_strict": 8,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 15,
+    "dead": 8,
+    "edge_only": 8,
+    "dead_repeat_strict": 4,
+    "dead_repeat_coarse": 8,
+    "dead_by_tool": {
+     "swivel": 6,
+     "HARNESS": 1,
+     "linkage": 1
+    },
+    "by_tool": {
+     "swivel": 36,
+     "HARNESS": 1,
+     "linkage": 462
+    },
+    "inert_by_tool": {
+     "swivel": 9,
+     "HARNESS": 1,
+     "linkage": 6
+    },
+    "repeat_by_tool": {
+     "swivel": 5,
+     "HARNESS": 1,
+     "linkage": 2
+    },
+    "longest_inert_run": 6,
+    "run_tool": "swivel"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "sb26",
+  "per_level": [
+   9,
+   15,
+   15,
+   15,
+   17,
+   19,
+   17,
+   17
+  ],
+  "total_actions": 124,
+  "game_score": 1.0,
+  "banked_per_level": [
+   9,
+   15,
+   15,
+   15,
+   17,
+   19,
+   17,
+   17
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 123,
+  "pos_raw_changed": 123,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 123,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 9,
+    "human_actions": 18,
+    "score": 1.0,
+    "sampled": 9,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 9
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 15,
+    "human_actions": 28,
+    "score": 1.0,
+    "sampled": 15,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 15
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 15,
+    "human_actions": 18,
+    "score": 1.0,
+    "sampled": 15,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 15
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 15,
+    "human_actions": 19,
+    "score": 1.0,
+    "sampled": 15,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 15
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 31,
+    "score": 1.0,
+    "sampled": 17,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 17
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 19,
+    "human_actions": 23,
+    "score": 1.0,
+    "sampled": 19,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 19
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 58,
+    "score": 1.0,
+    "sampled": 17,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 17
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 18,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "subroutine": 16
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "sc25",
+  "per_level": [
+   17,
+   6,
+   12,
+   31,
+   40,
+   39
+  ],
+  "total_actions": 145,
+  "game_score": 1.0,
+  "banked_per_level": [
+   17,
+   6,
+   12,
+   31,
+   40,
+   39
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 144,
+  "pos_raw_changed": 139,
+  "pos_raw_inert": 5,
+  "pos_brd_changed": 139,
+  "pos_brd_inert": 5,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 36,
+    "score": 1.0,
+    "sampled": 17,
+    "inert": 2,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 2,
+    "inert_repeat_coarse": 0,
+    "dead": 2,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "sigilgate": 2
+    },
+    "by_tool": {
+     "sigilgate": 17
+    },
+    "inert_by_tool": {
+     "sigilgate": 2
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "sigilgate"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 6,
+    "human_actions": 6,
+    "score": 1.0,
+    "sampled": 6,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "sigilgate": 1
+    },
+    "by_tool": {
+     "sigilgate": 6
+    },
+    "inert_by_tool": {
+     "sigilgate": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "sigilgate"
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 12,
+    "human_actions": 32,
+    "score": 1.0,
+    "sampled": 12,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sigilgate": 12
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 31,
+    "human_actions": 83,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "sigilgate": 1
+    },
+    "by_tool": {
+     "sigilgate": 31
+    },
+    "inert_by_tool": {
+     "sigilgate": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "sigilgate"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 40,
+    "human_actions": 143,
+    "score": 1.0,
+    "sampled": 40,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 1,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {
+     "sigilgate": 1
+    },
+    "by_tool": {
+     "sigilgate": 40
+    },
+    "inert_by_tool": {
+     "sigilgate": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "sigilgate"
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 39,
+    "human_actions": 50,
+    "score": 1.0,
+    "sampled": 38,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sigilgate": 38
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "sk48",
+  "per_level": [
+   14,
+   30,
+   34,
+   27,
+   41,
+   56,
+   41,
+   27
+  ],
+  "total_actions": 270,
+  "game_score": 1.0,
+  "banked_per_level": [
+   14,
+   30,
+   34,
+   27,
+   41,
+   56,
+   41,
+   27
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 269,
+  "pos_raw_changed": 269,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 269,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 61,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 14
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 30,
+    "human_actions": 177,
+    "score": 1.0,
+    "sampled": 30,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 30
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 34,
+    "human_actions": 101,
+    "score": 1.0,
+    "sampled": 34,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 34
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 27,
+    "human_actions": 103,
+    "score": 1.0,
+    "sampled": 27,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 27
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 41,
+    "human_actions": 230,
+    "score": 1.0,
+    "sampled": 41,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 41
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 56,
+    "human_actions": 181,
+    "score": 1.0,
+    "sampled": 56,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 56
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 41,
+    "human_actions": 125,
+    "score": 1.0,
+    "sampled": 41,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 41
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 27,
+    "human_actions": 92,
+    "score": 1.0,
+    "sampled": 26,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "tube_order": 26
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "sp80",
+  "per_level": [
+   6,
+   8,
+   11,
+   26,
+   29,
+   32
+  ],
+  "total_actions": 112,
+  "game_score": 1.0,
+  "banked_per_level": [
+   6,
+   8,
+   11,
+   26,
+   29,
+   32
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 111,
+  "pos_raw_changed": 111,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 109,
+  "pos_brd_inert": 2,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 6,
+    "human_actions": 39,
+    "score": 1.0,
+    "sampled": 6,
+    "inert": 2,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 1,
+    "dead": 0,
+    "edge_only": 2,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 6
+    },
+    "inert_by_tool": {
+     "sluice": 2
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "sluice"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 8,
+    "human_actions": 58,
+    "score": 1.0,
+    "sampled": 8,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 8
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 11,
+    "human_actions": 25,
+    "score": 1.0,
+    "sampled": 11,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 11
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 26,
+    "human_actions": 148,
+    "score": 1.0,
+    "sampled": 26,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 26
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 29,
+    "human_actions": 96,
+    "score": 1.0,
+    "sampled": 29,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 29
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 32,
+    "human_actions": 152,
+    "score": 1.0,
+    "sampled": 31,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "sluice": 31
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "su15",
+  "per_level": [
+   11,
+   9,
+   13,
+   11,
+   13,
+   10,
+   5,
+   8,
+   9
+  ],
+  "total_actions": 89,
+  "game_score": 1.0,
+  "banked_per_level": [
+   11,
+   9,
+   13,
+   11,
+   13,
+   10,
+   5,
+   8,
+   9
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 88,
+  "pos_raw_changed": 88,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 85,
+  "pos_brd_inert": 3,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 11,
+    "human_actions": 22,
+    "score": 1.0,
+    "sampled": 11,
+    "inert": 3,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 2,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 2,
+    "dead": 0,
+    "edge_only": 3,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 11
+    },
+    "inert_by_tool": {
+     "orderforge": 3
+    },
+    "repeat_by_tool": {
+     "orderforge": 2
+    },
+    "longest_inert_run": 3,
+    "run_tool": "orderforge"
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 9,
+    "human_actions": 42,
+    "score": 1.0,
+    "sampled": 9,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 9
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 13
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 11,
+    "human_actions": 115,
+    "score": 1.0,
+    "sampled": 11,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 11
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 36,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 13
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 10,
+    "human_actions": 31,
+    "score": 1.0,
+    "sampled": 10,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 10
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 5,
+    "human_actions": 8,
+    "score": 1.0,
+    "sampled": 5,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 5
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 8,
+    "human_actions": 40,
+    "score": 1.0,
+    "sampled": 8,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 8
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 9,
+    "cleared": true,
+    "agent_actions": 9,
+    "human_actions": 41,
+    "score": 1.0,
+    "sampled": 8,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "orderforge": 8
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "tn36",
+  "per_level": [
+   14,
+   11,
+   13,
+   16,
+   21,
+   21,
+   41
+  ],
+  "total_actions": 137,
+  "game_score": 1.0,
+  "banked_per_level": [
+   14,
+   11,
+   13,
+   16,
+   21,
+   21,
+   41
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 136,
+  "pos_raw_changed": 136,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 136,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 32,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 14
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 11,
+    "human_actions": 72,
+    "score": 1.0,
+    "sampled": 11,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 11
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 13,
+    "human_actions": 26,
+    "score": 1.0,
+    "sampled": 13,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 13
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 16,
+    "human_actions": 40,
+    "score": 1.0,
+    "sampled": 16,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 16
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 21,
+    "human_actions": 30,
+    "score": 1.0,
+    "sampled": 21,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 21
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 21,
+    "human_actions": 55,
+    "score": 1.0,
+    "sampled": 21,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 21
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 41,
+    "human_actions": 62,
+    "score": 1.0,
+    "sampled": 40,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "progbits": 40
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "tr87",
+  "per_level": [
+   14,
+   27,
+   21,
+   24,
+   24,
+   35
+  ],
+  "total_actions": 145,
+  "game_score": 1.0,
+  "banked_per_level": [
+   14,
+   27,
+   21,
+   24,
+   24,
+   35
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 144,
+  "pos_raw_changed": 144,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 144,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 54,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 14
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 27,
+    "human_actions": 58,
+    "score": 1.0,
+    "sampled": 27,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 27
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 21,
+    "human_actions": 40,
+    "score": 1.0,
+    "sampled": 21,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 21
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 45,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 24
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 71,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 24
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 35,
+    "human_actions": 146,
+    "score": 1.0,
+    "sampled": 34,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "rule_rewrite": 34
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "tu93",
+  "per_level": [
+   18,
+   10,
+   19,
+   17,
+   29,
+   28,
+   14,
+   23,
+   29
+  ],
+  "total_actions": 187,
+  "game_score": 1.0,
+  "banked_per_level": [
+   18,
+   10,
+   19,
+   17,
+   29,
+   28,
+   14,
+   23,
+   29
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 186,
+  "pos_raw_changed": 186,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 186,
+  "pos_brd_inert": 0,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 18,
+    "human_actions": 19,
+    "score": 1.0,
+    "sampled": 18,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 18
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 10,
+    "human_actions": 16,
+    "score": 1.0,
+    "sampled": 10,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 10
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 19,
+    "human_actions": 34,
+    "score": 1.0,
+    "sampled": 19,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 19
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 17,
+    "human_actions": 42,
+    "score": 1.0,
+    "sampled": 17,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 17
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 29,
+    "human_actions": 123,
+    "score": 1.0,
+    "sampled": 29,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 29
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 28,
+    "human_actions": 80,
+    "score": 1.0,
+    "sampled": 28,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 28
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 14,
+    "human_actions": 14,
+    "score": 1.0,
+    "sampled": 14,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 14
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 23,
+    "human_actions": 23,
+    "score": 1.0,
+    "sampled": 23,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 23
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 9,
+    "cleared": true,
+    "agent_actions": 29,
+    "human_actions": 111,
+    "score": 1.0,
+    "sampled": 28,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "lattice_maze": 28
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "vc33",
+  "per_level": [
+   3,
+   8,
+   24,
+   26,
+   55,
+   25,
+   58
+  ],
+  "total_actions": 199,
+  "game_score": 1.0,
+  "banked_per_level": [
+   3,
+   8,
+   24,
+   26,
+   55,
+   25,
+   58
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 198,
+  "pos_raw_changed": 194,
+  "pos_raw_inert": 4,
+  "pos_brd_changed": 184,
+  "pos_brd_inert": 14,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 3,
+    "human_actions": 7,
+    "score": 1.0,
+    "sampled": 3,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "pillar_transfer": 3
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 8,
+    "human_actions": 18,
+    "score": 1.0,
+    "sampled": 8,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "pillar_transfer": 8
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 24,
+    "human_actions": 44,
+    "score": 1.0,
+    "sampled": 24,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "pillar_transfer": 24
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 26,
+    "human_actions": 61,
+    "score": 1.0,
+    "sampled": 26,
+    "inert": 3,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 1,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 2,
+    "dead": 0,
+    "edge_only": 3,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "pillar_transfer": 26
+    },
+    "inert_by_tool": {
+     "pillar_transfer": 3
+    },
+    "repeat_by_tool": {
+     "pillar_transfer": 1
+    },
+    "longest_inert_run": 1,
+    "run_tool": "pillar_transfer"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 55,
+    "human_actions": 131,
+    "score": 1.0,
+    "sampled": 55,
+    "inert": 5,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 4,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 4,
+    "dead": 3,
+    "edge_only": 2,
+    "dead_repeat_strict": 2,
+    "dead_repeat_coarse": 2,
+    "dead_by_tool": {
+     "pillar_transfer": 3
+    },
+    "by_tool": {
+     "pillar_transfer": 55
+    },
+    "inert_by_tool": {
+     "pillar_transfer": 5
+    },
+    "repeat_by_tool": {
+     "pillar_transfer": 4
+    },
+    "longest_inert_run": 1,
+    "run_tool": "pillar_transfer"
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 25,
+    "human_actions": 34,
+    "score": 1.0,
+    "sampled": 25,
+    "inert": 2,
+    "inert_first_strict": 2,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 1,
+    "dead": 0,
+    "edge_only": 2,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "pillar_transfer": 25
+    },
+    "inert_by_tool": {
+     "pillar_transfer": 2
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "pillar_transfer"
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 58,
+    "human_actions": 152,
+    "score": 1.0,
+    "sampled": 57,
+    "inert": 4,
+    "inert_first_strict": 4,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 3,
+    "dead": 1,
+    "edge_only": 3,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 1,
+    "dead_by_tool": {
+     "pillar_transfer": 1
+    },
+    "by_tool": {
+     "pillar_transfer": 57
+    },
+    "inert_by_tool": {
+     "pillar_transfer": 4
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "pillar_transfer"
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ },
+ {
+  "game": "wa30",
+  "per_level": [
+   27,
+   58,
+   77,
+   67,
+   120,
+   46,
+   55,
+   134,
+   136
+  ],
+  "total_actions": 720,
+  "game_score": 1.0,
+  "banked_per_level": [
+   27,
+   58,
+   77,
+   67,
+   120,
+   46,
+   55,
+   134,
+   136
+  ],
+  "banked_score": 1.0,
+  "control_ok": true,
+  "rows": 718,
+  "pos_raw_changed": 718,
+  "pos_raw_inert": 0,
+  "pos_brd_changed": 716,
+  "pos_brd_inert": 2,
+  "levels": [
+   {
+    "lvl": 1,
+    "cleared": true,
+    "agent_actions": 27,
+    "human_actions": 71,
+    "score": 1.0,
+    "sampled": 27,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 27
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 2,
+    "cleared": true,
+    "agent_actions": 58,
+    "human_actions": 119,
+    "score": 1.0,
+    "sampled": 58,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 58
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 3,
+    "cleared": true,
+    "agent_actions": 77,
+    "human_actions": 183,
+    "score": 1.0,
+    "sampled": 77,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 77
+    },
+    "inert_by_tool": {
+     "shepherd": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "shepherd"
+   },
+   {
+    "lvl": 4,
+    "cleared": true,
+    "agent_actions": 67,
+    "human_actions": 98,
+    "score": 1.0,
+    "sampled": 67,
+    "inert": 1,
+    "inert_first_strict": 1,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 1,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 1,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 67
+    },
+    "inert_by_tool": {
+     "shepherd": 1
+    },
+    "repeat_by_tool": {},
+    "longest_inert_run": 1,
+    "run_tool": "shepherd"
+   },
+   {
+    "lvl": 5,
+    "cleared": true,
+    "agent_actions": 120,
+    "human_actions": 368,
+    "score": 1.0,
+    "sampled": 120,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 120
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 6,
+    "cleared": true,
+    "agent_actions": 46,
+    "human_actions": 68,
+    "score": 1.0,
+    "sampled": 46,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 46
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 7,
+    "cleared": true,
+    "agent_actions": 55,
+    "human_actions": 79,
+    "score": 1.0,
+    "sampled": 55,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 55
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 8,
+    "cleared": true,
+    "agent_actions": 134,
+    "human_actions": 442,
+    "score": 1.0,
+    "sampled": 134,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 134
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   },
+   {
+    "lvl": 9,
+    "cleared": true,
+    "agent_actions": 136,
+    "human_actions": 415,
+    "score": 1.0,
+    "sampled": 134,
+    "inert": 0,
+    "inert_first_strict": 0,
+    "inert_repeat_strict": 0,
+    "inert_first_coarse": 0,
+    "inert_repeat_coarse": 0,
+    "dead": 0,
+    "edge_only": 0,
+    "dead_repeat_strict": 0,
+    "dead_repeat_coarse": 0,
+    "dead_by_tool": {},
+    "by_tool": {
+     "shepherd": 134
+    },
+    "inert_by_tool": {},
+    "repeat_by_tool": {},
+    "longest_inert_run": 0,
+    "run_tool": null
+   }
+  ],
+  "counterfactual": {
+   "strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_strict": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   },
+   "dead_coarse": {
+    "game_score_gain": 0.0,
+    "mean_gain_over_25": 0.0,
+    "levels_improved": []
+   }
+  }
+ }
+]

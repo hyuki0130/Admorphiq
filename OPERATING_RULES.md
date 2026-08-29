@@ -450,6 +450,9 @@ nothing), 7ae (`--dirty` ships the whole team's tree), 7aq (a wall-clock win is 
 does not license a change of BEHAVIOUR, and a correct diagnosis does not tell you which edit removes
 it. **7at** is the counterpart: the same mechanism DID pay when the fix was narrow and conditional.
 Also 7v (a term's spread is necessary and not sufficient), 7b (keep nothing that does not move it).
+⛔ **And PRICE THE CLASS BEFORE MEASURING IT — 7cb.** Only FIVE cleared levels in the whole 25 score
+below 1.0, so **+0.00796 of the mean is the ceiling on ANY efficiency work over cleared levels**; it
+is one pass over `rounds/*/games/*.json`. The inert-action class came in at +0.000056 against it.
 
 **Wondering where the box's time goes** → 7j/7k/7m (the Mac is editor+grep+ruff), 7ad (a proxy that
 is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our own tarballs).
@@ -457,6 +460,10 @@ is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our ow
 **An INSTRUMENT gave you a clean answer** → ⛔ nine lied in two days and every one failed toward
 "there is nothing here": 7z, 7u, 7as (three restart detectors, three reasons, no survivor),
 7ah (asking a tool spends its patience), 7p/7ac (waste attributed to the wrong owner).
+⚠️ **Measuring whether an action DID anything? 7c + 7cb.** The raw `!=` reports ZERO inert actions on
+a board with an edge counter; `segment.board_changed` discards that band on purpose and so throws
+away a game whose real effect is drawn there. **Neither alone is sound — report dead / edge-only /
+live.** The two-way version had r11l at "47.6% wasted" where the true figure is 0%.
 
 **Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
 is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bf** (why the
@@ -3345,3 +3352,71 @@ instantly, so the 180-second timeout never engages. A non-local endpoint that bl
 180s × 2 attempts × every stall against a 9-hour budget for 110 games. ⛔ Do not "fix" this with a
 shorter timeout — nothing is broken and rule 7o forbids speculative safety nets — but do not point
 the shipped default at a non-local host either.
+
+### 7cb — inert actions are confined to levels that never clear — the defect class is worth 0.00006 (2026-08-30)
+
+Rule 7bw found `world_model` spending 117 actions on lf52's level 6 and changing the board ZERO
+times. There it costs nothing — a level that never clears is scored zero however it is spent. **The
+question with score attached is whether the same waste happens on levels that DO clear**, where RHAE
+squares an efficiency loss and where it would cost on every one of the 110 unseen games. Censused
+over all 25 (`scripts/_inert_census.py`, round `scripts/rounds/R101INERT`), **25 of 25 games
+reproducing their banked `R101SHIPPED` per-level counts and scores exactly**.
+
+```
+                  actions   DEAD   dead%   dead-repeat   edge-only
+cleared levels       6381     68   1.07%            38         141
+never-cleared        1996    196   9.82%             —         345
+```
+
+⭐ **A DEAD ACTION IS 9.2x MORE LIKELY ON A LEVEL THAT NEVER CLEARS.** The waste is where it cannot
+be paid for. Removing every repeat-dead action from every cleared level is worth **+0.000056 of the
+mean**, all of it `ls20`; on the most generous reading (counting edge-only actions as waste too)
+**+0.000474**, still all `ls20`. Twenty-four of twenty-five games gain EXACTLY ZERO.
+
+⛔ **AND THE CAP IS WHY, WHICH BOUNDS THE WHOLE CLASS BEFORE ANY CENSUS IS RUN.** Only FIVE cleared
+levels in the entire 25 score below 1.0 — bp35 L2/L3/L5, lp85 L4, ls20 L7. Driving all five to a
+perfect 1.0 is worth **+0.00796 of the mean, and that is the ceiling on efficiency work over cleared
+levels no matter what any census finds.** Compute that bound first; it is one pass over
+`rounds/*/games/*.json`.
+
+⛔ **THE THREE-WAY SPLIT IS LOAD-BEARING AND THE TWO-WAY VERSION WOULD HAVE PUBLISHED A FICTION.**
+`segment.board_changed` discards the frame's outer band on purpose (rule 7c: an edge counter
+otherwise makes every action, refusals included, look live). But a game that draws its selection
+marker or its readout in that band has its REAL effect discarded by the same rule. So an action is
+called inert only when NOTHING changed anywhere (`dead`); one that moved only the band is `edge-only`
+and is never counted as waste without a second look. The correction is not cosmetic:
+
+```
+                 two-way "inert"        three-way
+r11l cleared     39 of 82 = 47.6%       0 dead, 39 edge-only   -> 0% waste
+lf52 cleared     34 of 323 = 10.5%      0 dead, 34 edge-only   -> 0% waste
+bp35 level 6    205 of 499 = 41.1%      0 dead, 205 edge-only
+cd82 cleared     44 of 131 = 33.6%     16 dead, 28 edge-only
+```
+
+⚠️ Read the other way, `raw != any` alone is the trap rule 7c already named: on bp35 and r11l it
+reports **zero** inert actions where the interior test finds hundreds. **Neither test alone is
+sound. Run both and report the three classes.**
+
+⭐ **AND THE LIVELOCK SIGNATURE OF RULE 7bw APPEARS ONLY WHERE IT IS FREE.** Longest run of
+consecutive inert actions by ONE tool:
+
+```
+never-cleared:   116  lf52 L6 world_model      49  bp35 L6 graph        then 6, 4
+cleared:           7  ls20 L7 keymaze           6  lf52 railpeg         then 3, 3, 2 ...
+```
+
+Only two runs of eight or more exist in all 25 games and **both are on levels that never clear**. The
+memo-plus-give-up livelock is real, is generic, and does not touch a single scored action here.
+
+⚠️ **ONE CANARY IS NOT AS TIGHT AS IT LOOKS.** Of the five levels sitting at EXACTLY the human count
+(rule 7bl), four contain ZERO dead actions — re86 L2 and L6, tu93 L7 and L8 are genuinely tight.
+**`sc25` L2 is not: 6 actions against a human 6, and ONE of them is dead** (`sigilgate`). It cannot
+gain score, because the scorer caps at 1.0. What it means is that sc25's whole cap margin is one
+wasted click, and there is a free action already inside the level to absorb any future regression.
+
+**THE VERDICT, and it is a complete result rather than an absence of one**: this defect class is
+measured, bounded and worth approximately nothing on the sample set — **but the bound comes from
+nineteen games sitting at the cap, which is a property of the public 25 and not of the 110 unseen
+games.** ⛔ Do not read "+0.000056" as "inert actions are harmless"; read it as "the public set
+cannot measure this, so it must not be used to justify the work either way."
