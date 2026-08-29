@@ -4,8 +4,8 @@
 
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
-**MEAN = 0.9069**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101GRAPHOWN/games` — use it as the gate's BASE.
+**MEAN = 0.9078**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101BP35/games` — use it as the gate's BASE.
 
 ⭐ **AND THE GAINS REACH THE SUBMISSION PATH**, measured 2026-08-30 after fifteen source changes:
 `--agent unified` 0.9069 and `--agent kaggle_unified` (through the official wrapper the notebook
@@ -21,7 +21,7 @@ The seven still short, largest gap first:
 
 ```
 lf52  0.2727   gap 0.7273   ⛔ the stall position is CLOSED — see below. Do not build a frontier tier.
-bp35  0.2220   gap 0.7780   ⭐ the WINNING attempt already beats the human (43<48, 30<33); the whole
+bp35  0.2456   gap 0.7780   ⭐ the WINNING attempt already beats the human (43<48, 30<33); the whole
                              loss is EXPLORATORY DEATHS. Removing them = 0.3304, +0.0043, WITHOUT
                              level 6. Needs lethality read from the frame BEFORE contact.
 s5i5  0.5833   gap 0.4167   level 7 solvable in 24-28 clicks; _MAX_OPEN is cut off just short   level 7, allowance 200, every seed COLLAPSES
@@ -63,7 +63,7 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101GRAPHOWN 8 4000
+bash scripts/snapgate.sh <name> scripts/rounds/R101BP35 8 4000
 bash scripts/ptest.sh --dirty tests/test_x.py     # tests, on the BOX; TARGET it (whole suite = 24 cores)
 bash scripts/pfan.sh <name> <probe.py> <n> "<arg>" 6   # any probe, snapshotted; NAME is required
 ```
