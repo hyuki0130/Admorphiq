@@ -433,6 +433,35 @@ Commit progress to the round page, and bring the MEASUREMENTS back too — `scri
 `scripts/memory_mirror.sh` — because the instance and the memory directory both vanish with the
 machine.
 
+## ⛔ INDEX — 45 rules, 44 of them written on 2026-08-29/30. Read the GROUP you are in.
+
+This file is 1,876 lines and nobody reads it front to back; that is itself a measured failure mode.
+Find your situation below and read those three or four rules only.
+
+**About to write or quote a PROBE** → **7aj** is the checklist; **7ai** is why two controls;
+7x (mirror the scorer's loop), 7e (no entrypoint), 7f/7s (a level number is not a verdict),
+7g (verify the branch FIRES), 7y (ask the board by doing).
+
+**About to GATE something** → 7l (snapshot, never the shared tree), 7q + 7af (a PASS can cover
+nothing), 7ae (`--dirty` ships the whole team's tree), 7aq (a wall-clock win is not a score win),
+7w (stage and commit in ONE step).
+
+**About to FIX something you just diagnosed** → ⛔ **7o and 7am first.** A measurement of a MECHANISM
+does not license a change of BEHAVIOUR, and a correct diagnosis does not tell you which edit removes
+it. **7at** is the counterpart: the same mechanism DID pay when the fix was narrow and conditional.
+Also 7v (a term's spread is necessary and not sufficient), 7b (keep nothing that does not move it).
+
+**Wondering where the box's time goes** → 7j/7k/7m (the Mac is editor+grep+ruff), 7ad (a proxy that
+is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our own tarballs).
+
+**An INSTRUMENT gave you a clean answer** → ⛔ nine lied in two days and every one failed toward
+"there is nothing here": 7z, 7u, 7as (three restart detectors, three reasons, no survivor),
+7ah (asking a tool spends its patience), 7p/7ac (waste attributed to the wrong owner).
+
+**Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
+is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), 7au (lf52),
+7an (bp35), 7ao (s5i5), 7ak (dc22).
+
 ### 7c — the waste a stalled tool spends is the HARNESS's, and `observe`'s flag cannot see it (2026-08-29)
 
 Two traps, both measured on lf52, both generic, both of which cost a session each:
