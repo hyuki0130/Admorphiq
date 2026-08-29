@@ -94,6 +94,16 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 >   scripts/xfergate.sh`, ratio 0.9989). **s5i5 L4 is the ONLY render-dependent thing in the entire
 >   corpus** — 39 -> 61 actions on the same level re-rendered.
 >
+> ⭐ **AND EFFICIENCY OVER CLEARED LEVELS HAS A STRUCTURAL CEILING OF +0.00796** (rule 7cb, one pass
+> over `rounds/*/games/*.json`): only **FIVE** cleared levels in the whole 25 score below 1.0 —
+> bp35 L2/L3/L5, lp85 L4, ls20 L7. Driving all five to a perfect 1.0 is worth eight thousandths of
+> the mean, whatever any census finds. ⛔ **Compute that bound BEFORE opening an efficiency arm.**
+> The inert-action census then priced the actual waste at **+0.000056**, all of it ls20, with 24 of
+> 25 games gaining exactly zero — and a dead action is **9.2x** more likely on a level that never
+> clears (9.82% vs 1.07%), where it is scored zero anyway.
+> ⚠️ That smallness is a property of THE PUBLIC 25, where nineteen games sit at the cap. It is not
+> evidence that inert actions are harmless on the 110, and must not be quoted in either direction.
+>
 > **So the work is: find and name render-dependence, not chase the last 0.09.** Three things are in
 > flight, and a fresh session should continue one of them rather than open a seventh arm on a closed
 > game:
