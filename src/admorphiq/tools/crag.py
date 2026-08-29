@@ -100,6 +100,9 @@ _EXPLORE_EDITS = 2
 _GIVE_UP = 16
 # Handovers before it stops bidding on this game at all.
 _MUTE_AFTER = 3
+# Faces kept per signature. One is all the mirror rule can use; the rest are only ever counted, to
+# see that the kind is ambiguous and leave it alone.
+_MAX_FACES = 4
 
 
 def settled_layer(obs: Any) -> np.ndarray:
@@ -128,6 +131,29 @@ def _cores(g: np.ndarray, p: int, oy: int, ox: int) -> list[tuple[Cell, np.ndarr
 def _sig(core: np.ndarray) -> Sig:
     """A cell's identity: the colour histogram of its core, order-free."""
     return tuple(sorted(Counter(int(v) for v in core.ravel()).items()))
+
+
+def _faces(g: np.ndarray, p: int, oy: int, ox: int) -> list[tuple[Cell, np.ndarray]]:
+    """Every whole cell's FACE — the core plus the one row and column `_cores` insets away.
+
+    ⛔ Why a SECOND window when `_sig` already exists, and why it is not allowed to replace it.
+    `_cores` insets a pixel on both sides, so at pitch `p` it reads rows 1..p-2 of a glyph drawn
+    p+1 tall. Only the LAST row and column are shared with the neighbour, so rows 1..p-1 are
+    equally this cell's own — and THAT window is the one closed under a vertical flip, because
+    the flip sends row r to row p-r. The core is not: it reads rows 1..4 of a seven-row glyph and
+    the flip sends those to rows 5..2, so the same art the two ways up arrives as two unrelated
+    kinds. Measured on bp35's spikes, whose two orientations are one sprite and its reverse.
+
+    Nothing routes on the face. It exists so a hazard drawn for one gravity axis can be joined to
+    the same hazard drawn for the other, and `_sig` — which every judgement in this file is built
+    on — is left exactly as it was.
+    """
+    h, w = g.shape
+    out: list[tuple[Cell, np.ndarray]] = []
+    for r, y in enumerate(range(oy, h - p, p)):
+        for c, x in enumerate(range(ox, w - p, p)):
+            out.append(((r, c), g[y + 1 : y + p, x + 1 : x + p]))
+    return out
 
 
 def _alphabet(g: np.ndarray, p: int, oy: int, ox: int) -> tuple[int, float]:
@@ -219,6 +245,9 @@ class CragTool:
         self._flip: set[Sig] = set()          # a click reverses the gravity axis
         self._inert: set[Sig] = set()         # a click does nothing here
         self._probed: set[Sig] = set()        # a click on this kind has been paid for once
+        # Signature -> the faces it has been drawn with. A kind seen with exactly ONE face can be
+        # matched against another kind's flipped face; anything ambiguous is left alone.
+        self._face: dict[Sig, set[tuple[tuple[int, ...], ...]]] = {}
         self._exit: Sig | None = None
         self._dud: set[Sig] = set()           # looked singular, was decoration
         self._aimed: Sig | None = None
@@ -247,6 +276,8 @@ class CragTool:
         # Resting places from which nothing at all was reachable. Survives a restart, because the
         # terrain does.
         self._pocket: set[tuple[Cell, int]] = set()
+        # Cells from which LEAVING THE MAP has killed, under that axis. Survives a restart.
+        self._graves: set[tuple[Cell, int]] = set()
         self._known = 0
         self._grade = 0
         # This board has been seen to restart itself, so running the clock out is a way back to
@@ -600,6 +631,56 @@ class CragTool:
         else:
             self._swap[was] = now
 
+    def _learn_faces(self, g: np.ndarray, board: Board) -> None:
+        """File the face of every signature this window drew, at the origin the stitch chose."""
+        if not self._pitch:
+            return
+        for cell, tile in _faces(g, self._pitch, self._oy, self._ox):
+            sig = board.get(cell)
+            if sig is None or tile.size == 0:
+                continue
+            seen = self._face.setdefault(sig, set())
+            if len(seen) < _MAX_FACES:
+                seen.add(tuple(tuple(int(v) for v in row) for row in tile))
+        self._mirror_join()
+
+    def _mirror_join(self) -> None:
+        """Name a kind drawn as a known hazard's MIRROR lethal — on SIGHT, not on contact.
+
+        ⛔ This is bp35's second discovery death, measured rather than argued. Over a 730-action
+        run the game dies four times on a spike, and `_learn_death` names a kind on exactly two of
+        them: `{5:4, 15:12}` on the second board and `{0:1, 5:4, 11:2, 15:9}` on the fifth. Those
+        two histograms are ONE drawn glyph the two ways up — this family reverses gravity, so its
+        hazard is drawn pointing with the axis and against it — and the second orientation costs a
+        whole attempt to re-learn. (The other two deaths are the ending `_stranded` deliberately
+        plans when it is walled in, and are not this.)
+
+        ⛔ AND IT HAS TO RUN AT SIGHTING TIME. Hung off `_learn_death` instead it is INERT, and
+        measured so: bp35 scored 0.221988 with zero joins, identical to the baseline to six
+        places. The twin is not on screen when the first kind is named — it belongs to a board
+        three levels later — and by the time it IS named, it is already lethal and there is
+        nothing left to join. Every frame is the only moment both are known and one is still
+        untouched. (Rule 7g: the branch existed, could fire, and did not.)
+
+        ⛔ The join is refused unless BOTH kinds have been drawn with exactly one face each, so a
+        histogram that two different arrangements happen to share can never drag an innocent kind
+        in — and a kind the body has already stood on unharmed is never taken, because an
+        observation outranks an inference.
+        """
+        want: dict[tuple[tuple[int, ...], ...], Sig] = {}
+        for sig in self._lethal:
+            faces = self._face.get(sig)
+            if faces is not None and len(faces) == 1:
+                want[next(iter(faces))[::-1]] = sig
+        if not want:
+            return
+        for other, seen in self._face.items():
+            if other in self._lethal or other in self._safe or self._is_open(other):
+                continue
+            if len(seen) == 1 and next(iter(seen)) in want:
+                self._lethal.add(other)
+                self._solid.discard(other)
+
     def _learn_death(self, last: dict[str, Any] | None) -> None:
         """One death, read as narrowly as the evidence allows — and always narrowed to SOMETHING.
 
@@ -608,7 +689,13 @@ class CragTool:
         had already stood on is not evidence about the floor. Only a landing the tool could not
         account for — something DRAWN and unexplained — names a kind lethal.
 
-        ⛔ But a death that names nothing must still cost the action that caused it, or the tool
+        Three facts are on offer and the emitted action already said which one applies: the body
+        was heading onto something DRAWN and unexplained, so that glyph is a hazard everywhere it
+        appears; or it was heading over a BRINK with nothing drawn beyond, so nothing can be named
+        but leaving the map AT THAT CELL is fatal however the body arrives there; or neither, and
+        only the exact action is refused.
+
+        ⛔ A death that names nothing must still cost the action that caused it, or the tool
         repeats it. Measured: the same three actions, then a restart, then the same three, for
         the whole budget. So the exact (place, axis, action) is struck off even when the reason
         cannot be pinned on a glyph — which is also the honest reading when the killer is a clock
@@ -618,11 +705,14 @@ class CragTool:
             return
         if last.get("key") is not None:
             self._deadly.add(last["key"])
+        if last.get("brink") is not None:
+            self._graves.add(last["brink"])
         blind = last.get("blind")
         if blind is None or blind in self._safe or self._is_open(blind):
             return
         self._lethal.add(blind)
         self._solid.discard(blind)
+        self._mirror_join()
 
     # ------------------------------------------------------------------ physics
 
@@ -644,7 +734,13 @@ class CragTool:
                 return "win", nxt, None
             sig = cells.get(nxt)
             if sig is None:
-                return "edge", (r, c), None
+                # ⛔ A brink that has already killed is a hazard, even though nothing is DRAWN down
+                # there to name. Leaving the map is the explorer's BEST-ranked move — it is how the
+                # board gets discovered — so with no memory of the drop that killed, the tool takes
+                # the same one on every attempt. Measured on the fifth board: two deaths one action
+                # apart in length, at the same cell, having learned nothing in between, because a
+                # death only ever named a GLYPH and this death has no glyph to name.
+                return ("dead" if ((r, c), gdir) in self._graves else "edge"), (r, c), None
             if self._is_open(sig):
                 r = nxt[0]
                 continue
@@ -1083,6 +1179,7 @@ class CragTool:
         self._deadly = set()
         self._missed = {}
         self._pocket = set()
+        self._graves = set()
         # ⛔ Running out of ideas is a fact about a BOARD, not about a game. Carrying the count
         # across a level-up retires a tool from a game it is in the middle of solving: measured,
         # it went quiet on the sixth board of a game whose first five it had just cleared.
@@ -1133,11 +1230,17 @@ class CragTool:
         if not click or len(lateral) != _LATERAL:
             return []
         self._left, self._right = lateral[0], lateral[1]
-        readings = self._readings(settled_layer(obs))
+        g = settled_layer(obs)
+        readings = self._readings(g)
         if not readings:
             return self._quit("unreadable")
         was_at, was_g = self._at, self._gdir
         outcome, board, inks, body = self._stitch(readings, self._allow())
+        if outcome != "lost":
+            # ⛔ AFTER the stitch, never before: the face has to be read at the origin the stitch
+            # settled on, and `_readings` offers every origin in the pitch. Filed at the wrong one
+            # a face is a slice of two neighbours, and the mirror rule would match on nonsense.
+            self._learn_faces(g, board)
         rare = _singular(inks)
         if not self._body_ink and body in rare:
             self._body_ink = rare[body]
@@ -1308,7 +1411,7 @@ class CragTool:
                 if cell is not None and xy is not None:
                     self._edits.setdefault(cell, self._world[cell])
                     self._last = {"kind": "click", "cell": cell, "was": self._world[cell],
-                                  "on_support": False, "blind": None,
+                                  "on_support": False, "blind": None, "brink": None,
                                   "key": ((self._at, self._gdir), (6, xy))}
                     self._took = self._last["key"]
                     self._plan = []
@@ -1327,7 +1430,7 @@ class CragTool:
             # a change it files as something the board animates.
             self._edits.setdefault(cell, self._world[cell])
             self._last = {"kind": "click", "cell": cell, "was": self._world[cell],
-                          "on_support": False, "blind": None,
+                          "on_support": False, "blind": None, "brink": None,
                           "key": ((self._at, self._gdir), (6, xy))}
             self._took = self._last["key"]
             self._note = f"probe {cell}"
@@ -1446,6 +1549,7 @@ class CragTool:
                           else self._world.get((self._at[0], self._at[1] + dc))}
         if self._last is not None:
             self._last["blind"] = under if verdict == "blind" else None
+            self._last["brink"] = (rest, gdir) if verdict == "edge" else None
             self._last["key"] = ((self._at, self._gdir), step)
             self._took = self._last["key"]
         self._expect = rest

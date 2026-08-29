@@ -115,3 +115,103 @@ lethality read from the FRAME before it is touched — a perception capability c
 and a different round.
 
 Related: [[r101_wa30-level-restart]], [[r101_silent-specialists]], [[r101_allowance-ledger]]
+
+---
+
+## ⭐ THE ANSWER TO THIS PAGE'S CLOSING QUESTION — the killer IS readable, and one of the four deaths was free (2026-08-30)
+
+This page closed on *"closing that gap needs lethality read from the FRAME before it is touched — a
+perception capability crag does not claim, and a different round."* That question is now a
+measurement rather than a hope.
+
+### The census: a lethal glyph is PERFECTLY distinguishable before contact
+
+`scripts/_bp35_glyphcensus.py` plays bp35 through the scorer's own agent factory, reads every frame
+with **crag's own** `fit_lattice` / `read_lattice`, maps each screen cell to its board cell through
+the camera, and files the cell's signature against the sprite names the ENGINE has there.
+
+```
+730 actions, levels 1-6            10 distinct signatures seen
+signatures that are LETHAL-only     2      covering  5,049 cell reads
+signatures covering BOTH a lethal cell and a safe one     0
+alignment self-check      72,900 aligned : 100 unaligned
+```
+
+⛔ **Zero ambiguity.** The two lethal signatures are
+
+```
+ubhhgljbnpu   {5:4, 15:12}                levels 2,3,4,5,6    2,279 reads
+hzusueifitk   {0:1, 5:4, 11:2, 15:9}      levels 5,6          2,770 reads
+```
+
+⚠️ But the colours are NOT a marker. `ubhhgljbnpu`'s ink set `{5,15}` is shared with the safe
+pass-through decoration `jcyhkseuorf` `{5:6, 15:10}` and with the copier's animation frame; only the
+exact pixel COUNTS separate them, which is what `_sig` already is. And nothing in the frame says
+which of the ten kinds kills — **distinguishable is not identifiable, and one death per drawn kind
+is irreducible.** (Cross-check from the source: `_body`'s docstring already says "one of the body's
+colours is shared with a hazard on the later boards" — that is colour 11, the player's `r` pixels
+and `hzusueifitk`'s `x` pixels, and the census finds it independently.)
+
+### What the four deaths actually are — two are the price, two are DELIBERATE
+
+`scripts/_bp35_deaths.py` wraps `_learn_death`; `scripts/_bp35_blind.py` wraps `_take` and records
+the verdict of every emitted leg. Over the same 730-action run:
+
+```
+L2 a25   verdict "blind"   names ubhhgljbnpu           <- discovery, irreducible
+L2 a59   verdict "dead"    names NOTHING (blind=None)  <- _stranded ENDING the attempt on purpose
+L5 a184  verdict "blind"   names hzusueifitk           <- discovery of the SAME ART FLIPPED
+L5 a198  verdict "dead"    names NOTHING (blind=None)  <- _stranded again
+```
+
+⛔ **The two `blind=None` deaths are not a defect.** `_search(…, "end", …)` is the one caller that
+`return`s a `"dead"` leg, and `_stranded` uses it: walled in, the attempt is over whatever happens
+next, and dying in two actions beats serving out thirty of clock. Exactly **2** of the 229 legs
+emitted in the run carry verdict `"dead"`, and both are that. Do not "fix" them.
+
+⇒ **Of bp35's four spike deaths, exactly ONE was avoidable**: L5's, because `hzusueifitk` is
+`ubhhgljbnpu` reversed and crag had known that kind lethal since board 2.
+
+### The fix: a face window that is closed under the flip
+
+`_sig` is a histogram of `_cores`' window, which insets a pixel on BOTH sides — rows 1..p-2 of a
+glyph drawn p+1 tall. The flip sends row r to row p-r, so that window is **not** flip-closed: rows
+1..4 of a seven-row sprite map to rows 5..2. Rows 1..p-1 are equally this cell's own (only the last
+row and column are shared with the neighbour) and that window **is** closed.
+
+`_faces` reads it; `_mirror_join` names lethal any kind whose single face is the flip of a
+known hazard's single face. `_sig` is untouched — every routing decision still runs on the
+histogram, and the face is a side table nothing else reads.
+
+⛔ **It has to run at SIGHTING time, and the first version did not.** Hung off `_learn_death` the
+rule is INERT and measures so — bp35 `0.221988` with **zero joins**, identical to baseline to six
+places. The twin is not on screen when the first kind is named (it belongs to a board three levels
+later), and by the time it IS named it is already lethal and there is nothing left to join. Rule 7g,
+paid in one run: the branch existed, could fire, and did not.
+
+### Measured
+
+```
+                        L1   L2   L3   L4   L5    game
+baseline (R101WA30)     18   87   45   23   60    0.221988
+with the mirror rule    18   87   45   23   46    0.245560     +0.0236
+```
+
+Levels 1-4 byte-identical; L5 60 -> 46 = the 14-action discovery attempt, gone. Deterministic 3/3.
+
+**Blast radius measured, not assumed** — the same probe on thirteen other games
+(`scripts/_bp35_score.py`, one title per fan slot): `ar25 ka59 m0r0 r11l sk48 sp80 tu93 vc33` all
+1.000000, `ls20 0.912085`, `dc22 0.714286`, `lf52 0.272727` — **every one equal to the R101WA30
+baseline, and `mirror_joins` EMPTY on all thirteen.** The rule fires exactly once in the whole set.
+
+Guards, each pinned in `tests/test_crag_mirror.py`: the join is refused unless BOTH kinds have been
+drawn with exactly one face (a histogram two arrangements share can never drag a kind in), refused
+for any kind the body has already stood on unharmed (an observation outranks an inference), and it
+only ever COPIES a verdict — with no hazard named, shape alone names nothing.
+
+### What is left on bp35
+
+L2's 87 is `7 discovery + 34 walled-in + 43 clear`, and the winning attempt still beats the human
+(43 < 48). The remaining headroom is `_stranded`: the tool reaches a pocket after 34 actions on
+board 2 and after 14 on board 5, and ending the attempt early is the best move ONCE THERE. Not
+walking in is a different round. ⛔ Level 6 stays closed — see this page's proof of absence above.
