@@ -3420,3 +3420,46 @@ measured, bounded and worth approximately nothing on the sample set — **but th
 nineteen games sitting at the cap, which is a property of the public 25 and not of the 110 unseen
 games.** ⛔ Do not read "+0.000056" as "inert actions are harmless"; read it as "the public set
 cannot measure this, so it must not be used to justify the work either way."
+
+### 7cc — I put the shared box at load 110 running an arm the repo says is impossible there (2026-08-30)
+
+Rule 7ca found a real open axis: the LLM target draw has never once succeeded, so nobody knows
+whether it helps. I taught `snapgate.sh` to forward `HARNESS_MODEL`, set `OLLAMA_NUM_THREAD=8`,
+and launched the arm on ceph-build. Ten minutes later:
+
+```
+load average: 107.73    cap is 60 of 64 cores
+ollama runner   3665% CPU   = THIRTY-SEVEN CORES, one process
+```
+
+⛔ **CLAUDE.md ALREADY SAID THIS, IN THE SAME SENTENCE THAT NAMES THE MODEL**: *"ceph-build cannot
+substitute: no GPU, and `gemma4:26b` takes 51.8s for four tokens there."* And `registry.py`'s own
+comment records the identical measurement — *"one 26B model at full tilt took 3743% CPU (~37 cores)
+and pushed the load average to 96 alongside other tenants' workloads."* I read neither before
+launching, on a machine other people were working on.
+
+⛔ **`OLLAMA_NUM_THREAD` DID NOT RESTRAIN IT, and the reason generalises.** `ollama_llm` puts the
+value in the request's `options.num_thread`; the ollama SERVER had already spawned its runner with
+its own defaults, so the client-side option arrived too late to matter. **A cap that lives in the
+caller cannot bound a process the callee already started.** There is no client-side lever here.
+
+⛔ **THE THREE THINGS THAT MADE IT WORSE, all mine:**
+1. **`snapgate.sh` ignored its own remote refusal.** The remote block printed *"only 4 of 25 games
+   produced a result"* and exited 1; the local half pulled the 4 anyway and ran the comparator,
+   which announced **"MEAN new = 1.0000 over 4"**. `compare.py`'s no-verdict guard caught it — but
+   only because games were MISSING, and a remote failure yielding 25 present-but-wrong results would
+   have passed. **A guard whose refusal the caller ignores is decorative.** Fixed, and verified in
+   both directions with a two-second `ssh … exit 1` / `exit 0` pair.
+2. The unload needed the right call: `POST /api/generate {"model":…,"keep_alive":0}` returns
+   `done_reason: "unload"`. Killing the score processes alone left the runner resident and burning.
+3. ⛔ Never kill the ollama SERVER on this box — it is a shared service. Only the runner, and only
+   through the unload API.
+
+⭐ **SO THE FIX IS A RUNNER, NOT A SENTENCE.** `snapgate.sh` now REFUSES when `HARNESS_MODEL` or
+`HARNESS_LLM_BASE_URL` is forwarded, printing the 37-core measurement and pointing at a GPU host;
+`FORCE_LLM_ON_CPU_BOX=1` overrides it for someone with a reason. This is the campaign's own doctrine
+applied to me: a rule DESCRIBES and therefore needs somebody to decide, and I decided wrong with the
+rule two files away. **A rule that has been broken with the runner in hand belongs in the runner.**
+
+⚠️ The axis 7ca opened is still open and still worth measuring — it just needs a GPU host, and the
+cost estimate stands: the whole 25-game Kaggle run made only FOUR draw attempts.

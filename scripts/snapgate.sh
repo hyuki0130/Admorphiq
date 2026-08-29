@@ -45,6 +45,28 @@ for v in HARNESS_MODEL HARNESS_HOST HARNESS_CTX OLLAMA_NUM_THREAD GF_GIVEUP GF_E
   [ -n "$val" ] && PASSENV="$PASSENV $v=$val"
 done
 if [ -n "$PASSENV" ]; then echo "=== passing through:$PASSENV"; fi
+
+# ⛔ REFUSE AN LLM ARM ON ceph-build. Measured 2026-08-30, and CLAUDE.md had already written it down:
+# one 26B model on this box takes **51.8 seconds for four tokens** and, when the arm was run anyway,
+# **3665% CPU — thirty-seven cores** — driving the load average to 110 against a 60-core cap, on a
+# SHARED machine whose other tenants were still working. `OLLAMA_NUM_THREAD` did NOT restrain it:
+# `ollama_llm` puts it in the request's `options.num_thread`, and the server had already spawned the
+# runner with its own defaults. There is no client-side cap to reach for.
+#
+# The rule existed and I ran the arm regardless, which is exactly the failure mode this campaign
+# keeps meeting — a rule DESCRIBES and therefore needs someone to decide; a runner does not.
+# An LLM arm needs a GPU. Set FORCE_LLM_ON_CPU_BOX=1 only with a reason you can defend.
+case "$PASSENV" in
+  *HARNESS_MODEL=*|*HARNESS_LLM_BASE_URL=*)
+    if [ "${FORCE_LLM_ON_CPU_BOX:-0}" != "1" ]; then
+      echo "⛔ REFUSING: an LLM arm on ceph-build. One 26B model = ~37 cores and 51.8s per four"
+      echo "   tokens there; the last attempt put the shared box at load 110 (cap 60) and"
+      echo "   OLLAMA_NUM_THREAD does not restrain it. Use a GPU host, or FORCE_LLM_ON_CPU_BOX=1."
+      exit 1
+    fi
+    echo "⚠️  FORCE_LLM_ON_CPU_BOX=1 — running an LLM arm on the shared CPU box anyway."
+    ;;
+esac
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -142,6 +164,17 @@ echo "GATEDONE $n games"
 # throttle that reported success while protecting nothing.
 [ "$n" -ge 25 ] || { echo "⛔ only $n of 25 games produced a result — see \$HOME/${SNAP}_out/*.log"; exit 1; }
 EOS
+
+# ⛔ THE REMOTE BLOCK'S REFUSAL MUST STOP THE LOCAL HALF. Measured 2026-08-30: an LLM-arm gate was
+# killed mid-run, the remote printed "only 4 of 25 games produced a result" and exited 1 — and this
+# script pulled the 4 anyway and ran the comparator, which reported "MEAN new = 1.0000 over 4".
+# `compare.py`'s own no-verdict guard caught it, but only because games were MISSING; a remote
+# failure that produced 25 present-but-wrong results would have sailed through. **A guard whose
+# refusal the caller ignores is decorative** — the same shape as the bash-3.2 `wait -n` throttle.
+if [ $? -ne 0 ]; then
+  echo "⛔ the remote gate refused (see its message above) — NO VERDICT, nothing pulled."
+  exit 1
+fi
 
 # ⛔ REFUSE TO WRITE INTO A DIRECTORY THAT ALREADY HOLDS RESULTS. Measured 2026-08-30: an agent's
 # 50-file A/B already sat in scripts/rounds/R101LP85/games, the gate's 25 landed beside them, and
