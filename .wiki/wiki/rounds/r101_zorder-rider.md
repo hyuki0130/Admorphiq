@@ -129,6 +129,13 @@ candidate sets happen to be small, not a forecast — and any tool carrying the 
 drawn it pins the choice for free; where it is not, everything is a candidate"* has this exposure.
 `swivel._begin` carries the identical two lines and its own comment naming the archived re-render.
 
+⛔ **AND [[r101_render-mutation-transfer]]'s `rendergate.sh` CANNOT CATCH THIS ONE** — which is the
+natural place to assume it does, since it manufactures a re-render for all 25 games where only 15
+have an archived one. It permutes colours and renames identifiers on the OBSERVATION, and a colour
+permutation is a bijection: it preserves which sprite is on top. The evidence this defect destroys
+is not a colour, it is a cell that is not there. A mutation that would catch it has to change the
+PAINT ORDER, and nothing in the repository does that yet.
+
 ⚠️ **The instrument nearly lied, in the usual direction.** The first frame dump read `frame_2d`
 (layer 0) where every tool in this family reads the LAST layer, and reported ten differing marker
 cells on the level whose true difference is one — a plausible number for a quantity it was not

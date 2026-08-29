@@ -3557,6 +3557,13 @@ marker cells on the level where the truth is one — a plausible number for a qu
 measuring (rule 7z). It was caught because the tool's own reader said `movers=1` where the dump
 implied two destinations.
 
+⛔ **RULE 7ce's `rendergate.sh` CANNOT CATCH THIS ONE, and it is the natural place to assume it
+does.** That instrument manufactures a re-render by permuting colours and renaming identifiers on
+the OBSERVATION, which is exactly the right test for a tool keyed to a literal colour or a sprite
+name — and a colour permutation is a bijection that preserves WHICH SPRITE IS ON TOP. The evidence
+this defect destroys is not a colour, it is a cell that is not there. A mutation that would catch it
+has to change the paint order, and nothing in the repository does that yet.
+
 ### 7ce — render-mutation transfer: the tools are colour-blind, and 24 of 25 boards are full-bleed (2026-08-30)
 
 Rule **7by**'s transfer number covers only the games that HAVE an archived re-render, and
