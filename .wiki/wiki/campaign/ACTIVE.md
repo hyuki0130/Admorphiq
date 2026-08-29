@@ -65,14 +65,28 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-⛔ **FIVE OF THE SIX SHORT GAMES ARE CLOSED WITH PROOFS. lf52 IS THE ONLY ONE OPEN**, and its target
-is ONE MOVE: the third capture at action 124 is the level author's own marked losing branch, and
-`railpeg` ARMS it earlier by moving red to (6,6). See the lf52 row below.
+⛔ **ALL SIX SHORT GAMES ARE NOW CLOSED WITH PROOFS.** lf52 was the last, and BOTH tasks I briefed
+for it are REFUTED by measurement (rule 7be):
 
-1. **lf52's third capture** — make it the eighth candidate rather than the first, and stop clicking
-   when nothing is legal (which also removes the (6,56) restart exposure and 143 wasted actions).
-2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
-3. Any surviving change: update the STATE block above with the new gated mean.
+- "make the third capture the eighth candidate" — **IMPOSSIBLE**: that position offers FIVE legal
+  moves and exactly ONE capture, the losing one. Nothing to rank.
+- "stop clicking when nothing is legal" — **BACKWARDS**: attempt 1 ends NOT winnable and the restart
+  at action 267 hands back a board **still winnable at 499**. Suppressing the click KEEPS THE DEAD
+  BOARD. ⭐ The run ends on a WINNABLE board with **233 actions unspent**.
+- ⭐ **lf52 is never LOST; it is never FINISHED.** Its remaining 0.7273 is PERCEPTION, not ranking:
+  `pegjump` models 2 pieces against the engine's 6, 0 of 10 reads agreeing, and returns
+  **`solved=True` — a declared LEVEL WIN over a two-cell window.** ⛔ Porting railpeg's guard fires
+  12 times and refuses 0, because **a guard on capture ROUTES cannot see a plan claiming to be a
+  SOLUTION.** Every guard is right about the WRONG BOARD.
+
+### THE NEXT AXIS, if the box is free
+
+⭐ **The harness hands every stuck board to a tool that is WEAKER ALONE** (rule 7bd): bp35's `graph`
+holds 486 actions at solo depth **0** while `crag` reaches 5 and is retired after 229; s5i5's
+`linkage` holds 463 at solo depth **2** while `swivel` reaches 6 and holds 228. ⚠️ Not a routing
+defect — every one is an EMPTY retirement — so the question is **why the strong tool goes empty**.
+⚠️ And a successor weak alone can still be the one that finishes: ls20's `fogscout` has solo depth 0
+and the harness reaches level 7 with it, which no single tool does.
 
 ⛔ **THE REGISTRY IS NOW MEASURED FROM THREE INDEPENDENT DIRECTIONS AND NONE FINDS THE GAP THERE:**
 - 47 tools × 5 stuck games = 235 pairs, forced alone: **no tool beats the harness anywhere**, and
