@@ -66,7 +66,22 @@ def main() -> int:
     if regressed:
         print(f"⛔ REGRESSED: {', '.join(regressed)} — do not keep the change")
         return 1
-    print("no game regressed")
+
+    # ⛔ A COMPARISON WITH NOTHING TO COMPARE IS NOT A PASS. Measured 2026-08-29: a gate whose 25
+    # runs all died on an import printed every row as "(missing)" and then "no game regressed",
+    # which reads exactly like a clean verdict. That is the same fail-open shape as the bash-3.2
+    # `wait -n` throttle that reported success while throttling nothing, and as the audit script
+    # that reused stale frames. A guard that cannot see must SAY SO, not stay quiet.
+    missing = sorted(g for g in old if new.get(g) is None)
+    if missing:
+        print(
+            f"⛔ NO VERDICT: {len(missing)} of {len(old)} games produced no result "
+            f"({', '.join(missing[:6])}{' …' if len(missing) > 6 else ''}). "
+            "This is not a pass — find out why they are missing."
+        )
+        return 1
+
+    print(f"no game regressed ({len(new)} games compared)")
     return 0
 
 

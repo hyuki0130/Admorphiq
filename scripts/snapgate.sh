@@ -62,12 +62,33 @@ tar xzf "$HOME/$SNAP.tgz" -C "$HOME/$SNAP"
 # on what the shared tree's environment_files becomes mid-run. (The lp85 agent's A/B left this as
 # its one remaining shared dependency and said so; this closes it.)
 cp -r "$HOME/admorphiq/environment_files" "$HOME/$SNAP/" 2>/dev/null
+# ⛔ `uv run` inside the snapshot would BUILD A FRESH ENV — the snapshot carries no venv and no
+# pyproject, so every game died with `ModuleNotFoundError: No module named 'arc_agi'` and the gate
+# reported 25 missing games. Link the shared venv and invoke its interpreter directly. The venv is
+# read-only here; the code being measured is still the snapshot's, because score_efficiency.py:35
+# inserts the runner's own repo `src` at sys.path position 0.
+ln -s "$HOME/admorphiq/.venv" "$HOME/$SNAP/.venv" 2>/dev/null
+ln -s "$HOME/admorphiq/ARC-AGI-3-Agents" "$HOME/$SNAP/ARC-AGI-3-Agents" 2>/dev/null
 cd "$HOME/$SNAP"
+
+# Prove the snapshot's code is the code that will run, and REFUSE rather than report a number that
+# describes the shared tree (the editable-install `.pth` shadowing that ptest.sh was caught by).
+PYTHONPATH="$HOME/$SNAP/src" .venv/bin/python -c \
+  "import admorphiq,sys; p=admorphiq.__file__; sys.exit(0 if p.startswith('$HOME/$SNAP/') else print('SHADOWED',p) or 1)" \
+  || { echo "⛔ the snapshot is shadowed by the box's install — refusing to gate"; exit 1; }
+
 ls environment_files | xargs -P "$PAR" -I{} sh -c \
-  "timeout 2400 uv run python \$HOME/$SNAP/scripts/score_efficiency.py --agent unified \
+  "timeout 2400 .venv/bin/python \$HOME/$SNAP/scripts/score_efficiency.py --agent unified \
      --titles {} --max-actions $BUDGET --out \$HOME/${SNAP}_out/{}.json \
      > \$HOME/${SNAP}_out/{}.log 2>&1"
-echo "GATEDONE $(ls $HOME/${SNAP}_out/*.json 2>/dev/null | wc -l) games"
+
+n=$(ls $HOME/${SNAP}_out/*.json 2>/dev/null | wc -l)
+echo "GATEDONE $n games"
+# ⛔ A gate that produced nothing must not reach the comparator. Measured 2026-08-29: 25 games all
+# failed to import and `compare.py` printed every row as "(missing)" and then "no game regressed" —
+# a PASS verdict over zero evidence, which is the same fail-open shape as the bash-3.2 `wait -n`
+# throttle that reported success while protecting nothing.
+[ "$n" -ge 25 ] || { echo "⛔ only $n of 25 games produced a result — see \$HOME/${SNAP}_out/*.log"; exit 1; }
 EOS
 
 mkdir -p "$OUT/games"
