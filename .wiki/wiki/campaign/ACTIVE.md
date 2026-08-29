@@ -66,8 +66,24 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
 ⛔ **EVERY SHORT GAME AND EVERY TOOL-SET AXIS IS NOW CLOSED WITH PROOFS.** The remaining 0.0918 is
-not reachable by tuning, routing, pairing, or repairing a tool — five independent measurements say
-so (below). ⚠️ **Do not open a new arm without first reading which hypothesis it repeats.**
+not reachable by tuning, routing, pairing, retiring differently, or repairing a tool — **SIX**
+independent measurements say so. ⚠️ **Do not open a new arm without first reading which hypothesis
+it repeats.**
+
+⭐ **TENURE WAS THE LAST ONE, AND IT IS THE SMALLEST** (rule 7bq, all 25 games reproducing their
+banked per-level counts):
+
+```
+tenure-ending events in the ENTIRE corpus:   9      (EMPTY 7 · STALL 2)
+games that NEVER end a tenure:              20 of 25
+total propose round-trips:               7,049      empty proposes among them: 70 = 1.0%
+runs of consecutive empties that RECOVERED: 16      — FIFTEEN of them length ONE
+```
+
+⛔ There is no distribution to tune: `_EMPTY_TOLERANCE` decides **six** outcomes in the whole set.
+And the run SHAPE answers "is 8 right" without an arm — a tool blips once or goes silent for good, so
+**a tool empty eight times running really has run out.** That is why "retire later" (the `hold` arm,
+inert) and "retire sooner" (evidence-gated, LOST ls20 a level) are both refuted.
 
 1. **If an agent returns a change, GATE it**: `bash scripts/snapgate.sh <name> scripts/rounds/R101LP85GATE`.
 2. **Before proposing anything on a stuck game**, read that game's row below AND the rules it cites.
@@ -88,8 +104,14 @@ repair alone would have been inert.
 
 **WHERE IT SITS NOW:** `pegjump` holds **19 of level 6's 500 actions**; `graph` holds 225 and
 `world_model` 117. With pegjump stopped, **`graph` made the identical fatal capture 193 actions
-later.** That is rule 7bd's pattern — the harness hands the board to a tool that is weaker alone —
-and it is the whole remaining distance on this game.
+later.**
+
+⛔ **AND THE TENURE READING OF THAT IS NOW CLOSED TOO** (rule 7bq). lf52 is the corpus's ONLY
+multi-handover game — 5 of the 9 tenure-ending events in all 25 games happen here — and its
+retirements are tools that **cannot read the board**, not tools that were interrupted: `railpeg`
+retires with `_elsewhere` True and `_barren` 0, `pegjump` with a 24-cell map. Giving them longer is
+the `hold` arm, measured inert on its sibling game. ⚠️ **So lf52 needs a tool that can see a board
+wider than its frame — not more turns for one that cannot.**
 
 ### ⛔ WHAT NOT TO SPEND A DAY ON (each already measured, with the number)
 
