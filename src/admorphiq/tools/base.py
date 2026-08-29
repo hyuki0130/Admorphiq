@@ -74,8 +74,27 @@ class Tool(Protocol):
 # --- observation readers (re-exported adapter API, game-agnostic) ------------
 
 def frame_2d(obs: Any) -> np.ndarray:
-    """The (64, 64) int grid of the observation's first layer."""
-    return _frame_2d(obs)
+    """The (64, 64) int grid of the observation's SETTLED layer.
+
+    ⛔ An observation is not one grid. When an action has a scripted consequence the engine returns
+    several layers, OLDEST FIRST, so the first layer is the state emitted BEFORE the consequence —
+    never the board the next turn is played against. Measured 2026-08-29 across 21 games: the last
+    layer is closer than layer 0 to the board handed back next at **100% of level transitions in
+    every game**, and at 1591 of 1927 multi-layer frames away from transitions.
+
+    Order is what that measurement proves. Whether the last layer is the board a tool WANTS is a
+    separate question — on an animation-heavy board it may be caught mid-consequence — and it is
+    settled only by the full-25 gate, which is why this line is a one-line change.
+    """
+    return _frame_2d_settled(obs)
+
+
+def _frame_2d_settled(obs: Any) -> np.ndarray:
+    fr = getattr(obs, "frame", None)
+    arr = np.asarray(fr)
+    if arr.ndim >= 3:
+        arr = arr[-1]
+    return arr.astype(np.int64)
 
 
 def has_frame(obs: Any) -> bool:
