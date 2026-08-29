@@ -2762,3 +2762,33 @@ in what a future change does, not in noise.**
 bids on more than one game, confirm re86 / sc25 / tu93 / sb26 are byte-identical BEFORE reading the
 mean. ⭐ `scripts/rounds/compare.py` now NAMES them in every verdict, so nobody has to remember four
 game names at the moment they are looking at a mean.
+
+### 7bm — a guard that cannot SEE must not VETO — the Stop hook blocked every response on a full disk (2026-08-30)
+
+The Mac's disk hit 100% and the session was **completely paralysed for half an hour**:
+
+```
+Bash could not create its own output file        -> not one command would run
+Write and Edit failed with ENOSPC                 -> no file could be repaired
+the Stop hook's heredoc could not be created      -> EVERY response was blocked
+```
+
+⛔ **The Stop hook vetoed every reply while being unable to check anything at all** — it could not run
+the test it exists to defend, and its failure mode was to block. The session could not even finish
+reporting the problem to the user.
+
+**A guard that cannot SEE must not VETO.** `run_contract_tests.sh` now refuses to block when it
+cannot run: under 50MB free it SKIPS with a message, and it distinguishes a test that FAILED from one
+that could not EXECUTE (no space, missing interpreter, collection error). Verified in both
+directions — green disk exits 0 after running the test; a stubbed full filesystem exits 0 with
+"SKIPPED … not vetoing".
+
+⚠️ That is rule 7q's shape from the other side. 7q says a comparison with nothing to compare is not a
+PASS; this says it is not a FAILURE either. **Both directions of "the guard could not see" have now
+been paid for, three days apart.**
+
+⛔ AND THE CAUSE WAS A HALF-DONE FIX OF MY OWN. Rule 7bi put a snapshot sweep on the BOX — 15GB of
+`pfan_*` and `snap_*` recovered — and left the Mac unswept, where every gate and every test run
+leaves a tarball and there were dozens that day. `snapgate.sh` and `ptest.sh` now sweep `/tmp/*.tgz`
+older than 30 minutes locally as well. **A fix that solves a problem in one place and leaves its twin
+standing is half a fix.**

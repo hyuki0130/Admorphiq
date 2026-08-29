@@ -67,6 +67,13 @@ fi
 COMMIT=$(git rev-parse --short HEAD)
 echo "=== gating $COMMIT out of a private snapshot ~/$SNAP (par $PAR, budget $BUDGET)"
 
+# ⛔ SWEEP THE MAC TOO. Rule 7bi put this sweep on the BOX and left the Mac unswept — and on
+# 2026-08-30 the Mac's disk hit 100%, at which point Bash could not create its own output file, the
+# Stop hook could not create a heredoc, and NO agent on this machine could run a probe, a test or a
+# commit. Every gate and every test run leaves a ~5-40MB tarball here and today there were dozens.
+# ⚠️ A fix that solves a problem in one place and leaves its twin standing is half a fix.
+find /tmp -maxdepth 1 -name "*.tgz" -mmin +30 -delete 2>/dev/null
+
 git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
 
