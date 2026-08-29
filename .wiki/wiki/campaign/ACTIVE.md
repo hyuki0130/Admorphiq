@@ -1,82 +1,66 @@
-# ACTIVE CAMPAIGN — the plan that survives a turn boundary
+# CAMPAIGN — ACTIVE
 
-⛔ WHY THIS FILE. Between turns I keep nothing. A plan stated in prose is gone by the next tick, so
-what I actually do is "the next question implied by the last tool output" — serial by construction,
-and the measured cause of 76 commits with zero surviving source changes on 2026-08-29. A plan in a
-FILE, printed into every turn by a hook, is the only kind that survives.
+> The plan that survives a context compaction. Read this before choosing a direction.
 
-## GOAL
-Clear the remaining sample levels. Score 0.8935, 17/25 at the cap. Only a SURVIVING source change
-that raises the full-25 mean counts.
+## STATE (2026-08-29 19:35, all gated on the full 25)
 
-## STRUCTURE — one background agent per game, orchestration here
-All eight incomplete games have a dedicated background agent (launched 2026-08-29 16:40):
+**MEAN = 0.8962**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101RE86/games` — use it as the gate's BASE.
 
-| game | score | what its agent is on |
-|---|---|---|
-| bp35 | 0.2220 | does the crumbling platform actually BLOCK level 6? |
-| lf52 | 0.2727 | can a pad MOVE without capturing? no adjacent pair exists |
-| s5i5 | 0.5833 | ONE of two targets uncovered; all 60 seeds collapse the level |
-| dc22 | 0.7143 | next level is its LAST (+0.0114); pocket of 3 boards, inert below row 32 |
-| wa30 | 0.8000 | next level is its LAST (+0.0080); 507 effective actions, budget NOT enforced |
-| ls20 | 0.8442 | efficiency only: 302 actions vs human 186, attempt 2 knows the map and costs 146 |
-| lp85 | 0.9099 | efficiency only: level 4 is 33 actions vs human 16 |
-| re86 | 0.9908 | efficiency only: level 2 is 46 vs 42 — four actions from perfect |
+Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
+lp85 0.9099 -> 0.9677. First movement in a day.
 
-⛔ MY JOB IS ORCHESTRATION, NOT PROBING. Do not write probes for a game that has an agent. Integrate
-results, gate them on the full 25, and keep the box busy.
+The seven still short, largest gap first:
 
-## CLOSED BY MEASUREMENT — do not re-open without new evidence
-- 47 tools solo x 5 stuck games: none goes deeper than the harness already does
-- 9 tool combinations: none beats the best single tool
-- patience (NOPROGRESS 6x, STALL), alignment threshold, shift range, pitch re-fit, tool revival,
-  admissibility bypass, shape matching, probe-order memory, lethal-glyph probing, vocabulary carry,
-  switch-reset, gauge speed-up — all built, measured, reverted
-- dc22 L6: 54,000 random actions, 4,096 click-move pairs, 1,024 clicks x 3 positions — no clear;
-  the cycling tile is real, reachable, and NOT the blocker
-- s5i5 L7: 60 seeds, all COLLAPSE, coverage never rises above 1 of 2
-- wa30 L9: budget declared 70 but NEVER ENFORCED — one unbroken 507-action attempt
-
-## THE STANDING ORDER (rule 7h)
-Never write one probe. List every hypothesis, then run them together:
-    bash scripts/pfan.sh PROBE.py 60 ARG        # one probe, 60 seeds
-    bash scripts/ceph_sweep.sh                  # tools x games
-    ssh ... xargs -P 60                         # different probes, together
+```
+lf52  0.2727   gap 0.7273   level 6 CLEARED LIVE by an oracle in 91 of 640 actions
+bp35  0.2220   gap 0.7780   level 6 optimum 41 actions vs 87 human — CLOSED, see below
+s5i5  0.5833   gap 0.4167   level 7, allowance 200, every seed COLLAPSES
+dc22  0.7143   gap 0.2857   levels 1-5 all at 1.0; oracle clears 6/6 at 1.0000, 3/3
+wa30  0.8000   gap 0.2000
+ls20  0.9040   gap 0.0960   all 8 fallback presses are inert; it is a FUEL game
+lp85  0.9677   gap 0.0323
+```
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. Wait on the eight agents; integrate each result as it lands and GATE it on the full 25.
-2. Keep ceph busy between integrations — the idle hook says when it is not.
-3. Any surviving change: re-measure the full 25 and update the LOG below.
+1. Four agents are live: dc22-into-gantry, lf52 camera-vs-state, the allowance ledger, s5i5.
+2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
+3. Any surviving change: update the STATE block above with the new gated mean.
 
-## THE GATE FOR EACH GAME — one line, ready to run the moment an agent returns
-Baseline re-confirmed 2026-08-29 16:48: **R101REACH = 0.8935 over 25, no game differing.**
-
+## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
-bash scripts/rounds/gate_tool.sh R101BP35 scripts/rounds/R101REACH vc33 crag
-bash scripts/rounds/gate_tool.sh R101LF52 scripts/rounds/R101REACH vc33 railpeg
-bash scripts/rounds/gate_tool.sh R101S5I5 scripts/rounds/R101REACH vc33 swivel
-bash scripts/rounds/gate_tool.sh R101DC22 scripts/rounds/R101REACH vc33 gantry
-bash scripts/rounds/gate_tool.sh R101WA30 scripts/rounds/R101REACH vc33 shepherd
-bash scripts/rounds/gate_tool.sh R101LS20 scripts/rounds/R101REACH vc33 fogscout
-bash scripts/rounds/gate_tool.sh R101LP85 scripts/rounds/R101REACH vc33 cyclepress
-bash scripts/rounds/gate_tool.sh R101RE86 scripts/rounds/R101REACH vc33 <tool the agent names>
+bash scripts/snapgate.sh <name> scripts/rounds/R101RE86 8 4000
 ```
+⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
+agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
+`snapgate.sh` archives HEAD into a private dir on the box; two gates run at once and a rider cannot
+ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
-⛔ A gate that does not RAISE the mean means the change is reverted — that is the rule that kept
-cumulative regressions at zero through fifteen reverted repairs today. ⚠️ Gates must not overlap with
-a sweep on the same box; run them one at a time.
+## CLOSED BY MEASUREMENT — do not reopen without new evidence
+- **frame_2d reading the last layer**: the measurement was RIGHT (layer 0 is stale at 100% of level
+  transitions in all 21 games) and the change cost **0.8962 -> 0.6525, fourteen games**. Rule 7o.
+- **bp35 level 6**: reachable in 41 actions, and getting there costs 4.6x search states +
+  `_MAX_EDITS` 6->8 + `_MAX_EXPAND` 40k->120k, for +0.0053. Declined. Exhaustion proofs recorded.
+- **the pixel allowance reader**: of twelve games declaring an allowance, exactly ONE draws it
+  readably. Refuted. The DEATH CLOCK replaces it and recovers nine, four of them undeclared.
+- 47 tools solo x 5 stuck games, and 9 tool combinations: none goes deeper than the harness.
+- Thirteen repairs built, measured, reverted (patience, alignment threshold, shift range, pitch
+  re-fit, tool revival, map-drop-on-flip, admissibility bypass, shape matching, probe-order memory,
+  lethal-glyph probing, vocabulary carry, switch-reset, gauge speed-up).
 
-## LOG — what moved the score
-- **2026-08-29 17:0x — ls20 0.8442 -> 0.9040, mean 0.8935 -> 0.8959 (+0.0024).** `12b8e073`, one
-  clause in `fogscout._refuel`: go for fuel with SLACK (`left <= dist + max(3, full//5)`) instead of
-  on the last unit. Level 7 303 -> 237 actions, still 7/7. Slack 2..6 all land on 237-239, so the
-  lever is having slack at all, not the constant; removing the clause LOSES the level. The formal
-  gate REFUSED its verdict because `cover_targets.py` moved under the run (another agent) — the 25
-  result files show ls20 as the only game changed, but the gate must be re-run on a still tree.
-- **2026-08-29 — bp35: my crumbling-platform reading RETRACTED** by its agent (`39d2bcd4`):
-  `yuuqpmlxorv` is a CLICK TOGGLE, level 6 is solvable inside its own allowance, and it CLEARS on the
-  real engine. Awaiting the gate.
+## ASSETS FOUND TODAY, unused — check these before writing anything new
+- **A game may RENDER ITS OWN LEGAL-MOVE ORACLE.** lf52 draws a ring on a selectable piece and
+  markers at each legal landing. ⚠️ The markers are FOUR TWO-PIXEL BLOBS, so a min-blob-size-4
+  filter reads exactly like "there is no oracle". Look for one before writing a search.
+- **The death clock**: `allowance = min(death_lengths) - 1`, learnable from ONE death, no source
+  access. Nine games, four of them undeclared. Trust it only when two deaths agree.
+- **43 of 43 fallback presses are NOPLAN** — zero ILLEGAL, zero THREW. The tool genuinely has
+  nothing; the action vocabulary is not the problem.
+- `scripts/_bp35_sim.py` — differential-tested bp35 simulator, 0 mismatches over 40 sequences.
 
-⛔ RE-GATE BOTH once `cover_targets.py` is still. A gate re-syncs the whole tree, so it cannot run
-while another agent is editing source (rule 7i), and a verdict taken while a tool moved is
-unattributable even when the numbers look right.
+## THE FAILURE MODE THAT COSTS THE MOST
+⛔ **An instrument that lies toward "there is nothing here."** Three today: a min-blob-size-4 filter
+hid lf52's oracle; a `!=` level test read a collapse to level 0 as a clear; and a layer-staleness
+instrument took SIX versions, five of which scored its own known positive at ZERO — four of those
+would have been written up as "no other game has this problem", the exact opposite of the truth.
+**Run every checker on input whose verdict you already know, in BOTH directions.**
