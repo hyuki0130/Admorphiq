@@ -44,9 +44,15 @@ else
 fi
 
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
-ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE" bash -s "$SNAP" "$TARGET" <<'EOS'
+# ⛔ PASS THROUGH THE ENVIRONMENT, NOT POSITIONALLY. `ssh host bash -s "$SNAP" "$TARGET"` joins its
+# arguments with spaces, so a TARGET of two files arrives as $2 and $3 — and the remote script,
+# reading only $2, RAN THE FIRST FILE AND SILENTLY DROPPED THE SECOND. Measured 2026-08-30: the gate
+# called it with `test_every_tool_is_registered.py test_detect_purity.py`, the purity test was never
+# run, and a deliberately broken purity pin reported "guards hold". A guard that silently tests less
+# than it was asked to is worse than no guard — it reports success for work it did not do, which is
+# the fail-open shape this repository has now paid for four times.
+ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE" "SNAP='$SNAP' TARGET='$TARGET' bash -s" <<'EOS'
 set -u
-SNAP="$1"; TARGET="$2"
 export PATH=$HOME/.local/bin:$PATH
 rm -rf "$HOME/$SNAP"; mkdir -p "$HOME/$SNAP"
 tar xzf "$HOME/$SNAP.tgz" -C "$HOME/$SNAP"

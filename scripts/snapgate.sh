@@ -42,6 +42,28 @@ if ! git diff --quiet HEAD -- src/; then
   echo "    Commit them first if they are meant to be measured."
 fi
 
+# ⛔ RUN THE CHEAP GUARDS BEFORE SPENDING TWENTY MINUTES OF BOX TIME. Measured 2026-08-30: four
+# guards were built in one day (a registered-tool check, the detect-purity population, the adapter
+# detection contract, the summaries-match-their-data check) and NONE of them ran anywhere
+# automatically — not in a hook, not in R98's selfcheck. A guard nobody runs is a finding with an
+# expiry date, and this repository has already paid for exactly that (`fogscout` committed but
+# unregistered measured like an absent tool, worth +0.0942).
+#
+# These are seconds and engine-free, and the gate is the one command everyone reaches for.
+# ⛔ They go through `ptest.sh` — i.e. ON THE BOX, in a private snapshot — because rule 7m bans
+# pytest on the Mac and a PreToolUse hook enforces it. Writing `uv run pytest` here would be blocked
+# for whoever ran the gate, which is the shape where a guard teaches people to switch guards off.
+if [ "${SKIP_GUARDS:-0}" != "1" ]; then
+  if ! bash scripts/ptest.sh --dirty tests/test_every_tool_is_registered.py tests/test_detect_purity.py \
+        >/tmp/snapgate_guard.log 2>&1; then
+    echo "⛔ GUARDS FAILED before the gate — not spending twenty minutes of box time:"
+    tail -14 /tmp/snapgate_guard.log | sed 's/^/    /'
+    echo "   Fix it, or re-run with SKIP_GUARDS=1 and record why."
+    exit 1
+  fi
+  echo "=== guards hold (registry, detect-purity)"
+fi
+
 COMMIT=$(git rev-parse --short HEAD)
 echo "=== gating $COMMIT out of a private snapshot ~/$SNAP (par $PAR, budget $BUDGET)"
 
