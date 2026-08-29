@@ -203,3 +203,48 @@ restarts, so "it produced a position with zero legal jumps" was one attempt of s
 
 ⛔ NOTHING BUILT ON THIS. The next pass should start from the attempt structure, not from the
 tiers — `scripts/attempt_probe.py where lf52` is the repo's own instrument for pricing it.
+
+--------------------------------------------------------------------------------
+⛔ RETRACTION, SAME PASS, BEFORE IT WAS ACTED ON: "LEVEL 6 IS BEING LOST FOUR TIMES" IS WRONG.
+
+The claim rested on my own detector — the MODEL's piece count going up, on the reasoning that a
+capture game only removes pieces. Two checks killed it.
+
+1. `scripts/attempt_probe.py where lf52 4000`, the repo's own instrument:
+
+       L1 paid 8 won 8 binned 0 · L2 52/52/0 · L3 60/60/0 · L4 64/64/0 · L5 139/139/0
+       scored 0.2727   ceiling if no attempt were binned 0.2727   -> the cost is SEARCH
+
+   ⚠️ It prices attempts per COMPLETED level, so it cannot see level 6 at all and is not evidence
+   about it either way. What it does establish is that levels 1-5 are clean: 323 actions, nothing
+   binned, and the 501 actions after that are all level 6.
+
+2. `scripts/_lf52_restart.py` — the decisive one, and it works on the RAW FRAME rather than the
+   model. A restart resets the board and the camera together, so the level's opening frame returns
+   byte-for-byte; a discovery never reproduces it. Two seeds, identical:
+
+       frames 501   distinct 320   OPENING RECURRENCES 0   repeat_frames 181
+
+   Zero. The level never restarts.
+
+WHAT MY DETECTOR ACTUALLY MEASURED — and the correlation is plain once the rows are read together:
+
+       fired at act 23: pieces 3 -> 4 while known went 87 -> 94
+       fired at act 26: pieces 4 -> 5 while known went 94 -> 98
+       fired at act 40: pieces 5 -> 6
+
+   The model gains pieces because THE CAMERA REVEALS MORE BOARD. "Pieces only ever leave the board"
+   is true of the BOARD and false of a model that is still discovering it. This is the same
+   instrument family that cost this round twelve findings: a plausible number for a quantity the
+   instrument is not measuring.
+
+THE CORRECTED PICTURE, and it is better news than the retracted one. Level 6 does not die; it
+STALLS with actions to spare, and while it stalls the tool is genuinely exploring — known 54 -> 98
+cells, columns 0 -> 22 of a 28-column board, and the model's piece count RISING 3 -> 6 of the 8 the
+board holds as the camera uncovers them. The stopper is unchanged and unaddressed:
+plan:all-candidates-fatal, the tool declining every capture because refuse_fatal cannot find a
+follow-up — and the last-resort experiment already showed the veto is RIGHT.
+
+⚠️ Rule 7s still applies to this game as a QUESTION worth asking; it simply answers "no" here, and
+it took a frame-level instrument to say so. The model-level version of the test is unsound on any
+board that scrolls.
