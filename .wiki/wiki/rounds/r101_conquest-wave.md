@@ -125,6 +125,55 @@ A guard that cannot see must SAY SO.
 - **A mechanism correctly described does not tell you which edit removes it** (rule 7am). The repair
   I specified for the above was built, validated in both directions, measured INERT, and reverted.
 
+## ⛔ THE SECOND DAY (2026-08-30) — every short game closed, and the registry measured three ways
+
+0.9069 -> **0.9082**. bp35 +0.0236 (a hazard drawn the other way up is the same hazard) and lp85
++0.0090 (the settled-layer read, NARROW and CONDITIONAL where its general form cost fourteen games).
+**All six short games are now closed with proofs**, and each closure names a capability rather than a
+constant:
+
+- **bp35** — every attempt a near-pure traversal; the human clears in ONE attempt and our winning
+  attempt is already faster (43 vs 48). Needs a first attempt that knows which glyph kills.
+- **s5i5** — an engine A* wins in 45 clicks **opening by moving a rider that is already home**, a
+  move `swivel`'s decomposition can never propose. Thirty arms, all 0.5833.
+- **dc22** — the crane is fully decoded; the blocker is OURS (`phase.py:430` condemns a drawn tile
+  for ONE pixel), censused to this game alone, both repairs measured negative, and levels 1-5 have
+  EIGHT actions of slack.
+- **ls20** — you cannot ambush a mover: the engine moves movers FIRST and UNDOES them on a refused
+  player move (18 of 18). Twelve arms across four axes. The handover third is not a gap — 231 is
+  INVARIANT for every handover from action 9 to 17.
+- **lp85** — seven confirmation-cutting arms refuted; L4's six confirmations are load-bearing.
+- **lf52** — ⭐ **never LOST; never FINISHED.** The run ends on a still-winnable board with 233
+  actions unspent. `pegjump` models 2 pieces against the engine's 6 and returns `solved=True` — a
+  declared LEVEL WIN over a two-cell window. **Every guard is right about the wrong board.**
+
+### The registry, measured from three independent directions — none finds the gap there
+
+```
+47 tools x 5 stuck games, forced alone     no tool beats the harness; exactly ONE does anything
+                                           at all on each board (43-46 of 47 clear NOTHING)
+tenure across all 25                       17 of 47 never hold a board; 19 of 25 games are played
+                                           start to finish by ONE tool
+routing                                    no handover was EVER lost to a tie, and none can be
+```
+
+⭐ ls20 is the sharpest row: the harness reaches level 7 while **no single tool passes 6**.
+
+### ⭐ The axis that replaced them
+
+**The harness hands every stuck board to a tool that is WEAKER ALONE** — bp35's `graph` holds 486
+actions at solo depth **0** while `crag` reaches 5 and is retired after 229. ⚠️ Not routing (closed);
+every one is an EMPTY retirement, so the question is **why the strong tool goes empty**. And ls20
+refutes the obvious conclusion: `fogscout` has solo depth 0 and the harness reaches level 7 with it.
+
+### Two transfer facts, and one guard that tested less than it was asked to
+
+Every gated number is a RATE: 15 games identical on a different version hash (12 action-for-action),
+all 10 without an archive deterministic across three repeats. The gains reach the submission path
+(`--agent kaggle_unified` 0.9082). ⛔ And `ssh` silently dropped every test target after the first,
+so a deliberately broken pin reported "guards hold" — the FOURTH fail-open guard in this repository's
+history.
+
 ## Related
 
 [[r101_wa30-level-restart]] · [[r101_bp35-attempts]] · [[r101_allowance-ledger]] ·
