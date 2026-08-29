@@ -794,6 +794,16 @@ real defect first — `GameAction` imported from `admorphiq.types` instead of `a
 DIFFERENT class, so the `isinstance` was False for every action and the probe reported EMPTY at step
 0. A finding-shaped null, and the fourth instrument in one day to lie toward "nothing here".)
 
+⛔ **CORRECTED 2026-08-30 — THE WASTE IS NOT `graph`'s ON TWO OF THE FOUR.** Measured at the harness's
+own re-decide point, on the CURRENT tree, with all nine games reproducing the R101WA30 baseline to the
+action: **`gantry` holds dc22 for 500 actions with ZERO HANDOVERS ALL GAME** (it bids 0.86 against
+`_PRIMARY_CONF` 0.70, so it is never stall-retired, and returns a legal plan on 924 of 925 refills),
+and `linkage` holds s5i5's wall level for 461 actions while graph never runs. So dc22's 70.6% inert
+and s5i5's 38% are the SPECIALIST's waste, not the fallback's. Only lf52 (graph 366a) and bp35
+(graph 486a) fit "graph is what a stuck game looks like". The earlier attribution was taken before
+the gated `phase.py` perception base landed — which is exactly why a table must reproduce its
+baseline before it is believed.
+
 **wa30 is a DIFFERENT PROBLEM and the table is what separates it**: 493 moved, ZERO inert, 7
 collapses. It plays the level competently and dies. dc22/lf52 need a tool that stops proposing
 actions the board refuses; wa30 needs to survive. Those are not the same work, and reading either
@@ -1169,3 +1179,38 @@ and still moved the hidden score by nothing.
 collapses on the archive is caught for the price of one 15-game run. Run it after any wave of
 per-game tool building. bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87 and wa30 have no
 archived version, so ten games are untestable this way.
+
+### 7ac — routing is NOT the defect: no handover was ever lost to a tie (2026-08-30)
+
+The selectivity question — why does a stuck board fall through to the general searcher — is answered,
+and the answer closes one of its two branches permanently. Measured at the harness's own re-decide
+point across four stuck games and five controls, subclass-only with `loop.py` untouched, driven
+through `score_efficiency.run_game`, all nine reproducing the R101WA30 baseline TO THE ACTION:
+
+```
+5 retirements, ALL through the EMPTY path (propose() returns [] eight times running).
+ZERO stall-swaps.  ZERO death-clock retirements.
+3 ties occurred; ALL broke by REGISTRATION ORDER, and registry.py lists every specialist
+ahead of `graph` (43rd of 48).  41-43 of ~48 tools bid 0.00 at every decision point.
+```
+
+⛔ **"A specialist bid and lost the tie to graph" is not merely absent from the data — it is
+structurally impossible.** Nobody should look for a routing defect again. The boards genuinely have
+no second claimant, so the answer is a TOOL, not a tie-break.
+
+⚠️ **THE HARNESS'S OWN STDERR MISREPORTS THE REASON.** At an EMPTY retirement it printed
+`feedback='action no new state x3'`, which reads as a stall. `_feedback` is the LAST MESSAGE SET,
+not the retirement reason. ⛔ Anything anyone has concluded from that line is unsupported.
+
+⛔ TWO CONTRACT FINDINGS WITH NO SCORE IN THEM TODAY, recorded so they are not rediscovered:
+- **`crag.detect` still bids 0.50 on the exact frame its planner goes empty** — identical to frame 0
+  — because it is a board-SHAPE test, not a plan test. "A tool with no plan must bid ZERO" is a
+  stated rule and this is a live violation; it costs nothing only because `graph` outbids it. Three
+  violations of that rule were found in one earlier round and removing the last took a game from
+  0.58 to 1.00.
+- **Confidence that PEAKS BETWEEN decisions is invisible.** `socketmerge` reaches 0.95 at a sampled
+  lf52 frame and is never at a decision point; `hop` bids 0.88 at frame 0 and 0.00 at both handovers.
+  The loop samples each tool exactly once per handover. That is an architectural limit, not a bug.
+- ⚠️ `graph_search.py:589` returns 0.8 as soon as any observed transition changed a small localized
+  region — "there is an avatar" — which exceeds `_PRIMARY_CONF` 0.70, so `_primary_owns` latches and
+  the stall path can never retire graph on the boards where it is wrong.
