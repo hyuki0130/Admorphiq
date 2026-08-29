@@ -20,18 +20,18 @@ lp85 0.9099 -> 0.9677. First movement in a day.
 The seven still short, largest gap first:
 
 ```
-bp35    0.2456   gap 0.7544   ⛔ `_stranded` and pre-entry veto both REFUTED. The one surviving
-                             correlate: longest UNBROKEN flat run (4->1.0, 5->1.0, 10->0.96,
-                             25->0.51, 40->0.30) — but the 40-turn plateau is INSIDE the attempt
-                             that clears in 43 vs a human 48.
-lf52    0.2727   gap 0.7273   ⛔ the stall position is CLOSED — six forced moves, best opens ONE cell, no boarding move EXISTS.
-s5i5    0.5833   gap 0.4167   ⛔ raising `_MAX_OPEN` is REFUTED — 3.3x budget is byte-identical. `_settle` banks a SUPERSET.
-dc22    0.7143   gap 0.2857   crane fully decoded (4 plates measured 1:1, precondition frame-visible).
-                             ⛔ The blocker is OURS: `phase.py:430` condemns a tile if ANY pixel is a
-                             banned colour, and every plate sprite contains colour 0. Shared by
-                             gantry+sluice. The obvious fix costs +23 actions on L1-5, where L3 has 8.
-ls20    0.9121   gap 0.0879   L7 alone; ordering swept in BOTH directions and closed. Needs a new way to meet a mover under fog.
-lp85    0.9677   gap 0.0323
+lf52    0.2727   gap 0.7273   ⭐ THE WHOLE GAP IS ONE MOVE — the third capture at action 124 is the
+                             level author's own marked losing branch, and railpeg ARMS it earlier by
+                             moving red to (6,6). Then a click at (6,56) RESTARTS the level with no
+                             signal. Target: make the third capture the eighth candidate, not the
+                             first, and stop clicking when nothing is legal (recovers 143 actions).
+bp35    0.2456   gap 0.7544   ⛔ CLOSED — every attempt a near-pure traversal, human clears in ONE.
+s5i5    0.5833   gap 0.4167   ⛔ CLOSED — the win opens by moving a rider that is already home, which
+                             swivel's decomposition can never propose. 30 arms, all 0.5833.
+dc22    0.7143   gap 0.2857   ⛔ CLOSED — the blocker is ours (phase.py:430 condemns a drawn tile for
+                             ONE pixel), censused to this game alone; both repairs measured negative.
+ls20    0.9121   gap 0.0879   L7 alone; ordering swept in BOTH directions and closed.
+lp85    0.9767   gap 0.0233   L4 = 18 vs a human 16; the six confirmations are load-bearing.
 ```
 
 ## ⭐ THE DECOMPOSITION THAT SAYS WHAT KIND OF PROBLEM EACH GAME IS (2026-08-29, from the gate's own per_level)
@@ -61,9 +61,9 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-1. **LIVE**: lp85 (level 4 alone, 19 actions against a human 16 — the smallest target on the board).
-   ⛔ lf52's map question is CLOSED — see below; one run is still identifying which piece the model
-   is missing at the decisive action.
+1. **LIVE**: lf52 — and its target is now ONE MOVE, named. See the lf52 block below.
+   ⛔ lp85 is DONE for today (0.9767; seven confirmation-cutting arms all refuted, so L4's six
+   confirmations are load-bearing). bp35, s5i5 and dc22 are CLOSED WITH PROOFS.
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
