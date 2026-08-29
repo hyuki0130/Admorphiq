@@ -1336,7 +1336,7 @@ escapes it — 4,096 click-move pairs, 54,000 random actions, 47 solo tools, 9 t
 **MEASURED, twice, and once through the shipped harness path:**
 
 ```
-scripts/_dc22_verify.py    level 6 alone   {"result":"CLEARED","direction":"UP","state":"WIN","actions":141}
+scripts/_dc22_planverify.py  level 6 alone   {"result":"CLEARED","direction":"UP","state":"WIN","actions":141}
 scripts/_dc22_oracle_full.py  full game    levels_completed 6/6, total_actions 566, game_score 1.0000
   per level  L1 31/59  L2 53/102  L3 59/67  L4 87/98  L5 195/324  L6 141/578   every level 1.0
 ```
@@ -1443,7 +1443,7 @@ goal. Levels 1-5 clear because their goal is on the board side.
   it does nothing at all. It is not what stops the level; the board/panel split is.
 
 Artefacts: `scripts/_dc22_model.py` (model + search), `scripts/_dc22_plan.json` (the 141 actions),
-`scripts/_dc22_verify.py` (executes it on the engine), `scripts/_dc22_oracle_full.py` (full game
+`scripts/_dc22_planverify.py` (executes it on the engine), `scripts/_dc22_oracle_full.py` (full game
 through the harness), `scripts/_dc22_gantrygeom.py` (what gantry sees),
 `scripts/_dc22_livesearch.py` (the live-click blind control).
 
