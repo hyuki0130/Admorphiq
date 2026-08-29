@@ -137,3 +137,72 @@ against `scripts/rounds/R101WA30` (0.9069).
 bash scripts/pfan.sh selho scripts/_select_handover.py 9 "" 6
 ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build 'cat /tmp/pfan_selho.jsonl' | python3 scripts/rounds/R101SELECT/format.py
 ```
+
+---
+
+# Part 2 — is a BETTER tool available at a frame where nobody asks?
+
+Finding 5 above says the loop evaluates `detect` only inside `_redecide`. `scripts/_select_overtake.py`
+samples every tool every 10th action instead, and records when a non-incumbent strictly outbids the
+incumbent. Raw: `overtakes.jsonl`, formatter `format_overtakes.py`.
+
+⚠️ **Instrument caveat, stated because it is real**: this probe moved lf52 from 823 to 827 actions
+(score identical, 8 of 9 games exact), so at least one tool's `detect` is NOT side-effect-free. The
+handover probe, which samples only at decisions, is exact on all nine.
+
+⛔ Its first version was WRONG and the error is worth recording: the sampling gate used
+`self._steps`, which is LEVEL-LOCAL and resets on every level-up, so after the first clear it stayed
+shut until the counter climbed back past its old value. m0r0 got SIX samples over 188 actions, all
+on level 0. A monotonic tick of the probe's own is the only correct clock.
+
+```
+game   samples  overtaken   the overtakes that matter
+lf52     83       41        lvl5 graph(.80) outbid by railpeg(.90) x17, hop(.88) x5, pegjump(.95) x1
+                            lvl4 railpeg(.75) outbid by pegjump(.95) x4, socketmerge(.95) x4
+bp35     73       19        crag(.50) outbid by graph(.80) x12 and llm_goal(.70) x7, all levels
+s5i5     70        0        never
+dc22     93        0        never
+lp85     19        0        never
+m0r0     19        8        decouple(.00) outbid by graph(.80) — on a game scoring 1.0000
+vc33     20        0        never
+g50t     30       26        clonewalk(.75) outbid by graph(.80) on ALL SEVEN levels — scores 1.0000
+ls20     65        4        keymaze(.00) / fogscout(.00) outbid by graph — scores 0.9121
+```
+
+⛔ **THE OBVIOUS LEVER IS REFUTED BY THE CONTROLS.** "Re-decide when a non-incumbent strictly
+outbids the incumbent" fires on 26 of 30 g50t frames and 8 of 19 m0r0 frames — **both games score
+1.0000** — and on ls20 at 0.9121. A margin trigger would hand three capped games to the general
+searcher. The between-decision peak is a genuine architectural limit; it is not a licence for a
+margin trigger. (Rule 7b: contrast with the level that CLEARS, always.)
+
+What survives is narrower and is what `7e53372f` acts on: the incumbent's bid COLLAPSING to 0.00
+while it is winning (`decouple`, `keymaze`, `fogscout` all do this mid-play) means a bid comparison
+cannot be trusted as a progress signal at all — so the only defensible use of `graph`'s 0.80 is the
+one that was removed, namely that it should not confer OWNERSHIP.
+
+## Where the four stuck games actually differ
+
+```
+lf52  fell through to graph      no tool has a plan for level 5      -> a new tool, or none
+bp35  fell through to graph      no tool has a plan for level 5      -> a new tool, or none
+s5i5  linkage holds 461 actions  a SPECIALIST is playing and losing  -> that tool's depth
+dc22  gantry holds 500 actions   ZERO handovers all game             -> that tool's depth
+```
+
+## Three things the gate cannot see — carried here so "gated clean" is never read wider than it is
+
+⚠️ **`llm_goal` on Kaggle.** On ceph the LLM 404s so `llm_goal` bids 0.05 at every measured
+handover, but **on Kaggle the LLM is live** and the 0.70 band is real there and unmeasured here.
+That is a difference between the box and the deployed card, and the full 25 cannot see it. It does
+not block `7e53372f` — `llm_goal` outranking `graph` is plausibly correct — but nobody should later
+read "gated clean" as covering it.
+
+⛔ **The refuted lever, stated so it is not re-proposed.** "Re-decide when a non-incumbent outbids
+the incumbent" fires on 26 of 30 g50t frames, 8 of 19 m0r0 frames, and on ls20 — **a margin trigger
+would hand three capped games to the general searcher. The between-decision peak is an architectural
+limit, not a licence.**
+
+⚠️ **At least one tool's `detect` is not side-effect-free** — the every-10th-action sweep moved
+lf52 from 823 to 827 actions while leaving its score identical. `detect` is supposed to be a
+question, not a move. WHICH tool is unmeasured and is worth its own run: bisect by sampling one
+tool's `detect` at a time on lf52 and comparing the action count against 823.

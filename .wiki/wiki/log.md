@@ -697,3 +697,20 @@ Pages touched: `rounds/r101_tool-development.md`, `sample_games_mechanics.md`,
 `games/{FT09,LP85,M0R0,SB26,TR87,SU15,CN04,SC25,RE86,S5I5}.md`, `Rounds.base`, `Lessons.base`,
 `Games.base`.
 Provenance: this session; `OPERATING_RULES.md` rules 7a and 8.
+
+## [2026-08-30 round R101SELECT] What happens AT THE HANDOVER FRAME
+
+Instrumented `UnifiedAgent`'s own re-decide point over four stuck and five control games —
+every tool's bid at that exact frame, why the incumbent was retired, and whether the winner
+survived. Instrument is subclass-only (`loop.py` is shared and untouched) and reproduces the
+R101WA30 gate baseline to the action on all nine.
+
+⛔ Routing is not the defect and cannot be: three ties occurred, all broke by registration order,
+and `registry.py` lists every specialist ahead of `graph`. 41–43 of ~48 tools bid 0.00 at every
+decision point. All five retirements went through the EMPTY path. `graph` holds the wall on only
+two of the four stuck games — s5i5 is held by `linkage` and dc22 by `gantry` with ZERO handovers
+all game, so their inert actions are the specialist's, not the searcher's.
+
+Pages touched: `lessons/detect_is_not_a_plan_claim_20260830.md`,
+`lessons/handover_frame_is_the_only_question_20260830.md`, `games/{BP35,LF52}.md`.
+Provenance: commit `2081eda0`; `scripts/rounds/R101SELECT/`.
