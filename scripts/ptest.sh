@@ -22,6 +22,14 @@ cd "$(dirname "$0")/.."
 KEY="$HOME/VM/keys/nfw-dev.pem"; REMOTE="ubuntu@ceph-build"
 DIRTY=0; [ "${1:-}" = "--dirty" ] && { DIRTY=1; shift; }
 TARGET="${*:-tests}"
+
+# ⛔ WARN ON THE WHOLE SUITE. Measured 2026-08-30: an untargeted run sat at 2397% CPU — TWENTY-FOUR
+# CORES — on a box whose total cap is 60 across every agent. One agent running it after each edit is
+# a third of everyone's budget. It is not forbidden (a pre-gate check wants it), but it must be a
+# decision rather than a habit.
+if [ "$TARGET" = "tests" ]; then
+  echo "⚠️  whole suite: ~24 cores of the 60-core TOTAL cap. Prefer 'bash scripts/ptest.sh tests/test_yours.py'." >&2
+fi
 SNAP="ptest_$$"
 
 if [ "$DIRTY" = 1 ]; then
