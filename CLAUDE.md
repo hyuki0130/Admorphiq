@@ -7,11 +7,22 @@
 >
 > **State**: generic tools, full 25 on ceph-build = **0.9078**, NINETEEN games at the 1.0 cap,
 > cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101BP35/games`.
-> Seven games short: lf52 0.2727 · bp35 0.2220 · s5i5 0.5833 · dc22 0.7143 · wa30 0.8000 ·
-> ls20 0.9040 · lp85 0.9677.
+> SIX games short: bp35 0.2456 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143 · ls20 0.9121 · lp85 0.9677.
 >
-> **Every incomplete game has its own background agent.** Do not write probes for them — orchestrate:
-> integrate what they return, gate it, and keep the box busy. See the campaign file for the table.
+> ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
+> CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
+> Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,
+> column 25 of 28) are live.
+>
+> ⭐ **EVERY GATED NUMBER IS A RATE, not a draw** (rules 7ab / 7ar): 15 games score identically on a
+> DIFFERENT version hash — 12 of them action-for-action — and all 10 games with no archived version
+> are deterministic across three repeats. ⚠️ Determinism is NOT transfer; the evaluation is 110 games
+> with different MECHANICS and nothing here measures that.
+>
+> ⭐ **THE GAINS REACH THE SUBMISSION PATH** — `--agent kaggle_unified` measures 0.9078 too, 25 games,
+> none differing. Re-run that after any day of harness work: the wrapper MIRRORS `_make_agent`, and
+> five research commits once shipped in the deployed fallback unmeasured while the card moved
+> 0.20 -> 0.18 with no attributable cause.
 >
 > ```
 > bash scripts/snapgate.sh NAME scripts/rounds/R101BP35 8 4000   # GATE a change on the full 25
