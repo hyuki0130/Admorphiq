@@ -491,7 +491,7 @@ class CyclePressTool:
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
         if not has_frame(obs):
             return []
-        g = frame_2d(obs)
+        g = self._board_grid(obs)
         board = read_board(g)
         if board is None:
             return []
@@ -548,6 +548,49 @@ class CyclePressTool:
         self._pending = press
         self._before = dict(tiles)
         return [(6, (press[1], press[0]))]
+
+    # -- which grid IS the board -----------------------------------------
+
+    @staticmethod
+    def _satisfied(g: np.ndarray) -> bool | None:
+        """Does this grid read as a board already standing on its marks? None when it is no board."""
+        board = read_board(g)
+        if board is None:
+            return None
+        tiles, side, _pitch = board
+        marks = markers_on(g, tiles, side)
+        if not marks:
+            return None
+        return all(tiles.get(slot) == colour for slot, colour in marks)
+
+    def _board_grid(self, obs: Any) -> np.ndarray:
+        """The observation layer the board is actually in — layer 0, bar one measured exception.
+
+        ⛔ MEASURED 2026-08-30, on all SEVEN of this game's level transitions: the first
+        observation of a new level carries TWO layers, and `frame_2d`'s layer 0 is the PREVIOUS
+        level's board — which is by definition standing on its marks, since that is what ended the
+        level. The tool read it as solved, spent the off-board click `_nudge` reserves for a
+        mid-transition reading, and only then saw the real board. One action of every level after
+        the first; seven of this game's 189, and its fourth level cost 19 against a human 16.
+
+        ⛔ NARROW BY CONSTRUCTION, because the general form of this is a measured LOSS: reading the
+        last layer wherever layer 0 lags was gated over the full 25 and cost a third of the mean
+        (`OPERATING_RULES.md` 7o) — an animation's last grid is the most transient one there is.
+        The swap is taken only in the single state where layer 0 is PROVABLY the wrong board:
+        nothing has been pressed on the board in hand, layer 0 reads as a satisfied board, and the
+        last layer reads as a board that is not. A satisfied board with no press behind it cannot
+        be the board this tool is about to play.
+        """
+        g = frame_2d(obs)
+        if self._pairs or self._plan:
+            return g
+        arr = np.asarray(getattr(obs, "frame", None))
+        if arr.ndim < 3 or len(arr) < 2:
+            return g
+        last = arr[-1].astype(np.int64)
+        if self._satisfied(g) is True and self._satisfied(last) is False:
+            return last
+        return g
 
     # -- probing ---------------------------------------------------------
 
