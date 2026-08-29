@@ -1304,3 +1304,44 @@ Sampling every tool's bid every 10 actions moved lf52 from 823 to 827 actions (s
 samples bids off-schedule a measurement of a run it perturbed, and it is a silent cross-tool coupling
 (a tool mutating in `detect` can be perturbed by another tool's `detect` running first). Bisect by
 sampling ONE tool at a time on lf52 against the 823 baseline; one fan, ~48 arms, names it.
+
+### 7ag — "the search is cut off just short of the answer" was WRONG about s5i5 (2026-08-30)
+
+I briefed an agent that `swivel`'s shipped `_MAX_OPEN` of 120,000 was cutting a search off short of a
+24–28 click win measured at 324k–1.8M pops, and that raising it was the lever. **It is not.**
+
+Measured, six arms, whole game each, control reproducing 0.5833 / [13,30,47,39,32,31] exactly:
+
+```
+open 120,000 w2 (HEAD)   wall 211s   ->  0.5833   lvl 6
+open 400,000 w2          wall 805s   ->  0.5833   lvl 6
+open 400,000 w4          wall 844s   ->  0.5833   lvl 6      byte-identical at 3.3x the budget
+```
+
+⛔ **The FIRING record, not the outcome, is what settles it** — and this is why rule 7g asks for it:
+
+```
+a204  plan FOUND len 28 in 19.6s     <- well inside even the SHIPPED cap
+a222  REFUSED (18 clicks executed cleanly)
+a222  plan FOUND len 21 in  1.9s
+a224  REFUSED (2 clicks)
+a224  plan NOT FOUND 386.5s
+a224  plan NOT FOUND 416.3s  -> _dead
+```
+
+The shipped search finds plans in SECONDS. The two that fail are exhausting a space from which
+nothing is reachable, and 800 extra seconds do not change that.
+
+⛔ **THE SOURCE OF MY ERROR IS THE GENERAL LESSON.** The offline run that found a 28-click win at
+324k pops started from the level's STAGED configuration with a CLEAN model. The failing searches
+start from the state TWO REFUSALS LATER. **A cost measured on one state does not describe the same
+search from another state**, and I quoted the offline pop-count as if it were the shipped search's
+requirement. A budget is not a property of a problem; it is a property of a problem *and a starting
+point*.
+
+⭐ The live hypothesis is much better than mine: `_settle` banks, per refusal, EVERY off-grid cell the
+refused configuration would have occupied — its own comment says "a superset" — and by death holds 45
+cells and 2 illegal configurations. `legal()` rejects any configuration touching a banked cell, and
+the win is reachable ONLY off-grid (no fully in-grid win exists, exhausted at 254k–334k pops at every
+weight and cap). **A superset from two refusals can close the only corridor, and no budget reopens
+it.**
