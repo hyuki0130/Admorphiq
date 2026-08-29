@@ -1412,6 +1412,14 @@ returns nothing and it takes the `gantry:501 if found is None` exit. That is exa
 signature already recorded for this game, and it is not a search failure: the tool never had the
 goal. Levels 1-5 clear because their goal is on the board side.
 
+⛔ **AND NO VERTICAL SPLIT CAN WORK HERE — the controls and the goal share the same band.**
+Columns 42-63 hold the four crane buttons (x45-56), the teleport control (x45-57), the staircase
+control (x53-59), the colour-cycle control (x49-52) AND the goal platform (x42-49, y4-11) with the
+goal itself at (6,46). The tool's own output shows the collision already: one of the seven "panel
+buttons" it lists is **(7,45)**, which is a floor tile of the goal platform, not a control. So the
+repair is not a better split column; it is that the board must be the WHOLE frame and controls must
+be identified as controls rather than as "everything right of a column".
+
 ⚠️ Fixing the split alone will NOT clear the level. `gantry` already carries the right vocabulary
 — phase rings, warps, and a driven gantry with a rail — and **two model gaps remain, both nameable**:
 
