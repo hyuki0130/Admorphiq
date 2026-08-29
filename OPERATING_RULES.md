@@ -612,3 +612,47 @@ mentions the script's name.
 ⛔ Same shape as 7i and 7j: a rule that has been true and written down for months, breached the
 moment work went parallel, because every statement of it asks a participant to remember it. The
 version that holds is checked by something that is not a participant.
+
+### 7l — a measurement must not WRITE to a shared path; snapshot it (2026-08-29)
+
+⛔ The gate was the contamination. `scripts/rounds/gate_tool.sh` syncs `~/admorphiq` on ceph-build,
+and that path is SHARED by eight agents who edit `src/` continuously. Its own header documents two
+traps that are both this one cause — trap 4 (a gate ships every agent's work-in-progress, so a
+"single tool" verdict is jointly attributed and nobody notices) and trap 5 (the tree moved under the
+measurement; `blastclock` was `d33922ec` locally and `ef0dafdf` on the box, so five ka59 runs
+returned 0.7500 five times while the real tree scored 1.0000).
+
+Neither trap has a fix at the level they were written. Trap 4 explicitly "cannot REFUSE — in-flight
+edits are the normal state of a fan-out round", and trap 5's hash check can only VOID a verdict
+after the machine time has been spent. Both were paid again on 2026-08-29: the ls20 gate refused its
+own verdict because `cover_targets.py` moved mid-run, and an hour later `integrate.sh` would have
+gated a peer's uncommitted `cyclepress.py` and attributed it to the re86 agent.
+
+**The fix is that the measurement never writes to the shared path at all.** `scripts/snapgate.sh`:
+
+```
+bash scripts/snapgate.sh re86 scripts/rounds/R101REACH 6 4000
+```
+
+`git archive HEAD` → a private `~/snap_<name>` on the box → run the 25 out of THAT copy → compare
+per-game. `~/admorphiq` is read for its venv and its `environment_files` and is never written.
+Consequences, all of them the point:
+
+- **Two gates can run at once.** Verified: the re86 gate ran to completion beside the lp85 agent's
+  50-run A/B, neither disturbing the other.
+- **A rider cannot ride.** The snapshot is the COMMITTED tree, so a peer's uncommitted edit is
+  excluded by construction rather than by anyone remembering to look. The verdict names a commit.
+- **The tree cannot move under it.** There is nothing to move; the snapshot was taken once.
+
+⚠️ Two load-bearing details, both silent when wrong. `scripts/score_efficiency.py:35` inserts ITS
+OWN repo's `src` ahead of `PYTHONPATH` — that is what makes invoking the copy inside the snapshot
+actually select the snapshot's code, and it is why `PYTHONPATH` does not work here (already
+recorded, under `measure_frozen.sh`). And the run needs `cwd=~/admorphiq` to find the environment
+files, because `score_efficiency.py` sets neither `ENVIRONMENTS_DIR` nor passes `environments_dir=`.
+
+⛔ CREDIT, because the method was not mine: the **lp85 agent** built it independently on 2026-08-29
+to A/B two `cyclepress.py` arms — `~/lp85gA` / `~/lp85gB`, private snapshots, shared tree untouched —
+while a peer's gate was in flight, and both measurements stood. I went looking for whoever had put
+42 scoring processes on the box in order to stop them, and found the answer to a problem three rules
+had failed to solve. **Look at what a parallel worker is doing before stopping it; the deviation may
+be the fix.**

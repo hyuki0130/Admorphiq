@@ -1281,6 +1281,123 @@ win. The honest statement is that dc22's level 6 responds to a small region and 
 escapes it — 4,096 click-move pairs, 54,000 random actions, 47 solo tools, 9 tool combinations and
 16 prefix replays, all clearing nothing.
 
+## ⛔ dc22 LEVEL 6 IS SOLVED — 141 actions, dc22 goes 0.7143 -> 1.0000 (2026-08-29)
+
+**MEASURED, twice, and once through the shipped harness path:**
+
+```
+scripts/_dc22_verify.py    level 6 alone   {"result":"CLEARED","direction":"UP","state":"WIN","actions":141}
+scripts/_dc22_oracle_full.py  full game    levels_completed 6/6, total_actions 566, game_score 1.0000
+  per level  L1 31/59  L2 53/102  L3 59/67  L4 87/98  L5 195/324  L6 141/578   every level 1.0
+```
+
+Levels 1-5 are the generic tools' own play (425 actions, unchanged); level 6 is a fixed
+141-action plan. **dc22 0.7143 -> 1.0000 is +0.0114 on the 25-game mean** — the target is real
+and its size is confirmed. ⚠️ The plan is an ORACLE: it was derived from the game's source and
+executed as a script. **No generic tool clears this yet**; what follows is the mechanic and the
+exact two model gaps that stop `gantry`.
+
+### The control scheme, and why every sweep so far measured nothing
+
+Read from `environment_files/dc22/*/dc22.py` and confirmed by running:
+
+| entity | what it does |
+|---|---|
+| `njvd-rolo` (4 of them) | **PRESSURE PLATES.** `yuonzbouxb()` makes every `buezna` carrying the plate's single-character tag VISIBLE+INTANGIBLE while the avatar OVERLAPS the plate, and INVISIBLE otherwise |
+| `crzsjq-up/lersnf/riidpd/lersnf-2` | the four crane-drive buttons — each gated by one plate (b=up, e=left, a=right, h=down) |
+| `piyqze` keys | walking over one sets every `buezna` with its letter permanently INTANGIBLE. Level 6 has two: **'d' at (6,18)** unlocks the colour-cycle button, **'g' at (34,48)** unlocks the crane's grab button. Both start `visible=False` |
+| `sprite-6` at (53,5), letter 'f' | shifts a three-row staircase of `moxubw` bars 2px right per press, **period 6** — the only thing that ever connects the avatar's start island to the left of the board |
+| `buezna-matkhq` at (48,23), letter 'c' | **TELEPORT.** Standing exactly on a `tewfut` tile moves the avatar to the tile sharing its prefix, and swaps every group-c form (period 2) — including the 20x20 `brixto` platform, whose two forms differ in shape |
+| tile at (18,48), `tewfut-color-cycle` | the teleport's **DESTINATION SELECTOR**. The 'd' button re-prefixes it through `[pibpar, refgps, yefmyf, blrmbx]` and the teleport goes to the tile with the matching prefix: (32,52) / nowhere / (4,4) / (34,58) |
+| `brixtocrzsjq-1` at (22,30) | a crane on a `vcha` rail. With the grab button unlocked it picks up the 20x20 INTANGIBLE `brixto` platform (its centre must equal the crane anchor) and carries it; parked at the rail's top it bridges the gap to the goal platform |
+
+⛔ **THE ORDER IS MOVE-THEN-CLICK, AND EVERY PREVIOUS dc22 SWEEP HAD IT BACKWARDS.** The 4,096
+click-then-move sweep clicked from a fixed position at which the four crane buttons DID NOT EXIST
+— `xodizggcom` skips INVISIBLE sprites, so those clicks were no-ops by construction. A sweep that
+enumerates clicks from one standing position cannot see a plate-gated control at all.
+
+⛔ **AND A CONTROL SET RE-READ FROM THE FRAME IS STILL NOT ENOUGH.** Control:
+`scripts/_dc22_livesearch.py`, 12 seeds x 4,000 actions on ceph-build, action set = the four moves
+plus one click per sprite that is LIVE at that instant. **Zero clears**, 583-781 distinct boards
+per seed (blind cell-sweeping reached ~130 in 900). Random play does pick the 'g' key up
+(`crzsjq-grawwq-1` appears in every seed's live set) and never the 'd' key.
+
+### The plan, and the search that found it
+
+`scripts/_dc22_model.py` mirrors the engine's own `sxnzvaqltp` (support) and `collides_with`
+(blocking) predicates and **verifies them cell by cell against the live engine first: 0 mismatches
+over all 1024 even cells** (rule 7b — prove the instrument is attached). It then BFSes the joint
+state `(bar phase 6 x group-c parity 2 x cycle prefix 4 x crane rail cell x platform position x
+two keys x avatar cell)`, 297,307 states expanded, and returns a 141-action plan
+(`scripts/_dc22_plan.json`). The shape of it:
+
+```
+walk left + 4x 'f'         descend onto the shifting staircase and cross to the left of the board
+'c'                        the platform's OTHER FORM is what opens the climb up the left side
+walk up                    take the 'd' key at (6,18)      -> the colour-cycle button goes live
+'c' back, 'd' x3, 'c'      re-aim the teleport and ride it to the plate cluster at (34,58)
+plates + crane drives      walk the crane left to the platform, GRAB, carry it to the rail's top
+'c','d' x3,'c'             re-aim again and teleport to (4,4)
+walk right                 cross the carried platform to the goal at (46,6)
+```
+
+Each leg was measured on its own before the whole: the joint `(bar phase x cell)` graph reaches
+57 cells and NO landmark; adding the group-c parity takes it to 120 cells and makes the 'd' key
+reachable in **42 actions, executed and confirmed live**.
+
+### ⛔ Why `gantry` retires EMPTY — measured on the live frame, and it is ONE field
+
+`scripts/_dc22_gantrygeom.py` plays to level 6 with the generic tools and dumps the tool's own
+perception of that frame:
+
+```
+split (42,42)   board = columns 0-41    panel = columns 42-63    detect = 0.86
+goal (goknoi-dokmdr, colour 11) at rows 6-7, columns 46-47
+colour-11 pixels: 3 on the board, 44 in the panel
+```
+
+**gantry routes over columns 0-41 and dc22 level 6's goal is at column 46 — inside what the tool
+calls the control panel.** There is no goal cell in the board it searches, so its route BFS
+returns nothing and it takes the `gantry:501 if found is None` exit. That is exactly the retire
+signature already recorded for this game, and it is not a search failure: the tool never had the
+goal. Levels 1-5 clear because their goal is on the board side.
+
+⚠️ Fixing the split alone will NOT clear the level. `gantry` already carries the right vocabulary
+— phase rings, warps, and a driven gantry with a rail — and **two model gaps remain, both nameable**:
+
+1. **The warp map is static where this board's is aimed.** `self._warps[(click, pos)] -> landed`
+   is keyed on the press and the cell it was pressed from. On dc22 level 6 the SAME press from the
+   SAME cell lands somewhere else after the 'd' control has been pressed, because that control
+   re-prefixes the tile the avatar is standing on. A warp destination that is a function of
+   another control's phase cannot be expressed.
+2. **A drive can be gated on where the avatar STANDS.** The rail walk presses drives to learn
+   `_edges[off][click]`, but each of the four drives here only exists while the avatar is on its
+   own plate. The panel is correctly re-read when it changes (`gantry:636`), so the buttons are
+   seen; what is missing is that reaching a rail cell requires walking to a specific board cell
+   between presses, which makes the rail walk a joint (rail, avatar) search rather than a rail one.
+
+### ⛔ Four earlier dc22 claims, corrected
+
+- **"the tool arrives in a POCKET of three boards."** WRONG. The avatar's start component is
+  **18 cells** (x18-28, y48-52). The "three boards" came from pressing up, down, left, right in
+  that order — an inverse-pair test that never measured down-from-start or right-from-start.
+- **"the board is COMPLETELY INERT outside rows 0-32."** WRONG as stated. Two controls are live
+  from the first frame at (53,5) and (48,23), and five more at rows 17-46 become live once their
+  gate is satisfied. What is true is that no single click from the start position visibly moves
+  anything else.
+- **"the colour-cycling tile is NOT the blocker."** Half right. Pressing it and handing the board
+  back clears nothing — correct, and the test was worth its four runs. But the tile is
+  load-bearing: it AIMS the teleport, and the plan presses it six times.
+- **"the level-6 goal carries an extra `buezna` tag that a frame-only tool cannot see."** That tag
+  is INERT. `goknoi-dokmdr` has no single-character tag, so `swmjqbirpa` returns None and clicking
+  it does nothing at all. It is not what stops the level; the board/panel split is.
+
+Artefacts: `scripts/_dc22_model.py` (model + search), `scripts/_dc22_plan.json` (the 141 actions),
+`scripts/_dc22_verify.py` (executes it on the engine), `scripts/_dc22_oracle_full.py` (full game
+through the harness), `scripts/_dc22_gantrygeom.py` (what gantry sees),
+`scripts/_dc22_livesearch.py` (the live-click blind control).
+
+
 ## wa30's last level is lost on the BUDGET, not on the mechanic (2026-08-29)
 
 Ranked second in the depth work at +0.0080, and never opened until now. Its levels differ in one
