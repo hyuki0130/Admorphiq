@@ -473,3 +473,22 @@ space is yours to reclaim, and clear only what this round created.
 
 ⛔ A full disk does not announce itself as a disk problem. It arrives as a hook failing on a
 here-document, and the next thing it breaks is a measurement that will look like a tool regression.
+
+### 7e — a probe that prints NOTHING and exits 0 has usually lost its entrypoint (2026-08-29)
+
+Twice in one day a probe ran, exited cleanly, and produced an empty log. Both times the cause was the
+same: an edit that REPLACED THE TAIL of the file took `if __name__ == "__main__": main()` with it. The
+module then defines its work and never calls it, which is indistinguishable from a measurement that
+came back empty — and the second occurrence cost half an hour of chasing ssh, nohup and buffering.
+
+```
+grep -c "__main__" scripts/_probe.py        # 1, or the probe does nothing
+```
+
+⛔ **Prefer inserting over replacing a tail.** When a tail must be replaced, re-append the entrypoint
+in the same edit, and check the count before running anything remote.
+
+⚠️ Related, same day: a long probe writes NOTHING until its setup finishes (reaching a late level can
+take 400+ actions), so an empty log early is not evidence of failure. Print progress from the first
+action, and run remote work by `nohup`-ing a SCRIPT the box owns — an `ssh ... cmd &` dies with the
+connection, which is how the same probe was lost twice more.

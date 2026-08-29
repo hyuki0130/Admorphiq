@@ -66,3 +66,7 @@ def main() -> None:
     print(f"clicks swept: 1024; distinct boards reached: {len(seen)}")
     for cy, cx, k in escapes[:10]:
         print(f"  new board {k} from click ({cy},{cx})")
+
+
+if __name__ == "__main__":
+    main()
