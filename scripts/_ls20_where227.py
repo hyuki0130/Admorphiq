@@ -220,7 +220,7 @@ def main() -> None:
             json.dump(fog.trace, fh, default=str)
     out = {"arg": arg, "v": variant, "cfg4": list(CFG[variant]), "levels": lvl,
            "total": n, "lvl7": per_level[6], **banked}
-    print("RESULT " + json.dumps(out), flush=True)
+    print(json.dumps(out), flush=True)
 
 
 if __name__ == "__main__":

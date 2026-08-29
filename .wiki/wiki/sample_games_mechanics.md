@@ -841,6 +841,38 @@ win 38, mark 22, press 17, refuel 17, look ~28. `win` is tried FIRST in `_plan`,
 tread only ever run *because no winning route exists yet* — they are not waste by construction.
 Closing the last 51 actions to the human's 186 means making the win route available sooner,
 which is a question about learning the target token, not about fuel.
+**Where the other 227 go — measured, not reasoned (`scripts/_ls20_where227.py`, 24 runs).** The
+instrument asks, every tick, whether a winning (cell, token) route EXISTS and how long it is —
+the same joint search `_plan` runs, so it cannot disagree with the planner:
+
+```
+237 actions  =  12 handover to keymaze  +  170 DISCOVERY  +  55 EXECUTION
+   a winning route first exists at tick 170, and it is THIRTY-THREE steps long
+   route length from there: 33 -> 25 -> 23 -> 15 -> 17 -> 9 -> 5   (clean, no oscillation)
+   discovery: map 59, tread 56, mark 21, press 15, look 15   execution: win 38, refuel 15, press 2
+   goal AND target known at tick 55 · first refill known at 73
+   changer tables closed at ticks 67, 69 and 138 — the THIRD is the critical path
+```
+
+⛔ **THE WINNING ROUTE IS 33 STEPS, NOT 10.** The ten-action lower bound above ignores the token,
+and the token is the level: the route has to detour through three changers to arrive holding
+what the target demands. Execution spends 55 actions walking a 33-step route with 15 refuels in
+it — that is near-optimal, and there is nothing to win in the second half of this level.
+
+⛔ **AND EXPLORING LESS LOSES THE LEVEL — SIX INDEPENDENT WAYS.** Capping `map` at 40 actions,
+capping `tread` at 30, stopping `tread` at 60 cells stood, stopping it at 45, and biasing the
+frontier toward the known goal ALL end 6/7 at ~502 actions with 7-11 dry deaths. The only
+variants that hold 237 are the two that turn out to be inert (skip the patrol while a win
+exists — looks only happen when none does; explore only within reach of a refill — never
+fires). So the 170 discovery actions are not slack, and "explore toward the goal" is actively
+harmful here: the third changer is not near the goal, and a frontier that prefers the goal
+never reaches it.
+
+⚠️ That makes ls20 the clearest case in this file of a level where the tool is ALREADY near its
+own floor and the remaining loss is structural. The one measured gap worth a future look is the
+**32 ticks between the third changer's table closing (138) and the first winning route (170)** —
+everything the route needs is known at 138 and the search does not return one until 170.
+
 
 ## dc22 level 6 — COLOUR-CYCLING TILES, and it is the round's best target (2026-08-29)
 
