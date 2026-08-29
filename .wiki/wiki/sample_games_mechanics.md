@@ -942,6 +942,27 @@ allowance is a different problem from one that dies once at the end of the run.
 the game sits in GAME_OVER before the harness resets, not real attempts. They inflate the death
 COUNT slightly and do not affect the lengths that matter.
 
+### ✅ The two methods CROSS-VALIDATE on tr87, which neither was built for
+
+tr87 declares no allowance anywhere in its level data, so it was not one of the twelve. Both
+instruments found one anyway, independently, and they agree:
+
+```
+pixel reader   row 63, scale 2, hit 0.778   — a 64-pixel band filling at one pixel per two actions
+death clock    level 1 deaths: 129, 129     — CONSTANT, to the action
+```
+
+A 64-pixel bar at two actions per pixel is full at 128, and the death lands at 129 — which is the
+same `declared + 1` offset the five declared games show. Two instruments built from different
+signals, on a game that declares nothing, landing on the same number is the strongest evidence
+either of them is measuring what it claims (and it is the check rule 7c asks for: make the
+instrument say something it could not say if it were not attached).
+
+⚠️ The full sweep also adds the clearest negative: **tu93 died 127 times in 1500 actions**, with
+lengths scattered from 9 to 51 against declared allowances of 50/50/35/20. Those are hazard deaths,
+not allowance deaths, and a tool that learned "my allowance is 9" from the first one would be
+crippled by its own reader. The two-deaths-must-agree gate is not optional.
+
 ## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
 
 Read from `environment_files/ls20/9607627b/ls20.py` after three pixel-based attempts to size ls20's
