@@ -30,7 +30,11 @@ s5i5    0.5833   gap 0.4167   ⛔ CLOSED — the win opens by moving a rider tha
                              swivel's decomposition can never propose. 30 arms, all 0.5833.
 dc22    0.7143   gap 0.2857   ⛔ CLOSED — the blocker is ours (phase.py:430 condemns a drawn tile for
                              ONE pixel), censused to this game alone; both repairs measured negative.
-ls20    0.9121   gap 0.0879   L7 alone; ordering swept in BOTH directions and closed.
+ls20    0.9121   gap 0.0879   ⛔ CLOSED except the handover. L7's 231 = 10 handover + 58 (3 lives)
+                             + 87 explore + 1 death + 75 solve; the ORACLE bound is 61. You cannot
+                             wait for or ambush a mover: `Ls20.step` moves movers FIRST and UNDOES
+                             them when the player's move is refused (18 of 18), so ambushing is
+                             IMPOSSIBLE, not mistuned. 12 arms x 4 axes all lose or are inert.
 lp85    0.9767   gap 0.0233   L4 = 18 vs a human 16; the six confirmations are load-bearing.
 ```
 
@@ -61,9 +65,10 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-1. **LIVE**: lf52 — and its target is now ONE MOVE, named. See the lf52 block below.
-   ⛔ lp85 is DONE for today (0.9767; seven confirmation-cutting arms all refuted, so L4's six
-   confirmations are load-bearing). bp35, s5i5 and dc22 are CLOSED WITH PROOFS.
+1. **LIVE (four agents)**: lf52's third capture · ls20's 10-action handover (`keymaze` spends 8 of
+   them pushing into a WALL and hands fogscout a tank at 22 of 42) · **cross-level mechanic carry**,
+   the only axis today that describes the private 110 · and the gate-guard wiring.
+   ⛔ lp85 DONE (0.9767). bp35, s5i5, dc22 and ls20's ORDERING axis are all CLOSED WITH PROOFS.
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 

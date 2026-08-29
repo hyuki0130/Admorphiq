@@ -1938,3 +1938,33 @@ guard had been running less than it appeared to even when it passed.**
 a heredoc, an env var — check that the far side receives all of it. `pfan.sh` had the same class of
 bug on an empty argument (rule 7r) and `pfan.sh` again on interleaved output (rule 7at). **Count what
 arrived, not what you sent.**
+
+### 7aw — you cannot ambush a mover on ls20, and the tool never sees the mechanic it will need (2026-08-30)
+
+ls20's level 7 is 231 actions against a human 186, and the gap decomposes cleanly:
+
+```
+231 = 10 keymaze handover + 58 (3 lives + GAME OVER + RESET) + 87 explore/learn + 1 death + 75 solve
+gap to 186 = 10 handover + 14 execution (75 vs an ORACLE bound of 61) + ~21 discovery
+reason census: map 59 · tread 56 · win 35 · mark 21 · press 17 · refuel 14 · look 15 · WAIT 0
+```
+
+⛔ **AMBUSHING IS IMPOSSIBLE, NOT MISTUNED — read from the engine.** `Ls20.step` moves every mover
+FIRST, then applies the player's move, and calls an UNDO on every mover when that move is refused.
+So a blocked action leaves the joint (avatar, mover) state exactly as it was and costs one budget
+unit. Measured: **18 blocked moves in the winning run, mover frozen on 18 of 18.** That is why an
+earlier "ambush at its remembered beat" arm was exactly inert. ⭐ `_intercept`'s comment claiming
+"the patrol brings itself back" was FALSE and is corrected in place; removing `_hold` outright
+measures 231, identical per level.
+
+⛔ TWELVE ARMS ACROSS FOUR AXES, all through the real harness against a 231 control: colour-cycle
+closure **324**; mask-cycle closure **LOSES the level**; motion conjugation strict never fires,
+permissive fires 36 times and is **EXACTLY INERT** — so the token model's completeness is NOT what
+gates this level; fuel-first mark seeking loses the level or costs **343**; refuel by round-trip
+detour **307 / 307 / loses**, because the nearest ring is also the one you can still REACH.
+
+⭐ **THE STRUCTURAL ANSWER TO "WHAT DOES 186 BUY", and it is not about ls20**: a first-time human
+reaches level 7 having played six levels with the SAME three changers. **`fogscout` arrives with
+NOTHING, because its `detect` is 0.00 on every unfogged board, so it never plays levels 1-6 and
+never sees the mechanic it will need.** ⚠️ The permissive-conjugation inertness caps that prize at
+the `press` excursions (~20-30 actions), not the walking — so measure the cap before building it.
