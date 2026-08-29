@@ -2621,3 +2621,40 @@ a stitch repair could have paid either.
 field that is downstream of the fault** (rule 7o's warning, arriving from a new direction). Before
 building on a diagnosed field, check whether the fault could PRODUCE it — and check where the failing
 calls sit relative to the levels that score.
+
+### 7bk — a field that moves at the failure may be produced BY it (2026-08-30)
+
+Rule 7bh reported that at `crag`'s first empty on bp35 **the only field that moves is `self._rows`
+10 → 9**, and I briefed it as a one-field perception defect to repair. ⛔ **It is DOWNSTREAM of the
+fault.** Instrumented at the line that CONSUMES the field rather than around the whole `propose`:
+
+```
+self._rows is 9 at the ENTRY to all 230 stitches
+`_readings` leaves it at the last candidate origin's shape; only a SUCCESSFUL stitch raises it to 10
+```
+
+**The 10 → 9 movement is produced BY the failure, in every run, by construction.** Watching a field
+across a failure shows you what the failure DID, not what caused it — and the two are easy to
+confuse when only one field moves.
+
+⭐ THE ACTUAL CAUSE IS **OVERLAP, 8 of 8** — not the range, not admissibility, not a pan. Offline
+replay against a pre-call snapshot, shift range widened by rows+4 both ways:
+
+```
+best in-range + admissible, >= _ALIGN_MIN cells   0.600   RANGE 0/8 · ALLOW 0/8
+best ignoring the overlap floor                   0.900 over TEN comparable cells
+best 2-D (row AND column) shift                   0.824 over SEVENTEEN
+```
+
+All eight losses are consecutive, six actions into board 6, with the map at **100 cells — exactly ONE
+window**. A click on a believed gravity switch moves the camera into board never seen. **A one-window
+map cannot name that shift: it is a COLD START, not a threshold.**
+
+⛔ AND THE FIX WAS PRICED ANYWAY AND REVERTED: a thin-overlap tier FIRES (stitches 230 → 352, losses
+8 → 24) and leaves **every per-level count IDENTICAL**. 0.9 over ten cells is literally the "nine
+cells in ten" false fit `_stitch`'s own docstring records as having cost every later board.
+
+⚠️ **AND IT COULD NEVER HAVE PAID**: levels 1-5 record 219 `grow` + 3 `home` and **ZERO** losses, so
+no scoring level had anything to repair; all eight losses are on the wall level, closed
+independently. And `crag` bids 0.5 on bp35 and **0.00 on all 24 other games**, so no second game
+could pay either. **Check where a defect actually occurs before pricing its repair.**
