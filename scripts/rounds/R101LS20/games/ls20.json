@@ -3,15 +3,15 @@
   "n_games_run": 1,
   "n_games_scored": 1,
   "n_excluded": 0,
-  "total_score": 0.903982,
-  "total_score_pct": 90.398,
+  "total_score": 0.912085,
+  "total_score_pct": 91.209,
   "games": [
     {
       "game_id": "ls20-9607627b",
       "win_levels": 7,
       "levels_completed": 7,
-      "elapsed_s": 22.96,
-      "total_actions": 651,
+      "elapsed_s": 21.68,
+      "total_actions": 645,
       "per_level": [
         {
           "level": 1,
@@ -51,12 +51,12 @@
         },
         {
           "level": 7,
-          "agent_actions": 237,
+          "agent_actions": 231,
           "human_actions": 186,
-          "score": 0.615927
+          "score": 0.648339
         }
       ],
-      "game_score": 0.903982,
+      "game_score": 0.912085,
       "has_baseline": true,
       "llm_hypothesis": null,
       "title": "LS20"

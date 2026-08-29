@@ -872,3 +872,31 @@ stays committed for that reason — it asserts nothing and prints where the code
 since most probes take only a seed. Under `set -u` the remote dies with `$5: unbound variable`
 **after the launcher has already printed "launched"**. Arguments now go through the environment.
 That is the fourth guard-or-launcher today that reported success for something that did not happen.
+
+### 7s — rule 7f has a MIRROR IMAGE: a level that RESTARTS reads like a level that continues (2026-08-29)
+
+Rule 7f says the level number changing is not a win, because a collapse to level 0 looks identical.
+Two agents independently found the same blindness pointed the OTHER way, on different games, within
+an hour — and it is worse, because there is no number to test at all.
+
+**s5i5**: the engine's step allowance is RENDERED on frame row 63 (`render_interface` paints colour 3
+across `64 * steps_left / budget`). On the harness's own level-7 run it reads
+`64 @a192 → 53 @a226 → 37 @a276 → 21 @a326 → 5 @a376`, then **REFILLS to 61 at a401 and again at
+a601**. The level is lost on its 200-step allowance and restarted, twice inside one 500-action
+window, and `levels_completed` never moves. That is why "all 60 seeds collapse" and my measured
+"COLLAPSE=2" are the same fact counted per-attempt versus per-window.
+
+**wa30**: level 9 declares `StepCounter=70`, `lose()` restarts the LEVEL rather than ending the game,
+and the harness gets EIGHT attempts inside its run. ⛔ **Six of the eight are BYTE-IDENTICAL to each
+other, action for action** — the tool carries a stale plan, a stale held-piece flag and a stale
+walker sweep straight across the reset, because `levels_completed` is the only thing it watches. Six
+tries that are one try.
+
+⛔ **Any tool that watches only `levels_completed` is blind to its own retries.** It cannot vary a
+losing line, cannot learn from a death, and cannot know its allowance is nearly spent. The signal is
+available two ways — `obs.state` reports GAME_OVER directly, and on at least s5i5 and bp35 the
+remaining allowance is drawn in the outer band that `segment.board_changed` deliberately ignores.
+
+⚠️ Both discoveries came from asking what the harness DOES rather than whether it advanced, which is
+also how rule 7p was found the same day. **"It did not progress" is the least informative thing that
+can be recorded about a failure.**

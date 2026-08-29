@@ -10,8 +10,8 @@
       "game_id": "lf52-271a04aa",
       "win_levels": 10,
       "levels_completed": 5,
-      "elapsed_s": 52.54,
-      "total_actions": 819,
+      "elapsed_s": 122.88,
+      "total_actions": 823,
       "per_level": [
         {
           "level": 1,
@@ -27,7 +27,7 @@
         },
         {
           "level": 3,
-          "agent_actions": 57,
+          "agent_actions": 60,
           "human_actions": 60,
           "score": 1.0
         },
@@ -39,7 +39,7 @@
         },
         {
           "level": 5,
-          "agent_actions": 138,
+          "agent_actions": 139,
           "human_actions": 205,
           "score": 1.0
         }
