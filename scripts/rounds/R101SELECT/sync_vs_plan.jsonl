@@ -1,0 +1,4 @@
+{"seed": 2, "mode": "sync", "total_actions": 823, "delta_vs_baseline": 0, "game_score": 0.272727, "levels": 5, "samples": 83, "railpeg_builds": 67, "railpeg_tiers": {"win": 7, "capture": 31, "travel": 19, "none": 9, "approach": 1}, "elapsed_s": 114.7, "error": null}
+{"seed": 1, "mode": "none", "total_actions": 823, "delta_vs_baseline": 0, "game_score": 0.272727, "levels": 5, "samples": 0, "railpeg_builds": 67, "railpeg_tiers": {"win": 7, "capture": 31, "travel": 19, "none": 9, "approach": 1}, "elapsed_s": 115.0, "error": null}
+{"seed": 3, "mode": "detect", "total_actions": 827, "delta_vs_baseline": 4, "game_score": 0.272727, "levels": 5, "samples": 83, "railpeg_builds": 100, "railpeg_tiers": {"win": 7, "capture": 33, "travel": 25, "none": 34, "approach": 1}, "elapsed_s": 136.9, "error": null}
+DONE

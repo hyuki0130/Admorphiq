@@ -119,6 +119,22 @@ def main() -> None:
                    agent_name="unified", max_actions=4000, adapter_factory=factory)
     a = holder.get("agent")
     acts = res.get("total_actions")
+    # ⛔ MEASURE THE COUNTERS, NOT JUST THE SCORE (rule 7g). The perturbation is 4 actions on a
+    # level that scores zero, so an unchanged score says NOTHING about whether the per-frame plan
+    # memo fired. `_tiers` and `_why` are __init__-only on this tool — they survive `reset()` and
+    # therefore count every planning decision of the whole GAME, which is exactly the quantity the
+    # memo is supposed to reduce. Sampling `detect` must leave them untouched.
+    rp = (a.tools.get("railpeg") if a is not None else None)
+    counters = None
+    if rp is not None:
+        counters = {
+            "builds": sum(getattr(rp, "_tiers", {}).values()),
+            "tiers": dict(getattr(rp, "_tiers", {})),
+            "barren_cap": getattr(rp, "_why", {}).get("barren-cap", 0),
+            "elsewhere_set": getattr(rp, "_why", {}).get("elsewhere:set", 0),
+            "sincecapture": getattr(rp, "_sincecapture", None),
+            "barren": getattr(rp, "_barren", None),
+        }
     print(json.dumps({
         "seed": seed,
         "mode": mode,
@@ -129,6 +145,7 @@ def main() -> None:
         "game_score": res.get("game_score"),
         "levels": res.get("levels_completed"),
         "samples": getattr(a, "_fx_samples", 0),
+        "railpeg_counters": counters,
         "elapsed_s": round(time.time() - t0, 1),
         "error": res.get("error"),
     }), flush=True)

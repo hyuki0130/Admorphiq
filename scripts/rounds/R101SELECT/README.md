@@ -297,3 +297,72 @@ silently writing a table with no controls. That it failed loudly is luck, not de
 drops the OFFENDER rows instead would have produced a clean-looking all-clear. ⛔ Namespace every
 temp path per fan, exactly as `pfan.sh` already forces for its own output after the same class of
 collision cost a peer's results on 2026-08-29.
+
+---
+
+# Part 4 — the fix for part 3 is REFUTED, and the mechanism is now fully separated
+
+Part 3 attributed the lf52 823 -> 827 perturbation to `railpeg`, and named the obvious repair: give
+`_ensure_plan` the same per-frame idempotence guard `_sync` already carries eight lines away. It was
+built (memo keyed on `_sync_key`, wrapper + `_build_plan`, four contract tests validated in both
+directions) and then MEASURED, and it does nothing at all.
+
+⛔ **THE 2x2, and every cell of it is identical across the two trees.** `builds` = every planning
+decision of the whole game (`_tiers` is `__init__`-only on this tool, so it survives `reset()` and
+counts the game, not the level).
+
+```
+                       control: sample nothing        sample all 47 tools, every 10th action
+UNGUARDED (HEAD)       823 actions, builds 67         827 actions, builds 100
+GUARDED   (the memo)   823 actions, builds 67         827 actions, builds 100
+tiers, both rows       win 7 capture 31 travel 19     win 7 capture 33 travel 25 none 34
+                       none 9 approach 1              approach 1
+```
+
+**The memo changes nothing — not the actions, not the build count, not the tier breakdown.** It was
+reverted rather than shipped: `OPERATING_RULES.md` 7b, *keep nothing that does not move the score,
+and the rule applies to your own work hardest*.
+
+## Why it cannot work, which the same measurement shows
+
+⛔ **There is no same-frame double-build to suppress.** `builds` is 67 with the memo and 67 without
+it on the unsampled run — so the duplicate the memo exists to catch does not occur. It cannot,
+because every path in `_build_plan` that advances a counter also fills `_plan`, and a filled `_plan`
+wins the `if self._plan: return 0.9` branch above. The repeat that IS reachable touches only
+`_why['barren-cap']` and `_tiers['none']`, which are diagnostics.
+
+**The +33 builds are on frames the harness never asked about.** Each is a genuinely NEW frame, so a
+per-frame memo is a no-op by construction. The instrument samples every tenth action; the harness
+calls `propose` only when its queue drains, so most samples land where the tool would never have
+been consulted, and `detect` plans there — 25 of the 33 extra builds are the `none` tier (nothing
+found) but `travel` gains 6 and `capture` 2, which are real plans built against boards the tool was
+not about to act on.
+
+## `_sync` is EXONERATED, and that is a separate measurement
+
+Two mechanisms could explain part 3 and they wanted opposite follow-ups, so both were run
+(`scripts/_select_syncfx.py`, rule 7h — enumerate, then test together):
+
+```
+control                          823 actions   builds 67   tiers win7 cap31 trav19 none9 app1
+`_sync` ONLY, 83 samples         823 actions   builds 67   tiers IDENTICAL
+full `detect`, 83 samples        827 actions   builds 100  tiers win7 cap33 trav25 none34 app1
+```
+
+⭐ **Handing the tool 83 frames it would never have seen, and letting it LEARN every one of them,
+changes nothing whatsoever.** The learner's own per-frame memo plus the fact that it is fed those
+frames anyway makes it inert. The whole perturbation is the planner.
+
+## What a real fix would have to be, and why it is not being taken here
+
+`detect` would have to stop planning — report a claim from the model alone. ⛔ That is a
+BID-SEMANTICS change, not a purity change: `detect` currently returns the plan's own quality (0.95
+win / 0.9 capture / 0.75 explore / 0.0 barren), and replacing it with a model-only claim changes the
+number the router sees. This tool's bid is 0.95 on its game, above `_PRIMARY_CONF` 0.70, so a
+changed bid can change OWNERSHIP on the game it currently clears to five levels at 8/52/60/64/139
+actions. That is a design with a gate behind it, not an edit.
+
+⚠️ And the size of the prize should be stated honestly first: in the UNSAMPLED run the tool plans 67
+times in 823 actions, which is the normal rate — the out-of-band builds come from `_better_alternative_exists`,
+`_signature_default` and the `_primary_owns` re-check, which ask `detect` at frames the tool will not
+act on. That is real, and it is small. **Nothing measured says removing it wins a level.**

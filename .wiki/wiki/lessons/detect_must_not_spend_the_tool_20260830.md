@@ -38,6 +38,29 @@ this lesson: *"the harness asks `detect` and then `propose` about the SAME board
 LEARNS — running it twice makes a frame look as if it had settled … and installs a stale board over
 a correct model."* `_ensure_plan` was left unguarded.
 
+## ⛔ The obvious repair is REFUTED — measured 2026-08-30, same day
+
+`_sync` carries a per-frame idempotence guard eight lines away and its comment describes this exact
+failure, so the repair looked settled: give `_ensure_plan` the same guard. It was built and
+measured, and **every cell of the 2x2 is identical**: 823 actions / 67 planning builds unsampled,
+827 / 100 sampled, with the guard and without it. It was reverted rather than shipped.
+
+⛔ **There is no same-frame double-build to suppress** — 67 builds with and without the guard on the
+unsampled run proves the duplicate does not occur, because every path that advances a counter also
+fills `_plan`, and a filled `_plan` wins the earlier branch. The extra builds are on frames the
+harness never asked about, each of them genuinely NEW, so a per-frame memo is a no-op by
+construction.
+
+⭐ **And the LEARNER is exonerated by its own arm.** Sampling only `_sync` — handing the tool 83
+frames it would never have seen and letting it learn every one — changes nothing at all: 823
+actions, 67 builds, identical tiers. The whole perturbation is the planner.
+
+A real repair would have to stop `detect` planning and report a claim from the model alone. ⛔ That
+is a BID-SEMANTICS change: `detect` returns the plan's own quality today, this tool bids 0.95 on its
+game, and 0.95 is above `_PRIMARY_CONF`, so a changed bid can change OWNERSHIP of a game it clears
+to five levels. That is a design with a gate behind it, not an edit — and nothing measured says
+removing the out-of-band builds wins a level.
+
 ## Prevention
 
 `socketmerge` is the pattern worth copying and it is already in the tree: its `detect` saves the
@@ -65,6 +88,10 @@ and the tool belongs to whoever owns its game.
 
 The narrow claim that IS established: an instrument that samples `detect` more often than the
 harness does is measuring a run it perturbed, and it will not look wrong.
+
+⚠️ ⛔ **And the claim that is NOT established, though this page asserted it before the repair was
+measured: that a guard would fix it.** The guard was built, measured inert in all four cells, and
+reverted. A mechanism that is correctly described still does not tell you which edit removes it.
 
 ## Related
 
