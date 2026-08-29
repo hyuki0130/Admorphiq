@@ -1169,6 +1169,20 @@ mean over the 15:  live 0.9532   archived 0.9516   ratio 0.998
 cn04, ka59, m0r0, r11l, sc25, sk48, sp80, su15, tn36, tu93 and vc33. dc22 reproduces its 0.7143
 exactly, wall and all.
 
+⭐ **AND THE SHARP FORM IS STRONGER THAN THE SCORE SUGGESTS.** A game score can hide one level that
+got slower and another that got faster, so compare PER-LEVEL ACTION COUNTS:
+
+```
+TWELVE of fifteen games are IDENTICAL ACTION FOR ACTION on every level.
+re86  live [25,42,49,59,113,139,101,168]   arch [25,42,49,59,114,139,101,168]   one action, one level
+s5i5  live [13,30,47, 39, 32, 31]          arch [13,30,47, 61, 32, 31]          level 4 alone, +22
+cn04  live 6 levels                        arch 5 levels     <- a genuinely different level SET
+```
+
+The tools do not merely score the same on a re-render; they play the same moves. ⚠️ cn04's archive
+has a different number of levels, so its 1.0000-vs-1.0000 is agreement on different content and is
+NOT evidence of action-level transfer. s5i5's whole -0.0240 is one level going 39 -> 61.
+
 ⚠️ **THIS IS WEAK EVIDENCE AND MUST NOT BE OVERSOLD.** A re-render is the SAME GAME with different
 tags; the evaluation is 110 games with different MECHANICS. What this rules out is the cheapest
 failure — a tool keyed to a sprite name or a pixel coordinate — and nothing more. `CLAUDE.md`
