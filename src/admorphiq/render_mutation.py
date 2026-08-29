@@ -167,12 +167,16 @@ class Translate(RenderMutation):
     the coordinate it would have received unmutated — the mutation is a conjugation
     of the whole interaction, not merely of the picture.
 
-    ⛔ VALIDITY IS CHECKED ON EVERY FRAME, NOT ASSUMED. The band that leaves the canvas
-    must be uniform AND equal to that layer's most common colour; otherwise board
-    content was destroyed, the run's meaning changed, and the game is REFUSED. A
-    refused game is reported as refused — it is never reported as a transfer failure,
-    because a lower score from a broken mutation and a lower score from a brittle tool
-    look identical in the number alone.
+    ⛔ VALIDITY IS CHECKED ON EVERY FRAME, NOT ASSUMED, AND THE CONDITION IS TWO-SIDED.
+    The board must already carry a UNIFORM MARGIN of at least the shift on BOTH the
+    leaving and the entering side, of the SAME colour, which then fills the vacated
+    band. Under that condition the mutated frame differs from the original only by
+    moving the content rigidly inside a margin it already had — a camera pan. Anything
+    weaker changes the picture: a first version required only that the outgoing band be
+    uniform and background-coloured, which on a walled board deletes one wall row and
+    leaves the opposite side open. The game is REFUSED when the condition fails, and a
+    refused game is never reported as a transfer failure — a lower score from a broken
+    mutation and a lower score from a brittle tool look identical in the number alone.
     """
 
     def __init__(self, dy: int, dx: int) -> None:
@@ -189,26 +193,20 @@ class Translate(RenderMutation):
         for layer in layers:
             arr = np.asarray(layer)
             h, w = arr.shape
-            hist = np.bincount(np.asarray(arr, dtype=np.int64).reshape(-1),
-                               minlength=N_COLOURS)
-            fill = int(hist.argmax())
-
-            # The band that would leave the canvas.
-            leaving = []
-            if self.dy > 0:
-                leaving.append(arr[h - self.dy:, :])
-            elif self.dy < 0:
-                leaving.append(arr[: -self.dy, :])
-            if self.dx > 0:
-                leaving.append(arr[:, w - self.dx:])
-            elif self.dx < 0:
-                leaving.append(arr[:, : -self.dx])
-            for band in leaving:
-                if band.size and (band != fill).any():
-                    report["violations"].append(
-                        f"translation would destroy board content: the outgoing band "
-                        f"holds {sorted({int(v) for v in np.unique(band)})}, fill={fill}")
-                    return layers
+            ay, ax = abs(self.dy), abs(self.dx)
+            bands = []
+            if ay:
+                bands += [arr[:ay, :], arr[h - ay:, :]]
+            if ax:
+                bands += [arr[:, :ax], arr[:, w - ax:]]
+            values = {int(v) for band in bands for v in np.unique(band)}
+            if len(values) != 1:
+                report["violations"].append(
+                    f"no uniform margin of {ay}/{ax} on both sides — the leaving and "
+                    f"entering bands hold {sorted(values)}, so the shift would move "
+                    f"board content across the canvas edge")
+                return layers
+            fill = values.pop()
 
             shifted = np.full_like(arr, fill)
             ys, yd = (slice(self.dy, h), slice(0, h - self.dy)) if self.dy >= 0 \
@@ -338,6 +336,11 @@ def build(spec: str) -> RenderMutation:
     arms = {
         "identity": lambda: RenderMutation(),
         "cperm": lambda: ColourPermutation(derangement(), name="cperm"),
+        # ⛔ A SECOND, INDEPENDENT PERMUTATION. One derangement scoring identically could
+        # in principle be luck of which labels happened to swap; two that disagree with
+        # each other would expose it, and two that both hold is a much stronger claim.
+        "cperm2": lambda: ColourPermutation(
+            derangement(mult=5, add=1), name="cperm2"),
         "cpermbg": lambda: ColourPermutation(
             derangement(), name="cpermbg", fix_background=True),
         "shift1": lambda: Translate(1, 1),

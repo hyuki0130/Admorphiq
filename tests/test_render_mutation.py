@@ -214,12 +214,12 @@ def test_translate_REFUSES_when_it_would_destroy_board_content() -> None:
     a broken mutation and a brittle tool produce the same number.
     """
     board = np.zeros((64, 64), dtype=np.int8)
-    board[63, :] = 5  # a bottom edge that a downward shift would delete
+    board[63, :] = 5  # a bottom edge the downward shift would push off the canvas
     agent = MutantAgent(_BlindAgent(), Translate(1, 0))
     agent.is_done([], _obs(board))
     rep = agent.close()
     assert rep["verdict"] == "invalid"
-    assert "destroy board content" in rep["violations"][0]
+    assert "no uniform margin" in rep["violations"][0]
 
 
 def test_translate_round_trips_the_click_when_valid() -> None:
