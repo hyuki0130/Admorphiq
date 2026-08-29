@@ -607,3 +607,31 @@ must spend four of its twenty-one actions working out which colour the fuel gaug
 new mechanics, efficiency 0.0147 does not" was right about where the points are and wrong about the
 second half being cheaper. **Both halves are discovery problems**; the efficiency half is just
 discovery that succeeds slowly rather than discovery that fails.
+
+## ⛔ AND THAT IS REFUTED — attempt two knows the whole map and still costs 146
+
+The discovery-cost reading above makes a falsifiable prediction: if the 1.6x is the price of learning
+the board, a second attempt on the same board should be much cheaper. ls20 dies on level 7 and is
+thrown back to the start, so the experiment runs itself. Splitting the 302 actions at the death and
+counting steps that uncover something NOT SEEN IN EITHER ATTEMPT:
+
+```
+attempt 1   156 actions,  39 discovery steps
+attempt 2   146 actions,   0 discovery steps
+```
+
+**Attempt two discovers nothing at all** — the death does not re-fog the map — **and still spends
+146 actions**, within 6% of the first. The human clears the entire level, discovery included, in 186.
+
+So for ls20 the discovery-cost framing is wrong: the tool walks a FULLY KNOWN map in 146 actions.
+That is recoverable, and it is the first honestly-sized routing opportunity this round has produced.
+The three earlier attempts to size it failed because they measured the wrong thing; this one works
+because the game itself supplies a second run over the same board.
+
+⛔ The first version of this measurement cleared its `known` set at the death and reported attempt 2
+discovering 28 new cells — a circular reading, since those cells were seen in attempt 1. Twelfth
+instrument failure of the round, and the fix was deleting one line.
+
+⚠️ Scope: this refutes the discovery reading for ls20 specifically. lp85 (32 vs 16) and bp35 (84 vs
+48, 57 vs 33) clear on the first attempt, so they offer no second run and the question stays open
+there.
