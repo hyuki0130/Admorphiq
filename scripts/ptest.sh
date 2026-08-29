@@ -26,13 +26,13 @@ SNAP="ptest_$$"
 
 if [ "$DIRTY" = 1 ]; then
   echo "=== shipping the WORKING TREE (uncommitted edits included)"
-  tar czf "/tmp/$SNAP.tgz" --exclude='__pycache__' src scripts tests pyproject.toml
+  tar czf "/tmp/$SNAP.tgz" --exclude='__pycache__' src scripts tests notebooks pyproject.toml
 else
   if ! git diff --quiet HEAD -- src/ tests/; then
     echo "⚠️  testing HEAD; these uncommitted edits are EXCLUDED (use --dirty to include them):"
     git diff --name-only HEAD -- src/ tests/ | sed 's/^/      /'
   fi
-  git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts tests pyproject.toml
+  git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts tests notebooks pyproject.toml
 fi
 
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
@@ -43,9 +43,26 @@ export PATH=$HOME/.local/bin:$PATH
 rm -rf "$HOME/$SNAP"; mkdir -p "$HOME/$SNAP"
 tar xzf "$HOME/$SNAP.tgz" -C "$HOME/$SNAP"
 ln -s "$HOME/admorphiq/.venv" "$HOME/$SNAP/.venv" 2>/dev/null
+# ⛔ The suite spawns SUBPROCESSES that score games (test_adapter_detection.py does), and they find
+# the games by a cwd-relative default — score_efficiency.py reads neither ENVIRONMENTS_DIR nor
+# passes environments_dir=. Without this link the snapshot has no environment_files, the subprocess
+# scores 0 games, and the assertion fails on a message about nothing. CLAUDE.md already records this
+# exact trap costing a GPU session: unset environments = a healthy-looking run that scores zero.
+ln -s "$HOME/admorphiq/environment_files" "$HOME/$SNAP/environment_files" 2>/dev/null
+ln -s "$HOME/admorphiq/ARC-AGI-3-Agents" "$HOME/$SNAP/ARC-AGI-3-Agents" 2>/dev/null
+# Same shape again: tests read recorded traces from data/. Link, never copy — these are large and a
+# per-run copy would be the box's disk instead of the Mac's CPU.
+ln -s "$HOME/admorphiq/data" "$HOME/$SNAP/data" 2>/dev/null
 cd "$HOME/$SNAP"
+# ⛔ PYTHONPATH IS LOAD-BEARING AND ITS ABSENCE WAS SILENT. The linked venv installs admorphiq
+# EDITABLE, and `_editable_impl_admorphiq.pth` carries the ABSOLUTE path `/home/ubuntu/admorphiq/src`
+# baked in at install time. Without this line the snapshot's own `src/` is shadowed by the box's
+# stale copy, so `--dirty` shipped the working tree and then tested the code already on the box —
+# a green suite for a file that was never imported. Measured 2026-08-29: a brand-new function in
+# the shipped tree came back `ImportError: cannot import name`, which is the LOUD version; a
+# CHANGED function comes back green, which is the expensive one.
 # -p no:randomly: an agent comparing two runs needs the same order both times.
-.venv/bin/python -m pytest $TARGET -q -p no:randomly -x 2>&1 | tail -25
+PYTHONPATH="$HOME/$SNAP/src" .venv/bin/python -m pytest $TARGET -q -p no:randomly 2>&1 | tail -25
 rc=${PIPESTATUS[0]}
 cd "$HOME"; rm -rf "$HOME/$SNAP" "$HOME/$SNAP.tgz"
 exit $rc

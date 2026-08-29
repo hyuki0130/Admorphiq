@@ -702,3 +702,31 @@ a local `pytest` or game run and prints the box command to use instead. Anything
 `ssh` / `pfan.sh` / `snapgate.sh` / `ptest.sh` passes untouched.
 
 ⚠️ A blocked run costs one re-run and nothing else. A rule that is merely written costs a laptop.
+
+### 7n — `ptest.sh` was measuring the BOX'S code, not the snapshot's (2026-08-29, same hour)
+
+The remote test runner shipped with a defect of exactly the kind it exists to prevent, and it was
+found by an agent, not by me. The linked venv installs admorphiq **editable**:
+`_editable_impl_admorphiq.pth` carries the absolute path `/home/ubuntu/admorphiq/src`, baked in at
+install time. Nothing set `PYTHONPATH`, so the snapshot's own `src/` was SHADOWED and pytest
+imported the shared tree's copy — the very thing the snapshot exists to escape.
+
+Proved in both directions on the box, because "it passes now" is not proof:
+
+```
+WITHOUT PYTHONPATH: /home/ubuntu/admorphiq/src/admorphiq/__init__.py    <- the shared tree
+WITH    PYTHONPATH: /tmp/shadowtest/src/admorphiq/__init__.py           <- the snapshot
+```
+
+⛔ **The loud half is the cheap half.** A NEW symbol fails with a traceback naming a file that
+plainly contains it (`cannot import name '_rail_reach' from .../railpeg.py`) — confusing, but it
+stops you. A CHANGED function **PASSES, against the old code**, and `--dirty` then reports green on a
+tree it never shipped. Every `src/` edit validated with `ptest.sh` before this fix must be re-run.
+
+The fix is one line plus a REFUSAL: the runner now imports `admorphiq` and checks the file it got is
+inside the snapshot, and reports nothing at all if it is not. A guard that only fixes the common case
+leaves the silent case silent.
+
+⚠️ `snapgate.sh` was never affected, for a reason worth knowing: `score_efficiency.py:35`
+`sys.path.insert(0, ...)`s its own repo's `src` at position 0, ahead of anything site-packages adds.
+The gate is immune by accident of the runner's design, not by anything the gate does.
