@@ -409,3 +409,138 @@ def test_code_tenure_block_budget_hard_caps_llm_calls():
     assert steps == []                      # no more blocks
     assert "code" in agent._failed          # tenure force-retired
     assert agent._current is None           # next step redecides
+
+
+# ── death-clock allowance ledger (R101ALLOW) ────────────────────────────────
+
+
+def _die_after(agent, n: int, level: int, row: int) -> None:
+    """Play ``n`` distinct-frame actions on ``level``, then hand the agent a GAME_OVER frame.
+
+    Frames are unique (row/column stamped) so the STALL path never fires — the tool is reaching a
+    new state on every action, which is exactly the situation a death-based retirement exists for
+    and a stall-based one cannot see.
+    """
+    for i in range(n):
+        g = np.zeros((64, 64), dtype=np.int64)
+        g[row, i % 64] = i + 1
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4], levels=level))
+    over = np.zeros((64, 64), dtype=np.int64)
+    over[row, 63] = 9
+    agent.choose_action([], _Obs(over, [1, 2, 3, 4], levels=level, state="GAME_OVER"))
+
+
+def test_no_deaths_leaves_the_ledger_completely_inert():
+    """Purpose: a game that never reaches GAME_OVER must behave exactly as it did before the ledger
+    existed — nothing learned, nothing retired, nothing handed to a tool. Seventeen of the measured
+    twenty-five games are in this class (their per-level action counts sum EXACTLY to their totals).
+    Expected feedback: pass = those games are byte-identical; fail = a shared-harness change is
+    moving games it has no business touching."""
+    tool = _FakeTool("graph", (1, None), 0.9)
+    other = _FakeTool("paint", (6, (5, 5)), 0.3)
+    agent = UnifiedAgent([tool, other], lambda m: '{"mode":"tool","tool":"graph"}',
+                         giveup=1000, stall=50)
+    for i in range(30):
+        g = np.zeros((64, 64), dtype=np.int64)
+        g[0, i] = 1
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6]))
+    assert agent.remaining_allowance() is None
+    assert agent._failed == set()
+    assert agent._clock_banned == {}
+    assert other.proposed == 0
+
+
+def test_two_agreeing_deaths_learn_the_allowance_and_retire_the_tool():
+    """Purpose: two deaths of the same length on a level mean the attempt is deterministic and
+    bounded — repeating it cannot end differently, and every repeat is charged to that level's score
+    if it is ever cleared (measured: bp35 repeated one 64-action death 19 times). The tool must be
+    retired so the next decision tries something else.
+    Expected feedback: pass = the verbatim death loop is broken after the second attempt; fail = the
+    agent re-runs a provably dead plan and pays for it in the level's squared efficiency."""
+    graph = _FakeTool("graph", (1, None), 0.5)
+    paint = _FakeTool("paint", (6, (5, 5)), 0.4)
+    agent = UnifiedAgent([graph, paint], lambda m: '{"mode":"tool","tool":"graph"}',
+                         giveup=1000, stall=50)
+    _die_after(agent, 6, level=2, row=1)
+    assert agent._ledger.allowance(2) is None      # one death teaches nothing
+    assert agent._clock_banned == {}
+    _die_after(agent, 6, level=2, row=2)
+    assert agent._ledger.allowance(2) == 5         # min length 6, last safe action 5
+    assert agent._clock_banned[2] == {"graph"}
+    assert agent._current is None                  # forces a re-decide on the next action
+
+
+def test_scattered_deaths_never_retire_anything():
+    """Purpose: where a hazard rather than a clock ends the level the lengths scatter (tu93 9..51,
+    su15 48..150). No allowance may be inferred and no tool may be retired on that evidence.
+    Expected feedback: pass = the trust gate protects the behaviour, not just the number; fail = a
+    hazard-death game loses its working tool to a fabricated budget."""
+    graph = _FakeTool("graph", (1, None), 0.5)
+    paint = _FakeTool("paint", (6, (5, 5)), 0.4)
+    agent = UnifiedAgent([graph, paint], lambda m: '{"mode":"tool","tool":"graph"}',
+                         giveup=1000, stall=50)
+    for k, n in enumerate((4, 20, 9)):
+        _die_after(agent, n, level=1, row=k + 1)
+    assert agent._ledger.allowance(1) is None
+    assert agent._clock_banned == {}
+
+
+def test_remaining_allowance_is_offered_to_the_active_tool():
+    """Purpose: the ledger's number reaches the tool that is planning — a ledger nobody reads scores
+    exactly like no ledger. Duck-typed, so a tool that does not want it is unaffected. This is also
+    the "no alternative" case: with one tool alive there is nothing to swap to, so the tool is NOT
+    retired (the repo's measured lesson that swapping to a weaker tool is pure downside) and instead
+    plays on knowing its clock.
+    Expected feedback: pass = a tool can size its plan against the clock and the last tool is never
+    retired for nothing; fail = the measurement is banked and never spent."""
+    class _ClockTool(_FakeTool):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.allowances: list[int] = []
+
+        def set_allowance(self, remaining: int) -> None:
+            self.allowances.append(remaining)
+
+    clock = _ClockTool("graph", (1, None), 0.9)
+    agent = UnifiedAgent([clock], lambda m: '{"mode":"tool","tool":"graph"}',
+                         giveup=1000, stall=50)
+    _die_after(agent, 6, level=0, row=1)
+    assert clock.allowances == []                  # nothing learned yet -> nothing offered
+    _die_after(agent, 6, level=0, row=2)
+    assert agent._ledger.allowance(0) == 5
+    assert agent._clock_banned.get(0) == set()     # the only tool is never retired
+    for i in range(3):
+        g = np.zeros((64, 64), dtype=np.int64)
+        g[5, i] = 7
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6]))
+    assert clock.allowances, "the learned allowance never reached the tool"
+    assert max(clock.allowances) <= 5              # allowance = 5, counting down as it is spent
+
+
+def test_clock_ban_is_scoped_to_the_level_that_died():
+    """Purpose: a death usually resets the board to level 0, and the agent must REPLAY the levels it
+    already cleared to get back. The tool retired by level k's clock has to keep playing that replay
+    — it is the tool that cleared those levels — and be replaced only on arrival back at level k.
+    Expected feedback: pass = the retirement is surgical; fail = one bad level costs the game the
+    tool that clears every other one, which is a regression dressed as a fix."""
+    graph = _FakeTool("graph", (1, None), 0.9)
+    paint = _FakeTool("paint", (6, (5, 5)), 0.3)
+    agent = UnifiedAgent([graph, paint], lambda m: '{"mode":"tool","tool":"graph"}',
+                         giveup=1000, stall=50)
+    _die_after(agent, 6, level=2, row=1)
+    _die_after(agent, 6, level=2, row=2)
+    assert agent._clock_banned[2] == {"graph"}
+
+    before = paint.proposed
+    for i in range(4):                              # the replay: back on level 0
+        g = np.zeros((64, 64), dtype=np.int64)
+        g[10, i] = 3
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6], levels=0))
+    assert agent._current == "graph"                # unbanned here, so it plays the replay
+    assert paint.proposed == before
+
+    for i in range(2):                              # back on the level whose clock killed it
+        g = np.zeros((64, 64), dtype=np.int64)
+        g[11, i] = 4
+        agent.choose_action([], _Obs(g, [1, 2, 3, 4, 6], levels=2))
+    assert agent._current == "paint"                # replaced exactly where it cannot finish

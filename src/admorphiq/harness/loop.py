@@ -22,6 +22,7 @@ from typing import Any, Callable
 
 import numpy as np
 
+from admorphiq.harness.allowance import AllowanceLedger
 from admorphiq.harness.context import Signature, build_context, compute_signature
 from admorphiq.tools.base import Step, Tool, availability, base_hash, frame_2d, has_frame, levels_completed, state_name
 from admorphiq.tools.code_agent import build_code_prompt, build_refine_prompt, run_code
@@ -177,6 +178,21 @@ class UnifiedAgent:
         # level resets would re-arm it — measured as unbounded tenures blowing
         # 20-minute wall-clocks on death-looping games).
         self._code_tenures = 0
+        # DEATH-CLOCK ALLOWANCE LEDGER (R101ALLOW). Game-scoped for the same reason as the two
+        # above: what a level's deaths taught survives the next death and the next level-up.
+        # ⛔ INERT until the game actually dies — every read returns None while no level has two
+        # agreeing deaths, so a game that never sees GAME_OVER runs byte-identically.
+        self._ledger = AllowanceLedger()
+        self._attempt_len = 0        # actions the CURRENT attempt has spent
+        self._attempt_level = 0      # OBSERVED level the current attempt is on (not _last_levels,
+        #   which holds the max reached and does not fall back when a death resets the board)
+        self._was_over = False       # GAME_OVER edge latch: a death is one event, not one per frame
+        # Tools retired BY THE CLOCK, keyed by the level whose clock killed them. ⛔ NOT `_failed`:
+        # a death usually resets the board to level 0, and the agent then REPLAYS the levels it
+        # already cleared to get back. Putting the retirement in `_failed` would take the tool that
+        # cleared those levels away for the replay too — punishing it everywhere for failing in one
+        # place. The ban applies only while the agent is back on the level that taught it.
+        self._clock_banned: dict[int, set[str]] = {}
 
     def _reset_level(self, keep_current: bool = False) -> None:
         """Drop per-level state. `keep_current` holds the board for the tool in charge.
@@ -217,6 +233,83 @@ class UnifiedAgent:
         self._propose_errors = 0
         self._feedback = "start of level"
 
+    # -- death clock ----------------------------------------------------------
+
+    def _ledger_observe(self, levels: int, state: str) -> None:
+        """Track attempt boundaries and record death lengths; retire a tool that keeps dying.
+
+        ⛔ ADDITIVE AND INERT. Nothing here runs a branch that changes behaviour until a level has
+        recorded TWO deaths that AGREE — so every game that reaches WIN without a GAME_OVER (in the
+        measured full-25 baseline that is seventeen of twenty-five, whose per-level action counts sum
+        EXACTLY to their total) takes the same actions it took before.
+
+        WHY RETIRING IS THE CONSUMER, and what it is worth. The scorer charges a level with every
+        action spent since the previous clear, deaths included: ``action_count_this_level`` is reset
+        on a level-up and NEVER on a GAME_OVER, so a level cleared after N failed attempts is priced
+        at the whole loop, squared. The measured loops are not exploratory — they are VERBATIM
+        repeats: bp35 died 19 times on one level at 64/65 actions, r11l 20 times at 60/61, tn36 21
+        times at 61/62. The harness already knows how to abandon a tool that is getting nowhere
+        (`_failed`), and that machinery never fires here because a dying tool is not a STALLED tool —
+        it keeps reaching new states right up to the moment the clock kills it. Two agreeing deaths
+        say the attempt is deterministic and bounded; repeating it a third time cannot end differently
+        and is charged to the level if it is ever cleared.
+
+        ⚠️ Retirement is skipped when no OTHER live tool exists — the repo's own measured lesson
+        (`_better_alternative_exists`) is that swapping to a weaker tool is pure downside, and
+        retiring the last one only re-picks it.
+        """
+        over = state == "GAME_OVER"
+        if levels != self._attempt_level:
+            # A clear OR a fall-back to an earlier level: either way the attempt just ended.
+            # ⛔ compared with `!=` DELIBERATELY here and only here — this is not a win test (7f),
+            # it is an attempt boundary, and a collapse ends an attempt exactly as a clear does.
+            self._attempt_level = levels
+            self._attempt_len = 0
+            self._was_over = False
+            # Arriving (back) on a level whose clock already retired the tool now in charge: drop it
+            # here, at the boundary, rather than at the death — that is what lets the same tool play
+            # the replay of the levels it CAN clear and be replaced only where it cannot.
+            if self._current is not None and self._current in self._banned_now():
+                print(f"[harness] back on level {levels}: its "
+                      f"{self._ledger.allowance(levels)}-action clock already killed "
+                      f"{self._current} twice — re-deciding", file=sys.stderr, flush=True)
+                self._current = None
+                self._queue.clear()
+            return
+        if not over:
+            self._was_over = False
+            return
+        if self._was_over:
+            return                      # still the same death, idling until the RESET lands
+        self._was_over = True
+        length, self._attempt_len = self._attempt_len, 0
+        if not self._ledger.note_death(levels, length):
+            return
+        allow = self._ledger.allowance(levels)
+        banned = self._clock_banned.setdefault(levels, set())
+        alive = [n for n in self.tools
+                 if n != self._current and n not in self._failed and n not in banned]
+        print(f"[harness] ALLOWANCE level={levels} = {allow} actions, confirmed by deaths "
+              f"{self._ledger.deaths(levels)} (tool={self._current})",
+              file=sys.stderr, flush=True)
+        if self._current is None or not alive:
+            return
+        banned.add(self._current)
+        self._feedback = (
+            f"{self._current} died at {length} actions on level {levels} twice running; that "
+            f"level allows {allow} actions and the tool cannot finish inside it — retired"
+        )
+        self._current = None            # forces a re-decide on the next action
+        self._queue.clear()
+
+    def _banned_now(self) -> set[str]:
+        """Tools the CURRENT level's clock has already retired (empty on any game that never died)."""
+        return self._clock_banned.get(self._attempt_level, set())
+
+    def remaining_allowance(self) -> int | None:
+        """Actions left before this level's clock kills the attempt, or None if not yet learned."""
+        return self._ledger.remaining(self._attempt_level, self._attempt_len)
+
     def is_done(self, frames: list[Any], latest_frame: Any) -> bool:
         if state_name(latest_frame) == "WIN" or self._steps >= self.giveup:
             return True
@@ -229,7 +322,9 @@ class UnifiedAgent:
     def _decide(self, sig: Signature) -> tuple[str, str | None]:
         """Ask the model for the next move -> (mode, tool_name)."""
         ctx = build_context(sig, self.ctx_budget, self._last_obs, self._recent_frames)
-        available = [n for n in self.tools if n not in self._failed] or list(self.tools)
+        banned = self._banned_now()
+        available = [n for n in self.tools if n not in self._failed and n not in banned] \
+            or [n for n in self.tools if n not in self._failed] or list(self.tools)
         # ⛔ Present the tools RANKED, with each one's own bid attached. A flat list let the model
         # name the general searcher on three games that other tools conquer at 1.0000, scoring
         # zero on all three — the same anchor bias this project measured at 8B across rounds
@@ -296,7 +391,10 @@ class UnifiedAgent:
         name = tool_m.group(1) if tool_m and tool_m.group(1) in self.tools else None
         # Swap-on-failure: if the model re-picks a tool already retired this level
         # (or names none), route to the best-signature tool that hasn't failed.
-        if name is None or name in self._failed:
+        # ⛔ `banned` belongs in this test too. Filtering it out of the LISTING only hides the tool
+        # from the prompt; the model still names it from the wiki slice, and without this the whole
+        # clock retirement is a no-op that prints a convincing line.
+        if name is None or name in self._failed or name in banned:
             name = self._signature_default(sig)
         return "tool", name
 
@@ -312,8 +410,9 @@ class UnifiedAgent:
         except Exception:  # noqa: BLE001
             cur_conf = 0.0
         best_other = 0.0
+        banned = self._banned_now()
         for name, t in self.tools.items():
-            if name == self._current or name in self._failed:
+            if name == self._current or name in self._failed or name in banned:
                 continue
             try:
                 best_other = max(best_other, t.detect(self._recent_frames, self._last_obs))
@@ -337,8 +436,9 @@ class UnifiedAgent:
         back to "first in the dict" is not a decision, it is an accident of ordering.
         """
         best, best_name = 0.0, None
+        banned = self._banned_now()
         for name, t in self.tools.items():
-            if name in self._failed:
+            if name in self._failed or name in banned:
                 continue
             try:
                 c = t.detect(self._recent_frames, self._last_obs)
@@ -349,7 +449,7 @@ class UnifiedAgent:
         if best_name is not None:
             return best_name
         for fallback in ("graph", "world_model"):
-            if fallback in self.tools and fallback not in self._failed:
+            if fallback in self.tools and fallback not in self._failed and fallback not in banned:
                 return fallback
         return next(iter(self.tools))  # everything retired — reuse the first as last resort
 
@@ -425,6 +525,18 @@ class UnifiedAgent:
 
     def _fill_from_current(self, frames: list[Any], obs: Any) -> None:
         simple_ids, action6 = availability(obs)
+        # Hand the active tool its remaining clock BEFORE it plans, when the ledger has learned one.
+        # Duck-typed and None-gated: no tool implements set_allowance today, and until a level has
+        # two agreeing deaths there is nothing to hand over — so on a game that never dies this is
+        # one dict lookup and no behaviour at all.
+        rem = self.remaining_allowance()
+        if rem is not None and self._current is not None and self._current != "code":
+            setter = getattr(self.tools.get(self._current), "set_allowance", None)
+            if callable(setter):
+                try:
+                    setter(rem)
+                except Exception:  # noqa: BLE001 - a tool must never break the loop
+                    pass
         if self._current == "code":
             steps = self._write_code(obs)
         else:
@@ -591,6 +703,8 @@ class UnifiedAgent:
             self._last_clear_step = self._steps
             self._feedback = f"cleared level {levels}"
 
+        self._ledger_observe(levels, state)
+
         if state in ("GAME_OVER", "NOT_PLAYED") or not has_frame(obs):
             self._prev_frame = None
             self._queue.clear()
@@ -727,6 +841,7 @@ class UnifiedAgent:
 
         step = self._queue.pop(0)
         self._steps += 1
+        self._attempt_len += 1
         self._prev_frame = frame
         self._prev_step = step
         aid, xy = step

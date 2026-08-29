@@ -174,3 +174,15 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   number for a quantity it is not measuring; the survivors are in the round page and in
   `OPERATING_RULES.md` rules 7c and 7d.
 
+
+- **allowance / action budget / GAME_OVER / death clock / overrun / tool retirement** →
+  [[r101_allowance-ledger]] — a level's action allowance is learnable from ONE death via `obs.state`
+  alone (no pixels, no source access): the death length IS declared+1. A 24-game sweep recovered
+  NINE, three of which the games declare nowhere (tn36 61, tr87 129, r11l 60). ⛔ The trust gate is
+  most of the instrument — hazard deaths SCATTER (tu93 9..51, su15 48..150, sb26 69..217, sp80
+  14..121) while clock deaths agree within 1, and nothing measured lands in between; cd82's nineteen
+  length-1 "deaths" are the harness idling in GAME_OVER, hence the floor of 2. Consumer = retire the
+  tool after two agreeing deaths, scoped to THAT level (the scorer charges a cleared level with every
+  death that preceded it; bp35 repeated one 64-action death 19 times). ⚠️ Headroom on the public 25
+  is wall-clock only — seventeen games never die and the five that do die only on levels they never
+  clear; the score case is the private 110.
