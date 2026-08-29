@@ -3017,3 +3017,39 @@ compare refuses a no-verdict · compare names the canaries · gate_tool refuses 
 integrate uses snapgate · the Stop hook skips when blind · the local-run hook allows naming
 the detect-purity population is pinned · untracked-imports skips without a git index
 ```
+
+### 7bt — a tool cannot tell the harness it is finished (2026-08-30)
+
+⛔ **`base.Tool`'s contract is FOUR methods — `detect`, `reset`, `observe`, `propose` — and none of
+them can say "I am out of plan, take the board."** The harness finds out the only way it can: by
+counting eight consecutive silences (rule 7bq). A tool that KNOWS it is done has to communicate that
+by staying quiet for eight turns, and eight turns of an already-finished tool is eight actions.
+
+The gap is not hypothetical — `cover_targets` computes it and cannot send it:
+
+```
+cover_targets.py:499   self._stuck = self._noplan or not steps      # it knows, exactly
+cover_targets.py:114   if not self._stuck:                          # and only IT ever reads it
+harness/loop.py        getattr(tool_obj, ...) → state_key · set_target_frame
+                                                target_stalled · target_progress · augmenter
+```
+
+**Five duck-typed channels exist and not one is an exhaustion signal.** `target_stalled` is the
+nearest thing, is implemented by exactly ONE tool (`graph_search`), and gates a TARGET REDRAW, not a
+retirement — it says "this goal is not working", never "I am finished".
+
+⚠️ **MEASURED, so the gap does not become a work item here**: six of the seven empty retirements land
+on a level the game never clears, and the seventh (ls20) is flat across a 175-run tolerance sweep
+(7bq). Closing this channel on the 25 is worth **zero**. It is recorded because the private 110 is
+where a tool that finishes early and cannot say so costs eight actions per handover, and because the
+next person to read `_stuck` will otherwise think the wiring exists.
+
+⛔ **AND A NINTH INSTRUMENT CORRECTION, CAUGHT BEFORE IT WAS WRITTEN DOWN.** The finding reached me
+as *"`cover_targets` sets `self._handover = True` at the moment it stops proposing and nothing reads
+it"*. `_handover` is real and unread, but it is **PIECE-CONTROL semantics, not exhaustion** — it is
+set when the board changes under the select action (`cover_targets.py:246`) and cleared when a part
+is identified, i.e. it tracks WHICH PIECE the controls point at. Grepping the three sites before
+writing the rule cost a minute and moved the claim from a wrong attribute to the right one
+(`_stuck`), which happens to make the same point more sharply. **Read the assignment sites, not the
+name** — an attribute called `_handover` in a tool about handing over is exactly the shape that gets
+believed on sight.

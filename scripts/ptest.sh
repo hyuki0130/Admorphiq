@@ -34,7 +34,7 @@ SNAP="ptest_$$"
 
 if [ "$DIRTY" = 1 ]; then
   echo "=== shipping the WORKING TREE (uncommitted edits included)"
-  tar czf "/tmp/$SNAP.tgz" --exclude='__pycache__' src scripts tests notebooks pyproject.toml
+  tar czf "/tmp/$SNAP.tgz" --exclude='__pycache__' src scripts tests notebooks .wiki kaggle pyproject.toml
 else
   if ! git diff --quiet HEAD -- src/ tests/; then
     echo "⚠️  testing HEAD; these uncommitted edits are EXCLUDED (use --dirty to include them):"
@@ -47,11 +47,19 @@ else
 # ⚠️ A fix that solves a problem in one place and leaves its twin standing is half a fix.
 find /tmp -maxdepth 1 -name "*.tgz" -mmin +30 -delete 2>/dev/null
 
-git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts tests notebooks pyproject.toml
+git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts tests notebooks .wiki kaggle pyproject.toml
 fi
 
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
 
+# ⛔ THE SNAPSHOT'S FILE LIST IS PART OF THE INSTRUMENT. Measured three times now, always the same
+# shape: a test asserts a repo file exists, the snapshot does not carry that file, and the box
+# reports RED at a green HEAD. `.wiki` (4.5MB) closed test_r98/r99_instruments_listed, `kaggle`
+# (24KB) closed the last of them, and `data/traces` below closed eleven more. **A directory omitted
+# from the archive is indistinguishable from a directory deleted from the repo** — which is rule
+# 7q's fail-toward-absence in its cheapest disguise, and it cost two agents an afternoon each
+# deciding whether the red was theirs.
+#
 # ⛔ `data/traces` is GITIGNORED, so `git archive` never carried it and the box has NEVER had it —
 # eleven tests in test_hypothesis_*.py fail there with `FileNotFoundError: data/traces/ft09.npz`,
 # and that was twice reported as a real breakage at HEAD. It is 1.7MB; ship it once per run.
