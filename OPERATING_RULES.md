@@ -2295,7 +2295,7 @@ kept.
 and (26,3) with a phantom; pegjump's holds two pieces of six. The level is never LOST at the end — it
 is never FINISHED, and the run stops on a winnable board with a third of its actions unspent.
 
-### 7bc — on all four stuck games the harness hands the board to a tool that is WEAKER ALONE (2026-08-30)
+### 7bd — on all four stuck games the harness hands the board to a tool that is WEAKER ALONE (2026-08-30)
 
 Crossing the solo sweep (47 tools forced alone) against the tenure census (who actually holds each
 board in the harness) produces a pattern nobody had looked for, and it is the same on every game:
@@ -2327,3 +2327,48 @@ s5i5 succession is `swivel` (6 alone) → `linkage` (2 alone), with `telescope` 
 already home, which `swivel`'s decomposition cannot propose — a tool that reaches depth 5 alone may
 be stopped by the same wall at 6. But it has never been tried in succession, and that is one cheap
 pair away.
+
+### 7be — lf52 is never LOST; it is never FINISHED — and both my briefed tasks are refuted (2026-08-30)
+
+I briefed two tasks. **Both are measured wrong**, by a method worth keeping.
+
+⭐ **THE METHOD: engine state → offline solver, with a BINARY SEARCH.** Record the engine's pads,
+carts and camera each action, rebuild each as a state of the simulator the live 91-action clear came
+from, and ask "still winnable?". Winnability is MONOTONE along a played line, so **8 queries answer
+what 500 would.** Controls: the rebuilt opening EQUALS the model's root, the root is winnable
+uncapped in 347,792 states, stepping stones static.
+
+```
+after railpeg's captures at 14 and 16     WINNABLE
+after pegjump's capture at 124            NOT winnable
+```
+
+⛔ **TASK 1 — "make the third capture the eighth candidate" — IS IMPOSSIBLE.** That position offers
+FIVE legal moves and exactly ONE capture, the losing one. The other four (a non-capturing jump, three
+drives) all keep a winning line alive. **There is nothing to rank.**
+
+⛔ **TASK 2 — "stop clicking when nothing is legal" — IS BACKWARDS.** Attempt 1 ends NOT winnable;
+the restart at action 267 hands back a board **still winnable at action 499**. The click lands on a
+board that died 142 actions earlier, so suppressing it KEEPS THE DEAD ONE. ⭐ **The run ends on a
+WINNABLE board with 233 actions unspent.**
+
+⚠️ And `pchvqimdvj()` is an OFFER, not a verdict (source :5607): it greys the pads and spawns the
+restart control, ends nothing, and every jump stays legal. My rule 7au called it "the author's own
+this-branch-is-lost marker" — corrected in place.
+
+**ROOT CAUSE, measured at action 122**: the engine has 6 pads and 3 carts; `pegjump`'s model holds
+**2 pieces and 2 carriers**, and **0 of 10 model reads agree**. Jumping one over the other leaves
+one, so `plan_moves` returns it with **`solved=True` — a declared LEVEL WIN over a two-cell window.**
+That is railpeg's own `refuse_local_win` lesson; `pegjump` has no such guard.
+
+⛔ FIX BUILT AND REVERTED: porting railpeg's survivability rule into `pegjump.plan_moves` gives
+guard_calls 12, **refusals 0**, identical captures, identical score. The branch IS reached — **a
+guard on capture ROUTES cannot see a plan claiming to be a SOLUTION.**
+
+⭐ **SO lf52's REMAINING 0.7273 IS PERCEPTION, NOT RANKING.** Both peg tools model a fraction of the
+board — railpeg missing the red and (26,3) with a phantom; pegjump 2 of 6 — and **every guard is
+right about the wrong board.**
+
+⚠️ INSTRUMENT TRAP: v1 took the first row with MORE pads as the attempt's last row — that row is
+already POST-restart, so it answered about a board just handed back whole and reported "never lost".
+Fixed, re-measured, both seeds agree.
