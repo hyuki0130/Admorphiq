@@ -1615,3 +1615,39 @@ off the board because it believes everything it cannot see is empty. And **bound
 
 ⚠️ SIZE EXPECTATIONS HONESTLY: the engine needed **2.99M opens** with a good heuristic. If the
 model-side search needs the same order, this is a redesign and not a constant.
+
+### 7ap — every frame-only planner's prior for unobserved space is "EMPTY", and it is WRONG (2026-08-30)
+
+s5i5's remaining 0.4167 is measured **unreachable by `swivel` as built** — thirty arms across five
+fans, all 0.5833, including letting the planner use every control (which is exactly what the engine's
+own witness needs) at both heuristics and up to 1.5M opens. The honest result is banked rather than
+worked around.
+
+⛔ **BUT THE CAUSE IS NOT ABOUT s5i5.** The engine's winning sequence threads a corridor whose
+geometry lies partly OUTSIDE the frame — and there the model is not merely short of information, it
+is **WRONG**: it believes everything it cannot see is empty. That is why every plan it finds there is
+refused. Removing the off-grid ban does not free the tool, it makes it THRASH — 72 plans, 76
+refusals, 70 banned configurations, dead at action 392, with refused configurations carrying **30 to
+111 cells outside the frame**. The model plans to swing a bar bodily off the board.
+
+**That prior is shared by every frame-only planner in this repository.**
+
+⭐ **THE DIAGNOSTIC FINGERPRINT, so it is recognised the next time and on a different tool:**
+
+```
+plans found in SECONDS · executed cleanly for a dozen actions · then REFUSED
+· then nothing findable at ANY budget
+```
+
+Three separate capabilities are missing, none of them a constant: 2.99M opens with a good heuristic,
+opening by moving a piece that is already home (which `swivel`'s decomposition structurally cannot
+propose — rule 7ao), and a correct model of space it has never seen.
+
+⚠️ **AND BOUNDING THE DAMAGE IS NOT FIXING THE PRIOR.** `12aa7f19` caps how far a bar may leave the
+frame at one unit of the game's own geometry (3 cells) and buys **219s → 45s of wall clock with the
+score and all six per-level counts IDENTICAL** — a real, banked, score-neutral win that makes every
+future gate cheaper. It changes nothing about what the tool believes.
+
+⭐ The arm carries its own falsification test: **level 6 is the board that MUST swing a bar off the
+top edge**, and it stays at 31 actions. A margin of 0 cannot win — 132s and a loss — which is the
+proof that the bound is a bound and not a removal.
