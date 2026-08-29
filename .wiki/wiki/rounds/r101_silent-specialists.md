@@ -484,3 +484,25 @@ rejected by this account (`gpt-5.3-codex`, `gpt-5.1-codex-max`, `gpt-5-codex`, `
 400 "not supported when using Codex with a ChatGPT account"). The review's value arrived anyway,
 from the FIRST question it would have asked and I had never run: are the levels these games already
 clear scoring 1.0? They are not, and that correction is above.
+
+## ls20's recoverable share, measured: 87% of the level is re-crossing
+
+Splitting level 7's steps into those that uncover something new and those that walk ground already
+uncovered:
+
+```
+level 7: 302 steps, 38 uncovered new, 264 re-crossed (87%)
+```
+
+Only **38 of 302 steps discover anything.** The other 264 are travel across terrain the tool has
+already seen.
+
+⚠️ Re-crossing is not automatically waste — reaching a new frontier means walking back through known
+corridors, and a human's 186 steps include the same. But a discovery rate of 12% says the level is
+mostly revealed early and then spent travelling, which makes the gap a ROUTING problem on a known
+map rather than an exploration problem. That is a very different and much more tractable target than
+anything in the depth half of this round.
+
+⛔ The first version of this probe printed `0 steps` — it wiped its own counters on the final
+level-up, before printing. A counter reset by the event you are measuring reads exactly like "the
+level was never played". Fifth instrument failure of the round, same family as the other four.
