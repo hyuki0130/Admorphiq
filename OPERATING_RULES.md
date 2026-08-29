@@ -2176,3 +2176,35 @@ best tool" simplification would lose it.
 third time it has returned NONE; ⚠️ but it had to be re-run, because the roster grew and the earlier
 result was about a different tool set. **A closure whose evidence predates the current tree is a
 claim, not a measurement.**
+
+### 7bb — SEVENTEEN of 47 tools never hold a board on any of the 25 (2026-08-30)
+
+The solo sweep showed 36 tools clearing nothing on the five stuck games, but that is evidence about
+five boards. Censused across ALL 25 — every tool that was `_current` for at least one action, driven
+through `score_efficiency`'s own loop, ls20 reproducing its banked 7 levels and per-level split
+exactly:
+
+```
+47 registered · 30 hold a board somewhere · 17 NEVER DO
+never: deadsig dealias haul hop llm_goal maze mirror paint pattern_cast phase_grid
+       slotlaunch socketmerge spill telescope toggle track world_model
+```
+
+⭐ **AND THE OWNERSHIP IS ALMOST PERFECTLY SINGULAR.** Nineteen of twenty-five games are played
+start to finish by ONE tool. Only six ever hand over — bp35, lf52, ls20, re86, s5i5 — and in five of
+those the second tool arrives at the terminal level (rule 7az).
+
+⚠️ **THIS IS NOT AN ARGUMENT FOR DELETING THEM.** The evaluation is 110 PRIVATE games with the SAME
+tool set, and a tool idle here may be the only claimant there — that is the whole design. ⛔ But it
+is not free either: `loop.py` interrogates EVERY tool at every re-decide (`:338`, `:418`, `:440`),
+and **19 of 47 have a `detect` that reaches a mutating line** (rule 7ah, pinned by
+`tests/test_detect_purity.py`). Of the seventeen that never hold a board, `haul` is on that list.
+
+⚠️ NAME DISCIPLINE, because I nearly conflated two lists: the purity scan reports MODULES
+(`paint_flood`, `phase`) and the tenure census reports TOOL names (`paint`, `phase_grid`). **They are
+not the same strings and must not be intersected carelessly.**
+
+⛔ WHAT THIS CLOSES: "some registered tool is quietly better on a stuck board" — no. Combined with
+rule 7ba (no single tool beats the harness on any of the five; exactly ONE does anything at all on
+each) and rule 7ac (routing is not the defect), the registry is now measured from three independent
+directions and **none of them locates the remaining 0.0918 in the tool set as it stands.**
