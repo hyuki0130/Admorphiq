@@ -1704,6 +1704,22 @@ the panel is not painted in the board's background. The split is load-bearing fo
 for the GOAL, and no split column separates them (the controls occupy columns 45-59 and the goal
 platform columns 42-49).
 
+⛔ **AND NO EXISTING TOOL IS THE ASSET — all 47 measured, alone, on level 6**
+(`scripts/_dc22_toolsweep.py`, `scripts/pfan.sh dc22tools`, 600 actions each after the generic
+harness reaches the level):
+
+```
+43 tools   bid 0.00 and propose nothing
+gantry     bid 0.86, EMPTY at action 6      <- the untrackable-piece latch above
+phase_grid bid 0.85, EMPTY at action 6      <- same latch, same cause
+deadsig    bid 0.40, proposes nothing
+graph / world_model   run all 600 actions, clear nothing
+LEVEL_UP events across the whole sweep: 0
+```
+
+That closes rule 7b's question for this board: there is no committed-but-unused asset, and the
+work is a new tool rather than the registration of an old one.
+
 **What a tool has to do differently, all three measured above:**
 
 1. **Learn the floor palette** from the cells the avatar has actually stood on, instead of inferring
@@ -2181,3 +2197,141 @@ action happens there. The rule is the one rule 7b already states, paid for again
 on input whose verdict you already know, in both directions, before reading its output.** A zero
 from a detached instrument is indistinguishable from a measured negative, and four of these would
 have been written up as "no other game has re86's problem".
+
+## s5i5 level 7 — the board is a MAZE with three INVISIBLE walls, and the arm has four segments to cross it (2026-08-29)
+
+The previous entry asked three questions — what the second destination is, which rider must reach
+it, and whether that rider can reach it at all. All three are answered, by measurement, and the
+third answer is the one that matters.
+
+**The board, read off `environment_files/s5i5/18d95033/s5i5.py` (`levels[6]`) and confirmed against
+the running engine.** Seven sprites carry the bar tag `0001qwdmnlybkb`, and only four of them are a
+chain:
+
+```
+0059 c11 --> 0060 c14 --> 0061 c9 --> 0062 c12 --> rider at (54,15)     the arm
+0007 c10 ------------------------------------------> rider at (21,6)    parked ON its destination
+0008 c8                                                                 loose, carries nothing
+0006 c-1   70x21 frame at (-3,-3)                                       the FURNITURE
+destinations (tag 0087vvmblxkzdi): (24,15) UNCOVERED  ·  (21,6) covered at level start
+```
+
+Controls, recovered by clicking **every cell of the 64x64 grid on a fresh board** (275 cells do
+something): four turn buttons for colours **14, 11, 9, 8**, and five length sliders for colours
+**14, 11, 9, 12, 10**. Note what is missing — **no turn button for c12 or c10**. So `0007` can only
+slide along its own row, and its rider can never leave row 6. The uncovered destination is at row
+15, which settles the assignment: **the chain's rider is the only one that can cover (24,15)**, and
+it has to travel 30 cells to do it.
+
+**The level ends on its declared budget, and here the budget BINDS** (contrast wa30, where the same
+source reading did not survive a run — rule 7g). `StepCounter: 200`, and a run of legal clicks
+reaches `GAME_OVER` after **exactly 200** with `current_steps` at 0.
+
+### Switch the furniture off and the level is trivial
+
+With the engine's own overlap test neutered, A* clears level 7 in **20 clicks and NOT ONE TURN** —
+pure lengthening. So none of the difficulty is in the mechanic, the reach, or the budget. **All of
+it is the frame.**
+
+### Three of the frame's walls are OUTSIDE the visible grid
+
+`0006vwqootnonz` is 70x51 at (-3,-3), so it covers x -3..66 and y **-3**..47 — and its top three
+rows are solid for every x >= 39:
+
+```
+  -3 ..........................................############################
+   0 ..........................................###......................###
+  26 ..........................................###......................###
+  27 #########...#####################...#########......................###
+  30 ###...............###..............................................###
+  39 ###................................................................###     <- the one clear lane
+  42 ###...............###..............................................###
+  45 ######################################################################
+       ^x=-3                                 ^x=39..41        ^x=64..66
+```
+
+Three chambers, and the connections are narrow:
+
+* **right** x 42..63, y 0..44 — where the arm is anchored, **SEALED at the top** by the off-grid
+  strip and on the left by the x=39..41 pillar;
+* **bottom** y 30..44, with a pillar at x 15..17 that leaves **rows 39..41 as the only clear lane**;
+* **left** x -3..38, y -3..26 — where the destination is, reachable from the bottom only through
+  two three-cell gaps at **x 6..8** and **x 30..32**.
+
+⛔ **A tool that reads the 64x64 frame cannot see the seal.** Nothing renders above y=0, so from
+pixels alone the right chamber looks open at the top and the natural route — up and over — is a
+route into a wall. `swivel` only learns those cells one refusal at a time, into `model.offblocked`.
+
+### The joint algebra is measured, and it is NOT what the source reads like
+
+Enumerating the turn buttons against the engine gives **36** orientation tuples for the four-bar
+chain, of which **26** are reachable by turning from the compact start. The rule behind them:
+
+```
+relative angle to the parent takes {0, 90, 270}   —  NEVER 180
+the last bar is RIGIDLY 90 clockwise of its parent, because no control turns it
+```
+
+Reading `bhgumdfgqr`'s double-turn branch instead gives {90, 180, 270}, which is wrong. ⚠️ The
+rigid +90 on the last bar is load-bearing: a riser through the **x 30..32** gap sends the final
+segment to the RIGHT, away from the destination, so **only the x 6..8 gap can work**.
+
+### The tip is AFFINE in the lengths, so the configuration is a solve, not a search
+
+Eleven fan-outs of A* answered the wrong question before this was noticed. With the furniture off,
+one click on a length control displaces the rider by a fixed vector, so `tip = start + sum(n_i v_i)`
+and the lengths that land it on a destination are a linear solve. Across all 36 orientations and
+all four rotations of the loose bar, **10,848 length assignments put the rider exactly on (24,15)
+and fire the engine's own win predicate** — instrument proved: every one lands, every one wins.
+
+With the loose bar left where it starts, **every one of them overlaps something**, and the
+overlapping pair is `0006` (the frame) in all but a handful. Turn that bar **twice** — it stands up
+above the grid at (12,-6), out of the last segment's lane — and **exactly one shape is legal**:
+
+```
+0059  (48,12)  3x27    down the right chamber
+0060  ( 9,39) 42x3     left along rows 39..41, the one lane the pillar leaves clear
+0061  ( 6,18)  3x24    up through the three-cell gap at x=6..8
+0062  ( 6,15) 21x3     right to the destination
+riders (24,15) and (21,6)   overlap cells 0   engine says WIN
+```
+
+**So the level is winnable, and this is what winning looks like** — the four-segment snake the maze
+forces, using every one of the arm's four bars for exactly one leg.
+
+### But a configuration is not a plan, and the order is where it stops
+
+Every click is applied, tested and UNDONE if it overlaps, at full budget cost, so the winning shape
+has to be *built* one unit at a time through legal intermediates. Measured from the staged
+orientation:
+
+```
+monotone build (only lengthen)      stalls at (8, 8, 1, 6) of the (8, 12, 6, 6) needed, in ALL
+                                    twelve orderings
+full length space (shrinks + the
+loose bar's turns), EXHAUSTIVE      1,300 states reachable of a 13x18x12x11 box — and the goal
+                                    lengths (9,14,8,7) are NOT among them
+```
+
+⚠️ **The second segment has to pass through where the third one is standing**, and the third cannot
+move out of the way until the second has passed. That is the wall this level actually puts up, and
+it is a *sequencing* wall, not a reach wall — which is a different tool problem from the one the
+park was filed under.
+
+### What this says about `swivel`
+
+`swivel`'s model of the mechanic is right — it grows, it turns, it carries subtrees, it banks
+refused configurations, and its docstring's turn geometry checks out against the engine. Two things
+about its SEARCH do not survive this board:
+
+1. **`_seek` scores with Manhattan distance** (`swivel.py:_seek.gap`, and `_distance` for the joint
+   fallback). Here Manhattan points straight through a pillar that seals the chamber, so the
+   estimate is not merely loose — it is *anti*-correlated with progress for the whole first half of
+   the route. A free-space distance over `model.static` costs one BFS and is the obvious repair.
+2. **`_MAX_OPEN = 120_000` is not the binding constraint** — raising it 33x was already tried and
+   did nothing, and this round says why: the space that has to be crossed is not large, it is
+   *narrow*, and a bad estimate cannot be out-searched.
+
+⛔ **And neither repair is enough on its own**, because the sequencing wall above is upstream of
+both: no ordering of single-unit clicks from the staged orientation reaches the winning lengths.
+
