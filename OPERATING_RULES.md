@@ -1247,8 +1247,16 @@ box:   load 62.18 · 17 script processes · a full `pytest tests -q` at 2397% CP
 locks out SSH and makes the round unreachable while it runs.
 
 **Decide on the LOAD, not on a pattern match.** Load average needs no pattern, cannot be defeated by
-a change of launcher, and is what the cap is actually about. The count is kept as detail only, and
-the IDLE branch now requires load AND count to be low, while the OVERLOADED branch fires on either.
+a change of launcher, and is what the cap is actually about.
+
+⛔ **AND THE FIRST FIX DID NOT FOLLOW ITS OWN RULE** — it kept the count in an `||`, and within ten
+minutes the hook fired **"OVERLOADED — 65 processes, load 21.57"**, which is a quiet box. Measured:
+the pattern matches **62 processes while only 22 consume any CPU**, because a fan spawns `sh -c`
+wrappers and queued workers that are matched and idle. **A count of processes is not a count of
+work.** Load alone now decides; the count is printed as detail and gets no vote.
+
+⚠️ So this hook was wrong in BOTH directions within one hour — silent at load 65, then alarming at
+load 21 — and each time it was a proxy standing in for the quantity that actually matters.
 
 ⚠️ Note the shape, because it is the day's recurring one and this time it is mine end to end: I
 wrote the guard, then I changed the thing it was watching, and the guard kept reporting confidently.

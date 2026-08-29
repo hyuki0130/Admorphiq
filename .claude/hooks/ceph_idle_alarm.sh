@@ -29,11 +29,16 @@ LOADI=${LOAD%%.*}
 # ⛔ 60 IS A CEILING, NOT A TARGET. The box has 64 cores and saturating them locks out SSH, so the
 # round becomes unreachable while it runs. With one agent per game each fanning out 60-way, the
 # TOTAL is what matters — measured 2026-08-29: eight agents took it to 129 processes at load 64.6.
-if [ "${LOADI:-0}" -gt 55 ] || [ "${PROCS:-0}" -gt 60 ]; then
+# ⛔ LOAD ALONE DECIDES. Rule 7ad said "decide on the LOAD, not on a pattern match" and the first fix
+# kept the count in an OR — which promptly fired OVERLOADED at load 21. Measured: the pattern matches
+# 62 processes while only 22 consume any CPU, because a fan spawns `sh -c` wrappers and queued workers
+# that are matched and idle. A count of processes is not a count of work. The number is still printed,
+# because it is useful DETAIL; it just does not get a vote.
+if [ "${LOADI:-0}" -gt 55 ]; then
   echo "⛔ ceph-build is OVERLOADED — $PROCS processes, load $LOAD. The cap is 60 of 64 cores;"
   echo "   above it SSH stops answering and the box cannot even be checked on. Agents each fan out"
   echo "   60-way, so the TOTAL is what breaks the cap. Throttle before launching anything else."
-elif [ "${LOADI:-0}" -lt 8 ] && [ "${PROCS:-0}" -lt 8 ]; then
+elif [ "${LOADI:-0}" -lt 8 ]; then
   echo "⛔ ceph-build is IDLE — $PROCS processes, load $LOAD of 64 cores."
   echo "   Do not run a probe once. Enumerate every hypothesis that could explain what you are"
   echo "   looking at (rule 7h) and fan them out:  bash scripts/pfan.sh PROBE.py 60 ARG"
