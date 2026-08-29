@@ -517,3 +517,21 @@ centroid floor of 12 was computed across it.
 **The lever for ls20's efficiency, named**: `fogscout` models exploring the fog and has NO notion of
 fuel. Its route ignores the constraint the level is built around, and survives only because pickups
 happen to fall on its path.
+
+**And the fuel IS binding — verified live.** Counting frames that repaint more than half the board
+(the death overlay, now a meaningful detector rather than the noise that broke three instruments):
+
+```
+level  steps  death overlays
+  1-6   15..101      0
+   7      303        2
+```
+
+**Level 7 runs dry TWICE**, spending two of its three lives, and clears on the third attempt. Every
+other level never runs dry. So a large part of the 302 is re-walking from the start after two failed
+attempts — and the game is cleared with ONE life in hand, meaning a slightly worse draw loses the
+level outright rather than merely scoring badly.
+
+That sizes ls20's efficiency target and makes it concrete: **do not run dry.** The route has to be
+planned through the `npxgalaybz` pickups, which is precisely the constraint `fogscout` does not
+model.
