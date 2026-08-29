@@ -1387,3 +1387,54 @@ restores in a `finally` — **side-effect-free by construction rather than by lu
 NORMAL call pattern, so `_ensure_plan` running in `detect` and being reused by `propose` may be
 load-bearing for efficiency — the plan is pre-built one call early by design, and a naive
 "make detect read-only" could cost a plan per action. That is a full-25 gate question.
+
+### 7ai — TWO CONTROLS, or the fan-out says nothing (2026-08-30)
+
+Nine instruments produced a wrong reading in two days and every one failed toward **"there is nothing
+here"**. The fix is not more care; it is two controls, and the agent that attributed the `detect`
+defect stated exactly why both are needed:
+
+> *Without the NEGATIVE control an all-clean fan is indistinguishable from a fan that measured
+> nothing. Without the POSITIVE control a clean result may just mean the perturbation stopped
+> reproducing.*
+
+Its run, before a single arm was read:
+
+```
+CONTROL  sample nothing   expect 823   got 823   OK    <- the instrument is not inventing an effect
+CONTROL  sample all 47    expect 827   got 827   OK    <- the effect still reproduces at HEAD
+railpeg  alone                         827   +4        <- and one arm carries all of it
+46 tools clean at exactly 823
+```
+
+⛔ **Run both before reading any arm.** A negative control that comes back dirty means the instrument
+perturbs; a positive control that comes back clean means there is nothing left to attribute and every
+"clean" arm below it is vacuous.
+
+⚠️ AND PIN THE RESULT SO IT CANNOT EXPIRE. That round left a static scan
+(`scripts/detect_purity_scan.sh`, 19 of 49 tools whose `detect` reaches a mutating line). A scan
+nobody runs is a finding with an expiry date, so the count is now `tests/test_detect_purity.py` —
+validated in both directions, 18 fails with a diagnostic naming the fix, 19 passes. **A measurement
+worth making twice is worth a test.**
+
+### 7aj — the checklist a probe must pass before its numbers are quoted (2026-08-30)
+
+Assembled from nine failures in two days; each line cost at least one run and several cost a day.
+
+1. **Mirror `score_efficiency.py:run_game`** — empty frames list to `is_done`/`choose_action`, honour
+   `restart_on_game_over`, BREAK on WIN. A hand-rolled loop cleared FOUR bp35 boards where the scorer
+   clears five (7x); a probe that did not break on WIN reported a 1.0000 game with 143 GAME_OVERs.
+2. **Reproduce a banked number first.** Any probe whose per-level counts do not match the gate's is
+   describing a different run. Three probes did this and their figures are the usable ones.
+3. **Both controls** (rule 7ai).
+4. **Run it on input whose verdict you already know, in BOTH directions.** Five versions of one
+   instrument scored its own KNOWN POSITIVE at zero.
+5. **Snapshot** — `pfan.sh` / `ptest.sh` / `snapgate.sh`. A probe run from the shared `~/admorphiq`
+   measures whatever bytes the box holds; mine reported a conquered game as unwon (rule 7l).
+6. **Namespace every temp path.** Two waiters on one path truncated each other; it died loudly, but a
+   race dropping the OFFENDER row would have produced a clean-looking all-clear.
+7. **Print the number, not the comparison.** `levels_completed` as an integer tested `> start`; the
+   import PATH rather than a green tick; the wall clock beside the result.
+8. ⛔ **Prefer a quantity that IS what it measures.** Load average over a process count (62 matched,
+   22 running). `GAME_OVER` over an opening-frame hash (zero recurrences on a level dying 58 times).
+   `board_changed` over `(prev != cur).any()` (true on every action on a board with an edge counter).

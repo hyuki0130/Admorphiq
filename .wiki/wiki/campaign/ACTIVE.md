@@ -54,7 +54,10 @@ allowance (87/131/163 against 64/128/192), so those baselines already contain a 
 vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. Agents live on: dc22 (the crane plate), bp35 (lethality from the frame), s5i5, and SELECTIVITY.
+1. Agents live on: **dc22** (the crane's pressure plate), **bp35** (`_stranded` — 34 of L2's 87
+   actions are spent inside a pocket the agent walked into), **s5i5** (`_settle` banks a SUPERSET of
+   off-grid cells and the win is reachable ONLY off-grid), **railpeg** (`detect` runs the planner and
+   spends the tool's own give-up budget).
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
