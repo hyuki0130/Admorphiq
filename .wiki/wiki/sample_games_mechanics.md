@@ -574,3 +574,26 @@ gauge reach zero, and divert to a visible ring when it gets low" is.
 the final level-up so the script reported "level 7 not observed" — the exact bug fixed earlier in
 this same round, in a different file, because the fix lived in a script instead of a shared helper.
 And the pickup counter was reading the fuel gauge, because both are colour 11.
+
+### ⛔ CORRECTION — fogscout ALREADY models the fuel
+
+The previous entry ended "what does not exist is a tool that uses any of it" and named the lever as
+"fogscout has NO notion of fuel". **That is false.** Reading `src/admorphiq/tools/fogscout.py`:
+
+- `_bar_runs` / `_bar` / `_read_bar` (lines 449-807) read the drawn budget every frame, and identify
+  which of the strip's two colours is the tank **by behaviour** — the one that SHRINKS — with a
+  docstring recording the exact trap of picking the longer run and reading every refill inverted.
+- `moves_left()` exposes the remaining budget.
+- `refill_marks` (line 554) is a learned set of the glyphs that top the tank up, and line 1105 notes
+  the design that makes "a board of eight refills cost one probe instead of eight".
+- It even separates a DEATH from a move: "the budget went back to full and the avatar is not where a
+  step could have put it — it was thrown home" (line 1390).
+
+So ls20 is played by a tool that reads its fuel, knows its refills, and detects its own deaths — and
+it still spends 302 actions and two of three lives on level 7. **The gap is the QUALITY of the fuel
+routing, not its absence.**
+
+⚠️ Second time this round I declared a tool lacked something it already had — crag's vocabulary
+probe was the first. Both times the claim came from reading the tool's OUTPUT (it behaves as if it
+has no fuel model) instead of its SOURCE. The tools in this repo carry their measured history in
+their docstrings; reading them first is cheaper than inferring their design from a trace.
