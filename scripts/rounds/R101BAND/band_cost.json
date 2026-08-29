@@ -1,0 +1,3409 @@
+[
+ {
+  "game": "ar25",
+  "per_level": [
+   16,
+   13,
+   42,
+   24,
+   30,
+   55,
+   39,
+   49
+  ],
+  "banked_per_level": [
+   16,
+   13,
+   42,
+   24,
+   30,
+   55,
+   39,
+   49
+  ],
+  "total_actions": 268,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 267,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 774,
+  "band_changed_actions": 255,
+  "band_changed_frac": 0.955,
+  "band_rate_by_class": {
+   "('s', 2)": [
+    75,
+    73,
+    0.97
+   ],
+   "('s', 3)": [
+    63,
+    63,
+    1.0
+   ],
+   "('s', 4)": [
+    56,
+    55,
+    0.98
+   ],
+   "('s', 1)": [
+    43,
+    42,
+    0.98
+   ],
+   "('c', 6, 0, 0)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 7, 0)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 1, 0)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 0, 2)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 2, 2)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 1, 2)": [
+    2,
+    1,
+    0.5
+   ]
+  },
+  "band_classes_always": 1,
+  "band_classes_never": 0,
+  "band_classes_mixed": 3,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 22,
+    "y": 29,
+    "x": 3,
+    "frac": 0.082
+   },
+   {
+    "n": 22,
+    "y": 28,
+    "x": 3,
+    "frac": 0.082
+   },
+   {
+    "n": 22,
+    "y": 27,
+    "x": 3,
+    "frac": 0.082
+   },
+   {
+    "n": 22,
+    "y": 16,
+    "x": 1,
+    "frac": 0.082
+   },
+   {
+    "n": 20,
+    "y": 23,
+    "x": 3,
+    "frac": 0.075
+   },
+   {
+    "n": 20,
+    "y": 22,
+    "x": 3,
+    "frac": 0.075
+   }
+  ],
+  "classes_seen": 24,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 8
+ },
+ {
+  "game": "bp35",
+  "per_level": [
+   18,
+   87,
+   45,
+   23,
+   46
+  ],
+  "banked_per_level": [
+   18,
+   87,
+   45,
+   23,
+   46
+  ],
+  "total_actions": 726,
+  "game_score": 0.24556,
+  "banked_score": 0.24556,
+  "control_ok": true,
+  "transitions": 715,
+  "band_only_actions": 206,
+  "band_only_cleared": 1,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 527,
+  "band_changed_actions": 715,
+  "band_changed_frac": 1.0,
+  "band_rate_by_class": {
+   "('s', 3)": [
+    237,
+    237,
+    1.0
+   ],
+   "('s', 4)": [
+    173,
+    173,
+    1.0
+   ],
+   "('c', 6, 2, 1)": [
+    69,
+    69,
+    1.0
+   ],
+   "('c', 6, 1, 1)": [
+    64,
+    64,
+    1.0
+   ],
+   "('c', 6, 4, 4)": [
+    33,
+    33,
+    1.0
+   ],
+   "('c', 6, 2, 6)": [
+    29,
+    29,
+    1.0
+   ],
+   "('c', 6, 3, 1)": [
+    22,
+    22,
+    1.0
+   ],
+   "('c', 6, 2, 4)": [
+    15,
+    15,
+    1.0
+   ],
+   "('c', 6, 3, 6)": [
+    14,
+    14,
+    1.0
+   ],
+   "('c', 6, 1, 6)": [
+    12,
+    12,
+    1.0
+   ]
+  },
+  "band_classes_always": 15,
+  "band_classes_never": 0,
+  "band_classes_mixed": 0,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 48,
+    "y": 1,
+    "x": 16,
+    "frac": 0.067
+   },
+   {
+    "n": 48,
+    "y": 1,
+    "x": 14,
+    "frac": 0.067
+   },
+   {
+    "n": 44,
+    "y": 1,
+    "x": 15,
+    "frac": 0.062
+   },
+   {
+    "n": 43,
+    "y": 61,
+    "x": 26,
+    "frac": 0.06
+   },
+   {
+    "n": 43,
+    "y": 3,
+    "x": 14,
+    "frac": 0.06
+   },
+   {
+    "n": 43,
+    "y": 1,
+    "x": 20,
+    "frac": 0.06
+   }
+  ],
+  "classes_seen": 22,
+  "dead_under_board": [
+   "('c', 6, 1, 6)",
+   "('c', 6, 2, 6)",
+   "('c', 6, 3, 6)",
+   "('c', 6, 4, 6)"
+  ],
+  "dead_under_raw": [],
+  "wrongly_dead": [
+   "('c', 6, 1, 6)",
+   "('c', 6, 2, 6)",
+   "('c', 6, 3, 6)",
+   "('c', 6, 4, 6)"
+  ],
+  "drop_dead_calls": 1822,
+  "drop_dead_withheld": 918,
+  "drops_head": [
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 12,
+    "n_live": 9,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 12,
+    "n_live": 11,
+    "dropped": [
+     "('click', 21, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 12,
+    "n_live": 9,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 12,
+    "n_live": 9,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 11,
+    "n_live": 8,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 13,
+    "n_live": 10,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 12,
+    "n_live": 9,
+    "dropped": [
+     "('click', 16, 55)",
+     "('click', 20, 55)",
+     "('click', 22, 55)"
+    ]
+   },
+   {
+    "lvl": 5,
+    "step": 524,
+    "n_keys": 11,
+    "n_live": 10,
+    "dropped": [
+     "('click', 21, 55)"
+    ]
+   }
+  ],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 5
+ },
+ {
+  "game": "cd82",
+  "per_level": [
+   50,
+   6,
+   33,
+   14,
+   13,
+   16
+  ],
+  "banked_per_level": [
+   50,
+   6,
+   33,
+   14,
+   13,
+   16
+  ],
+  "total_actions": 132,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 131,
+  "band_only_actions": 28,
+  "band_only_cleared": 28,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 129,
+  "band_changed_actions": 85,
+  "band_changed_frac": 0.649,
+  "band_rate_by_class": {
+   "('s', 5)": [
+    31,
+    19,
+    0.61
+   ],
+   "('s', 2)": [
+    18,
+    9,
+    0.5
+   ],
+   "('s', 3)": [
+    14,
+    9,
+    0.64
+   ],
+   "('s', 4)": [
+    14,
+    9,
+    0.64
+   ],
+   "('s', 1)": [
+    12,
+    7,
+    0.58
+   ],
+   "('c', 6, 5, 0)": [
+    11,
+    8,
+    0.73
+   ],
+   "('c', 6, 4, 0)": [
+    8,
+    5,
+    0.62
+   ],
+   "('c', 6, 4, 2)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 1, 5)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 6, 0)": [
+    4,
+    3,
+    0.75
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 7,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 63,
+    "x": 62,
+    "frac": 0.084
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 61,
+    "frac": 0.084
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 60,
+    "frac": 0.084
+   },
+   {
+    "n": 9,
+    "y": 63,
+    "x": 59,
+    "frac": 0.069
+   },
+   {
+    "n": 9,
+    "y": 63,
+    "x": 58,
+    "frac": 0.069
+   },
+   {
+    "n": 9,
+    "y": 63,
+    "x": 57,
+    "frac": 0.069
+   }
+  ],
+  "classes_seen": 15,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "cn04",
+  "per_level": [
+   18,
+   46,
+   28,
+   37,
+   60,
+   72
+  ],
+  "banked_per_level": [
+   18,
+   46,
+   28,
+   37,
+   60,
+   72
+  ],
+  "total_actions": 261,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 260,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 943,
+  "band_changed_actions": 74,
+  "band_changed_frac": 0.285,
+  "band_rate_by_class": {
+   "('s', 5)": [
+    95,
+    29,
+    0.31
+   ],
+   "('s', 1)": [
+    41,
+    10,
+    0.24
+   ],
+   "('s', 3)": [
+    38,
+    12,
+    0.32
+   ],
+   "('s', 4)": [
+    29,
+    8,
+    0.28
+   ],
+   "('s', 2)": [
+    19,
+    5,
+    0.26
+   ],
+   "('c', 6, 6, 6)": [
+    4,
+    0,
+    0.0
+   ],
+   "('c', 6, 4, 4)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 2, 2)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 4, 3)": [
+    2,
+    0,
+    0.0
+   ],
+   "('c', 6, 1, 5)": [
+    2,
+    1,
+    0.5
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 5,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 0,
+    "x": 22,
+    "frac": 0.042
+   },
+   {
+    "n": 11,
+    "y": 0,
+    "x": 21,
+    "frac": 0.042
+   },
+   {
+    "n": 11,
+    "y": 0,
+    "x": 20,
+    "frac": 0.042
+   },
+   {
+    "n": 11,
+    "y": 0,
+    "x": 19,
+    "frac": 0.042
+   },
+   {
+    "n": 11,
+    "y": 0,
+    "x": 18,
+    "frac": 0.042
+   },
+   {
+    "n": 11,
+    "y": 0,
+    "x": 17,
+    "frac": 0.042
+   }
+  ],
+  "classes_seen": 29,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "dc22",
+  "per_level": [
+   31,
+   53,
+   59,
+   87,
+   195
+  ],
+  "banked_per_level": [
+   31,
+   53,
+   59,
+   87,
+   195
+  ],
+  "total_actions": 925,
+  "game_score": 0.714286,
+  "banked_score": 0.714286,
+  "control_ok": true,
+  "transitions": 924,
+  "band_only_actions": 7,
+  "band_only_cleared": 7,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 633,
+  "band_changed_actions": 201,
+  "band_changed_frac": 0.218,
+  "band_rate_by_class": {
+   "('s', 1)": [
+    245,
+    33,
+    0.13
+   ],
+   "('s', 2)": [
+    214,
+    23,
+    0.11
+   ],
+   "('s', 4)": [
+    107,
+    20,
+    0.19
+   ],
+   "('s', 3)": [
+    90,
+    19,
+    0.21
+   ],
+   "('c', 6, 7, 1)": [
+    60,
+    5,
+    0.08
+   ],
+   "('c', 6, 6, 3)": [
+    50,
+    28,
+    0.56
+   ],
+   "('c', 6, 5, 3)": [
+    36,
+    17,
+    0.47
+   ],
+   "('c', 6, 7, 3)": [
+    33,
+    24,
+    0.73
+   ],
+   "('c', 6, 6, 4)": [
+    20,
+    7,
+    0.35
+   ],
+   "('c', 6, 6, 2)": [
+    19,
+    15,
+    0.79
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 13,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 16,
+    "y": 25,
+    "x": 3,
+    "frac": 0.017
+   },
+   {
+    "n": 16,
+    "y": 24,
+    "x": 3,
+    "frac": 0.017
+   },
+   {
+    "n": 16,
+    "y": 23,
+    "x": 3,
+    "frac": 0.017
+   },
+   {
+    "n": 16,
+    "y": 22,
+    "x": 3,
+    "frac": 0.017
+   },
+   {
+    "n": 14,
+    "y": 29,
+    "x": 3,
+    "frac": 0.015
+   },
+   {
+    "n": 14,
+    "y": 28,
+    "x": 3,
+    "frac": 0.015
+   }
+  ],
+  "classes_seen": 17,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 5
+ },
+ {
+  "game": "ft09",
+  "per_level": [
+   4,
+   9,
+   16,
+   16,
+   21,
+   13
+  ],
+  "banked_per_level": [
+   4,
+   9,
+   16,
+   16,
+   21,
+   13
+  ],
+  "total_actions": 79,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 78,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 840,
+  "band_changed_actions": 49,
+  "band_changed_frac": 0.628,
+  "band_rate_by_class": {
+   "('c', 6, 4, 4)": [
+    10,
+    8,
+    0.8
+   ],
+   "('c', 6, 4, 6)": [
+    5,
+    1,
+    0.2
+   ],
+   "('c', 6, 2, 2)": [
+    5,
+    3,
+    0.6
+   ],
+   "('c', 6, 2, 6)": [
+    5,
+    3,
+    0.6
+   ],
+   "('c', 6, 2, 4)": [
+    4,
+    2,
+    0.5
+   ],
+   "('c', 6, 3, 6)": [
+    4,
+    2,
+    0.5
+   ],
+   "('c', 6, 2, 3)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 3, 3)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 5, 4)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 4, 5)": [
+    2,
+    1,
+    0.5
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 63,
+    "x": 61,
+    "frac": 0.141
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 60,
+    "frac": 0.141
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 59,
+    "frac": 0.141
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 58,
+    "frac": 0.141
+   },
+   {
+    "n": 9,
+    "y": 63,
+    "x": 62,
+    "frac": 0.115
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 57,
+    "frac": 0.103
+   }
+  ],
+  "classes_seen": 33,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "g50t",
+  "per_level": [
+   26,
+   31,
+   64,
+   31,
+   52,
+   49,
+   43
+  ],
+  "banked_per_level": [
+   26,
+   31,
+   64,
+   31,
+   52,
+   49,
+   43
+  ],
+  "total_actions": 296,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 295,
+  "band_only_actions": 1,
+  "band_only_cleared": 1,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 598,
+  "band_changed_actions": 207,
+  "band_changed_frac": 0.702,
+  "band_rate_by_class": {
+   "('s', 2)": [
+    84,
+    60,
+    0.71
+   ],
+   "('s', 4)": [
+    80,
+    50,
+    0.62
+   ],
+   "('s', 3)": [
+    64,
+    44,
+    0.69
+   ],
+   "('s', 1)": [
+    52,
+    42,
+    0.81
+   ],
+   "('s', 5)": [
+    15,
+    11,
+    0.73
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 5,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 23,
+    "y": 36,
+    "x": 3,
+    "frac": 0.078
+   },
+   {
+    "n": 23,
+    "y": 36,
+    "x": 2,
+    "frac": 0.078
+   },
+   {
+    "n": 23,
+    "y": 35,
+    "x": 3,
+    "frac": 0.078
+   },
+   {
+    "n": 23,
+    "y": 35,
+    "x": 2,
+    "frac": 0.078
+   },
+   {
+    "n": 23,
+    "y": 34,
+    "x": 3,
+    "frac": 0.078
+   },
+   {
+    "n": 23,
+    "y": 34,
+    "x": 2,
+    "frac": 0.078
+   }
+  ],
+  "classes_seen": 5,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 7
+ },
+ {
+  "game": "ka59",
+  "per_level": [
+   12,
+   44,
+   33,
+   39,
+   24,
+   46,
+   92
+  ],
+  "banked_per_level": [
+   12,
+   44,
+   33,
+   39,
+   24,
+   46,
+   92
+  ],
+  "total_actions": 290,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 289,
+  "band_only_actions": 1,
+  "band_only_cleared": 1,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 862,
+  "band_changed_actions": 141,
+  "band_changed_frac": 0.488,
+  "band_rate_by_class": {
+   "('s', 4)": [
+    81,
+    40,
+    0.49
+   ],
+   "('s', 3)": [
+    73,
+    32,
+    0.44
+   ],
+   "('s', 1)": [
+    66,
+    33,
+    0.5
+   ],
+   "('s', 2)": [
+    46,
+    22,
+    0.48
+   ],
+   "('c', 6, 2, 3)": [
+    2,
+    2,
+    1.0
+   ],
+   "('c', 6, 2, 5)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 5, 5)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 1, 5)": [
+    2,
+    1,
+    0.5
+   ],
+   "('c', 6, 4, 6)": [
+    2,
+    2,
+    1.0
+   ],
+   "('c', 6, 3, 3)": [
+    2,
+    2,
+    1.0
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 13,
+    "y": 63,
+    "x": 62,
+    "frac": 0.045
+   },
+   {
+    "n": 13,
+    "y": 63,
+    "x": 61,
+    "frac": 0.045
+   },
+   {
+    "n": 13,
+    "y": 63,
+    "x": 60,
+    "frac": 0.045
+   },
+   {
+    "n": 13,
+    "y": 63,
+    "x": 59,
+    "frac": 0.045
+   },
+   {
+    "n": 13,
+    "y": 63,
+    "x": 58,
+    "frac": 0.045
+   },
+   {
+    "n": 13,
+    "y": 63,
+    "x": 57,
+    "frac": 0.045
+   }
+  ],
+  "classes_seen": 21,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 7
+ },
+ {
+  "game": "lf52",
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "banked_per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "banked_score": 0.272727,
+  "control_ok": true,
+  "transitions": 822,
+  "band_only_actions": 166,
+  "band_only_cleared": 34,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 897,
+  "band_changed_actions": 636,
+  "band_changed_frac": 0.774,
+  "band_rate_by_class": {
+   "('s', 1)": [
+    293,
+    153,
+    0.52
+   ],
+   "('s', 3)": [
+    93,
+    87,
+    0.94
+   ],
+   "('s', 4)": [
+    88,
+    83,
+    0.94
+   ],
+   "('s', 2)": [
+    76,
+    65,
+    0.86
+   ],
+   "('c', 6, 2, 2)": [
+    29,
+    29,
+    1.0
+   ],
+   "('c', 6, 3, 5)": [
+    23,
+    23,
+    1.0
+   ],
+   "('c', 6, 4, 2)": [
+    18,
+    18,
+    1.0
+   ],
+   "('c', 6, 3, 2)": [
+    17,
+    17,
+    1.0
+   ],
+   "('c', 6, 7, 2)": [
+    14,
+    14,
+    1.0
+   ],
+   "('c', 6, 4, 3)": [
+    13,
+    13,
+    1.0
+   ]
+  },
+  "band_classes_always": 14,
+  "band_classes_never": 0,
+  "band_classes_mixed": 12,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 78,
+    "y": 30,
+    "x": 60,
+    "frac": 0.095
+   },
+   {
+    "n": 76,
+    "y": 24,
+    "x": 61,
+    "frac": 0.092
+   },
+   {
+    "n": 75,
+    "y": 26,
+    "x": 61,
+    "frac": 0.091
+   },
+   {
+    "n": 75,
+    "y": 25,
+    "x": 61,
+    "frac": 0.091
+   },
+   {
+    "n": 73,
+    "y": 26,
+    "x": 60,
+    "frac": 0.089
+   },
+   {
+    "n": 73,
+    "y": 25,
+    "x": 60,
+    "frac": 0.089
+   }
+  ],
+  "classes_seen": 50,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 227,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 5
+ },
+ {
+  "game": "lp85",
+  "per_level": [
+   7,
+   34,
+   18,
+   18,
+   16,
+   39,
+   18,
+   32
+  ],
+  "banked_per_level": [
+   7,
+   34,
+   18,
+   18,
+   16,
+   39,
+   18,
+   32
+  ],
+  "total_actions": 182,
+  "game_score": 0.97668,
+  "banked_score": 0.97668,
+  "control_ok": true,
+  "transitions": 181,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 899,
+  "band_changed_actions": 146,
+  "band_changed_frac": 0.807,
+  "band_rate_by_class": {
+   "('c', 6, 2, 2)": [
+    25,
+    25,
+    1.0
+   ],
+   "('c', 6, 1, 3)": [
+    21,
+    18,
+    0.86
+   ],
+   "('c', 6, 3, 7)": [
+    20,
+    17,
+    0.85
+   ],
+   "('c', 6, 3, 5)": [
+    12,
+    8,
+    0.67
+   ],
+   "('c', 6, 4, 5)": [
+    12,
+    10,
+    0.83
+   ],
+   "('c', 6, 1, 0)": [
+    9,
+    5,
+    0.56
+   ],
+   "('c', 6, 0, 2)": [
+    9,
+    4,
+    0.44
+   ],
+   "('c', 6, 6, 3)": [
+    9,
+    8,
+    0.89
+   ],
+   "('c', 6, 6, 4)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 2, 5)": [
+    7,
+    5,
+    0.71
+   ]
+  },
+  "band_classes_always": 3,
+  "band_classes_never": 0,
+  "band_classes_mixed": 13,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 25,
+    "y": 13,
+    "x": 3,
+    "frac": 0.138
+   },
+   {
+    "n": 24,
+    "y": 12,
+    "x": 3,
+    "frac": 0.133
+   },
+   {
+    "n": 15,
+    "y": 6,
+    "x": 0,
+    "frac": 0.083
+   },
+   {
+    "n": 15,
+    "y": 5,
+    "x": 0,
+    "frac": 0.083
+   },
+   {
+    "n": 15,
+    "y": 4,
+    "x": 0,
+    "frac": 0.083
+   },
+   {
+    "n": 15,
+    "y": 3,
+    "x": 0,
+    "frac": 0.083
+   }
+  ],
+  "classes_seen": 24,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 8
+ },
+ {
+  "game": "ls20",
+  "per_level": [
+   17,
+   101,
+   63,
+   66,
+   67,
+   100,
+   231
+  ],
+  "banked_per_level": [
+   17,
+   101,
+   63,
+   66,
+   67,
+   100,
+   231
+  ],
+  "total_actions": 645,
+  "game_score": 0.912085,
+  "banked_score": 0.912085,
+  "control_ok": true,
+  "transitions": 643,
+  "band_only_actions": 13,
+  "band_only_cleared": 13,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 960,
+  "band_changed_actions": 642,
+  "band_changed_frac": 0.998,
+  "band_rate_by_class": {
+   "('s', 1)": [
+    205,
+    205,
+    1.0
+   ],
+   "('s', 2)": [
+    199,
+    198,
+    0.99
+   ],
+   "('s', 4)": [
+    130,
+    130,
+    1.0
+   ],
+   "('s', 3)": [
+    109,
+    109,
+    1.0
+   ]
+  },
+  "band_classes_always": 3,
+  "band_classes_never": 0,
+  "band_classes_mixed": 1,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 67,
+    "y": 62,
+    "x": 18,
+    "frac": 0.104
+   },
+   {
+    "n": 67,
+    "y": 62,
+    "x": 17,
+    "frac": 0.104
+   },
+   {
+    "n": 67,
+    "y": 62,
+    "x": 16,
+    "frac": 0.104
+   },
+   {
+    "n": 67,
+    "y": 62,
+    "x": 15,
+    "frac": 0.104
+   },
+   {
+    "n": 67,
+    "y": 61,
+    "x": 18,
+    "frac": 0.104
+   },
+   {
+    "n": 67,
+    "y": 61,
+    "x": 17,
+    "frac": 0.104
+   }
+  ],
+  "classes_seen": 4,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 7
+ },
+ {
+  "game": "m0r0",
+  "per_level": [
+   19,
+   23,
+   54,
+   13,
+   39,
+   40
+  ],
+  "banked_per_level": [
+   19,
+   23,
+   54,
+   13,
+   39,
+   40
+  ],
+  "total_actions": 188,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 187,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 878,
+  "band_changed_actions": 87,
+  "band_changed_frac": 0.465,
+  "band_rate_by_class": {
+   "('s', 1)": [
+    59,
+    26,
+    0.44
+   ],
+   "('s', 4)": [
+    43,
+    19,
+    0.44
+   ],
+   "('s', 3)": [
+    39,
+    19,
+    0.49
+   ],
+   "('s', 2)": [
+    36,
+    20,
+    0.56
+   ],
+   "('c', 6, 1, 2)": [
+    2,
+    0,
+    0.0
+   ],
+   "('c', 6, 1, 1)": [
+    2,
+    0,
+    0.0
+   ],
+   "('c', 6, 4, 2)": [
+    1,
+    1,
+    1.0
+   ],
+   "('c', 6, 5, 4)": [
+    1,
+    1,
+    1.0
+   ],
+   "('c', 6, 4, 1)": [
+    1,
+    0,
+    0.0
+   ],
+   "('c', 6, 3, 3)": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 63,
+    "x": 5,
+    "frac": 0.059
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 4,
+    "frac": 0.059
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 3,
+    "frac": 0.059
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 2,
+    "frac": 0.059
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 1,
+    "frac": 0.059
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 0,
+    "frac": 0.059
+   }
+  ],
+  "classes_seen": 12,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "r11l",
+  "per_level": [
+   4,
+   9,
+   11,
+   14,
+   24,
+   21
+  ],
+  "banked_per_level": [
+   4,
+   9,
+   11,
+   14,
+   24,
+   21
+  ],
+  "total_actions": 83,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 82,
+  "band_only_actions": 39,
+  "band_only_cleared": 39,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 817,
+  "band_changed_actions": 82,
+  "band_changed_frac": 1.0,
+  "band_rate_by_class": {
+   "('c', 6, 7, 7)": [
+    6,
+    6,
+    1.0
+   ],
+   "('c', 6, 5, 0)": [
+    6,
+    6,
+    1.0
+   ],
+   "('c', 6, 6, 0)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 4, 0)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 5, 4)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 6, 7)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 6, 6)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 2, 2)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 2, 7)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 0, 5)": [
+    3,
+    3,
+    1.0
+   ]
+  },
+  "band_classes_always": 3,
+  "band_classes_never": 0,
+  "band_classes_mixed": 0,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 3,
+    "x": 0,
+    "frac": 0.134
+   },
+   {
+    "n": 11,
+    "y": 2,
+    "x": 0,
+    "frac": 0.134
+   },
+   {
+    "n": 11,
+    "y": 1,
+    "x": 0,
+    "frac": 0.134
+   },
+   {
+    "n": 9,
+    "y": 9,
+    "x": 0,
+    "frac": 0.11
+   },
+   {
+    "n": 9,
+    "y": 8,
+    "x": 0,
+    "frac": 0.11
+   },
+   {
+    "n": 9,
+    "y": 7,
+    "x": 0,
+    "frac": 0.11
+   }
+  ],
+  "classes_seen": 39,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "re86",
+  "per_level": [
+   25,
+   42,
+   49,
+   59,
+   113,
+   139,
+   101,
+   168
+  ],
+  "banked_per_level": [
+   25,
+   42,
+   49,
+   59,
+   113,
+   139,
+   101,
+   168
+  ],
+  "total_actions": 696,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 695,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 406,
+  "band_changed_actions": 337,
+  "band_changed_frac": 0.485,
+  "band_rate_by_class": {
+   "('s', 1)": [
+    174,
+    104,
+    0.6
+   ],
+   "('s', 3)": [
+    151,
+    74,
+    0.49
+   ],
+   "('s', 4)": [
+    131,
+    65,
+    0.5
+   ],
+   "('s', 2)": [
+    120,
+    57,
+    0.47
+   ],
+   "('s', 5)": [
+    119,
+    37,
+    0.31
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 5,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 33,
+    "y": 24,
+    "x": 60,
+    "frac": 0.047
+   },
+   {
+    "n": 33,
+    "y": 21,
+    "x": 60,
+    "frac": 0.047
+   },
+   {
+    "n": 31,
+    "y": 27,
+    "x": 60,
+    "frac": 0.045
+   },
+   {
+    "n": 26,
+    "y": 24,
+    "x": 63,
+    "frac": 0.037
+   },
+   {
+    "n": 21,
+    "y": 39,
+    "x": 60,
+    "frac": 0.03
+   },
+   {
+    "n": 20,
+    "y": 3,
+    "x": 56,
+    "frac": 0.029
+   }
+  ],
+  "classes_seen": 5,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 8
+ },
+ {
+  "game": "s5i5",
+  "per_level": [
+   13,
+   30,
+   47,
+   39,
+   32,
+   31
+  ],
+  "banked_per_level": [
+   13,
+   30,
+   47,
+   39,
+   32,
+   31
+  ],
+  "total_actions": 694,
+  "game_score": 0.583333,
+  "banked_score": 0.583333,
+  "control_ok": true,
+  "transitions": 691,
+  "band_only_actions": 8,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 494,
+  "band_changed_actions": 471,
+  "band_changed_frac": 0.682,
+  "band_rate_by_class": {
+   "('c', 6, 3, 7)": [
+    156,
+    90,
+    0.58
+   ],
+   "('c', 6, 1, 7)": [
+    115,
+    92,
+    0.8
+   ],
+   "('c', 6, 7, 6)": [
+    91,
+    63,
+    0.69
+   ],
+   "('c', 6, 1, 6)": [
+    74,
+    61,
+    0.82
+   ],
+   "('c', 6, 3, 6)": [
+    66,
+    49,
+    0.74
+   ],
+   "('c', 6, 0, 7)": [
+    41,
+    32,
+    0.78
+   ],
+   "('c', 6, 4, 6)": [
+    27,
+    17,
+    0.63
+   ],
+   "('c', 6, 7, 7)": [
+    18,
+    12,
+    0.67
+   ],
+   "('c', 6, 4, 7)": [
+    16,
+    6,
+    0.38
+   ],
+   "('c', 6, 6, 7)": [
+    15,
+    6,
+    0.4
+   ]
+  },
+  "band_classes_always": 2,
+  "band_classes_never": 0,
+  "band_classes_mixed": 16,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 203,
+    "y": 17,
+    "x": 62,
+    "frac": 0.294
+   },
+   {
+    "n": 203,
+    "y": 16,
+    "x": 62,
+    "frac": 0.294
+   },
+   {
+    "n": 203,
+    "y": 15,
+    "x": 62,
+    "frac": 0.294
+   },
+   {
+    "n": 202,
+    "y": 14,
+    "x": 62,
+    "frac": 0.292
+   },
+   {
+    "n": 202,
+    "y": 14,
+    "x": 61,
+    "frac": 0.292
+   },
+   {
+    "n": 202,
+    "y": 14,
+    "x": 60,
+    "frac": 0.292
+   }
+  ],
+  "classes_seen": 18,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "sb26",
+  "per_level": [
+   9,
+   15,
+   15,
+   15,
+   17,
+   19,
+   17,
+   17
+  ],
+  "banked_per_level": [
+   9,
+   15,
+   15,
+   15,
+   17,
+   19,
+   17,
+   17
+  ],
+  "total_actions": 124,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 123,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 385,
+  "band_changed_actions": 123,
+  "band_changed_frac": 1.0,
+  "band_rate_by_class": {
+   "('c', 6, 2, 7)": [
+    12,
+    12,
+    1.0
+   ],
+   "('c', 6, 5, 7)": [
+    11,
+    11,
+    1.0
+   ],
+   "('c', 6, 3, 2)": [
+    9,
+    9,
+    1.0
+   ],
+   "('c', 6, 4, 7)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 3, 7)": [
+    8,
+    8,
+    1.0
+   ],
+   "('s', 5)": [
+    7,
+    7,
+    1.0
+   ],
+   "('c', 6, 1, 7)": [
+    7,
+    7,
+    1.0
+   ],
+   "('c', 6, 6, 7)": [
+    7,
+    7,
+    1.0
+   ],
+   "('c', 6, 3, 4)": [
+    6,
+    6,
+    1.0
+   ],
+   "('c', 6, 2, 2)": [
+    5,
+    5,
+    1.0
+   ]
+  },
+  "band_classes_always": 11,
+  "band_classes_never": 0,
+  "band_classes_mixed": 0,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 16,
+    "y": 61,
+    "x": 44,
+    "frac": 0.13
+   },
+   {
+    "n": 16,
+    "y": 61,
+    "x": 43,
+    "frac": 0.13
+   },
+   {
+    "n": 16,
+    "y": 61,
+    "x": 41,
+    "frac": 0.13
+   },
+   {
+    "n": 16,
+    "y": 61,
+    "x": 37,
+    "frac": 0.13
+   },
+   {
+    "n": 16,
+    "y": 61,
+    "x": 36,
+    "frac": 0.13
+   },
+   {
+    "n": 16,
+    "y": 61,
+    "x": 34,
+    "frac": 0.13
+   }
+  ],
+  "classes_seen": 28,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 8
+ },
+ {
+  "game": "sc25",
+  "per_level": [
+   17,
+   6,
+   12,
+   31,
+   40,
+   39
+  ],
+  "banked_per_level": [
+   17,
+   6,
+   12,
+   31,
+   40,
+   39
+  ],
+  "total_actions": 145,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 144,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 270,
+  "band_changed_actions": 101,
+  "band_changed_frac": 0.701,
+  "band_rate_by_class": {
+   "('c', 6, 3, 6)": [
+    46,
+    29,
+    0.63
+   ],
+   "('s', 3)": [
+    25,
+    17,
+    0.68
+   ],
+   "('s', 1)": [
+    17,
+    10,
+    0.59
+   ],
+   "('c', 6, 3, 7)": [
+    14,
+    14,
+    1.0
+   ],
+   "('s', 2)": [
+    12,
+    9,
+    0.75
+   ],
+   "('s', 4)": [
+    11,
+    7,
+    0.64
+   ],
+   "('c', 6, 4, 6)": [
+    8,
+    6,
+    0.75
+   ],
+   "('c', 6, 1, 6)": [
+    3,
+    2,
+    0.67
+   ],
+   "('c', 6, 0, 0)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 0, 1)": [
+    3,
+    2,
+    0.67
+   ]
+  },
+  "band_classes_always": 1,
+  "band_classes_never": 0,
+  "band_classes_mixed": 6,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 36,
+    "y": 61,
+    "x": 31,
+    "frac": 0.25
+   },
+   {
+    "n": 36,
+    "y": 61,
+    "x": 30,
+    "frac": 0.25
+   },
+   {
+    "n": 36,
+    "y": 61,
+    "x": 29,
+    "frac": 0.25
+   },
+   {
+    "n": 36,
+    "y": 60,
+    "x": 31,
+    "frac": 0.25
+   },
+   {
+    "n": 36,
+    "y": 60,
+    "x": 30,
+    "frac": 0.25
+   },
+   {
+    "n": 36,
+    "y": 60,
+    "x": 29,
+    "frac": 0.25
+   }
+  ],
+  "classes_seen": 11,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "sk48",
+  "per_level": [
+   14,
+   30,
+   34,
+   27,
+   41,
+   56,
+   41,
+   27
+  ],
+  "banked_per_level": [
+   14,
+   30,
+   34,
+   27,
+   41,
+   56,
+   41,
+   27
+  ],
+  "total_actions": 270,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 269,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 140,
+  "band_changed_actions": 70,
+  "band_changed_frac": 0.26,
+  "band_rate_by_class": {
+   "('s', 4)": [
+    95,
+    22,
+    0.23
+   ],
+   "('s', 3)": [
+    57,
+    10,
+    0.18
+   ],
+   "('s', 1)": [
+    52,
+    9,
+    0.17
+   ],
+   "('s', 2)": [
+    46,
+    10,
+    0.22
+   ],
+   "('c', 6, 1, 7)": [
+    10,
+    10,
+    1.0
+   ],
+   "('c', 6, 4, 7)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 2, 7)": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "band_classes_always": 2,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 20,
+    "y": 60,
+    "x": 36,
+    "frac": 0.074
+   },
+   {
+    "n": 20,
+    "y": 3,
+    "x": 37,
+    "frac": 0.074
+   },
+   {
+    "n": 20,
+    "y": 3,
+    "x": 32,
+    "frac": 0.074
+   },
+   {
+    "n": 19,
+    "y": 60,
+    "x": 39,
+    "frac": 0.071
+   },
+   {
+    "n": 19,
+    "y": 60,
+    "x": 38,
+    "frac": 0.071
+   },
+   {
+    "n": 19,
+    "y": 60,
+    "x": 37,
+    "frac": 0.071
+   }
+  ],
+  "classes_seen": 7,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 8
+ },
+ {
+  "game": "sp80",
+  "per_level": [
+   6,
+   8,
+   11,
+   26,
+   29,
+   32
+  ],
+  "banked_per_level": [
+   6,
+   8,
+   11,
+   26,
+   29,
+   32
+  ],
+  "total_actions": 112,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 111,
+  "band_only_actions": 2,
+  "band_only_cleared": 2,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 960,
+  "band_changed_actions": 72,
+  "band_changed_frac": 0.649,
+  "band_rate_by_class": {
+   "('s', 4)": [
+    38,
+    24,
+    0.63
+   ],
+   "('s', 3)": [
+    25,
+    13,
+    0.52
+   ],
+   "('s', 2)": [
+    15,
+    8,
+    0.53
+   ],
+   "('s', 1)": [
+    12,
+    7,
+    0.58
+   ],
+   "('s', 5)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 1, 2)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 4, 5)": [
+    3,
+    2,
+    0.67
+   ],
+   "('c', 6, 2, 4)": [
+    2,
+    2,
+    1.0
+   ],
+   "('c', 6, 3, 2)": [
+    2,
+    2,
+    1.0
+   ],
+   "('c', 6, 2, 2)": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "band_classes_always": 1,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 8,
+    "y": 63,
+    "x": 6,
+    "frac": 0.072
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 5,
+    "frac": 0.072
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 4,
+    "frac": 0.072
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 3,
+    "frac": 0.072
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 2,
+    "frac": 0.072
+   },
+   {
+    "n": 8,
+    "y": 63,
+    "x": 1,
+    "frac": 0.072
+   }
+  ],
+  "classes_seen": 15,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "su15",
+  "per_level": [
+   11,
+   9,
+   13,
+   11,
+   13,
+   10,
+   5,
+   8,
+   9
+  ],
+  "banked_per_level": [
+   11,
+   9,
+   13,
+   11,
+   13,
+   10,
+   5,
+   8,
+   9
+  ],
+  "total_actions": 89,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 88,
+  "band_only_actions": 3,
+  "band_only_cleared": 3,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 397,
+  "band_changed_actions": 88,
+  "band_changed_frac": 1.0,
+  "band_rate_by_class": {
+   "('c', 6, 0, 5)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 2, 5)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 3, 5)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 3, 3)": [
+    5,
+    5,
+    1.0
+   ],
+   "('c', 6, 3, 4)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 5, 2)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 2, 3)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 1, 4)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 1, 6)": [
+    3,
+    3,
+    1.0
+   ],
+   "('c', 6, 4, 3)": [
+    3,
+    3,
+    1.0
+   ]
+  },
+  "band_classes_always": 4,
+  "band_classes_never": 0,
+  "band_classes_mixed": 0,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 17,
+    "y": 63,
+    "x": 63,
+    "frac": 0.193
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 62,
+    "frac": 0.193
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 61,
+    "frac": 0.193
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 60,
+    "frac": 0.193
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 59,
+    "frac": 0.193
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 58,
+    "frac": 0.193
+   }
+  ],
+  "classes_seen": 40,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 9
+ },
+ {
+  "game": "tn36",
+  "per_level": [
+   14,
+   11,
+   13,
+   16,
+   21,
+   21,
+   41
+  ],
+  "banked_per_level": [
+   14,
+   11,
+   13,
+   16,
+   21,
+   21,
+   41
+  ],
+  "total_actions": 137,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 136,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 451,
+  "band_changed_actions": 115,
+  "band_changed_frac": 0.846,
+  "band_rate_by_class": {
+   "('c', 6, 6, 4)": [
+    24,
+    16,
+    0.67
+   ],
+   "('c', 6, 4, 4)": [
+    19,
+    15,
+    0.79
+   ],
+   "('c', 6, 5, 4)": [
+    13,
+    8,
+    0.62
+   ],
+   "('c', 6, 6, 6)": [
+    12,
+    9,
+    0.75
+   ],
+   "('c', 6, 7, 4)": [
+    11,
+    11,
+    1.0
+   ],
+   "('c', 6, 4, 6)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 7, 7)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 5, 6)": [
+    6,
+    5,
+    0.83
+   ],
+   "('c', 6, 2, 5)": [
+    4,
+    4,
+    1.0
+   ],
+   "('c', 6, 3, 5)": [
+    4,
+    4,
+    1.0
+   ]
+  },
+  "band_classes_always": 3,
+  "band_classes_never": 0,
+  "band_classes_mixed": 5,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 17,
+    "y": 62,
+    "x": 59,
+    "frac": 0.125
+   },
+   {
+    "n": 17,
+    "y": 62,
+    "x": 58,
+    "frac": 0.125
+   },
+   {
+    "n": 17,
+    "y": 62,
+    "x": 57,
+    "frac": 0.125
+   },
+   {
+    "n": 17,
+    "y": 62,
+    "x": 56,
+    "frac": 0.125
+   },
+   {
+    "n": 17,
+    "y": 62,
+    "x": 55,
+    "frac": 0.125
+   },
+   {
+    "n": 17,
+    "y": 61,
+    "x": 60,
+    "frac": 0.125
+   }
+  ],
+  "classes_seen": 21,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 7
+ },
+ {
+  "game": "tr87",
+  "per_level": [
+   14,
+   27,
+   21,
+   24,
+   24,
+   35
+  ],
+  "banked_per_level": [
+   14,
+   27,
+   21,
+   24,
+   24,
+   35
+  ],
+  "total_actions": 145,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 144,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 164,
+  "band_changed_actions": 82,
+  "band_changed_frac": 0.569,
+  "band_rate_by_class": {
+   "('s', 2)": [
+    85,
+    42,
+    0.49
+   ],
+   "('s', 3)": [
+    29,
+    25,
+    0.86
+   ],
+   "('s', 1)": [
+    18,
+    8,
+    0.44
+   ],
+   "('s', 4)": [
+    12,
+    7,
+    0.58
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 4,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 11,
+    "y": 63,
+    "x": 63,
+    "frac": 0.076
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 62,
+    "frac": 0.076
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 61,
+    "frac": 0.076
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 60,
+    "frac": 0.076
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 59,
+    "frac": 0.076
+   },
+   {
+    "n": 11,
+    "y": 63,
+    "x": 58,
+    "frac": 0.076
+   }
+  ],
+  "classes_seen": 4,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 6
+ },
+ {
+  "game": "tu93",
+  "per_level": [
+   18,
+   10,
+   19,
+   17,
+   29,
+   28,
+   14,
+   23,
+   29
+  ],
+  "banked_per_level": [
+   18,
+   10,
+   19,
+   17,
+   29,
+   28,
+   14,
+   23,
+   29
+  ],
+  "total_actions": 187,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 186,
+  "band_only_actions": 0,
+  "band_only_cleared": 0,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 54,
+  "band_changed_actions": 186,
+  "band_changed_frac": 1.0,
+  "band_rate_by_class": {
+   "('s', 4)": [
+    51,
+    51,
+    1.0
+   ],
+   "('s', 3)": [
+    46,
+    46,
+    1.0
+   ],
+   "('s', 1)": [
+    45,
+    45,
+    1.0
+   ],
+   "('s', 2)": [
+    44,
+    44,
+    1.0
+   ]
+  },
+  "band_classes_always": 4,
+  "band_classes_never": 0,
+  "band_classes_mixed": 0,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 17,
+    "y": 63,
+    "x": 60,
+    "frac": 0.091
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 59,
+    "frac": 0.091
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 58,
+    "frac": 0.091
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 57,
+    "frac": 0.091
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 56,
+    "frac": 0.091
+   },
+   {
+    "n": 17,
+    "y": 63,
+    "x": 55,
+    "frac": 0.091
+   }
+  ],
+  "classes_seen": 4,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 9
+ },
+ {
+  "game": "vc33",
+  "per_level": [
+   3,
+   8,
+   24,
+   26,
+   55,
+   25,
+   58
+  ],
+  "banked_per_level": [
+   3,
+   8,
+   24,
+   26,
+   55,
+   25,
+   58
+  ],
+  "total_actions": 199,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 198,
+  "band_only_actions": 10,
+  "band_only_cleared": 10,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 929,
+  "band_changed_actions": 143,
+  "band_changed_frac": 0.722,
+  "band_rate_by_class": {
+   "('c', 6, 0, 0)": [
+    23,
+    18,
+    0.78
+   ],
+   "('c', 6, 5, 7)": [
+    17,
+    16,
+    0.94
+   ],
+   "('c', 6, 3, 4)": [
+    14,
+    8,
+    0.57
+   ],
+   "('c', 6, 2, 4)": [
+    12,
+    4,
+    0.33
+   ],
+   "('c', 6, 7, 4)": [
+    11,
+    8,
+    0.73
+   ],
+   "('c', 6, 7, 6)": [
+    11,
+    11,
+    1.0
+   ],
+   "('c', 6, 3, 3)": [
+    9,
+    9,
+    1.0
+   ],
+   "('c', 6, 5, 1)": [
+    9,
+    2,
+    0.22
+   ],
+   "('c', 6, 7, 2)": [
+    8,
+    8,
+    1.0
+   ],
+   "('c', 6, 1, 7)": [
+    6,
+    5,
+    0.83
+   ]
+  },
+  "band_classes_always": 7,
+  "band_classes_never": 0,
+  "band_classes_mixed": 10,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 20,
+    "y": 63,
+    "x": 50,
+    "frac": 0.101
+   },
+   {
+    "n": 20,
+    "y": 63,
+    "x": 49,
+    "frac": 0.101
+   },
+   {
+    "n": 20,
+    "y": 63,
+    "x": 48,
+    "frac": 0.101
+   },
+   {
+    "n": 20,
+    "y": 62,
+    "x": 50,
+    "frac": 0.101
+   },
+   {
+    "n": 20,
+    "y": 62,
+    "x": 49,
+    "frac": 0.101
+   },
+   {
+    "n": 20,
+    "y": 62,
+    "x": 48,
+    "frac": 0.101
+   }
+  ],
+  "classes_seen": 34,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 7
+ },
+ {
+  "game": "wa30",
+  "per_level": [
+   27,
+   58,
+   77,
+   67,
+   120,
+   46,
+   55,
+   134,
+   136
+  ],
+  "banked_per_level": [
+   27,
+   58,
+   77,
+   67,
+   120,
+   46,
+   55,
+   134,
+   136
+  ],
+  "total_actions": 720,
+  "game_score": 1.0,
+  "banked_score": 1.0,
+  "control_ok": true,
+  "transitions": 718,
+  "band_only_actions": 2,
+  "band_only_cleared": 2,
+  "band_px_hud": 0,
+  "band_px_action_dependent": 895,
+  "band_changed_actions": 489,
+  "band_changed_frac": 0.681,
+  "band_rate_by_class": {
+   "('s', 4)": [
+    213,
+    155,
+    0.73
+   ],
+   "('s', 3)": [
+    192,
+    122,
+    0.64
+   ],
+   "('s', 1)": [
+    135,
+    97,
+    0.72
+   ],
+   "('s', 2)": [
+    95,
+    65,
+    0.68
+   ],
+   "('s', 5)": [
+    83,
+    50,
+    0.6
+   ]
+  },
+  "band_classes_always": 0,
+  "band_classes_never": 0,
+  "band_classes_mixed": 5,
+  "graph_mask_px": 0,
+  "graph_mask_in_band": 0,
+  "frame_shape": [
+   64,
+   64
+  ],
+  "band_px_top": [
+   {
+    "n": 19,
+    "y": 63,
+    "x": 62,
+    "frac": 0.026
+   },
+   {
+    "n": 19,
+    "y": 63,
+    "x": 61,
+    "frac": 0.026
+   },
+   {
+    "n": 19,
+    "y": 63,
+    "x": 60,
+    "frac": 0.026
+   },
+   {
+    "n": 19,
+    "y": 63,
+    "x": 59,
+    "frac": 0.026
+   },
+   {
+    "n": 19,
+    "y": 63,
+    "x": 58,
+    "frac": 0.026
+   },
+   {
+    "n": 19,
+    "y": 63,
+    "x": 57,
+    "frac": 0.026
+   }
+  ],
+  "classes_seen": 5,
+  "dead_under_board": [],
+  "dead_under_raw": [],
+  "wrongly_dead": [],
+  "drop_dead_calls": 0,
+  "drop_dead_withheld": 0,
+  "drops_head": [],
+  "drop_levels_cleared": [],
+  "n_cleared_levels": 9
+ }
+]

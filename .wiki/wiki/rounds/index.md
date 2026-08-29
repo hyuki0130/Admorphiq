@@ -344,3 +344,19 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   failed by renaming PART of a whole, each producing a column of DIFFERENTs that read as a
   spectacular transfer failure — the tell is that the divergence was UNIVERSAL and at index 0.
   ⛔ A recoloured board is the SAME BOARD; 1.0000 is not a transfer coefficient. Rule **7ce**.
+
+- **outer band / edge band / board_changed / HUD / marching counter / deadsig / globally_dead /
+  drop_dead / augmenter / does the harness see this action** → [[r101_discarded-band]] — what the
+  deliberately-discarded frame band actually costs, answered by reading the CONSUMER. ⭐ **Exactly one
+  tool sets `augmenter = True` (`deadsig`), so the whole cost flows through
+  `deadsig -> globally_dead -> GraphSearchTool._drop_dead`** — tenure, retirement and the stall
+  detector consume none of it, and the active tool is fed the RAW flag. `_drop_dead` was called 2049
+  times over the 25 and withheld something on **918, all on bp35 level 6, never once on a level that
+  clears**. ⛔ And it is zero for a reason, not by luck: **the one place the discard is consumed is the
+  one place it is right** — bp35's band moves at rate 1.00 for all fifteen of its action classes (a
+  pure counter), while the games whose band carries real content (cd82 0.649, dc22 0.218) are exactly
+  the ones where `_drop_dead` is never called. ⚠️ **This CORRECTS [[r101_inert-actions]]**: `edge-only`
+  is NOT a safe harbour, r11l's band is a counter at 1.000, so its 39 "edge-only" actions are
+  genuinely inert (cleared-level dead 1.07% -> 1.94%). ⚠️ The per-pixel ">=80% of probes" HUD test
+  cannot see a marching counter and returned zero HUD pixels on all 25 — ask it per REGION and per
+  ACTION CLASS. Rule **7cf**.
