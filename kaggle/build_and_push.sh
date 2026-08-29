@@ -69,5 +69,5 @@ echo "kernel pushed at commit $COMMIT"
 if [ "${1:-}" = "--submit" ]; then
   uv run kaggle competitions submit -c arc-prize-2026-arc-agi-3 \
     -k jaehyukhyun/admorphiq-submission \
-    -m "detection dispatch over the chained card; public-25 proxy 0.2771 @ $COMMIT"
+    -m "generic tools, zero adapters (KaggleUnifiedAgent); public-25 proxy 0.9082 @ $COMMIT"
 fi
