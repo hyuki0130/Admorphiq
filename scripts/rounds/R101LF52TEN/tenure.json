@@ -1,0 +1,1215 @@
+[
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "pure",
+   "seed": 1
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 0,
+  "kinds": {},
+  "kinds_by_level": {},
+  "ret_propose_line": {},
+  "ret_last_line": {},
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "pure",
+   "seed": 10
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 0,
+  "kinds": {},
+  "kinds_by_level": {},
+  "ret_propose_line": {},
+  "ret_last_line": {},
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "railpeg",
+   "mode": "shadow",
+   "seed": 11
+  },
+  "levels": 5,
+  "actions": 809,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 20,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 102
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 20,
+    "changed": 20,
+    "distinct": 20
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 102,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 445,
+  "kinds": {
+   "PLAN": 370,
+   "NOPLAN": 75
+  },
+  "kinds_by_level": {
+   "0/PLAN": 4,
+   "1/NOPLAN": 1,
+   "1/PLAN": 47,
+   "2/PLAN": 46,
+   "3/PLAN": 46,
+   "4/NOPLAN": 1,
+   "4/PLAN": 121,
+   "5/NOPLAN": 73,
+   "5/PLAN": 106
+  },
+  "ret_propose_line": {
+   "1535": 75,
+   "1508": 10,
+   "1500": 61,
+   "1548": 6,
+   "1551": 228,
+   "1523": 65
+  },
+  "ret_last_line": {
+   "('propose', 1535)": 75,
+   "('propose', 1508)": 10,
+   "('propose', 1500)": 61,
+   "('propose', 1548)": 6,
+   "('propose', 1551)": 228,
+   "('propose', 1523)": 65
+  },
+  "shadow_n": 365,
+  "shadow_spoke": 203,
+  "shadow_first_spoke": 446,
+  "shadow_succ_bids": {
+   "pegjump": {
+    "0.75": 12,
+    "0.9": 34,
+    "0.0": 319
+   },
+   "graph": {
+    "0.45": 365
+   }
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "hold",
+   "seed": 12
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 214,
+    "graph": 164
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 1,
+    "changed": 1,
+    "distinct": 1
+   },
+   "pegjump": {
+    "acted": 214,
+    "changed": 134,
+    "distinct": 134
+   },
+   "graph": {
+    "acted": 164,
+    "changed": 129,
+    "distinct": 41
+   }
+  },
+  "n_propose_calls": 213,
+  "kinds": {
+   "PLAN": 10,
+   "NOPLAN": 203
+  },
+  "kinds_by_level": {
+   "5/NOPLAN": 203,
+   "5/PLAN": 10
+  },
+  "ret_propose_line": {
+   "1122": 1,
+   "1134": 3,
+   "1087": 6,
+   "1096": 203
+  },
+  "ret_last_line": {
+   "('propose', 1122)": 1,
+   "('propose', 1134)": 3,
+   "('propose', 1087)": 6,
+   "('propose', 1096)": 203
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "census",
+   "seed": 2
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 19,
+  "kinds": {
+   "PLAN": 10,
+   "NOPLAN": 9
+  },
+  "kinds_by_level": {
+   "5/NOPLAN": 9,
+   "5/PLAN": 10
+  },
+  "ret_propose_line": {
+   "1122": 1,
+   "1134": 3,
+   "1087": 6,
+   "1096": 9
+  },
+  "ret_last_line": {
+   "('propose', 1122)": 1,
+   "('propose', 1134)": 3,
+   "('propose', 1087)": 6,
+   "('propose', 1096)": 9
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "census",
+   "seed": 3
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 19,
+  "kinds": {
+   "PLAN": 10,
+   "NOPLAN": 9
+  },
+  "kinds_by_level": {
+   "5/NOPLAN": 9,
+   "5/PLAN": 10
+  },
+  "ret_propose_line": {
+   "1122": 1,
+   "1134": 3,
+   "1087": 6,
+   "1096": 9
+  },
+  "ret_last_line": {
+   "('propose', 1122)": 1,
+   "('propose', 1134)": 3,
+   "('propose', 1087)": 6,
+   "('propose', 1096)": 9
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "shadow",
+   "seed": 4
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 19,
+  "kinds": {
+   "PLAN": 10,
+   "NOPLAN": 9
+  },
+  "kinds_by_level": {
+   "5/NOPLAN": 9,
+   "5/PLAN": 10
+  },
+  "ret_propose_line": {
+   "1122": 1,
+   "1134": 3,
+   "1087": 6,
+   "1096": 9
+  },
+  "ret_last_line": {
+   "('propose', 1122)": 1,
+   "('propose', 1134)": 3,
+   "('propose', 1087)": 6,
+   "('propose', 1096)": 9
+  },
+  "shadow_n": 359,
+  "shadow_spoke": 90,
+  "shadow_first_spoke": 530,
+  "shadow_succ_bids": {
+   "railpeg": {
+    "0.0": 1,
+    "0.75": 20,
+    "0.9": 338
+   },
+   "graph": {
+    "0.45": 359
+   }
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "pegjump",
+   "mode": "hold",
+   "seed": 5
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 214,
+    "graph": 164
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 1,
+    "changed": 1,
+    "distinct": 1
+   },
+   "pegjump": {
+    "acted": 214,
+    "changed": 134,
+    "distinct": 134
+   },
+   "graph": {
+    "acted": 164,
+    "changed": 129,
+    "distinct": 41
+   }
+  },
+  "n_propose_calls": 213,
+  "kinds": {
+   "PLAN": 10,
+   "NOPLAN": 203
+  },
+  "kinds_by_level": {
+   "5/NOPLAN": 203,
+   "5/PLAN": 10
+  },
+  "ret_propose_line": {
+   "1122": 1,
+   "1134": 3,
+   "1087": 6,
+   "1096": 203
+  },
+  "ret_last_line": {
+   "('propose', 1122)": 1,
+   "('propose', 1134)": 3,
+   "('propose', 1087)": 6,
+   "('propose', 1096)": 203
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "railpeg": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "railpeg",
+   "mode": "census",
+   "seed": 6
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 370,
+  "kinds": {
+   "PLAN": 360,
+   "NOPLAN": 10
+  },
+  "kinds_by_level": {
+   "0/PLAN": 4,
+   "1/NOPLAN": 1,
+   "1/PLAN": 47,
+   "2/PLAN": 46,
+   "3/PLAN": 46,
+   "4/NOPLAN": 1,
+   "4/PLAN": 121,
+   "5/NOPLAN": 8,
+   "5/PLAN": 96
+  },
+  "ret_propose_line": {
+   "1535": 75,
+   "1508": 10,
+   "1500": 61,
+   "1548": 6,
+   "1551": 218
+  },
+  "ret_last_line": {
+   "('propose', 1535)": 75,
+   "('propose', 1508)": 10,
+   "('propose', 1500)": 61,
+   "('propose', 1548)": 6,
+   "('propose', 1551)": 218
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "pegjump": {},
+   "graph": {}
+  }
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "graph",
+   "mode": "census",
+   "seed": 7
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 225,
+  "kinds": {
+   "PLAN": 225
+  },
+  "kinds_by_level": {
+   "5/PLAN": 225
+  },
+  "ret_propose_line": {
+   "706": 163,
+   "718": 62
+  },
+  "ret_last_line": {
+   "('propose', 706)": 163,
+   "('propose', 718)": 62
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {}
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "world_model",
+   "mode": "census",
+   "seed": 8
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 444,
+    "changed": 444,
+    "distinct": 444
+   },
+   "HARNESS": {
+    "acted": 4,
+    "changed": 2,
+    "distinct": 3
+   },
+   "pegjump": {
+    "acted": 19,
+    "changed": 19,
+    "distinct": 19
+   },
+   "graph": {
+    "acted": 225,
+    "changed": 179,
+    "distinct": 172
+   },
+   "llm_goal": {
+    "acted": 7,
+    "changed": 1,
+    "distinct": 1
+   },
+   "deadsig": {
+    "acted": 7,
+    "changed": 0,
+    "distinct": 1
+   },
+   "world_model": {
+    "acted": 117,
+    "changed": 0,
+    "distinct": 1
+   }
+  },
+  "n_propose_calls": 117,
+  "kinds": {
+   "PLAN": 117
+  },
+  "kinds_by_level": {
+   "5/PLAN": 117
+  },
+  "ret_propose_line": {
+   "224": 117
+  },
+  "ret_last_line": {
+   "('propose', 224)": 117
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {}
+ },
+ {
+  "arm": {
+   "game": "lf52",
+   "tool": "railpeg",
+   "mode": "hold",
+   "seed": 9
+  },
+  "levels": 5,
+  "actions": 633,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 310
+   }
+  },
+  "novelty": {
+   "railpeg": {
+    "acted": 633,
+    "changed": 579,
+    "distinct": 579
+   }
+  },
+  "n_propose_calls": 558,
+  "kinds": {
+   "PLAN": 360,
+   "NOPLAN": 198
+  },
+  "kinds_by_level": {
+   "0/PLAN": 4,
+   "1/NOPLAN": 1,
+   "1/PLAN": 47,
+   "2/PLAN": 46,
+   "3/PLAN": 46,
+   "4/NOPLAN": 1,
+   "4/PLAN": 121,
+   "5/NOPLAN": 196,
+   "5/PLAN": 96
+  },
+  "ret_propose_line": {
+   "1535": 75,
+   "1508": 198,
+   "1500": 61,
+   "1548": 6,
+   "1551": 218
+  },
+  "ret_last_line": {
+   "('propose', 1535)": 75,
+   "('propose', 1508)": 198,
+   "('propose', 1500)": 61,
+   "('propose', 1548)": 6,
+   "('propose', 1551)": 218
+  },
+  "shadow_n": 0,
+  "shadow_spoke": 0,
+  "shadow_first_spoke": null,
+  "shadow_succ_bids": {
+   "pegjump": {},
+   "graph": {}
+  }
+ }
+]

@@ -433,7 +433,7 @@ Commit progress to the round page, and bring the MEASUREMENTS back too — `scri
 `scripts/memory_mirror.sh` — because the instance and the memory directory both vanish with the
 machine.
 
-## ⛔ INDEX — 48 rules, 47 of them written on 2026-08-29/30. Read the GROUP you are in.
+## ⛔ INDEX — 50 rules, 49 of them written on 2026-08-29/30. Read the GROUP you are in.
 
 This file is 1,876 lines and nobody reads it front to back; that is itself a measured failure mode.
 Find your situation below and read those three or four rules only.
@@ -464,6 +464,10 @@ strong tool goes empty, and why handing the board back is INERT), **7bn + 7bo** 
 lost to the CAMERA, no filter drops one, and widening perception changes the CLAIM not the MOVE),
 **7bc** (lf52 — read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an + **7bj** (bp35 — 7bj corrects 7bh's
 named field and prices the repair at zero), 7ao (s5i5), 7ak (dc22).
+⛔ **On lf52 specifically, read 7bw + 7bx BEFORE proposing anything**: `pegjump` is a THREE-LATCH
+livelock whose every latch is measured worth ZERO, and "the tool cannot see the rest of the board" is
+REFUTED — the scroll is armed on 376 of 378 decisions and `railpeg` already rides the whole board and
+still cannot win it.
 
 **Is the level even still winnable?** → **7bc**. An engine state fed to an offline solver answers it;
 a frame, a level number and a tool's own model all cannot. Winnability is monotone along a played

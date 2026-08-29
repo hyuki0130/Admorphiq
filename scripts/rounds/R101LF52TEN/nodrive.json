@@ -1,0 +1,2607 @@
+{
+ "branch_discriminated": [
+  {
+   "arm": {
+    "mode": "pure",
+    "seed": 1
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 19,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 4
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 2
+   },
+   "moves_popped": {},
+   "snaps_head": [],
+   "snaps_tail": [],
+   "snap_n": 0,
+   "drive_refusals": []
+  },
+  {
+   "arm": {
+    "mode": "patient",
+    "seed": 2
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 378,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 6,
+    "ensure:railhead:0.75": 6,
+    "ensure:kept:0.9": 166
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 4
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 15,
+    "-/0": 196,
+    "drive/0": 164
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snap_n": 172,
+   "drive_refusals": [
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 205,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 206,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 207,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 208,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 209,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 210,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 211,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 212,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 213,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 214,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 215,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 216,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    }
+   ]
+  },
+  {
+   "arm": {
+    "mode": "patient",
+    "seed": 3
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 378,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 6,
+    "ensure:railhead:0.75": 6,
+    "ensure:kept:0.9": 166
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 4
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 15,
+    "-/0": 196,
+    "drive/0": 164
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snap_n": 172,
+   "drive_refusals": [
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 205,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 206,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 207,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 208,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 209,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 210,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 211,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 212,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 213,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 214,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 215,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    },
+    {
+     "want": "(0, -1)",
+     "simple": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "dirmap": {
+      "(1, 0)": 2,
+      "(0, -1)": 3
+     },
+     "excluded": {
+      "(0, -1)": [
+       1
+      ]
+     },
+     "taken": [
+      1,
+      2,
+      3
+     ],
+     "plan_after": 1,
+     "pending": "None",
+     "settles": 216,
+     "misaligned": 0,
+     "doubt": 0,
+     "peaked": 2,
+     "board_read": true,
+     "sync_res": "placed=False"
+    }
+   ]
+  }
+ ],
+ "tier_census": [
+  {
+   "arm": {
+    "mode": "pure",
+    "seed": 1
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 19,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 4
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 2
+   },
+   "moves_popped": {},
+   "snaps_head": [],
+   "snaps_tail": [],
+   "snap_n": 0
+  },
+  {
+   "arm": {
+    "mode": "patient",
+    "seed": 2
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 378,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 6,
+    "ensure:railhead:0.75": 6,
+    "ensure:kept:0.9": 166
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 4
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 15,
+    "-/0": 196,
+    "drive/0": 164
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snap_n": 172
+  },
+  {
+   "arm": {
+    "mode": "patient",
+    "seed": 3
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 378,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 6,
+    "ensure:railhead:0.75": 6,
+    "ensure:kept:0.9": 166
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 4
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 15,
+    "-/0": 196,
+    "drive/0": 164
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snap_n": 172
+  },
+  {
+   "arm": {
+    "mode": "plain",
+    "seed": 4
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 19,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 4,
+    "ensure:railhead:0.75": 4,
+    "ensure:kept:0.9": 3,
+    "ensure:none:0.0": 9
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 2
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 8,
+    "-/0": 9
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    }
+   ],
+   "snap_n": 16
+  },
+  {
+   "arm": {
+    "mode": "plain",
+    "seed": 5
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 19,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 4,
+    "ensure:railhead:0.75": 4,
+    "ensure:kept:0.9": 3,
+    "ensure:none:0.0": 9
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 2
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 8,
+    "-/0": 9
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    },
+    {
+     "src": "none",
+     "score": 0.0,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 0
+    }
+   ],
+   "snap_n": 16
+  },
+  {
+   "arm": {
+    "mode": "patient",
+    "seed": 6
+   },
+   "per_level": [
+    8,
+    52,
+    60,
+    64,
+    139
+   ],
+   "total_actions": 823,
+   "game_score": 0.272727,
+   "control_ok": true,
+   "l6_pegjump_actions": 378,
+   "l6_pegjump_distinct_cams": 1,
+   "l6_all_distinct_cams": 12,
+   "tiers": {
+    "railhead:HIT": 6,
+    "ensure:railhead:0.75": 6,
+    "ensure:kept:0.9": 166
+   },
+   "tierlen": {
+    "railhead:2": 2,
+    "railhead:1": 4
+   },
+   "moves_popped": {
+    "jump/2": 1,
+    "drive/1": 1,
+    "-/1": 15,
+    "-/0": 196,
+    "drive/0": 164
+   },
+   "snaps_head": [
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 2
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 1,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 0,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 1,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "railhead",
+     "score": 0.75,
+     "barren": 3,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snaps_tail": [
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    },
+    {
+     "src": "kept",
+     "score": 0.9,
+     "barren": 2,
+     "known": 24,
+     "carriers": 2,
+     "pieces": 2,
+     "rails": 12,
+     "sockets": 12,
+     "dirmap": 2,
+     "plan": 1
+    }
+   ],
+   "snap_n": 172
+  }
+ ]
+}

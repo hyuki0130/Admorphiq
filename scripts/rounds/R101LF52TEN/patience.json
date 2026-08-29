@@ -1,0 +1,580 @@
+[
+ {
+  "arm": {
+   "lever": "pure",
+   "hold": false,
+   "seed": 1
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "calib_probes": 0,
+  "known_max": 0,
+  "final": {
+   "barren": 3,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge+patient",
+   "hold": false,
+   "seed": 10
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 25,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 111
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge+patient",
+   "hold": true,
+   "seed": 11
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 378
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "patient",
+   "hold": false,
+   "seed": 12
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 25,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 111
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge",
+   "hold": false,
+   "seed": 2
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 25,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 111
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 3,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge",
+   "hold": true,
+   "seed": 3
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 214,
+    "graph": 164
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 3,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "patient",
+   "hold": false,
+   "seed": 4
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 25,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 111
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "patient",
+   "hold": true,
+   "seed": 5
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 378
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge+patient",
+   "hold": true,
+   "seed": 6
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 378
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "pure",
+   "hold": false,
+   "seed": 7
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 4,
+    "pegjump": 19,
+    "graph": 225,
+    "llm_goal": 7,
+    "deadsig": 7,
+    "world_model": 117
+   }
+  },
+  "calib_probes": 0,
+  "known_max": 0,
+  "final": {
+   "barren": 3,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "nocharge",
+   "hold": true,
+   "seed": 8
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 214,
+    "graph": 164
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 3,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ },
+ {
+  "arm": {
+   "lever": "patient",
+   "hold": true,
+   "seed": 9
+  },
+  "levels": 5,
+  "actions": 823,
+  "level_counts": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "tenure_by_level": {
+   "0": {
+    "railpeg": 8
+   },
+   "1": {
+    "railpeg": 52
+   },
+   "2": {
+    "railpeg": 60
+   },
+   "3": {
+    "railpeg": 64
+   },
+   "4": {
+    "railpeg": 139
+   },
+   "5": {
+    "railpeg": 121,
+    "HARNESS": 1,
+    "pegjump": 378
+   }
+  },
+  "calib_probes": 2,
+  "known_max": 24,
+  "final": {
+   "barren": 2,
+   "known": 24,
+   "dirmap": "{(1, 0): 2, (0, -1): 3}",
+   "excluded": "{(0, -1): {1}}"
+  }
+ }
+]

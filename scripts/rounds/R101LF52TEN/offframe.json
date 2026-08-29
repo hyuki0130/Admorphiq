@@ -1,0 +1,1732 @@
+[
+ {
+  "arm": {
+   "mode": "pure",
+   "seed": 1
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 0,
+  "l6_actions": 0,
+  "l6_tenure": {},
+  "l6_cams": [],
+  "pos_scroll_by_drive_levels": [],
+  "pos_scroll_by_jump_levels": [],
+  "pos_multi_cam_levels": [],
+  "l6_per_tool": {}
+ },
+ {
+  "arm": {
+   "mode": "oracle",
+   "seed": 2
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 823,
+  "l6_actions": 500,
+  "l6_tenure": {
+   "railpeg": 121,
+   "HARNESS": 4,
+   "pegjump": 19,
+   "graph": 225,
+   "llm_goal": 7,
+   "deadsig": 7,
+   "world_model": 117
+  },
+  "l6_cams": [
+   [
+    -15,
+    5
+   ],
+   [
+    -21,
+    5
+   ],
+   [
+    -27,
+    5
+   ],
+   [
+    -33,
+    5
+   ],
+   [
+    -39,
+    5
+   ],
+   [
+    -45,
+    5
+   ],
+   [
+    -51,
+    5
+   ],
+   [
+    -57,
+    5
+   ],
+   [
+    -63,
+    5
+   ],
+   [
+    -69,
+    5
+   ],
+   [
+    -75,
+    5
+   ],
+   [
+    5,
+    5
+   ]
+  ],
+  "pos_scroll_by_drive_levels": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "pos_scroll_by_jump_levels": [
+   5
+  ],
+  "pos_multi_cam_levels": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "l6_per_tool": {
+   "HARNESS": {
+    "actions": 4,
+    "cams": 2,
+    "aboard_gt0": 3,
+    "boarding_gt0": 1,
+    "scroll_possible": 3,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2,
+     5
+    ],
+    "known": [
+     26,
+     33
+    ],
+    "cols": [
+     "(0, 9)",
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "deadsig": {
+    "actions": 7,
+    "cams": 1,
+    "aboard_gt0": 7,
+    "boarding_gt0": 0,
+    "scroll_possible": 7,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   },
+   "graph": {
+    "actions": 225,
+    "cams": 7,
+    "aboard_gt0": 225,
+    "boarding_gt0": 0,
+    "scroll_possible": 225,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     1
+    ]
+   },
+   "llm_goal": {
+    "actions": 7,
+    "cams": 1,
+    "aboard_gt0": 7,
+    "boarding_gt0": 0,
+    "scroll_possible": 7,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   },
+   "pegjump": {
+    "actions": 19,
+    "cams": 1,
+    "aboard_gt0": 17,
+    "boarding_gt0": 2,
+    "scroll_possible": 17,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "railpeg": {
+    "actions": 121,
+    "cams": 12,
+    "aboard_gt0": 84,
+    "boarding_gt0": 19,
+    "scroll_possible": 86,
+    "engine_pieces": [
+     6,
+     7,
+     8
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "world_model": {
+    "actions": 117,
+    "cams": 1,
+    "aboard_gt0": 117,
+    "boarding_gt0": 0,
+    "scroll_possible": 117,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   }
+  },
+  "l6_first": {
+   "cam": [
+    5,
+    5
+   ],
+   "pieces": 8,
+   "carts": 3,
+   "aboard": 0,
+   "legal": 2,
+   "boarding": 0,
+   "scroll_by_drive": false,
+   "scroll_by_jump": false,
+   "armed_square": [
+    7,
+    6
+   ],
+   "pcells": [
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     7,
+     6
+    ],
+    [
+     8,
+     6
+    ],
+    [
+     23,
+     4
+    ]
+   ],
+   "known": 33,
+   "cols": [
+    1,
+    7
+   ],
+   "mpieces": 5,
+   "who": "railpeg"
+  },
+  "l6_last": {
+   "cam": [
+    -45,
+    5
+   ],
+   "pieces": 6,
+   "carts": 3,
+   "aboard": 1,
+   "legal": 0,
+   "boarding": 0,
+   "scroll_by_drive": true,
+   "scroll_by_jump": false,
+   "armed_square": null,
+   "pcells": [
+    [
+     6,
+     6
+    ],
+    [
+     12,
+     6
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     11,
+     6
+    ],
+    [
+     12,
+     6
+    ],
+    [
+     25,
+     2
+    ]
+   ],
+   "known": 26,
+   "cols": [
+    0,
+    9
+   ],
+   "mpieces": 2,
+   "who": "world_model"
+  }
+ },
+ {
+  "arm": {
+   "mode": "oracle",
+   "seed": 3
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 823,
+  "l6_actions": 500,
+  "l6_tenure": {
+   "railpeg": 121,
+   "HARNESS": 4,
+   "pegjump": 19,
+   "graph": 225,
+   "llm_goal": 7,
+   "deadsig": 7,
+   "world_model": 117
+  },
+  "l6_cams": [
+   [
+    -15,
+    5
+   ],
+   [
+    -21,
+    5
+   ],
+   [
+    -27,
+    5
+   ],
+   [
+    -33,
+    5
+   ],
+   [
+    -39,
+    5
+   ],
+   [
+    -45,
+    5
+   ],
+   [
+    -51,
+    5
+   ],
+   [
+    -57,
+    5
+   ],
+   [
+    -63,
+    5
+   ],
+   [
+    -69,
+    5
+   ],
+   [
+    -75,
+    5
+   ],
+   [
+    5,
+    5
+   ]
+  ],
+  "pos_scroll_by_drive_levels": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "pos_scroll_by_jump_levels": [
+   5
+  ],
+  "pos_multi_cam_levels": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "l6_per_tool": {
+   "HARNESS": {
+    "actions": 4,
+    "cams": 2,
+    "aboard_gt0": 3,
+    "boarding_gt0": 1,
+    "scroll_possible": 3,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2,
+     5
+    ],
+    "known": [
+     26,
+     33
+    ],
+    "cols": [
+     "(0, 9)",
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "deadsig": {
+    "actions": 7,
+    "cams": 1,
+    "aboard_gt0": 7,
+    "boarding_gt0": 0,
+    "scroll_possible": 7,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   },
+   "graph": {
+    "actions": 225,
+    "cams": 7,
+    "aboard_gt0": 225,
+    "boarding_gt0": 0,
+    "scroll_possible": 225,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     1
+    ]
+   },
+   "llm_goal": {
+    "actions": 7,
+    "cams": 1,
+    "aboard_gt0": 7,
+    "boarding_gt0": 0,
+    "scroll_possible": 7,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   },
+   "pegjump": {
+    "actions": 19,
+    "cams": 1,
+    "aboard_gt0": 17,
+    "boarding_gt0": 2,
+    "scroll_possible": 17,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "railpeg": {
+    "actions": 121,
+    "cams": 12,
+    "aboard_gt0": 84,
+    "boarding_gt0": 19,
+    "scroll_possible": 86,
+    "engine_pieces": [
+     6,
+     7,
+     8
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "world_model": {
+    "actions": 117,
+    "cams": 1,
+    "aboard_gt0": 117,
+    "boarding_gt0": 0,
+    "scroll_possible": 117,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     0
+    ]
+   }
+  },
+  "l6_first": {
+   "cam": [
+    5,
+    5
+   ],
+   "pieces": 8,
+   "carts": 3,
+   "aboard": 0,
+   "legal": 2,
+   "boarding": 0,
+   "scroll_by_drive": false,
+   "scroll_by_jump": false,
+   "armed_square": [
+    7,
+    6
+   ],
+   "pcells": [
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     7,
+     6
+    ],
+    [
+     8,
+     6
+    ],
+    [
+     23,
+     4
+    ]
+   ],
+   "known": 33,
+   "cols": [
+    1,
+    7
+   ],
+   "mpieces": 5,
+   "who": "railpeg"
+  },
+  "l6_last": {
+   "cam": [
+    -45,
+    5
+   ],
+   "pieces": 6,
+   "carts": 3,
+   "aboard": 1,
+   "legal": 0,
+   "boarding": 0,
+   "scroll_by_drive": true,
+   "scroll_by_jump": false,
+   "armed_square": null,
+   "pcells": [
+    [
+     6,
+     6
+    ],
+    [
+     12,
+     6
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     11,
+     6
+    ],
+    [
+     12,
+     6
+    ],
+    [
+     25,
+     2
+    ]
+   ],
+   "known": 26,
+   "cols": [
+    0,
+    9
+   ],
+   "mpieces": 2,
+   "who": "world_model"
+  }
+ },
+ {
+  "arm": {
+   "mode": "patient",
+   "seed": 4
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 823,
+  "l6_actions": 500,
+  "l6_tenure": {
+   "railpeg": 121,
+   "HARNESS": 1,
+   "pegjump": 378
+  },
+  "l6_cams": [
+   [
+    -15,
+    5
+   ],
+   [
+    -21,
+    5
+   ],
+   [
+    -27,
+    5
+   ],
+   [
+    -33,
+    5
+   ],
+   [
+    -39,
+    5
+   ],
+   [
+    -45,
+    5
+   ],
+   [
+    -51,
+    5
+   ],
+   [
+    -57,
+    5
+   ],
+   [
+    -63,
+    5
+   ],
+   [
+    -69,
+    5
+   ],
+   [
+    -75,
+    5
+   ],
+   [
+    5,
+    5
+   ]
+  ],
+  "pos_scroll_by_drive_levels": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "pos_scroll_by_jump_levels": [
+   5
+  ],
+  "pos_multi_cam_levels": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "l6_per_tool": {
+   "HARNESS": {
+    "actions": 1,
+    "cams": 1,
+    "aboard_gt0": 0,
+    "boarding_gt0": 1,
+    "scroll_possible": 0,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     2,
+     2
+    ]
+   },
+   "pegjump": {
+    "actions": 378,
+    "cams": 1,
+    "aboard_gt0": 376,
+    "boarding_gt0": 2,
+    "scroll_possible": 376,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "railpeg": {
+    "actions": 121,
+    "cams": 12,
+    "aboard_gt0": 84,
+    "boarding_gt0": 19,
+    "scroll_possible": 86,
+    "engine_pieces": [
+     6,
+     7,
+     8
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   }
+  },
+  "l6_first": {
+   "cam": [
+    5,
+    5
+   ],
+   "pieces": 8,
+   "carts": 3,
+   "aboard": 0,
+   "legal": 2,
+   "boarding": 0,
+   "scroll_by_drive": false,
+   "scroll_by_jump": false,
+   "armed_square": [
+    7,
+    6
+   ],
+   "pcells": [
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     7,
+     6
+    ],
+    [
+     8,
+     6
+    ],
+    [
+     23,
+     4
+    ]
+   ],
+   "known": 33,
+   "cols": [
+    1,
+    7
+   ],
+   "mpieces": 5,
+   "who": "railpeg"
+  },
+  "l6_last": {
+   "cam": [
+    -57,
+    5
+   ],
+   "pieces": 6,
+   "carts": 3,
+   "aboard": 1,
+   "legal": 1,
+   "boarding": 0,
+   "scroll_by_drive": true,
+   "scroll_by_jump": false,
+   "armed_square": [
+    18,
+    2
+   ],
+   "pcells": [
+    [
+     6,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     9,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     25,
+     2
+    ]
+   ],
+   "known": 26,
+   "cols": [
+    0,
+    9
+   ],
+   "mpieces": 2,
+   "who": "pegjump"
+  }
+ },
+ {
+  "arm": {
+   "mode": "patient",
+   "seed": 5
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 823,
+  "l6_actions": 500,
+  "l6_tenure": {
+   "railpeg": 121,
+   "HARNESS": 1,
+   "pegjump": 378
+  },
+  "l6_cams": [
+   [
+    -15,
+    5
+   ],
+   [
+    -21,
+    5
+   ],
+   [
+    -27,
+    5
+   ],
+   [
+    -33,
+    5
+   ],
+   [
+    -39,
+    5
+   ],
+   [
+    -45,
+    5
+   ],
+   [
+    -51,
+    5
+   ],
+   [
+    -57,
+    5
+   ],
+   [
+    -63,
+    5
+   ],
+   [
+    -69,
+    5
+   ],
+   [
+    -75,
+    5
+   ],
+   [
+    5,
+    5
+   ]
+  ],
+  "pos_scroll_by_drive_levels": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "pos_scroll_by_jump_levels": [
+   5
+  ],
+  "pos_multi_cam_levels": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "l6_per_tool": {
+   "HARNESS": {
+    "actions": 1,
+    "cams": 1,
+    "aboard_gt0": 0,
+    "boarding_gt0": 1,
+    "scroll_possible": 0,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     2,
+     2
+    ]
+   },
+   "pegjump": {
+    "actions": 378,
+    "cams": 1,
+    "aboard_gt0": 376,
+    "boarding_gt0": 2,
+    "scroll_possible": 376,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "railpeg": {
+    "actions": 121,
+    "cams": 12,
+    "aboard_gt0": 84,
+    "boarding_gt0": 19,
+    "scroll_possible": 86,
+    "engine_pieces": [
+     6,
+     7,
+     8
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   }
+  },
+  "l6_first": {
+   "cam": [
+    5,
+    5
+   ],
+   "pieces": 8,
+   "carts": 3,
+   "aboard": 0,
+   "legal": 2,
+   "boarding": 0,
+   "scroll_by_drive": false,
+   "scroll_by_jump": false,
+   "armed_square": [
+    7,
+    6
+   ],
+   "pcells": [
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     7,
+     6
+    ],
+    [
+     8,
+     6
+    ],
+    [
+     23,
+     4
+    ]
+   ],
+   "known": 33,
+   "cols": [
+    1,
+    7
+   ],
+   "mpieces": 5,
+   "who": "railpeg"
+  },
+  "l6_last": {
+   "cam": [
+    -57,
+    5
+   ],
+   "pieces": 6,
+   "carts": 3,
+   "aboard": 1,
+   "legal": 1,
+   "boarding": 0,
+   "scroll_by_drive": true,
+   "scroll_by_jump": false,
+   "armed_square": [
+    18,
+    2
+   ],
+   "pcells": [
+    [
+     6,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     9,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     25,
+     2
+    ]
+   ],
+   "known": 26,
+   "cols": [
+    0,
+    9
+   ],
+   "mpieces": 2,
+   "who": "pegjump"
+  }
+ },
+ {
+  "arm": {
+   "mode": "pure",
+   "seed": 7
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 0,
+  "l6_actions": 0,
+  "l6_tenure": {},
+  "l6_cams": [],
+  "pos_scroll_by_drive_levels": [],
+  "pos_scroll_by_jump_levels": [],
+  "pos_multi_cam_levels": [],
+  "l6_per_tool": {}
+ },
+ {
+  "arm": {
+   "mode": "patient",
+   "seed": 8
+  },
+  "per_level": [
+   8,
+   52,
+   60,
+   64,
+   139
+  ],
+  "total_actions": 823,
+  "game_score": 0.272727,
+  "control_ok": true,
+  "rows": 823,
+  "l6_actions": 500,
+  "l6_tenure": {
+   "railpeg": 121,
+   "HARNESS": 1,
+   "pegjump": 378
+  },
+  "l6_cams": [
+   [
+    -15,
+    5
+   ],
+   [
+    -21,
+    5
+   ],
+   [
+    -27,
+    5
+   ],
+   [
+    -33,
+    5
+   ],
+   [
+    -39,
+    5
+   ],
+   [
+    -45,
+    5
+   ],
+   [
+    -51,
+    5
+   ],
+   [
+    -57,
+    5
+   ],
+   [
+    -63,
+    5
+   ],
+   [
+    -69,
+    5
+   ],
+   [
+    -75,
+    5
+   ],
+   [
+    5,
+    5
+   ]
+  ],
+  "pos_scroll_by_drive_levels": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "pos_scroll_by_jump_levels": [
+   5
+  ],
+  "pos_multi_cam_levels": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "l6_per_tool": {
+   "HARNESS": {
+    "actions": 1,
+    "cams": 1,
+    "aboard_gt0": 0,
+    "boarding_gt0": 1,
+    "scroll_possible": 0,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     2,
+     2
+    ]
+   },
+   "pegjump": {
+    "actions": 378,
+    "cams": 1,
+    "aboard_gt0": 376,
+    "boarding_gt0": 2,
+    "scroll_possible": 376,
+    "engine_pieces": [
+     6
+    ],
+    "model_pieces": [
+     2
+    ],
+    "known": [
+     26
+    ],
+    "cols": [
+     "(0, 9)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   },
+   "railpeg": {
+    "actions": 121,
+    "cams": 12,
+    "aboard_gt0": 84,
+    "boarding_gt0": 19,
+    "scroll_possible": 86,
+    "engine_pieces": [
+     6,
+     7,
+     8
+    ],
+    "model_pieces": [
+     5
+    ],
+    "known": [
+     33
+    ],
+    "cols": [
+     "(1, 7)"
+    ],
+    "legal_range": [
+     0,
+     2
+    ]
+   }
+  },
+  "l6_first": {
+   "cam": [
+    5,
+    5
+   ],
+   "pieces": 8,
+   "carts": 3,
+   "aboard": 0,
+   "legal": 2,
+   "boarding": 0,
+   "scroll_by_drive": false,
+   "scroll_by_jump": false,
+   "armed_square": [
+    7,
+    6
+   ],
+   "pcells": [
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     7,
+     6
+    ],
+    [
+     8,
+     6
+    ],
+    [
+     23,
+     4
+    ]
+   ],
+   "known": 33,
+   "cols": [
+    1,
+    7
+   ],
+   "mpieces": 5,
+   "who": "railpeg"
+  },
+  "l6_last": {
+   "cam": [
+    -57,
+    5
+   ],
+   "pieces": 6,
+   "carts": 3,
+   "aboard": 1,
+   "legal": 1,
+   "boarding": 0,
+   "scroll_by_drive": true,
+   "scroll_by_jump": false,
+   "armed_square": [
+    18,
+    2
+   ],
+   "pcells": [
+    [
+     6,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     15,
+     2
+    ],
+    [
+     20,
+     7
+    ],
+    [
+     22,
+     5
+    ],
+    [
+     26,
+     3
+    ]
+   ],
+   "cartcells": [
+    [
+     9,
+     6
+    ],
+    [
+     14,
+     4
+    ],
+    [
+     25,
+     2
+    ]
+   ],
+   "known": 26,
+   "cols": [
+    0,
+    9
+   ],
+   "mpieces": 2,
+   "who": "pegjump"
+  }
+ }
+]
