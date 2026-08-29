@@ -65,28 +65,29 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-⛔ **ALL SIX SHORT GAMES ARE NOW CLOSED WITH PROOFS.** lf52 was the last, and BOTH tasks I briefed
-for it are REFUTED by measurement (rule 7be):
+⛔ **EVERY SHORT GAME AND EVERY TOOL-SET AXIS IS NOW CLOSED WITH PROOFS.** The remaining 0.0918 is
+not reachable by tuning, routing, pairing, or repairing a tool — five independent measurements say
+so (below). ⚠️ **Do not open a new arm without first reading which hypothesis it repeats.**
 
-- "make the third capture the eighth candidate" — **IMPOSSIBLE**: that position offers FIVE legal
-  moves and exactly ONE capture, the losing one. Nothing to rank.
-- "stop clicking when nothing is legal" — **BACKWARDS**: attempt 1 ends NOT winnable and the restart
-  at action 267 hands back a board **still winnable at 499**. Suppressing the click KEEPS THE DEAD
-  BOARD. ⭐ The run ends on a WINNABLE board with **233 actions unspent**.
-- ⭐ **lf52 is never LOST; it is never FINISHED.** Its remaining 0.7273 is PERCEPTION, not ranking:
-  `pegjump` models 2 pieces against the engine's 6, 0 of 10 reads agreeing, and returns
-  **`solved=True` — a declared LEVEL WIN over a two-cell window.** ⛔ Porting railpeg's guard fires
-  12 times and refuses 0, because **a guard on capture ROUTES cannot see a plan claiming to be a
-  SOLUTION.** Every guard is right about the WRONG BOARD.
+1. **If an agent returns a change, GATE it**: `bash scripts/snapgate.sh <name> scripts/rounds/R101LP85GATE`.
+2. **Before proposing anything on a stuck game**, read that game's row below AND the rules it cites.
+   Nine hypotheses died on lf52 alone; seven of my own briefings were refuted by measurement.
+3. **The honest remaining work is a CAPABILITY, not a constant** — see the closing note.
 
-### THE NEXT AXIS, if the box is free
+### ⛔ WHAT NOT TO SPEND A DAY ON (each already measured, with the number)
 
-⭐ **The harness hands every stuck board to a tool that is WEAKER ALONE** (rule 7bd): bp35's `graph`
-holds 486 actions at solo depth **0** while `crag` reaches 5 and is retired after 229; s5i5's
-`linkage` holds 463 at solo depth **2** while `swivel` reaches 6 and holds 228. ⚠️ Not a routing
-defect — every one is an EMPTY retirement — so the question is **why the strong tool goes empty**.
-⚠️ And a successor weak alone can still be the one that finishes: ls20's `fogscout` has solo depth 0
-and the harness reaches level 7 with it, which no single tool does.
+- **bp35's `crag._rows` 10→9** — I called it a one-field perception defect. It is **downstream**:
+  `_rows` is 9 at the entry to ALL 230 stitches and only a SUCCESSFUL stitch raises it, so the
+  movement is produced BY the failure. The real cause is OVERLAP (8 of 8, best agreement 0.600) at a
+  **one-window map** — a cold start. The repair fires and leaves every per-level count identical, and
+  could never pay: levels 1-5 have **ZERO** losses and `crag` bids 0.00 on all 24 other games.
+- **Handing a board back to the strong tool** — `crag` recovers only because the SUCCESSOR drives it
+  into a readable window; the `hold` arm is measured INERT.
+- **Forcing a pair** — 219 of 230 pairs, **ONE action count per game**. And ls20's forced pair is
+  depth 6 / 922 actions against the harness's depth 7 / 645: **shallower AND slower.**
+- **A margin trigger on bids** — would hand three CAPPED games to the general searcher.
+- **Cross-level mechanic carry** — no tool in the 25 ever owns a level with another level after it
+  that it sat out. There is no game on which to measure the hypothesis.
 
 ⛔ **THE REGISTRY IS NOW MEASURED FROM FIVE INDEPENDENT DIRECTIONS AND NONE FINDS THE GAP THERE:**
 - **Forced PAIRS, 219 of 230**: each specialist plus every other tool, one at a time. Every game
