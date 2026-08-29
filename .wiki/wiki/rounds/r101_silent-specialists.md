@@ -530,3 +530,26 @@ is a much smaller claim than "87% is re-crossing".
 finally revealed, against the 302 actually walked. Until that is computed, "ls20 is a routing
 problem worth up to +0.0062" is a hypothesis with one supporting distribution, not a measured
 opportunity.
+
+## ⛔ The floor measurement FAILED, and its failure mode is the dangerous one
+
+The record asked for a floor: shortest path over the map as finally revealed, against the 302 walked.
+Built it, and it returned:
+
+```
+ls20 level 7: walked 302 steps; walkable cells 2238; pixel-BFS start(21,22) -> end(30,25) = 12
+```
+
+**That 12 is meaningless.** `start` was computed as the centroid of every non-background pixel in
+the level's first frame — the middle of the whole map, not the avatar — and `end` as the centroid of
+every pixel that changed during the level. Twelve is the distance between two centroids.
+
+⚠️ Published as-is it reads "the floor is 12 and the tool walked 302, so ls20 is 25x wasteful",
+which is a spectacular false finding built from a real number. It is the sixth instrument failure of
+this round and the same family as the other five: an instrument that returns a plausible number for
+a quantity it is not measuring.
+
+**The floor for ls20 is therefore still UNCOMPUTED**, and until it is, this round's own claim that
+ls20 is "a routing problem worth up to +0.0062" stands on one suggestive distribution and nothing
+else. Computing it needs the avatar's actual start cell and the actual exit cell, neither of which
+the centroid shortcut provides.
