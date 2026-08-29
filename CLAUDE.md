@@ -13,7 +13,7 @@
 >
 > ```
 > bash scripts/ceph_sweep.sh                  # tools x games, 60-way on ceph
-> bash scripts/pfan.sh PROBE.py 60 ARG        # ANY probe, 60-way — the default shape of a probe
+> bash scripts/pfan.sh NAME PROBE.py 30 ARG 24 # ANY probe, fanned — NAME is required (results collide without it)
 > bash scripts/rounds/gate_tool.sh NAME BASE vc33 TOOL   # gate one change on the full 25
 > bash scripts/kaggle_bench.sh status|results|push       # no --submit by design; the user decides
 > bash scripts/measure_frozen.sh              # PYTHONPATH does NOT select the code the runner runs
