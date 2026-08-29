@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 257.
+**Total pages**: 265.
 
 ## Games (26)
 
@@ -102,7 +102,7 @@ category, drill into specific pages.
 - [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (53)
+## Lessons (engineering wisdom from past incidents) (56)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -129,15 +129,18 @@ category, drill into specific pages.
 - [[lessons/hardcoded_is_anti.md]] — Any hardcoded mapping of `level → solution` is a bet that level layouts stay identical. They do not. Every hardcoded solver eventually breaks; the only question is how much score it takes with it when it does.
 - [[lessons/harness_owns_the_routing_20260827.md]] — Two routing defects cost more than every tool improvement of the day combined, and no tool author could have found either — one was found by a tool author measuring MY code.
 - [[lessons/inferential_budget_vs_algo_20260423.md]] — `scripts/probe_inferential_direct.py` ran the I-Agent against 10
+- [[lessons/instrument_cannot_see_its_own_positive_20260829.md]] — Six versions of one probe. **Five of them scored the board the probe was written from at ZERO** —
 - [[lessons/instrument_validity_20260825.md]] — Nine measurement failures in one session, none of them in the thing being measured.
 - [[lessons/ka59_v2_action6_semantic_20260423.md]] — The `ka59-9f096b4a` (v1) → `ka59-38d34dbb` (v2) hash rotation
 - [[lessons/lb_top_team_research_20260714.md]] — M1 top-3 all use offline LLM brains (Gemma-4-31B ×2, Qwen 3.6 27B); the untried lever for us is vision-LLM-as-policy; our model pick and brittle-purge direction are independently validated.
 - [[lessons/llm_path_anchor_bias_20260827.md]] — Three games the signature fallback conquers at 1.0000 scored 0.0000 through the LLM path, because the model named `graph` on all three.
 - [[lessons/merge_drag_stall_causes_game_over_20260713.md]] — Live-traced SU15 L3 (post L1+L2 clear) on `merge_drag.py` /
 - [[lessons/moving_target_measurement_20260827.md]] — Six bisect runs chased a regression that did not exist, because the number they were measured against came from a tarball taken while that game's own tool was mid-edit.
+- [[lessons/predicate_over_a_camera_20260829.md]] — `railpeg` reached its own win condition on lf52 level 6 — one piece of each colour — and the
 - [[lessons/prefix_aware_navigation_20260423.md]] — `_plan_navigation` must resume BFS from the current level start using the cumulative prefix and chain `solve_all_levels` internally; R20 accidentally dropped multi-level chaining (AR25/M0R0 regressed 2→1), and R22 restored it with prefix awareness so one plan call clears multiple levels in sequence.
 - [[lessons/probe_validity_20260715.md]] — Three separate R56 adapters were misled by probes that LOOKED conclusive
 - [[lessons/prompt_notation_misparse_20260723.md]] — gemma4-31b deterministically misread the histogram notation
+- [[lessons/refusal_and_lag_are_the_same_picture_20260829.md]] — `railpeg` drove a cart 249 times on lf52's level 6 and the map it had of the board did not grow
 - [[lessons/scale_relative_thresholds_20260719.md]] — An absolute pixel constant (`size >= 3`, `size <= 6`, `span <= 6`, a coordinate) is a
 - [[lessons/schema_enforcement_round1_20260421.md]] — Measurement log for the R7 round-1 bench. The operational rules it
 - [[lessons/seed_reorder_regression_20260625.md]] — Reordering `derive_seed_pages` to place env-specific seeds (game_type /
@@ -178,8 +181,9 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (116)
+## Top-level dispatch (architecture, selector, log, schema) (121)
 
+- [[campaign/ACTIVE.md]] — The plan that survives a context compaction. Read this before choosing a direction.
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
 - [[rounds/r05_planning-override.md]] — Goal-directed planning that overrode novelty exploration regressed 4 stable games (AR25/FT09/LP85/M0R0) — first proof that overriding novelty breaks the learner.
 - [[rounds/r06_depth-boost.md]] — Depth-boost / keep-learning-after-levelup regressed LP85's depth — perturbing exploration regresses.
@@ -267,8 +271,12 @@ category, drill into specific pages.
 - [[memory/project_unified_harness_r53.md]] — R53 unified self-improving harness — 6 from-scratch generic tools + retry loop; graph clears 3/9 legacy games; continuation = per-tool strengthening
 - [[memory/project_wiki_agent_first_run.md]] — 40-env Qwen 3 8B WikiAgent bench — 15/40 envs, 36/290 levels (12.41%), classification accuracy 45%
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
+- [[rounds/r101_allowance-ledger.md]] — (no description)
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
+- [[rounds/r101_probe-fallback.md]] — A fallback that always pressed the lowest-numbered key spent 83 of lf52's 117 refused ACTION1
+- [[rounds/r101_silent-specialists.md]] — Every stuck game retires its specialist because the tool proposes NOTHING, and five separate
 - [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear. The
+- [[rounds/r101_wa30-level-restart.md]] — (no description)
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
 - [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal

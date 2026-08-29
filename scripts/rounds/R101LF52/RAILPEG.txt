@@ -99,3 +99,55 @@ RESULT OF THE FRONTIER WORK — A NEGATIVE, RECORDED (lf52r2.jsonl, 3 seeds, det
 NO REGRESSION ON THE LEVELS THAT CLEAR, and this is the check that says so: level 6 begins at
 action 323 in EVERY arm — the untouched baseline, _settle_drive alone, and both frontier variants.
 Levels 1 to 5 cost exactly the same in all four.
+
+================================================================================
+SECOND PASS, after the gate kept 0443f0e0 (baseline 0.8986). THE NEXT QUESTION I
+HANDED OVER WAS WRONG, AND THE CENSUS SAID SO IN ONE RUN.
+
+I wrote, and the coordinator agreed it was the right place to go: "after the local captures the
+visible region holds one green and one red; a lone piece cannot move without something to jump
+over, so nothing is legal and the missing objective is bring a CART to the piece."
+
+⛔ EVERY CLAUSE OF THAT IS FALSE. Census taken inside _ensure_plan at each of the eight barren
+moments on level 6 (lf52ferry.jsonl), identical at all eight:
+
+    pieces 5, ALL ONE COLOUR   carts 3   aboard 0   legal_moves 6   jumps 3
+    ferry_gap 0  (a piece could already board a cart)   known 98   rails 39   window 90
+
+Not one green and one red — five of one colour. Not nothing legal — six legal moves, three of them
+jumps. Not a cart out of reach — a cart already boardable. The counter split the coordinator asked
+for is what made this visible: it separated "no carts" from "carts but nobody aboard", and the
+answer was the second, which is a planning gap and not a perception failure.
+
+WHAT IS ACTUALLY STOPPING IT: plan:all-candidates-fatal, 11-18 times per level. The tool declines
+EVERY capture on offer because `refuse_fatal` finds no follow-up reachable — on a map holding 98
+cells of a 28-column board. plan_level's own docstring names this exact condition ("the map is
+partial, so 'nothing further is reachable' is often just 'the rest of the board has not been seen
+yet'") and says the refusal is to be a preference, never a requirement. Under `_elsewhere` it is a
+requirement, and behind it there is nothing, so the tool bids ZERO and hands the level to graph.
+
+TWO CANDIDATE REPAIRS BUILT, MEASURED AND BOTH REVERTED (rule 7b — keep nothing that does not
+move the score):
+
+  ferry_moves — shunt an empty cart to where a piece could jump onto it, the objective I had
+  predicted was missing. It NEVER RETURNED A MOVE: ferry:already-boardable 8 of 8 on the first
+  board, then ferry:no-cart-or-nowhere-to-park 9 on the second. The objective was already
+  satisfied at every moment it was asked. Reverted.
+
+  last-resort capture — let `refuse_fatal` yield once every other tier is also empty, since a
+  capture that might be a dead end beats bidding zero. It fired ONCE, took the capture, and the
+  position it produced had jumps 0: FOUR pieces of one colour, none adjacent to anything solid,
+  only drives legal, and plan:no-capture-reachable 18 thereafter. `refuse_fatal` was RIGHT on this
+  board and the veto walked into precisely the dead end it exists to avoid. 5 levels either way.
+  Reverted.
+
+KEPT FROM THIS PASS: the counter split only (railhead:no-carts vs railhead:nobody-aboard), which
+is a measurement-quality change with no behaviour in it — and which paid for itself immediately by
+refuting the diagnosis above.
+
+WHERE THE NEXT PASS SHOULD LOOK, stated as a question rather than an answer this time. At the
+barren moment travel reports no-gain while a cart is boardable, which means no rail component has
+an OPEN END: the model believes it has seen all of its track, inside a 90-cell window on a
+28-column board. Either the track genuinely terminates in view and the far side is reached by some
+other mechanic, or the open-end test is wrong. ⛔ Measure which before building anything — I have
+now been wrong once on this exact board by reasoning instead of censusing.

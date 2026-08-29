@@ -79,7 +79,8 @@ import numpy as np
 
 from admorphiq.tools.base import Step, availability, frame_2d, has_frame
 
-__all__ = ["RailPegTool", "Board", "read_board", "plan_level", "travel_moves"]
+__all__ = ["RailPegTool", "Board", "read_board", "plan_level", "travel_moves",
+           "railhead_moves"]
 
 Cell = tuple[int, int]           # (row, col) on the lattice
 Delta = tuple[int, int]
@@ -817,7 +818,12 @@ def railhead_moves(m: Model, why: Counter | None = None,
     laden = {c for c in m.carts if c in m.pieces}
     if not laden:
         if why is not None:
-            why["railhead:nobody-aboard"] += 1
+            # ⛔ TWO CAUSES, TWO COUNTERS. "No cart is in the model" and "there are carts and nobody
+            # is on one" want opposite repairs — the first is a perception or conservation failure,
+            # the second is a planning gap — and a counter that merges them is how a fix gets aimed
+            # at the wrong one. Measured merged first, at 8 of 8 barren moments, and it could not
+            # say which.
+            why["railhead:no-carts" if not m.carts else "railhead:nobody-aboard"] += 1
         return []
     rails = m.rails | m.carts
     for cell in sorted(laden):

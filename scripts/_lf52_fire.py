@@ -45,7 +45,12 @@ def main() -> None:
 
     from admorphiq.harness.loop import UnifiedAgent
     from admorphiq.harness.registry import default_tools
-    from admorphiq.tools.railpeg import RailPegTool
+    from admorphiq.tools.railpeg import (
+        DIRS,
+        RailPegTool,
+        _ground,
+        _successors,
+    )
 
     def _no_llm(*_a, **_k):
         raise RuntimeError("LLM-free")
@@ -61,10 +66,35 @@ def main() -> None:
         print(json.dumps({"seed": seed, "error": "railpeg not registered"}), flush=True)
         return
 
+    # ⛔ CENSUS THE BARREN MOMENT ITSELF. A counter says how often every tier came back empty; it
+    # cannot say what the board looked like when they did, and that is the whole question — a
+    # region with no legal jump left and a region whose cart is out of reach want different work.
+    barren: list[dict] = []
+    raw_plan = RailPegTool._ensure_plan
+
+    def wrapped_plan(self, m):
+        score = raw_plan(self, m)
+        if score == 0.0 and at6[0] is not None and len(barren) < 12:
+            pieces = dict(m.pieces)
+            solid = set(pieces) | set(m.obstacles) | set(m.cargo)
+            legal = sum(1 for _ns, _mv, _c in _successors(
+                m.state(), _ground(m), self._noncapture))
+            barren.append({
+                "pieces": len(pieces), "colours": sorted(Counter(pieces.values()).values()),
+                "carts": len(m.carts), "cargo": len(m.cargo), "aboard":
+                    len(set(m.carts) & set(pieces)),
+                "legal_moves": legal,
+                "jumps": sum(1 for p in pieces for d in DIRS
+                             if (p[0] + d[0], p[1] + d[1]) in solid),
+                "known": len(m.known()), "rails": len(m.rails), "window": len(m.window),
+            })
+        return score
+
+    RailPegTool._ensure_plan = wrapped_plan
     agent = UnifiedAgent(tools, _no_llm, giveup=8000, stall=80, ctx_budget=6000)
     snap_why: Counter[str] = Counter()
     snap_tiers: Counter[str] = Counter()
-    at6: int | None = None
+    at6: list = [None]
     acted6 = 0
     active: Counter[str] = Counter()
     known: list[int] = []
@@ -72,8 +102,8 @@ def main() -> None:
     lvl = start_level
     for i in range(MAX_ACTIONS):
         lvl = int(getattr(obs, "levels_completed", 0) or 0)
-        if lvl >= START and at6 is None:
-            at6 = i
+        if lvl >= START and at6[0] is None:
+            at6[0] = i
             snap_why = Counter(peg._why)
             snap_tiers = Counter(peg._tiers)
         if lvl > START:
@@ -83,7 +113,7 @@ def main() -> None:
         # ⛔ The runner passes an EMPTY frame list (score_efficiency.py:381), so a probe that hands
         # over a history is measuring a different agent from the one the gate scores.
         act = agent.choose_action([], obs)
-        if at6 is not None:
+        if at6[0] is not None:
             acted6 += 1
             active[str(getattr(agent, "_current", "?"))] += 1
             m = getattr(peg, "_model", None)
@@ -104,7 +134,7 @@ def main() -> None:
     print(json.dumps({
         "seed": seed,
         "start_level": start_level,
-        "at6": at6,
+        "at6": at6[0],
         "acted6": acted6,
         "final_level": final,
         "cleared6": final > START,
@@ -112,6 +142,7 @@ def main() -> None:
         "tiers6": {k: v for k, v in sorted(tiers6.items()) if v},
         "tools6": dict(active.most_common()),
         "known_trace": known[:40],
+        "barren": barren,
         "elsewhere": bool(getattr(peg, "_elsewhere", False)),
         "noncapture": sorted(getattr(peg, "_noncapture", set())),
     }), flush=True)
