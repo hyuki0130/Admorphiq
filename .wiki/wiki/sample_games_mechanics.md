@@ -903,3 +903,30 @@ the mover?** The game rebuilds each level from a clean copy in `on_set_level`
 (`self.current_level._sprites = copy.deepcopy(self._clean_levels[self.level_index]._sprites)`), which
 argues for designed — and if so, the escape is one specific action that 54,000 blind actions, 1024
 clicks and 47 tools have all missed.
+
+### ⛔ dc22 LEVEL 6 IS WINNABLE — and the "pocket" was an instrument that died on an empty frame
+
+Sweeping every click from each of the pocket's three mover positions:
+
+```
+LEVEL CLEARED from position 0 by a click at (26,8)
+```
+
+**The level opens.** And the reason it looked sealed is instructive: the previous sweep crashed with
+`IndexError: list index out of range` on `o.frame[-1]` — the engine returns an EMPTY frame on some
+transitions, and that empty frame is exactly what a level-clearing action produces. The probe died at
+the moment of its own success, 300 actions in, and reported a pocket with no exit.
+
+⚠️ **But one click at (8,26) alone does NOT clear it** — verified separately: reach level 6, click
+that cell once, `levels_completed 5`. The sweep clicks sequentially and had made hundreds of clicks
+before reaching that cell, so the win belongs to the accumulated sequence, not to the cell.
+
+So two things are now known that were not:
+
+1. **dc22's level 6 is winnable from where the tool arrives.** The "three-board pocket" was real for
+   MOVEMENT and false overall — clicks do leave it, and one path out ends the level.
+2. **What opens it is a sequence, not a single action**, which is why 54,000 blind actions missed it:
+   the search was random, and this needs a particular order.
+
+The remaining work is to bisect the winning sequence — the sweep's click order is deterministic, so
+the prefix that matters can be found by replaying halves.
