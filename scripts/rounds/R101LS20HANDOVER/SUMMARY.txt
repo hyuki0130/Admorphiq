@@ -11,7 +11,7 @@ THE TEN ACTIONS, from scripts/_ls20_handover.py (baseline_census_head.json):
   tick 11    fogscout takes the board, tank 22 of 42
   detect: keymaze 0.00 all level; fogscout 0.00 on the level-up frame, 0.80 from tick 2 on.
 
-SWEEP, both sides of the empty-proposal constants (evidence_side.jsonl / tolerance_side.jsonl):
+SWEEP, both sides of the empty-proposal constants (evidence_side.json.txt / tolerance_side.json.txt):
   handover on action  4  5  6 | 7  | 8 | 9 10 11 | 12 13 14 | 15 | 16 | 17 | 18 19
   level 7             LOST    |327 |LOST| 231    | LOST     |231 |LOST|231 | LOST
   231 is INVARIANT for handovers from 9 to 17 actions; nothing beats it on either side; six of

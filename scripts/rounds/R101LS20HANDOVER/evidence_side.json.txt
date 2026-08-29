@@ -1,0 +1,8 @@
+{"evidence": 1, "levels": 6, "total": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75, "deaths": 2, "handover_tick": 4, "fuel_at_handover": 34, "elapsed_s": 31.2, "stop": "agent.is_done"}
+{"evidence": 2, "levels": 6, "total": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75, "deaths": 2, "handover_tick": 5, "fuel_at_handover": 32, "elapsed_s": 31.4, "stop": "agent.is_done"}
+{"evidence": 3, "levels": 6, "total": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75, "deaths": 2, "handover_tick": 6, "fuel_at_handover": 30, "elapsed_s": 31.3, "stop": "agent.is_done"}
+{"evidence": 4, "levels": 7, "total": 741, "per_level": [17, 101, 63, 66, 67, 100, 327], "game_score": 0.830885, "deaths": 1, "handover_tick": 7, "fuel_at_handover": 28, "elapsed_s": 26.0, "stop": "WIN"}
+{"evidence": 5, "levels": 6, "total": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75, "deaths": 2, "handover_tick": 8, "fuel_at_handover": 26, "elapsed_s": 29.2, "stop": "agent.is_done"}
+{"evidence": 6, "levels": 7, "total": 645, "per_level": [17, 101, 63, 66, 67, 100, 231], "game_score": 0.912085, "deaths": 1, "handover_tick": 9, "fuel_at_handover": 24, "elapsed_s": 20.1, "stop": "WIN"}
+{"evidence": 7, "levels": 7, "total": 645, "per_level": [17, 101, 63, 66, 67, 100, 231], "game_score": 0.912085, "deaths": 1, "handover_tick": 10, "fuel_at_handover": 22, "elapsed_s": 20.1, "stop": "WIN"}
+{"evidence": 8, "levels": 7, "total": 645, "per_level": [17, 101, 63, 66, 67, 100, 231], "game_score": 0.912085, "deaths": 1, "handover_tick": 11, "fuel_at_handover": 20, "elapsed_s": 23.4, "stop": "WIN"}
