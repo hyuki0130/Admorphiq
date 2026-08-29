@@ -39,6 +39,8 @@ def main() -> None:
     lvl = 0
     counts: dict[int, int] = {}
     banked: dict[int, tuple[int, int]] = {}
+    visits: dict = {}
+    prev_g = None
     for _ in range(4000):
         if agent.is_done(frames, obs):
             break
@@ -73,12 +75,26 @@ def main() -> None:
         if fresh:
             revealed += 1
             known |= cells
+        # ⛔ Re-crossing is only WASTE if the same places keep coming round. The avatar is the one
+        # small thing that moves every step, so track the diff between consecutive frames: how many
+        # DISTINCT positions the level visits, and how often each is revisited. A route that walks a
+        # long corridor once is efficient; one that oscillates over ten cells is not.
+        d = np.argwhere(g != prev_g) if prev_g is not None else np.empty((0, 2), int)
+        prev_g = g
+        if len(d):
+            spot = (int(d[:, 0].mean()) // 4, int(d[:, 1].mean()) // 4)
+            visits[spot] = visits.get(spot, 0) + 1
+
     if steps:
         banked[lvl] = (steps, revealed)
     print("steps per levels_completed value:", counts)
     for k, (st, rv) in sorted(banked.items()):
         print(f"  level {k + 1}: {st} steps, {rv} uncovered new, {st - rv} re-crossed"
               f" ({round(100 * (st - rv) / st)}%)")
+    if visits:
+        top = sorted(visits.values(), reverse=True)
+        print(f"  distinct places touched {len(visits)}; most-revisited {top[:8]};"
+              f" mean visits per place {sum(top) / len(top):.1f}")
     print(f"ls20 target level: {steps} steps, {revealed} uncovered something new, "
           f"{steps - revealed} re-crossed known ground "
           f"({0 if not steps else round(100 * (steps - revealed) / steps)}%)")

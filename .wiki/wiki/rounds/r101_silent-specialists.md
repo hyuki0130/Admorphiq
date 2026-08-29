@@ -506,3 +506,27 @@ anything in the depth half of this round.
 ⛔ The first version of this probe printed `0 steps` — it wiped its own counters on the final
 level-up, before printing. A counter reset by the event you are measuring reads exactly like "the
 level was never played". Fifth instrument failure of the round, same family as the other four.
+
+## ⚠️ And the follow-up measure is partly CIRCULAR — what it does and does not say
+
+Asking whether the 264 re-crossing steps are necessary traversal or thrashing, by tracking where the
+avatar goes (the changed-pixel centroid, bucketed 4x4):
+
+```
+distinct places touched 58; most-revisited [19, 15, 13, 12, 12, 12, 11, 11]; mean 5.2 visits/place
+```
+
+**Read carefully, most of this is circular.** 302 steps over 58 places is 5.2 visits each; a human's
+186 steps over the same ground would be 3.2. The ratio 5.2/3.2 is 1.6 — which is just the 1.55x
+action ratio restated. A measure derived from the step count cannot independently explain the step
+count.
+
+What is NOT circular: the DISTRIBUTION. A single place is entered nineteen times and seven more
+between eleven and fifteen. A traversal that walks a corridor to reach a frontier does not return to
+one spot nineteen times. That tail is the only part of this that points at recoverable waste, and it
+is a much smaller claim than "87% is re-crossing".
+
+⛔ Sizing the routing gap properly needs a FLOOR, not a proxy: the shortest path over the map as
+finally revealed, against the 302 actually walked. Until that is computed, "ls20 is a routing
+problem worth up to +0.0062" is a hypothesis with one supporting distribution, not a measured
+opportunity.
