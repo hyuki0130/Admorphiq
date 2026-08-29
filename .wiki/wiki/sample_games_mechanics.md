@@ -864,3 +864,25 @@ nothing, and the escape — if there is one — has to be a CLICK. That is a muc
 ⚠️ It also explains the shape of `gantry`'s failure honestly: its route BFS returns no path because
 from this pocket there IS no path by movement. The tool is right; it simply has no vocabulary for
 getting out.
+
+**And clicking does not escape it either.** Sweeping all 1024 cells of the board from the arrival
+position, counting distinct boards reached:
+
+```
+swept 384/1024, distinct boards 6
+swept 512/1024, distinct boards 7
+swept 640/1024, distinct boards 7
+swept 896/1024, distinct boards 7      converged
+```
+
+Three boards by movement, **seven in total including every click on the board**. dc22's level 6, from
+where the tool arrives, is a pocket that no single action leaves.
+
+⛔ **That relocates the problem entirely.** The question is no longer "what does level 6 need" — it is
+**how the tool ARRIVES here**, because this position is already lost. Level 6 is entered after level 5
+is cleared, so the entry state is whatever the engine builds plus wherever the mover is placed; and
+sixty blind searches, 47 solo tools and every pairing all inherit the same pocket.
+
+The next measurement is therefore about level 6's ENTRY, not its interior: whether the pocket is the
+level's designed start (in which case the escape is a specific action nobody has found) or an
+artefact of how the tool finishes level 5.
