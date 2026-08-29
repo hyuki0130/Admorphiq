@@ -5,8 +5,8 @@
 > This file is 2,300 lines. A fresh session does not read it, which is a measured cause of work
 > being redone. Everything you need to ACT is here or in the campaign file.
 >
-> **State**: generic tools, full 25 on ceph-build = **0.8989**, EIGHTEEN games at the 1.0 cap,
-> cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101LS20/games`.
+> **State**: generic tools, full 25 on ceph-build = **0.9069**, NINETEEN games at the 1.0 cap,
+> cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101WA30/games`.
 > Seven games short: lf52 0.2727 · bp35 0.2220 · s5i5 0.5833 · dc22 0.7143 · wa30 0.8000 ·
 > ls20 0.9040 · lp85 0.9677.
 >
@@ -14,7 +14,7 @@
 > integrate what they return, gate it, and keep the box busy. See the campaign file for the table.
 >
 > ```
-> bash scripts/snapgate.sh NAME scripts/rounds/R101LS20 8 4000   # GATE a change on the full 25
+> bash scripts/snapgate.sh NAME scripts/rounds/R101WA30 8 4000   # GATE a change on the full 25
 > bash scripts/ptest.sh --dirty tests/test_x.py                  # tests run on the BOX, not here
 > bash scripts/pfan.sh NAME PROBE.py 30 ARG 6  # ANY probe, fanned — NAME required (else collision)
 > bash scripts/ceph_sweep.sh                   # tools x games, on ceph

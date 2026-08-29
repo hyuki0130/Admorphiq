@@ -4,8 +4,8 @@
 
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
-**MEAN = 0.8989**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101LS20/games` — use it as the gate's BASE.
+**MEAN = 0.9069**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101WA30/games` — use it as the gate's BASE.
 
 Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
 lp85 0.9099 -> 0.9677. First movement in a day.
@@ -15,9 +15,8 @@ The seven still short, largest gap first:
 ```
 lf52  0.2727   gap 0.7273   level 6 CLEARED LIVE by an oracle in 91 of 640 actions
 bp35  0.2220   gap 0.7780   level 6 optimum 41 actions vs 87 human — CLOSED, see below
-s5i5  0.5833   gap 0.4167   level 7, allowance 200, every seed COLLAPSES
+s5i5  0.5833   gap 0.4167   level 7 solvable in 24-28 clicks; _MAX_OPEN is cut off just short   level 7, allowance 200, every seed COLLAPSES
 dc22  0.7143   gap 0.2857   levels 1-5 all at 1.0; oracle clears 6/6 at 1.0000, 3/3
-wa30  0.8000   gap 0.2000
 ls20  0.9121   gap 0.0879   all 8 fallback presses are inert; it is a FUEL game
 lp85  0.9677   gap 0.0323
 ```
@@ -55,7 +54,7 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101LS20 8 4000
+bash scripts/snapgate.sh <name> scripts/rounds/R101WA30 8 4000
 ```
 ⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
 agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
@@ -63,6 +62,10 @@ agent's work-in-progress and the tree moves under it. Both of its documented tra
 ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
 ## CLOSED BY MEASUREMENT — do not reopen without new evidence
+- **the level-transition handover tax**: 149 transitions over 25 games, 54 inert actions in the
+  6-action window, **0.36 per transition**, seventeen games at exactly ZERO. Even the upper bound —
+  every one of those actions pure waste and perfectly recoverable — is ~2 actions per game against
+  per-level counts of 30-400. And the re86 claim that started the axis measures 0.00.
 - **the give-up budget**: `HARNESS_NOPROGRESS` 500 -> 3500 gives all five dying games ~7x the
   actions on their wall level and clears NOTHING (bp35 740->3787a, dc22 925->3928a, lf52 823->3828a,
   s5i5 694->3709a, wa30 1091->4000a, every score identical). ⛔ In RHAE an UNCLEARED level scores
