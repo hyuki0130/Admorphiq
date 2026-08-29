@@ -973,8 +973,15 @@ lf52's `travel:no-gain` was blamed on a missing open end. Censused inside `_ensu
 planning turns: **93 of 93 turns have at least one open end**, and `_offscreen` fires correctly at
 every one. Neither branch of the question was right.
 
-The defect was the frontier term itself. Because EVERY rail component has an open end, `_rail_reach`
-hands every component the same `horizon` — measured without exception, `reach_top == field_top + 1`.
+The defect was the frontier term itself. Because nearly every rail component has an open end,
+`_rail_reach` hands them the same `horizon`.
+
+⚠️ CORRECTED BY ITS OWN AUTHOR, and the correction matters: "`reach_top == field_top + 1` without
+exception" is a property of the MAXIMUM over all cells. Per COMPONENT — which is what actually ranks
+— the term is flat in **34%** of multi-component turns, not 100%. The defect is real; its
+universality was overstated. And the reason it looked universal is worth keeping: **open ends
+INTERIOR 606, OUTWARD 21** — 96.7% of them point INTO the rectangle already mapped, so they are holes
+rather than ways off it, and every component qualified.
 ⛔ **A bonus applied to everything is not a bonus; it is a constant offset that discriminates
 nothing**, so it cannot separate the cart whose track goes somewhere from the cart whose track goes
 nowhere. And it SATURATES: once any piece is aboard any cart, `base` already holds the maximum,
@@ -983,6 +990,15 @@ nothing can beat it, and travel reports no-gain forever.
 ⚠️ Check a ranking term's SPREAD before believing it ranks. A term whose value is identical across
 every candidate is inert no matter how well-motivated, and it looks exactly like a working term in
 the source.
+
+⛔ **AND SPREAD IS NECESSARY, NOT SUFFICIENT** — this rule was turned back on its own author within
+the hour. An outward-gated replacement took the term's spread from 34% flat to 100% distinct, which
+looked like proof the decision would change. It did not: every counter came back IDENTICAL — vetoes
+18 = 18, reach-top 11 = 11, known 61→98 both ways, `travel:boards` 3 = 3, the veto acting on the same
+actions. `travel_moves` ranks STATES, not components, and the component term only reaches a state
+through pieces standing on cart cells. **The measurement to make is how often the decision has two
+candidates whose ORDER the term changes** — not whether the term varies. Reverted under rule 7b.
+`scripts/_lf52_spread.py` is committed and is generic to any ranking term in any tool.
 
 ### 7w — staging and leaving it staged is as unsafe as `git add -A` (2026-08-29)
 
