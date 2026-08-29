@@ -211,7 +211,7 @@ reads as a confirmed mechanic.
 | six-cell launcher | colour centroid moved exactly 6.00 | the grid is **6 pixels per cell** (line 5566), so 6.00 px is ONE cell |
 | camera pan | the source applies the shift to a scene object | the background's 2402 cells DO NOT MOVE while one 32-pixel sprite does; a pan moves everything |
 | c3/c4 = a budget gauge | they traded 1 pixel per action, summing to a constant | colour 3 is `DARK_GRAY` = `lgbyiaitpdiDING_COLOR`, the SELECTION colour, and it is absent entirely in other states |
-| pads jump pads | the capture compares two same-named `fozwvlovdui` | level 6's three pads sit at cells (4,3), (8,2), (9,4) — no two are two cells apart with a third between |
+| pads do NOT jump pads on level 6 | the capture compares two same-named `fozwvlovdui`, and the three GREEN pads on screen are not adjacent | ⛔ THIS ONE WAS ITSELF WRONG AND SURVIVED A WHOLE ROUND. There is a FOURTH pad on screen and it is RED; it sits beside the green at grid (2,3), and `ndtvadsrqf` counts by prefix so it counts toward the win. Reading one colour cannot see a two-colour board — see the level-6 section below |
 
 ⚠️ Reporting only the MAXIMUM colour shift cannot separate a launcher from a pan from a bounce. The
 per-colour breakdown WITH cell counts separates all three in one run, and it is the same cost.
@@ -239,75 +239,112 @@ exactly 12 green pixels, one pad, and the level advances the moment the count re
 captures look like single clicks on odd-numbered steps. Four wrong models of this game were built on
 that omission. Log every action first; filter afterwards.
 
-## Level 6, measured end to end
+## lf52 LEVEL 6 IS SOLVED — 5 levels -> 6, measured live (2026-08-29)
 
-- Arrives with **36 green = 3 pads** at cells (4,3), (8,2), (9,4); winning needs 2, so **ONE
-  capture clears it**. ⚠️ This is the board at the MOMENT OF ENTRY — the probe stops the tool as
-  soon as `levels_completed` reaches 5 — so nothing here is damage the tool did on the way in.
-- **No capture is available.** All twelve pad flanks were enumerated (select one cell to one side,
-  land one cell to the other, for all three pads on both axes) and none captures. A 100-cell
-  single-click sweep changes nothing either.
-- Arrows move a 32-pixel sprite one cell and leave every pad exactly where it was, across 32
-  presses in all four directions.
-- **ACTION7 does not restore the board** (measured on all four directions), and **ACTION5 wipes the
-  pads to zero without winning** — it is a trap, not a lever, because the win is only checked inside
-  the capture handler.
+⛔ **THE FOUR BLOCKS THIS REPLACES WERE WRONG, AND THEY WERE WRONG THE SAME WAY: the instrument
+only looked at GREEN.** They said level 6 arrives with three pads, that no two are adjacent on any
+origin, that one capture would clear it, and that the level was therefore parked on an unexplained
+mystery. Every one of those is refuted below by a run.
 
-**The protocol, confirmed by reading the colour under each click** (`scripts/_lf52_protocol.py`):
+**The clear**: `scripts/_lf52_l6_play.py` replays a 55-move line and the engine advances
+`levels_completed` 5 -> 6 in **91 actions on the level** (budget 640). Deterministic — five of the
+eight fan seeds ran it, all 91 actions, all cleared; the other three differ only in which pixel
+inside a 6-px cell the click lands on. The line itself is `scripts/_lf52_l6_line.json`.
+
+### What the earlier readings missed
+
+1. **There are FOUR pads on screen, not three. The fourth is RED.** `fozwvlovdui_red` renders in
+   colour 8, twelve pixels, at grid (2,2) — right beside the green at (2,3). The win counter
+   `ddaguepwkt = len(ndtvadsrqf("fozwvlovdui"))` matches by **prefix**, so the red counts. Reading
+   only colour 14 is what produced "no two pads are adjacent"; the adjacent pair was always there.
+2. **The board is 28 cells wide and the screen shows about ten of them.** `grid6` holds **7 green +
+   1 red = 8 pads**, three `dgxfozncuiz` at (14,3) (17,3) (23,3), and three carts at (7,6) (8,6)
+   (23,4). Winning needs the count down to 2, so level 6 needs **SIX captures, not one**. Four of
+   its pads and all three of its purple stepping stones start off screen.
+3. **A pad moves without capturing — that was the open question and the answer is yes.**
+   `cfilhtifcb` removes the midpoint only when `qcerbdpdcl.name == uywtlohliu.name`. Green over red
+   and red over green are legal jumps that capture NOTHING, and so is any jump over a
+   `dgxfozncuiz`. That is the repositioning verb the level is built on.
+4. **`pchvqimdvj` is a DEAD END, not a win.** It greys every pad and spawns the pickup that
+   restarts the level; `tdcblgbfxw` is the win. So ACTION5 is not a trap — it is a two-action
+   RESTART (measured: green 36 -> 0 -> 36 after ACTION5 then a click in the bottom-left corner).
+   ⚠️ On a board that has already MOVED the restart did not restore the root in four attempts, so
+   it is not a reliable backtracking primitive.
+
+### The game DRAWS its own legal moves — a free oracle nothing was using
+
+Selecting a pad calls `xpcuvjyrgu`, which tests all four directions with `qikmikecdf` and attaches
+a marker two cells out for each that passes. The sprites name their own colours, and both are
+measured on the frame:
 
 ```
-select click  ->  lands on colour 14 (GREEN)  = a PAD
-landing click ->  lands on colour  1          = an empty cell
+csrvckunbev   20 px DARK_GRAY(3) ring ON the pad     -> this pad has AT LEAST ONE legal move
+lgbyiaitpdi    8 px GRAY(2) cross 12 px out          -> that exact landing is legal
 ```
 
-So a capture needs **two ADJACENT pads with an empty cell beyond** — ordinary peg solitaire. Every
-earlier enumeration in this round selected an empty neighbour instead of a pad, so no selection ever
-happened and the landing click was the second half of an interaction whose first half never ran.
+Measured at level 6 entry: the green at grid (2,3) lit a cross at exactly 12 px UP; the red at
+(2,2) lit one at exactly 12 px DOWN; **both isolated greens lit nothing at all**. GRAY is absent
+from level 6's palette until a pad is selected, so neither reading is ambiguous.
 
-**Level 6 has no capture at entry, and this is now measured rather than inferred**: the pads sit at
-cells (4,3), (8,2), (9,4) and the adjacent-pair list is EMPTY. Arming the power-up (click its
-sprite, then the bottom-left corner) changes nothing either, and arrows leave every pad in place
-across 32 presses.
+⚠️ The cross arrives as **four two-pixel blobs**, not one — `" o..o "` is not 4-connected. A blob
+filter with a minimum size of four finds nothing and reads as "the oracle does not exist"; that
+cost one whole probe. Merge blobs within ~3 px before measuring.
 
-⚠️ **The one hypothesis left, and it is a real one**: `unfozwvlovdui` is defined with `{"": GREEN}`
-— it maps NO character to a colour, so it renders nothing — while carrying `name: "fozwvlovdui"`.
-The win test counts entities by NAME, not by pixels. If a level places invisible pads, the visible
-count is not the game's count and "three pads, one capture to win" is wrong for level 6. That is the
-next thing to check, and it is checkable: the pad count the game uses can be inferred by watching
-which capture makes the level advance on a level that DOES clear.
+**One click enumerates a pad's entire move set.** That is what makes level 6 affordable inside its
+640-action budget, and it is the asset a tool should be spending, not a model of its own.
 
-⛔ Also worth carrying: the frame is **27 layers**, and every reading in this round used `frame[-1]`
-alone. That happened to be right — the protocol's arithmetic (12 pixels per pad, clears at 24)
-matches that layer — but it was never checked until the end, and a pad variant IS declared on a
-different layer in the source.
+### The mechanic, corrected
 
-**So the tool is not failing to play the game — it is failing to find a SETUP.** railpeg clears
-levels 1-5 with exactly the protocol above, which means it knows the capture; level 6 needs a move
-that is not itself a capture before any capture exists, and its plan is built only of captures. That
-is the lever, stated precisely, and it is what its 117 refused ACTION1 presses are groping for.
+* jump legality is `qikmikecdf` = the MIDPOINT holds a `fozwvlovdui*` or a `dgxfozncuiz`, and the
+  LANDING is bare floor OR **a cart** (`posalhhmjq` accepts a cell of exactly two names when one is
+  `hupkpseyuim2`);
+* the four simple actions drive every cart one cell — `tmhxwcojkh(dx,dy)` moves a cart only when the
+  cell it faces holds a `kraubslpehi`, and it drags whatever shares the cart's cell along with it;
+* **a green riding a cart sideways drags the CAMERA**: level 6 sets `nybfuxmyrv = (-dx*6, 0)` when
+  a pad named exactly `fozwvlovdui` sits on the moving cart, guarded so the view cannot scroll back
+  right while the offset is still >= 5. A RED rider does not scroll — the name test is exact.
+* two landings scroll it too: (7,6) at offset 5 scrolls -20 px, (18,2) at offset -57 scrolls -44.
 
-## lf52 level 6 — PARKED, mechanism decoded, one question left (2026-08-29)
+⛔ **Arrows are NOT inert on this level, and the earlier note that they are came from a metric that
+could not see the difference.** Twelve presses of each direction: ACTION1/2/3 leave the frame
+byte-identical, ACTION4 changes it three times and then stops — the carts really do move, they just
+leave the ten-cell window. "Nothing moved" and "what moved went off screen" are the same reading to
+a whole-frame comparison.
 
-Everything about how this game is played is now measured. What is NOT explained is level 6.
+### The line, and why it is shaped that way
 
-**Measured, and each of these is a separate run**: the level clears when the VISIBLE pad count
-reaches 2 — confirmed at all five transitions the tool makes, not read off the source. Level 6
-arrives with 3. So one capture clears it. And there is no capture: the pad-to-pad offsets are
-(4,-1), (1,2) and (5,1) cells, so no two are adjacent **on any origin**. Nor is there a slide (all
-six pad-to-empty-neighbour moves refused), nor a power-up effect (armed on every candidate sprite,
-then spent in the bottom-left corner), nor any pad motion under 32 arrow presses in four
-directions. The board is not transitional either — twelve settling actions leave the pads exactly
-where they were, which is the ar25 trap this repository has already paid for once.
+Solved by exhausting the model above (`states 384219` with the camera modelled, 935 winning states
+without it). The shape is worth carrying because it is what a tool has to be able to WANT:
 
-**The question that remains**: the visible green blobs may not be the entities the game counts. The
-win test counts by NAME, `unfozwvlovdui` renders nothing while carrying the pad's name, and the
-empirical clear-at-2 rule differs by one from the source's clear-at-1 for levels 1-5 — a discrepancy
-of exactly one entity, which is the size of one invisible pad. Resolving that is the next step and
-it is cheap: the game's own count can be recovered by watching WHICH capture advances a level that
-does clear.
+```
+ 4 jumps  walk the green at (2,3) down the left column, over the red and back over it
+ 2 jumps  the first two captures, using the two greens the left region does hold
+ 5 jumps  walk a green rightwards along row 6 and LAND IT ON THE CART at (8,6)
+ 5 drives ride the cart right — each press scrolls the camera one cell and reveals new board
+ …        climb the rail columns, cross on the purple stepping stones, six captures in all
+55 moves / 85 planned actions / 91 measured
+```
 
-⛔ PARKED here deliberately. This dig produced a complete protocol, four killed models and two new
-instrument rules, and moved the score by ZERO. Rule 7b names this exact failure mode.
+Eleven jumps and five drives happen before the second capture. A planner that ranks "shortest route
+to a capture" and retires after three barren tiers cannot hold a plan of that shape.
+
+### What this leaves for the tool
+
+`railpeg` already models everything named above — carts, riders, uncapturable colours, a board
+wider than the screen — and it is NOT failing for want of a mechanic. Instrumented on level 6
+(`scripts/_lf52_railpeg_diag.py`, 297 sync calls): it reads 4 pieces, 2 carts, 22 sockets, 9 rails,
+sets `_elsewhere = True`, and spends its planning on `win 45 / travel 36 / capture 4 / none 1` with
+`why` dominated by `plan:no-capture-reachable 25`. It declares a local win forty-five times on a
+board whose visible region cannot produce one, and never puts a piece on a cart.
+
+Two levers, in order:
+
+1. **Read the game's markers instead of inferring legality.** One click per piece returns the exact
+   move set, and it is right even where the model is wrong.
+2. **The local win is a MIRAGE while `_elsewhere` is true.** `_won` counts the colours it can see;
+   on this board that is satisfiable and worthless. The measured tell is already in the tool — a
+   win that did not win — but it fires after the plan is played, and here the plan is played 45
+   times.
 
 ## Win predicates read straight from the source — the stuck games (2026-08-29)
 
@@ -319,7 +356,7 @@ code, and for three of the eight stuck games it had never been written down.
 | **s5i5** (0.5833) | EVERY sprite tagged `0087vvmblxkzdi` (a target) has a sprite tagged `0064ocqkuqacti` (a mover) at the SAME x,y — cover them all | the level's `current_steps` runs out |
 | **dc22** (0.7143) | `self.qnnpcoyzd.x == self.hfuqkxulm.x and .y == .y` — two sprites reach the same cell | a step allowance runs out (`ncuydqtllw()` false) |
 | **bp35** (0.2220) | the falling body lands on a gem (`fjlzdjxhant`) | it lands on a spike (`ubhhgljbnpu` / `hzusueifitk`) |
-| **lf52** (0.2727) | the pad count reaches 1, or 2 on levels 6 and 7 | the level's own step budget overruns (64 / 320 / 640 by level) |
+| **lf52** (0.2727) | the pad count reaches 1, or 2 on levels 6 and 7 — counted by NAME PREFIX over the whole board, so off-screen pads and the RED pad all count | the level's own step budget overruns (64 / 320 / 640 by level) |
 
 **bp35's fall is a ten-line simulator** and worth copying exactly (`fsvnqdbzrp`): step along the
 gravity axis while the cell is empty or holds only `oonshderxef` / `aknlbboysnc`; stop on anything
@@ -399,7 +436,8 @@ plan at all. The general searcher then inherits the level and spends the remaini
 why more patience buys nothing: the patience goes to `graph`, and the tool that understands the game
 has already fallen silent.
 
-This matches the lf52 dig exactly, which is the one stuck level whose board is fully decoded: level 6
+⚠️ SUPERSEDED for lf52 — level 6 is now SOLVED live in 91 actions (see the level-6 section). What
+follows described the dig as it stood before that. This matches the lf52 dig exactly, which is the one stuck level whose board is fully decoded: level 6
 has no two adjacent pads, so railpeg's capture model has NO LEGAL MOVE. It is silent because the
 level offers nothing its model recognises.
 
@@ -416,7 +454,7 @@ Marking every `return []` in the four specialists, then the line that sets their
 | bp35 | `crag:1117` x8 — self-mute, and it records its own reason: **"window does not belong to this board"** | the stitched world REJECTS the current camera window |
 | s5i5 | `swivel:996` — `_replan()` exhausted every pairing and `_retry_unknown()` was spent | the model is assembled; no click sequence solves it |
 | dc22 | `gantry:501` x79, `:516` x47 — `if found is None` | the route BFS finds no path |
-| lf52 | `railpeg:1252` x11 — more than 8 settle clicks with the board between lattice positions | it cannot get a stable read |
+| lf52 | `railpeg:1252` x11 — more than 8 settle clicks with the board between lattice positions | ⚠️ NOT the whole story: instrumented, railpeg makes 297 sync calls on level 6 and 244 of them are PLACED. It plans (win 45 / travel 36 / capture 4) and never puts a piece on a cart. The settle stall is downstream of a planner that keeps declaring a local win on a board whose visible tenth cannot produce one |
 
 Two of the four then had their obvious explanation tested and REFUTED:
 
