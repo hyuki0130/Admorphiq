@@ -269,5 +269,10 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   ar25/ft09/re86 from 1.0000 to ~0.03, which is what the fifteen singles are worth. ⚠️ Two things
   reported and NOT shipped: `_empty_runs` is AGENT-scoped where the concept is tenure-scoped (one
   retirement is measurably one proposal early), and the tenure-scoped fix is EXACTLY INERT on all 25;
-  and there is **no tool→harness exhaustion channel at all** — re86's `cover_targets` sets
-  `_handover = True` at the moment it stops proposing and nothing reads it.
+  and there is **no tool→harness exhaustion channel at all** (rule **7bt**): `base.Tool` is four
+  methods, none of which says "I am out of plan", and the harness's five duck-typed channels
+  (`state_key`, `set_target_frame`, `target_stalled`, `target_progress`, `augmenter`) contain no
+  exhaustion signal — `target_stalled` is the nearest, is implemented by ONE tool, and gates a target
+  redraw. ⚠️ This first reached the record naming `cover_targets._handover`, which is unread but is
+  PIECE-CONTROL semantics; the attribute that actually knows is `_stuck` (`cover_targets.py:499`),
+  read only by its own tool. Caught by grepping the assignment sites before writing the claim.
