@@ -647,10 +647,60 @@ walk next to it first — does not apply to them: they build the block the body 
 there is nowhere to stand beside them until after the click.
 
 ⛔ So bp35's level 6 is not stopped by patience, alignment, thresholds, the stitch, or a mechanic the
-tool cannot model. It is stopped by ONE line of the searcher's candidate generator, and the fix is
-not free — crag's own record says widening it by a single cell cost two levels elsewhere. What the
-level needs is a rule that offers a distant editable cell when it is a LANDING the body could fall
-onto, not a blanket widening.
+tool cannot model. It is stopped by the searcher's own candidate generator and edit cap.
+
+### How far the two knobs have to move — the whole curve, measured
+
+Widening the site rule to "crag's five, plus every editable cell within Chebyshev k of the body,
+plus every visible gravity switch" and re-searching (`_bp35_l6_solve.py <seed> <cap> r`, results in
+`scripts/rounds/R101BP35/bp35rad.jsonl`):
+
+```
+k        best   clicks   states    nodes     verdict
+0        --      --       24,644    74,615   EXHAUSTED, no win  (crag's rule exactly)
+1        --      --       25,092    82,679   EXHAUSTED, no win
+2        43       8      117,145   476,824   win
+3        43       8      120,146   562,218   win
+none     41       8            --        --   win (the optimum)
+```
+
+Every "no win" row is an EXHAUSTION at both allowance 64 and allowance 200, at a hundredth of the
+30,000,000-node cap — not a search that ran out.
+
+**And the edit cap is a SECOND, independent wall.** crag spends at most `_MAX_EDITS = 6` clicks on a
+route to the exit (`_EXPLORE_EDITS = 2` on a frontier leg). Capping the search at six clicks
+(`... c`, `scripts/rounds/R101BP35/bp35clk.jsonl`):
+
+```
+6 clicks, sites unrestricted   5,262 states   EXHAUSTED, no win   (limit 64 AND 200)
+6 clicks, sites at k=2         2,126 states   EXHAUSTED, no win   (limit 64 AND 200)
+```
+
+**No six-click win exists at all.** Every plan ever found here spends 8 (five toggles, three gravity
+switches) or more, so `_MAX_EDITS` excludes the level on its own, whatever the site rule does.
+
+So the gap is three numbers, not one:
+
+| knob | now | needed | measured basis |
+|---|---|---|---|
+| `_sites` reach | crag's five | Chebyshev **2** | k=0 and k=1 both EXHAUST with no win |
+| `edits_cap` | `_MAX_EDITS = 6` | **>= 8** | no 6-click win exists at any reach |
+| `_MAX_EXPAND` | 40,000 | ~120,000 | a complete k=2 search is 117,145 states |
+
+⚠️ And none of it is free: crag's own docstring records that adding ONE extra candidate — the cell
+overhead — took the tool from three levels to one. k=2 multiplies the searched space **4.8x** and
+the nodes **6.4x**, so a blanket widening is exactly the change that measurement warns against. What
+the two clicks that OPEN the optimum actually are is the design hint: `C(6,25)` and `C(7,25)` with
+the body at `(3,23)` build a SAFETY FLOOR two cells in the anti-gravity direction, so that the
+gravity reversal three actions later lands the body on them instead of on the spike row at y=26.
+They are supports for an axis that is not yet in force. A rule that offers editable cells which
+WOULD be supports after a reachable reversal buys the route without buying the whole neighbourhood.
+
+⛔ A fourth thing has to be true and is not measured yet: crag must KNOW where the exit is before it
+will plan a route at all (`_search(targets, "exit", ...)` needs `targets`), and the gem sits eight
+rows and two gravity reversals away from the start. Reaching it costs more than the 64-action
+allowance, so the map has to be built across level RESTARTS — which crag's docstring says it does,
+and which nothing has yet checked on this board.
 
 ### ⛔ bp35 LOSES THE LEVEL AT 64 ACTIONS, and that is the game's real shape
 

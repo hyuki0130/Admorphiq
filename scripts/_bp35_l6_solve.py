@@ -35,7 +35,18 @@ BUDGET = 64
 GEM_XY = {6: (2, 31)}
 
 
-def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius: int = 0):
+def _clicks_on_path(par, depth, idx):
+    """The actions on the path to `idx`, as a list of "is this a click" flags."""
+    out = []
+    j = idx
+    while par[j][0] >= 0:
+        out.append(par[j][1][0] == "C")
+        j = par[j][0]
+    return out
+
+
+def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius: int = 0,
+          click_cap: int = 0):
     """mode 0 = plain BFS inside the engine's own 64-action allowance (finds the SHORTEST win);
     mode 1 = greedy best-first on distance to the gem (finds A win fast, not the shortest);
     mode 2 = BFS with the allowance lifted to 200 — "winnable at all?" is a DIFFERENT claim from
@@ -94,6 +105,13 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
                     if c in near
                     or next(iter(s.at(*c)), "") == "lrpkmzabbfa"
                     or (radius and max(abs(c[0] - s.px), abs(c[1] - s.py)) <= radius)]
+        if click_cap:
+            # crag caps the EDITS a route may spend (`_MAX_EDITS = 6` for a route to the exit,
+            # `_EXPLORE_EDITS = 2` for a frontier leg). Capping clicks here asks the separate
+            # question of whether a win exists inside that budget at all.
+            spent = sum(1 for st in _clicks_on_path(par, depth, idx) if st)
+            if spent >= click_cap:
+                cand = []
         opts = [("L",), ("R",)] + [("C", c) for c in cand]
         rng.shuffle(opts)
         for a in opts:
@@ -125,7 +143,8 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
         if best is not None or nodes > cap:
             break
 
-    out = {"seed": seed, "mode": mode, "local": local, "radius": radius, "limit": limit, "level": level, "nodes": nodes,
+    out = {"seed": seed, "mode": mode, "local": local, "radius": radius, "click_cap": click_cap,
+           "limit": limit, "level": level, "nodes": nodes,
            "states": len(sims), "secs": round(time.time() - t0, 1)}
     if best is not None:
         seq = []
@@ -165,7 +184,11 @@ def main() -> None:
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     cap = int(sys.argv[2]) if len(sys.argv) > 2 else 40_000_000
     arg = sys.argv[3] if len(sys.argv) > 3 else ""
-    if arg.startswith("r"):
+    if arg.startswith("c"):
+        # "c" walks the CLICK cap: seeds 1-3 cap at 6 (crag's `_MAX_EDITS`), 4-6 add radius 2.
+        cc = 6
+        solve(seed, cap, force_local=(seed > 3), radius=(2 if seed > 3 else 0), click_cap=cc)
+    elif arg.startswith("r"):
         # seeds walk the radius: r means "crag's rule plus a Chebyshev-k neighbourhood", k from the
         # seed, so one fan measures the whole widening curve instead of one point on it.
         solve(seed, cap, force_local=True, radius=(seed - 1) // 3 + 1)
