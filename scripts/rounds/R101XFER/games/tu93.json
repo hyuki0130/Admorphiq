@@ -3,15 +3,15 @@
   "n_games_run": 1,
   "n_games_scored": 1,
   "n_excluded": 0,
-  "total_score": 0.222222,
-  "total_score_pct": 22.222,
+  "total_score": 1.0,
+  "total_score_pct": 100.0,
   "games": [
     {
       "game_id": "tu93-0768757b",
       "win_levels": 9,
-      "levels_completed": 4,
-      "elapsed_s": 6.96,
-      "total_actions": 1288,
+      "levels_completed": 9,
+      "elapsed_s": 1.39,
+      "total_actions": 187,
       "per_level": [
         {
           "level": 1,
@@ -36,9 +36,39 @@
           "agent_actions": 17,
           "human_actions": 42,
           "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 29,
+          "human_actions": 123,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 28,
+          "human_actions": 80,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 14,
+          "human_actions": 14,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 23,
+          "human_actions": 23,
+          "score": 1.0
+        },
+        {
+          "level": 9,
+          "agent_actions": 29,
+          "human_actions": 111,
+          "score": 1.0
         }
       ],
-      "game_score": 0.222222,
+      "game_score": 1.0,
       "has_baseline": true,
       "llm_hypothesis": null,
       "title": "TU93"

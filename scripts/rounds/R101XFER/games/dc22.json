@@ -3,15 +3,15 @@
   "n_games_run": 1,
   "n_games_scored": 1,
   "n_excluded": 0,
-  "total_score": 0.47619,
-  "total_score_pct": 47.619,
+  "total_score": 0.714286,
+  "total_score_pct": 71.429,
   "games": [
     {
       "game_id": "dc22-fdcac232",
       "win_levels": 6,
-      "levels_completed": 4,
-      "elapsed_s": 13.04,
-      "total_actions": 1432,
+      "levels_completed": 5,
+      "elapsed_s": 52.44,
+      "total_actions": 925,
       "per_level": [
         {
           "level": 1,
@@ -36,9 +36,15 @@
           "agent_actions": 87,
           "human_actions": 98,
           "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 195,
+          "human_actions": 324,
+          "score": 1.0
         }
       ],
-      "game_score": 0.47619,
+      "game_score": 0.714286,
       "has_baseline": true,
       "llm_hypothesis": null,
       "title": "DC22"

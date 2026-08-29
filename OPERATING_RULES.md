@@ -1137,3 +1137,35 @@ UNMEASURED, and the only calibration point available is an adapter card at publi
 standing between "the tools improved" and "the submission improved". `--agent kaggle_unified`
 REFUSES to run while `GF_GIVEUP` / `HARNESS_STALL` / `HARNESS_CTX` are set, because a deployed
 default that the environment overrides makes "as shipped" a fiction.
+
+### 7ab — the generic tools do NOT overfit their version hash (2026-08-30)
+
+Nineteen of twenty-five games sit at the 1.0 cap and most of them were built by per-game agents in a
+single day. That is exactly the shape that produces a card memorising pixels, and nobody had checked
+it. **`environment_files_archive/` holds a DIFFERENT version hash of 15 of the games** — a
+re-render, with different sprite tags and coordinates — and it is the only transfer proxy available
+without spending a submission.
+
+Measured, `--agent unified` @4000 from a private snapshot of HEAD, the archive substituted for
+`environment_files`:
+
+```
+14 of 15 games IDENTICAL to four decimals, including every 1.0000
+s5i5 alone moves:  0.5833 -> 0.5593   (-0.0240)
+mean over the 15:  live 0.9532   archived 0.9516   ratio 0.998
+```
+
+⭐ re86 and wa30 — both conquered on 2026-08-29 — hold at 1.0000 on their re-renders, as do ar25,
+cn04, ka59, m0r0, r11l, sc25, sk48, sp80, su15, tn36, tu93 and vc33. dc22 reproduces its 0.7143
+exactly, wall and all.
+
+⚠️ **THIS IS WEAK EVIDENCE AND MUST NOT BE OVERSOLD.** A re-render is the SAME GAME with different
+tags; the evaluation is 110 games with different MECHANICS. What this rules out is the cheapest
+failure — a tool keyed to a sprite name or a pixel coordinate — and nothing more. `CLAUDE.md`
+already records that the 13 hand-written adapters passed the same test (7/7, mean 0.0274 -> 0.3496)
+and still moved the hidden score by nothing.
+
+⛔ What it DOES buy: the day's per-game work is not fake, and a future tool that scores well here and
+collapses on the archive is caught for the price of one 15-game run. Run it after any wave of
+per-game tool building. bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87 and wa30 have no
+archived version, so ten games are untestable this way.
