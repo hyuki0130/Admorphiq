@@ -74,6 +74,18 @@ is ONE MOVE: the third capture at action 124 is the level author's own marked lo
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
+⛔ **THE REGISTRY IS NOW MEASURED FROM THREE INDEPENDENT DIRECTIONS AND NONE FINDS THE GAP THERE:**
+- 47 tools × 5 stuck games = 235 pairs, forced alone: **no tool beats the harness anywhere**, and
+  **exactly ONE does anything at all on each board** (43–46 of 47 clear NOTHING). On ls20 the
+  harness reaches level 7 while no single tool passes 6 — the composition earns a level none of its
+  parts can reach.
+- Tenure across all 25: **17 of 47 tools never hold a board**, and **19 of 25 games are played start
+  to finish by ONE tool**. ⚠️ Not an argument to delete them — the eval is 110 PRIVATE games with
+  the same set — but `loop.py` interrogates every tool at every re-decide and 19 of 47 have a
+  `detect` that mutates.
+- Routing: **no handover was ever lost to a tie, and none can be** (registration order puts every
+  specialist ahead of `graph`); 41–43 of ~48 tools bid 0.00 at every decision point.
+
 ⚠️ **AND THE HONEST POSITION ON THE REMAINING 0.0918**: bp35, s5i5 and dc22 each need a capability
 the tool set does not have — a first attempt that knows which glyph kills; a planner that can move a
 piece already home; a 297k-state joint planner on a game with 8 actions of slack. lf52 needs one
