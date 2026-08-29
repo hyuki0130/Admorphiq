@@ -300,14 +300,19 @@ def main() -> None:
     # Four alphabets: the two controls that touch the ALREADY-COVERED target's arm (slider c10)
     # and the unattached bar (turn c8) are excluded by default, and re-admitted in the other
     # three so "the level needs the covered rider moved out of the way" is tested, not assumed.
-    bans = [(10, 8), (10,), (8,), ()]
-    weights = [2, 4, 8, 20]
-    caps = [8, 12, 16, 24]
+    # ⛔ THE TURN THAT MOVES THE LOOSE BAR IS REQUIRED — the only legal winning configuration on
+    # this board (`scripts/_s5i5_show.py` job 25) has that bar standing above the grid, out of the
+    # last segment's lane. Banning it, as the first eleven fan-outs did, measured a board the game
+    # does not have. Both alphabets here admit it; the second also admits the slider that moves
+    # the already-parked rider, in case its BODY has to be pulled out of the way and put back.
+    bans = [(10,), ()]
+    weights = [4, 20]
+    caps = [16, 18, 20, 24]
     j = job - 5
-    hmode = j % 2
-    w = weights[(j // 2) % len(weights)]
-    cap = caps[(j // 8) % len(caps)]
-    ban = bans[(j // 32) % len(bans)]
+    ban = bans[j % 2]
+    hmode = (j // 2) % 2
+    w = weights[(j // 16) % len(weights)]
+    cap = caps[(j // 4) % len(caps)]
     r = search(False, w, cap, hmode, 4_000_000, deadline, ban)
     print(json.dumps({"job": job, "weight": w, "cap": cap, "hmode": hmode, "ban": list(ban), **r}))
 
