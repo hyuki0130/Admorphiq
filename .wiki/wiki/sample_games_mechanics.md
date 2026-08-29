@@ -839,6 +839,57 @@ fire at all on level 9 — the branch never ran). Which of the twelve actually E
 be measured per game, and bp35's is the only one shown firing so far
 (`action 63 NOT_FINISHED / action 64 GAME_OVER`).
 
+## ⛔ REFUTED — the allowance is NOT frame-readable except on bp35 (2026-08-29)
+
+I proposed a frame-only "allowance reader" off the back of bp35's row-63 bar, and argued it would be
+one asset serving the ten games whose baselines exceed their allowance. **Measured on all 25 (one
+process per game on ceph-build, 1200 actions each, shipped harness), that is wrong.**
+
+The test: for each of the four outer bands, count the cells differing from the band at the start of
+the current attempt, and ask whether that count equals `actions // s` for some small integer scale
+`s` — scale 1 is bp35's rendering and is not a law, so a 30-pixel bar for an 80-action allowance
+still scores.
+
+```
+game  band   scale   hit    what it is
+bp35  row63    1    0.996   an EXACT action counter; max 64 = its declared allowance; 18 resets
+tr87  row63    2    0.778   a real clock at two actions per pixel — and tr87 declares NO allowance
+g50t  row63    2    0.456   its scrolling timer sprite, partial
+lp85  row0     8    0.333   \
+ar25  row0     8    0.273    |  scale 8 is the DEGENERATE fit: the band barely moves while
+cn04  row0     4    0.252    |  `t // 8` is also small, so the two agree by staying near zero.
+sc25  row0     8    0.210    |  Not a counter.
+...   ...      8   <0.20   /
+```
+
+⛔ **Of the twelve games that DECLARE a per-level allowance, exactly ONE draws it readably.** And
+the two games that do draw a clock — tr87 and g50t — declare no allowance at all. The declared set
+and the drawn set are disjoint apart from bp35, so a pixel reader is a one-game asset, which is
+precisely what I argued it was not.
+
+### The cheaper mechanism the refutation points at: learn it by DYING once
+
+The reader does not have to read anything. `obs.state` reports `GAME_OVER` directly, so attempt
+boundaries are already free, and the action count at that moment IS the allowance whenever the game
+ends on overrun. If a level's deaths are all the same length, ONE death teaches the number for every
+later attempt at that level — frame-independent, and available on every game rather than on the one
+that happens to draw a bar.
+
+That is what `scripts/_deathclock_probe.py` measures: attempts split at `GAME_OVER` and at level
+changes, their lengths, and whether the deaths on a level agree with each other. Scattered death
+lengths would mean the game ends for some other reason (a hazard, a lost life) and the learned
+number would be a fiction; zero deaths on a game that declares an allowance would mean the allowance
+does not bite there, which is rule 7g and has already caught wa30 once.
+
+⚠️ **Instrument note, because it nearly became a finding.** The first version of the reader probe
+capped the frame history at 8 to save memory, and ls20 — which normally clears six levels — ended
+the run on level 0 with seventeen restarts. The tools read their own history out of that list, so
+trimming it changes the run being measured. Uncapped, ls20 still ends on level 0 at 1200 actions,
+so the depth figure is a budget difference and not the trim; but the trim would have been reported
+as a property of the game. The second defect was the opposite kind: the engine returns `frame=[]`
+while a game sits in `GAME_OVER`, which is exactly the moment this probe exists to observe, and
+indexing it crashed the runs on the games that die most.
+
 ## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
 
 Read from `environment_files/ls20/9607627b/ls20.py` after three pixel-based attempts to size ls20's
