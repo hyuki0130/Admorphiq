@@ -1345,3 +1345,45 @@ cells and 2 illegal configurations. `legal()` rejects any configuration touching
 the win is reachable ONLY off-grid (no fully in-grid win exists, exhausted at 254k–334k pops at every
 weight and cap). **A superset from two refusals can close the only corridor, and no budget reopens
 it.**
+
+### 7ah — ASKING a tool whether it recognises a board SPENDS ITS GIVE-UP BUDGET (2026-08-30)
+
+The side-effect defect from rule 7af is attributed, and it is far worse than the cache write everyone
+assumed. Bisected one tool at a time on lf52 against an 823-action baseline, **both controls exact
+before anything was read off it** (sample nothing → 823; sample all 47 → 827):
+
+```
+railpeg alone  ->  827      ONE tool accounts for the entire perturbation
+14 others      ->  823      exact
+```
+
+**`railpeg.detect` is four lines and two of them mutate.** `:1482` keeps a high-water mark, and
+`:1485` **RUNS THE PLANNER** — `_ensure_plan` is a no-op only when a plan already exists (`:1312`), so
+when the plan is empty (exactly when the tool has just spent it) an extra `detect` builds and stores a
+plan against a frame the tool was never asked to act on, and on the way advances
+`self._sincecapture` (`:1343`, feeding `stuck` at `_LOCAL_PATIENCE` = **3**) and `self._barren`
+(`:1402`, feeding the tool's own give-up at 3), and sets `_elsewhere`/`_claiming`.
+
+⛔ **So merely ASKING railpeg whether it recognises a board consumes one of the three units of
+patience that decide when it stops proposing and hands the board over.** On lf52 railpeg retires
+through the EMPTY path — and the budget that empties it is advanced by `detect`.
+
+⭐ THE DEFECT IS KNOWN AND HALF-FIXED, BY THE SAME AUTHOR IN THE SAME FILE. `_sync` — the other thing
+`detect` calls — already carries an explicit guard at `:1073-1078`: *"⛔ Idempotent per frame. The
+harness asks `detect` and then `propose` about the SAME board, and this method LEARNS — running it
+twice makes a frame look as if it had settled."* Someone hit this exact failure, guarded `_sync`, and
+left `_ensure_plan` unguarded. `pegjump` has the identical structure.
+
+⚠️ **AND THE POPULATION IS MUCH LARGER THAN THE ARM THAT FIRED.** A static scan of all 47 `detect`
+bodies and their helpers finds **17 tools whose `detect` reaches a mutating line** — railpeg 25,
+pegjump 24, tube 15, haul 12, reforge 10. Most score 823 on lf52 only because they early-return on a
+board that is not theirs. ⛔ **On the private 110 the tool set is identical and the boards are not, so
+a tool that early-returns here can reach its mutating path there.**
+
+⭐ `socketmerge` is the pattern to copy: its `detect` saves the state tuple, mutates freely, and
+restores in a `finally` — **side-effect-free by construction rather than by luck.**
+
+⚠️ NOT YET A LICENCE TO FIX (rule 7o). `detect`-then-`propose` on the same frame is the harness's
+NORMAL call pattern, so `_ensure_plan` running in `detect` and being reused by `propose` may be
+load-bearing for efficiency — the plan is pre-built one call early by design, and a naive
+"make detect read-only" could cost a plan per action. That is a full-25 gate question.
