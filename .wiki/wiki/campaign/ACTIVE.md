@@ -67,4 +67,16 @@ cumulative regressions at zero through fifteen reverted repairs today. ⚠️ Ga
 a sweep on the same box; run them one at a time.
 
 ## LOG — what moved the score
-(nothing yet today: 0.8935 unchanged, zero surviving source changes)
+- **2026-08-29 17:0x — ls20 0.8442 -> 0.9040, mean 0.8935 -> 0.8959 (+0.0024).** `12b8e073`, one
+  clause in `fogscout._refuel`: go for fuel with SLACK (`left <= dist + max(3, full//5)`) instead of
+  on the last unit. Level 7 303 -> 237 actions, still 7/7. Slack 2..6 all land on 237-239, so the
+  lever is having slack at all, not the constant; removing the clause LOSES the level. The formal
+  gate REFUSED its verdict because `cover_targets.py` moved under the run (another agent) — the 25
+  result files show ls20 as the only game changed, but the gate must be re-run on a still tree.
+- **2026-08-29 — bp35: my crumbling-platform reading RETRACTED** by its agent (`39d2bcd4`):
+  `yuuqpmlxorv` is a CLICK TOGGLE, level 6 is solvable inside its own allowance, and it CLEARS on the
+  real engine. Awaiting the gate.
+
+⛔ RE-GATE BOTH once `cover_targets.py` is still. A gate re-syncs the whole tree, so it cannot run
+while another agent is editing source (rule 7i), and a verdict taken while a tool moved is
+unattributable even when the numbers look right.
