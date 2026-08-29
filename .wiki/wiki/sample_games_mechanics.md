@@ -466,3 +466,27 @@ That single tile explains the whole bp35 investigation:
 ⛔ **The tool's model is static terrain plus click-driven change. This board needs terrain that
 degrades on its own.** No amount of threshold, patience, vocabulary or alignment work reaches that,
 which is precisely what eleven measured interventions found the hard way.
+
+## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
+
+Read from `environment_files/ls20/9607627b/ls20.py` after three pixel-based attempts to size ls20's
+routing gap failed in three different ways. The source answers in one read what the frames could not:
+
+- Every level carries **`"StepCounter": 42`**, and `StepsDecrement` defaults to **2** (line 1792),
+  so the budget is worth about **21 actions**.
+- It is refilled on the level-set path (`wbcenorpju` -> `nzukewekzr`, lines 1790-1798), not per
+  attempt.
+- **Exhausting it does NOT end the level.** Line 1972 computes `not step_counter.mfyzdfvxsm()` and
+  merely SKIPS a branch when the budget is gone; the game continues. Which is consistent with the
+  agent spending 302 actions on level 7 and still clearing it.
+- Level 7 is the only level with **`"Fog": True`**.
+
+⚠️ So the three numbers on this level — a 21-action budget, a human baseline of 186, and the tool's
+302 — cannot all mean the same thing, and what the budget actually GATES is not yet established.
+That is the next thing to read, and it matters: if running the counter down disables something the
+tool depends on, "take fewer actions" is not merely an efficiency preference on this board.
+
+⛔ Three frame-diff attempts to measure ls20's routing floor failed: a centroid mistaken for the
+avatar (floor of 12, absurd), an avatar-tracker whose small-blob premise is false on a fog board
+(20 usable steps of 302), and a re-crossing statistic that turned out circular. The source read cost
+one command.
