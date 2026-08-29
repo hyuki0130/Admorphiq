@@ -904,29 +904,29 @@ the mover?** The game rebuilds each level from a clean copy in `on_set_level`
 argues for designed — and if so, the escape is one specific action that 54,000 blind actions, 1024
 clicks and 47 tools have all missed.
 
-### ⛔ dc22 LEVEL 6 IS WINNABLE — and the "pocket" was an instrument that died on an empty frame
+### ⛔ RETRACTED — dc22 level 6 was NOT cleared; the run FELL BACK to level 0
 
-Sweeping every click from each of the pocket's three mover positions:
+A sweep reported `LEVEL CLEARED from position 0 by a click at (26,8)`, and it was wrong. The test was
+`levels_completed != 5`, which is true both when the level advances AND when the run collapses. Made
+to name the direction, the same sweep says:
 
 ```
-LEVEL CLEARED from position 0 by a click at (26,8)
+FELL BACK to level 0 from position 0 by a click at (26,8)
 ```
 
-**The level opens.** And the reason it looked sealed is instructive: the previous sweep crashed with
-`IndexError: list index out of range` on `o.frame[-1]` — the engine returns an EMPTY frame on some
-transitions, and that empty frame is exactly what a level-clearing action produces. The probe died at
-the moment of its own success, 300 actions in, and reported a pocket with no exit.
+**That click restarts the game.** It did not open level 6; it threw the run back to the beginning.
 
-⚠️ **But one click at (8,26) alone does NOT clear it** — verified separately: reach level 6, click
-that cell once, `levels_completed 5`. The sweep clicks sequentially and had made hundreds of clicks
-before reaching that cell, so the win belongs to the accumulated sequence, not to the cell.
+⚠️ Everything built on the false reading is withdrawn: "dc22's level 6 is winnable from where the
+tool arrives" and "what opens it is a sequence" were both inferences from a collapse misread as a
+clear. What survives is what was measured directly:
 
-So two things are now known that were not:
+- from the arrival position, the four directions reach exactly **three** boards, and settling for 0,
+  4 or 12 actions does not change that
+- a click can leave that pocket, but the one found leaves it DOWNWARD, to level 0
+- sixteen prefix replays of the sweep, with and without its interleaved return moves, clear nothing
+- sixty blind searches, 54,000 actions, clear nothing
 
-1. **dc22's level 6 is winnable from where the tool arrives.** The "three-board pocket" was real for
-   MOVEMENT and false overall — clicks do leave it, and one path out ends the level.
-2. **What opens it is a sequence, not a single action**, which is why 54,000 blind actions missed it:
-   the search was random, and this needs a particular order.
-
-The remaining work is to bisect the winning sequence — the sweep's click order is deterministic, so
-the prefix that matters can be found by replaying halves.
+⛔ **The lesson is the cheap one and I paid full price for it**: a test written as "did the level
+number change" answers a different question from "did we win", and the difference is invisible until
+something forces the direction to be named. Three commits and two probes were built on the wrong
+side of it.

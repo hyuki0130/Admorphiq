@@ -72,8 +72,14 @@ def main() -> None:
                     seen.add(k)
                     fresh += 1
                 obs = o
-                if int(getattr(obs, "levels_completed", 0) or 0) != 5:
-                    print(f"LEVEL CLEARED from position {pos} by a click at ({cy},{cx})", flush=True)
+                lv = int(getattr(obs, "levels_completed", 0) or 0)
+                if lv != 5:
+                    # ⛔ != 5 is not "cleared". The replay showed the board can fall back to LEVEL 0
+                    # — a death restarts the game — so a change in either direction lands here. Say
+                    # WHICH, because "level 6 opened" and "the run collapsed to level 1" look the
+                    # same to this test and only one of them is progress.
+                    word = "CLEARED to level %d" % lv if lv > 5 else "FELL BACK to level %d" % lv
+                    print(f"{word} from position {pos} by a click at ({cy},{cx})", flush=True)
                     return
                 # return to this position so each click is judged from the same board
                 if k != base:
