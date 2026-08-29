@@ -60,6 +60,23 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
+## THE GATE — one command, private snapshot, no collisions (rule 7l)
+
+```
+bash scripts/snapgate.sh <name> scripts/rounds/R101GRAPHOWN 8 4000
+bash scripts/ptest.sh --dirty tests/test_x.py     # tests, on the BOX; TARGET it (whole suite = 24 cores)
+bash scripts/pfan.sh <name> <probe.py> <n> "<arg>" 6   # any probe, snapshotted; NAME is required
+```
+
+⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
+agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
+`snapgate.sh` archives HEAD into a private dir on the box; two gates run at once and a rider cannot
+ride.
+
+⚠️ In a fan-out, `ptest.sh --dirty` ships EVERY PEER'S uncommitted tree, so a red suite is not
+evidence about your change (rule 7ae). Grep whether the failing modules can even see your symbol
+before spending a control run.
+
 ## ⭐ THE PRIVATE-110 AXIS — and the headline it used to carry is REFUTED (2026-08-30)
 
 ⛔ This block used to say "`graph` is what a stuck game looks like" and offer >40% inert as a
