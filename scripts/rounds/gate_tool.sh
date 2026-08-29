@@ -36,6 +36,27 @@
 # Usage:  bash scripts/rounds/gate_tool.sh <ROUND_NAME> <BASELINE_ROUND_DIR> [UNTOUCHED_GAME]
 #   e.g.  bash scripts/rounds/gate_tool.sh R101XY scripts/rounds/R101DC vc33 railpeg
 # The 4th argument is the tool being gated; without it every dirty tool is reported as a rider.
+# ⛔⛔ SUPERSEDED — DO NOT USE. `scripts/snapgate.sh` replaces this (rule 7l).
+#
+# This script syncs the SHARED `~/admorphiq` on the box. With eight agents editing `src/`
+# continuously that is the contamination itself: trap 4 below states it "cannot REFUSE — in-flight
+# edits are the normal state of a fan-out round", and trap 5 is the same cause seen as the tree
+# moving mid-measurement. Neither has a fix at this level.
+#
+# `snapgate.sh` archives HEAD into a PRIVATE directory on the box, so two gates run at once, a rider
+# cannot ride, and the verdict names a commit rather than a working directory.
+#
+#     bash scripts/snapgate.sh <name> scripts/rounds/<BASELINE>
+#
+# ⚠️ It is kept, not deleted, because the traps documented below are real history worth reading.
+# Set FORCE_SHARED_GATE=1 to run it anyway and say in your report why.
+if [ "${FORCE_SHARED_GATE:-0}" != "1" ]; then
+  echo "⛔ REFUSING: this gate syncs the SHARED tree (rule 7l). Use:"
+  echo "     bash scripts/snapgate.sh <name> <baseline-round-dir>"
+  echo "   FORCE_SHARED_GATE=1 overrides, and you should say why."
+  exit 1
+fi
+
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
