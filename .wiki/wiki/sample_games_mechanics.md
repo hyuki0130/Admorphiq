@@ -346,6 +346,64 @@ Two levers, in order:
    win that did not win — but it fires after the plan is played, and here the plan is played 45
    times.
 
+## lp85 — the efficiency loss was DISCOVERY, and the game's own data prices it (2026-08-29)
+
+lp85 clears all eight levels and loses nothing to depth. Read off its source, every button is
+tagged `button_<ring>_<L|R>` and drives one ORDERED CYCLE of lattice slots; `khartslnwa()` advances
+the level when every `bghvgbtwcb` marker has a `goal` sprite at `(x+1, y+1)` and every `fdgmtkfrxl`
+has a `goal-o` there. The cycles are DATA (`izutyjcpih`, one integer map per ring per level), so the
+shortest solution is computable without playing: `scripts/_lp85_oracle.py <level>` BFSes the goal
+sprites' positions under the exact permutations.
+
+```
+level      1     2     3     4     5     6     7     8
+human     17    38    31    16    41    60    26   159
+ORACLE     5     8    16    12     9    21     1     7      <- shortest press sequence that wins
+buttons    2     6     4    16     4    36     6    12
+controls   2     6     4     4     4    36     6    12      <- level 4 draws FOUR controls SIXTEEN times
+```
+
+⛔ **Level 4 is the only level where the human is tight** (16 against an oracle 12), and it was the
+only level losing score: 33 actions, 0.2351, against 1.0000 everywhere else. The split, instrumented
+press by press (`scripts/_lp85_split.py`, `scripts/_lp85_l4.py`), was **16 first presses + 9
+confirming presses + 4 replans + 3 plan presses + 1 nudge**. The sixteen first presses are exactly
+`cyclepress`'s "press every control once, the cheapest complete model" rule — and on this board they
+are also **net IDENTITY**: four copies each of two rings times two directions cancel exactly, so
+sixteen of the thirty-three actions bought only the model. Worse, that model was WRONG: one press
+each recovers SIX distinct permutations where four exist, and **no press sequence to the markers
+exists until the twenty-sixth action**.
+
+**The fix is an ORDER, not an algorithm: evidence before breadth.** Confirm the controls already
+pressed before pressing a new one, stop probing the moment the model on hand yields a plan, and
+prefer a control whose LOOK has not been sampled yet. Measured:
+
+```
+level          1    2    3    4    5    6    7    8    game
+before         7   28   32   33   21   35   25   37   0.9099
+after          7   35   19   19   17   40   19   33   0.9677     lp85 +0.0578
+```
+
+Level 4 now touches **FOUR of its sixteen buttons** and wins in 19; level 3 goes 32 -> 19. The
+remaining 0.032 is level 4 at 19 against a human 16.
+
+⚠️ **Appearance orders the probes and must never adopt a permutation from them.** MEASURED against
+the game's own sprite table (`scripts/_lp85_appear.py`): seven of the eight levels draw two or more
+DIFFERENT controls with identical pixels — level 6 draws 36 distinct controls in TWO appearances —
+and level 4 is the single level where appearance and control coincide. Adopting across a look scores
+**0.3296** (three levels lost). The same experiment refutes two other plausible rules: pooling the
+evidence of controls a single permutation jointly explains gives 0.8932 (it merges controls that are
+not the same and level 4 rises to 55), and stopping at the first plan without confirming it gives
+0.8982 (level 1 goes 7 -> 27, because a permutation replaying ONE press always exists).
+
+⛔ **The budget indicator is what makes "confirm first" safe.** Ungated, confirming before breadth
+takes level 1 — two controls, THIRTEEN actions of allowance — from 7 actions to 59, because the level
+is lost and retried and the score pays for both attempts. Gated on the same indicator the shipped
+confirmations already use, level 1 is untouched.
+
+**A control's permutation being the exact INVERSE of another's confirms both**, for no extra press:
+the two were recovered from different presses of different controls and had to agree slot for slot.
+Alone it takes the eight levels from 219 actions to 189, three boards cheaper and none dearer.
+
 ## Win predicates read straight from the source — the stuck games (2026-08-29)
 
 Rule 0 pays here the way it paid on lf52: the goal a tool must aim at is one line of the game's own
@@ -1415,6 +1473,16 @@ WHICH WAY to nudge it, not on the route.**
    a piece that still had work and cycled back for it later: four presses where two would do. It now
    serves whoever is in the seat and still has a move, and only hands the controls on when the seated
    piece is finished. This is what took level 2 from 44 to 42.
+
+### What IS carried from level 1, and what cannot be
+
+Measured at the first frame of level 2: `cover_targets._effect` already holds all four direction
+vectors — `{1: (-3,0), 2: (3,0), 3: (0,-3), 4: (0,3)}` — and `_select` is already 5. **The control
+map is carried and costs nothing.** What cannot be carried is WHICH BLOB IS A PIECE: objecthood on
+these boards comes from motion, the pieces are new every level, and a piece is only measured once it
+has moved on both axes. That is the 7 discovery actions, and at 2 moves plus a seat change per piece
+they are close to their own floor. ⛔ So "it re-establishes the controls each level" was a plausible
+cause and is FALSE — the cost is the direction of the nudges, not the fact of them.
 
 ### The one action nobody in the tool can fix
 
