@@ -1342,7 +1342,8 @@ scripts/_dc22_oracle_full.py  full game    levels_completed 6/6, total_actions 5
 ```
 
 Levels 1-5 are the generic tools' own play (425 actions, unchanged); level 6 is a fixed
-141-action plan. **dc22 0.7143 -> 1.0000 is +0.0114 on the 25-game mean** — the target is real
+141-action plan. **Deterministic: three repetitions on ceph-build return 6/6 levels, 566 actions
+and game_score 1.0000, identical** (`scripts/_dc22_oracle_rep.py`). **dc22 0.7143 -> 1.0000 is +0.0114 on the 25-game mean** — the target is real
 and its size is confirmed. ⚠️ The plan is an ORACLE: it was derived from the game's source and
 executed as a script. **No generic tool clears this yet**; what follows is the mechanic and the
 exact two model gaps that stop `gantry`.
