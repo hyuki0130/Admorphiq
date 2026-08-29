@@ -763,3 +763,42 @@ of box time instead of a day of tool rewrites chasing a reader that was never th
 **The general rule: a measurement of a MECHANISM does not license a change of BEHAVIOUR.** "X is
 wrong" and "not-X is right" are two claims, and on a 25-game board only the gate can supply the
 second. Fifteen repairs this round were built on the first and reverted on the second.
+
+### 7p — "every stuck game retires its tool through the EMPTY path" is REFUTED (2026-08-29)
+
+`CLAUDE.md` has carried this claim at the top of the file: *"Every stuck game retires its specialist
+through the EMPTY path — the tool proposes NOTHING at the level that stops it, and the general
+searcher inherits the remaining ~500 actions."* Every stuck game was then investigated on that
+premise, one at a time, by a different agent each time.
+
+MEASURED on all seven at once (`scripts/_next_level_wall.py`, `scripts/rounds/R101WALL/wall.jsonl`),
+classifying every action on the wall level as EMPTY / COLLAPSE / INERT / MOVED:
+
+```
+game   reached  wall   actions   what actually happens there
+dc22       5      5      500     INERT=353  MOVED=147                  ← 70.6% of actions do NOTHING
+lf52       5      5      500     INERT=359  MOVED=141                  ← 71.8%
+bp35       5      5      500     MOVED=288  INERT=205  COLLAPSE=7      ← 41.0%
+s5i5       6      6      500     MOVED=308  INERT=190  COLLAPSE=2      ← 38.0%
+wa30       8      8      500     MOVED=493             COLLAPSE=7      ← 0%, it plays and DIES
+```
+
+⛔ **The tool does not go silent. It acts for the whole budget** — the single `EMPTY_is_done` on each
+row is the give-up at action 500, not a wall. And on dc22 and lf52 **more than SEVENTY PERCENT of
+what it does changes nothing at all**.
+
+CALIBRATION, in the direction that matters: ar25, which scores 1.0000, shows INERT ≈ 1 action per
+level out of 13–55, i.e. 2–6%. So 70% is a signal about those boards, not an artefact of
+`board_changed` being too strict. (The instrument was validated on ar25 BEFORE use and that caught a
+real defect first — `GameAction` imported from `admorphiq.types` instead of `arcengine` is a
+DIFFERENT class, so the `isinstance` was False for every action and the probe reported EMPTY at step
+0. A finding-shaped null, and the fourth instrument in one day to lie toward "nothing here".)
+
+**wa30 is a DIFFERENT PROBLEM and the table is what separates it**: 493 moved, ZERO inert, 7
+collapses. It plays the level competently and dies. dc22/lf52 need a tool that stops proposing
+actions the board refuses; wa30 needs to survive. Those are not the same work, and reading either
+game as "stuck" hides which one you are looking at.
+
+⚠️ The premise survived because nobody measured what the harness DOES at the wall — only that it
+failed to advance. **"It stopped making progress" and "it stopped acting" are different claims**, and
+one budget's worth of instrumented run separates them for every game at once.
