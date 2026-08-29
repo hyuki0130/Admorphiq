@@ -492,3 +492,23 @@ in the same edit, and check the count before running anything remote.
 take 400+ actions), so an empty log early is not evidence of failure. Print progress from the first
 action, and run remote work by `nohup`-ing a SCRIPT the box owns — an `ssh ... cmd &` dies with the
 connection, which is how the same probe was lost twice more.
+
+### 7f — "the level number changed" is not "we won" (2026-08-29)
+
+A dc22 probe reported `LEVEL CLEARED ... by a click at (26,8)` and it was the opposite: the click
+restarted the game and the run FELL BACK to level 0. The test was `levels_completed != 5`, which is
+true when the level advances and equally true when the run collapses. Three commits and two probes
+were built on the wrong side of it before anything forced the direction to be named.
+
+```
+if lvl != start:      ⛔ says nothing about which way
+if lvl > start:       ✅ and print the number when it moves
+```
+
+⚠️ **The tools in `src/admorphiq/` already do this correctly** — every level comparison there is
+`lvl > self._levels_completed`, and there is not one `!=` among them. The defect was in the probe,
+which is the code nobody reviews.
+
+⛔ A collapse and a clear look IDENTICAL to a boolean, and the favourable reading is the one that
+gets written down. Name the direction in the probe, and print the resulting level, so the record
+cannot be read two ways later.
