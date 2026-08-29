@@ -26,11 +26,11 @@ def main() -> None:
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 2
     cap = int(sys.argv[2]) if len(sys.argv) > 2 else 3_000_000
 
-    from _bp35_sim import load_module, make_level  # noqa: E402
-
-    import io
     import contextlib
+    import io
+
     import _bp35_l6_solve as solver
+    from _bp35_sim import load_module, make_level  # noqa: E402
 
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):

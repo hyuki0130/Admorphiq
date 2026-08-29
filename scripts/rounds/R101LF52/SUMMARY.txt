@@ -1,0 +1,28 @@
+R101LF52 — lf52 level 6, 2026-08-29. LEVEL CLEARED.
+
+MEASUREMENTS IN THIS DIRECTORY (all on ceph-build; raw JSON lines as the probes emitted them)
+  lf52l6.jsonl    8 experiments run together: board census, selection markers, one jump each,
+                  12 presses of each of the four arrows, ACTION5 + the pickup.
+  lf52mv.jsonl    the marker dump that located the oracle, plus six DFS runs (~9000 actions,
+                  min_green never below 36 — no capture is reachable by blind search).
+  lf52play.jsonl  the replay of the solved line. 5 of 8 seeds CLEARED, all at 91 actions.
+  lf52diag.jsonl  railpeg instrumented on level 6: 297 sync calls, 244 placed, tiers
+                  win 45 / travel 36 / capture 4 / none 1, _elsewhere true, noncapture empty.
+
+RESULT
+  levels_completed 5 -> 6, 91 actions on the level against a 640 budget, deterministic.
+  Planner scripts/_lf52_l6_model.py (384219 states under the camera) -> scripts/_lf52_l6_line.json
+  -> scripts/_lf52_l6_play.py. The regenerated line is byte-identical to the one that cleared.
+
+WHAT WAS REFUTED (all of it previously written down as measured)
+  "three pads"                -> FOUR; the fourth is RED and counts toward the win.
+  "no adjacent pair"          -> the red sits beside the green at grid (2,3).
+  "one capture clears it"     -> SIX; the board is 28 cells wide and holds 8 pads.
+  "ACTION5 is a trap"         -> it is half of a two-action level restart.
+  "arrows leave pads in place"-> ACTION4 drives the carts; they leave the ten-cell window.
+
+TWO INSTRUMENT FAILURES WORTH CARRYING
+  A search keyed on the raw frame closed the root after one pad, because a SELECT CLICK CHANGES
+  THE FRAME. "states: 1" read as a tiny state space and was the instrument reporting on itself.
+  The GRAY marker arrives as four two-pixel blobs; a size-4 blob filter finds nothing and reads
+  as "the oracle does not exist".

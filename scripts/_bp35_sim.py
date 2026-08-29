@@ -238,13 +238,16 @@ def verify(level, trials, actions, seed):
             opts = ["L", "R"] + [("C", c) for c in sim.clickables()]
             a = rng.choice(opts)
             if a == "L":
-                scene.oreuzgjmdx(-1, 0); sim.move(False)
+                scene.oreuzgjmdx(-1, 0)
+                sim.move(False)
             elif a == "R":
-                scene.oreuzgjmdx(1, 0); sim.move(True)
+                scene.oreuzgjmdx(1, 0)
+                sim.move(True)
             else:
                 gx, gy = a[1]
                 sx, sy = sim.screen_xy(gx, gy)
-                scene.gwfodrkvzx(sx, sy); sim.click_cell(gx, gy)
+                scene.gwfodrkvzx(sx, sy)
+                sim.click_cell(gx, gy)
             # ⛔ the engine DEFERS every cell mutation, the switch removal and the camera move
             # into the animation queue; `scene.render()` is the tick that runs them. Without it the
             # engine snapshot is a half-applied action and every diff is an artefact of the probe.

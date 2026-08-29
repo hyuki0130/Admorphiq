@@ -19,8 +19,8 @@ frontier in different orders; seed 1 is the deterministic reference.
 """
 from __future__ import annotations
 
-import json
 import heapq
+import json
 import random
 import sys
 import time
@@ -126,14 +126,18 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
             if nxt.lost:
                 continue
             if nxt.won:
-                sims.append(nxt); par.append((idx, a)); depth.append(d + 1)
+                sims.append(nxt)
+                par.append((idx, a))
+                depth.append(d + 1)
                 best = len(sims) - 1
                 break
             k = (nxt.key(), nxt.cam_y)
             if k in seen:
                 continue
             seen.add(k)
-            sims.append(nxt); par.append((idx, a)); depth.append(d + 1)
+            sims.append(nxt)
+            par.append((idx, a))
+            depth.append(d + 1)
             j = len(sims) - 1
             if mode == 1:
                 heapq.heappush(heap, (abs(nxt.px - gx0) + abs(nxt.py - gy0) + (d + 1) // 8,
