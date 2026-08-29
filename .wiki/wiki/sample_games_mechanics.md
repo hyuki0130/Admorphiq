@@ -490,3 +490,30 @@ tool depends on, "take fewer actions" is not merely an efficiency preference on 
 avatar (floor of 12, absurd), an avatar-tracker whose small-blob premise is false on a fog board
 (20 usable steps of 302), and a re-crossing statistic that turned out circular. The source read cost
 one command.
+
+### ls20 is a FUEL game — the complete model (2026-08-29)
+
+Following the budget through the source settles what it gates and why 302 actions can clear a level
+whose counter is worth 21:
+
+| fact | source |
+|---|---|
+| budget 42 units, **2 per action** = ~21 actions | `"StepCounter": 42`, `StepsDecrement` default 2 (line 1792) |
+| touching a **`npxgalaybz`** sprite REFILLS it to full and makes that step un-killable | line 1888-1891 (`yubyobdoss = True` + `kbkdzqocik(full)`) |
+| exhausting it costs a LIFE, of **three** | lines 1982-1984, `self.aqygnziho = 3` at line 1843 |
+| a life loss returns the avatar to START, restores collected items, refills the budget | lines 1990-2005 |
+| the loss also paints a **full-screen overlay** (`set_scale(64)`, `set_position(0,0)`) | line 1988-1990 |
+| level 7 is the only fogged level | `"Fog": True` |
+
+So ls20 is a fogged maze with a **fuel budget and refuel pickups**, three lives, and restart-to-start
+on empty. 302 actions on level 7 is the tool detouring for fuel; the human's 186 is a better route
+through it.
+
+⛔ **And the full-screen overlay is what broke three of my instruments.** "A single step re-renders a
+large part of the frame" was true and I read it as a property of fog; it is the death flash. An
+avatar-tracker that assumes the avatar is the only small moving thing cannot survive that, and the
+centroid floor of 12 was computed across it.
+
+**The lever for ls20's efficiency, named**: `fogscout` models exploring the fog and has NO notion of
+fuel. Its route ignores the constraint the level is built around, and survives only because pickups
+happen to fall on its path.
