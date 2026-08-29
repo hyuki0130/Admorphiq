@@ -152,3 +152,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   ANIMATION TIMELINE and reading the last one globally REGRESSED three games
   ([[../concepts/frame_layer_timeline]]); ties break by registration order because specialists
   claim one board and searchers claim all 25 ([[../concepts/tool_claim_breadth]]).)
+
+- **R101SILENT — why the last eight games stop, and thirteen repairs that did not move them**
+  ([[r101_silent-specialists]], [[r101_probe-fallback]], 2026-08-29; score unchanged 0.8935/17 at
+  the cap.) Keywords: silent tool, empty propose, tool retirement, patience knobs, alignment
+  threshold, search cap, vocabulary probe, fuel budget, discovery cost, instrument validity.
+  **Every stuck game retires its specialist through the EMPTY path** — the tool proposes nothing —
+  and the general searcher inherits ~500 actions; the tools' MODELS are correct, checked against
+  each game's own win predicate. **Where the 0.1065 sits: depth 0.0919, efficiency 0.0147**, and
+  ls20/lp85/re86 have ZERO depth loss (they clear everything and are merely slow). Mechanics
+  recovered from game source: **lf52** = peg solitaire, select a pad then land two cells away, win
+  at 2 pads, and its level 6 has no adjacent pair so NO legal capture exists; **bp35** level 6
+  introduces one `yuuqpmlxorv` CRUMBLING PLATFORM whose four shrinking sprites read as four glyph
+  kinds; **ls20** is a FUEL game — 42 units at 2 per action, refills by touching a colour-11 ring,
+  three lives, restart-to-start, and level 7 is the only fogged level and carries six pickups.
+  ⛔ Thirteen repairs measured and reverted (patience x2, alignment threshold, shift range, pitch
+  re-fit, tool revival, map-drop-on-flip which cost 0.12, admissibility bypass, shape matching,
+  probe-order memory, lethal-glyph probing, vocabulary carry, switch-reset, gauge speed-up). The
+  obvious defects were already fixed by whoever wrote these tools' docstrings; what remains is the
+  COMPOSITION. ⚠️ Twelve instrument failures, all one family — an instrument returning a plausible
+  number for a quantity it is not measuring; the survivors are in the round page and in
+  `OPERATING_RULES.md` rules 7c and 7d.
+
