@@ -2010,3 +2010,30 @@ over nine actions of exactly that lever.
 not a cost at all.** Saving it moves the failure, not the score. The same logic closed bp35's
 walled-in attempt (which EARNS 140 map cells before it dies) and it is worth checking before
 attributing waste anywhere.
+
+### 7ay — a dirty `src/` file in a fan-out belongs to SOMEBODY; measure it, do not revert it (2026-08-30)
+
+An agent found an uncommitted edit to `harness/loop.py` that was not its own — an evidence-gated
+early retirement — and did the right four things in the right order:
+
+```
+1. MEASURED it rather than describing it   ls20 0.9121 (7/7, 645a) -> 0.7500 (6/7, 916a)
+                                           the other 24 byte-identical in score AND action count
+2. ISOLATED it                             A/B with only loop.py restored to HEAD, 4 games
+3. Established it was not noise            four arms, three parallelism levels, same numbers
+4. REPORTED it to the coordinator          and did NOT revert a peer's file
+```
+
+⛔ **Step 4 is the rule.** A dirty file in a fan-out is somebody's IN-FLIGHT ARM as often as it is a
+mistake. Reverting it destroys an experiment whose owner will then be unable to explain their own
+numbers. Measure, isolate, report — the coordinator sequences it.
+
+⚠️ In this instance the tree was already clean by the time the report arrived: its author had run a
+sixteen-arm sweep, found **231 invariant for every handover from action 9 to 17**, and reverted rather
+than tuned. Two agents reached the same verdict independently by different routes, which is the
+strongest form the verdict comes in.
+
+⛔ AND KNOW WHICH TOOLS SEE A PEER'S DIRT. `snapgate.sh` archives **HEAD**, so an uncommitted
+experiment cannot ride into a gate — that is what rule 7l bought. But `ptest.sh --dirty` and
+`pfan.sh` ship the WORKING TREE deliberately, so they see everything anyone is holding.
+**If your own numbers look inexplicable, `git status --short src/` is the first thing to check.**
