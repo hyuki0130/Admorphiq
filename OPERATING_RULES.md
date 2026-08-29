@@ -433,7 +433,7 @@ Commit progress to the round page, and bring the MEASUREMENTS back too — `scri
 `scripts/memory_mirror.sh` — because the instance and the memory directory both vanish with the
 machine.
 
-## ⛔ INDEX — 45 rules, 44 of them written on 2026-08-29/30. Read the GROUP you are in.
+## ⛔ INDEX — 48 rules, 47 of them written on 2026-08-29/30. Read the GROUP you are in.
 
 This file is 1,876 lines and nobody reads it front to back; that is itself a measured failure mode.
 Find your situation below and read those three or four rules only.
@@ -459,8 +459,13 @@ is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our ow
 7ah (asking a tool spends its patience), 7p/7ac (waste attributed to the wrong owner).
 
 **Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
-is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), 7au (lf52),
-7an (bp35), 7ao (s5i5), 7ak (dc22).
+is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bc** (lf52 —
+read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an (bp35), 7ao (s5i5), 7ak (dc22).
+
+**Is the level even still winnable?** → **7bc**. An engine state fed to an offline solver answers it;
+a frame, a level number and a tool's own model all cannot. Winnability is monotone along a played
+line, so BINARY-SEARCH the losing move. ⚠️ And check whether the position you are about to protect is
+worth protecting — on lf52 the click that "throws the level away" is the one that gets it back.
 
 ### 7c — the waste a stalled tool spends is the HARNESS's, and `observe`'s flag cannot see it (2026-08-29)
 
@@ -1875,6 +1880,11 @@ wrong — the losing jump is `pegjump`'s and the restarting click is `graph`'s �
 not to spring, at each of the eight moments the board allows it, leaves the score byte-identical.
 Read 7av before acting on anything in this entry.
 
+⛔ **AND ITS TWO REPAIRS ARE BOTH REFUTED BY RULE 7bc (2026-08-30, measured against the engine's own
+state).** There is no eighth candidate to rank — the losing capture is the ONLY capture on offer at
+that position — and the restarting click lands on a board that is ALREADY unwinnable and hands back
+a winnable one, so suppressing it keeps a dead board. Read 7bc before spending an action on either.
+
 ⭐ **THE THIRD CAPTURE IS THE LEVEL'S DESIGNED LOSING MOVE, read from the game's own source.** At
 level-6 action 124 the tool jumps (14,2) over (15,2) onto (16,2) — and `cfilhtifcb`'s level-6 branch
 says: landing on (16,2) **while red stands on (6,6)** calls `pchvqimdvj()`, the author's own "this
@@ -1905,9 +1915,12 @@ neighbour is rail with no hole so nothing can ever stand there to be jumped over
 survivor**, so opening the unseen column is worth nothing. Its only cost is arithmetic: `_won` over a
 model lacking it is satisfied one capture early, which `_elsewhere` already handles.
 
-⛔ **The target for whoever takes lf52: make the third capture the eighth candidate rather than the
-first**, and stop the 376 wasted actions that follow the wrong one. Not a bigger map (closed), not a
-looser veto (the veto is right), not the frontier (six measurements).
+⛔ ~~**The target for whoever takes lf52: make the third capture the eighth candidate rather than the
+first**~~ — CLOSED by rule 7bc: enumerated exhaustively, that position offers FIVE legal moves and
+exactly ONE capture, which is the losing one. Not a bigger map (closed), not a looser veto (the veto
+is right), not the frontier (six measurements), and not a ranking. The remaining distance is that
+both peg tools' MODELS are a fraction of the board — pegjump holds two pieces where the engine has
+six — so every guard they run is right about the wrong board.
 
 ### 7av — a guard that silently tests LESS than it was asked to (2026-08-30)
 
@@ -2208,3 +2221,76 @@ not the same strings and must not be intersected carelessly.**
 rule 7ba (no single tool beats the harness on any of the five; exactly ONE does anything at all on
 each) and rule 7ac (routing is not the defect), the registry is now measured from three independent
 directions and **none of them locates the remaining 0.0918 in the tool set as it stands.**
+
+### 7bc — lf52: the losing move is `pegjump` DECLARING A WIN over a two-cell window (2026-08-30)
+
+⛔ **NOTHING SHIPPED.** Every line here is a measured negative or a correction to this file. The one
+code change the diagnosis licensed was built, measured, and reverted. Round `scripts/rounds/R101LF52FATE`.
+
+**THE METHOD IS THE REUSABLE PART: an ENGINE STATE fed to an OFFLINE SOLVER answers "is this level
+still winnable?", which no frame and no tool can answer.** `scripts/_lf52_fate.py` records the
+engine's pads (with names), carts and camera at every action, rebuilds each as a state of
+`scripts/_lf52_l6_model.py` — the simulator the live 91-action clear was planned from — and searches
+it. Winnability is MONOTONE along a played line, so the first losing move is found by BINARY SEARCH,
+nine searches instead of five hundred. Three controls pass first: the rebuilt opening state EQUALS
+the model's own root, that root is winnable UNCAPPED in 347,792 states, and the stepping stones never
+move. ⚠️ The first version took the first row with MORE pads as the attempt's last row — that row is
+already POST-restart, so it answered "winnable" about a board just handed back whole and reported
+"never lost". A boundary off by one turns this instrument into the fail-toward-nothing shape.
+
+**WHAT IT SAYS.** After railpeg's captures at actions 14 and 16 the level is still WINNABLE. After
+`pegjump`'s capture at 124 it is NOT. railpeg's `refuse_fatal` guard is working correctly.
+
+**⛔ THE POSITION OFFERS ONE CAPTURE, SO THERE IS NOTHING TO RANK** (`scripts/_lf52_succ.py`):
+
+```
+jump (14,2) over (15,2) -> (16,2)   CAPTURE      winnable FALSE   <- taken
+jump (14,2)             -> (14,4)   no capture   winnable TRUE
+drive (1,0) / (0,1) / (-1,0)        no capture   winnable TRUE
+```
+
+Four of five legal moves keep a winning line alive and none of them is a capture. "Prefer the
+cheapest SURVIVABLE capture" cannot reach this; the rule that does is the other half of the same
+docstring — **when nothing on offer survives, a capture is not the move**, because a capture cannot
+be undone and a drive can.
+
+**⛔ AND THE RESTARTING CLICK IS NOT A LOSS — IT IS THE RECOVERY.** Measured in both directions:
+attempt 1 ends (action 266) NOT winnable, the restart at 267 hands back a board that is still
+winnable at action 499. The click lands on a board that died 142 actions earlier. "Stop clicking when
+nothing is legal" would have KEPT the dead board. ⚠️ Before protecting a position, ask whether it is
+worth protecting.
+
+**`pchvqimdvj()` IS AN OFFER, NOT A VERDICT** (`environment_files/lf52/271a04aa/lf52.py:5607`). It
+greys every pad with `set_offset_image` and spawns the `cwyrzsciwms` restart control. It does not end
+the level, freeze the board or rename anything — every jump stays legal, which is why 143 actions run
+on after it. Its judgement happens to be CORRECT here, and reading it as enforcement was wrong.
+
+**ROOT CAUSE, at the action before the move** (`scripts/_lf52_believe.py`, level-6 action 122):
+
+```
+engine   6 pads, 3 carts
+pegjump  2 pieces, 2 carriers      agreement over every model read in the run: 0 of 10
+```
+
+The model holds exactly the adjacent pair. Jumping one over the other leaves ONE piece, so
+`plan_moves` returns it with **`solved=True`** — MEASURED, not inferred from the count. It is not
+picking a bad capture; it is playing what it believes is the winning move of the level. That is
+railpeg's `refuse_local_win` lesson verbatim — a predicate over a CAMERA is not a predicate over the
+STATE — and `pegjump` carries no such guard.
+
+**THE FIX THAT FOLLOWED, AND WHY IT WAS REVERTED.** railpeg's survivability rule was ported into
+`pegjump.plan_moves` (distinct-outcome lookahead of 8, `capture_reachable`, `refuse_fatal` wired as a
+preference that can never leave the tool idle):
+
+```
+guard_calls 12 · refusals 0 · captures still 14/16/124 · 0.272727 · levels 1-5 unchanged
+```
+
+⛔ Rule 7g both ways: the branch IS reached — tier attribution puts the move in `plan`, one action
+after the plan was filled — and it never fires, because a guard on capture ROUTES cannot see a plan
+that claims to be a SOLUTION. A behaviour change across 25 games with no demonstrated gain is not
+kept.
+
+**WHAT REMAINS ON lf52 IS PERCEPTION, NOT RANKING.** railpeg's census had its model missing the red
+and (26,3) with a phantom; pegjump's holds two pieces of six. The level is never LOST at the end — it
+is never FINISHED, and the run stops on a winnable board with a third of its actions unspent.
