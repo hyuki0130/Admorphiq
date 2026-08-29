@@ -1,0 +1,101 @@
+R101LF52 / railpeg — lf52 level 6, 2026-08-29 evening. WHY THE PREVIOUS FIX SCORED IDENTICALLY.
+
+HOW EVERY NUMBER HERE WAS TAKEN
+  scripts/_lf52_fire.py, run through the REAL harness (UnifiedAgent, giveup 8000, stall 80,
+  no_progress default 500, dead LLM so routing is by signature — the shipped configuration), on
+  ceph-build out of a PRIVATE snapshot of the working tree (scripts/_lf52_snapfan.sh), so no peer's
+  in-flight edit is in the measurement and the box's shared ~/admorphiq is never written.
+  Counters are DELTAS against a snapshot taken the instant level 6 begins — never attributed by
+  proximity. Six seeds returned byte-identical counters: this run is DETERMINISTIC, and three
+  seeds were used thereafter.
+
+THE QUESTION THAT HAD TO BE ANSWERED FIRST (rule 7g)
+  The previous (1)+(2) attempt — refuse_local_win + the _rail_reach boarding term — gated at
+  0.2727 / 5 levels, IDENTICAL, and its author wrote "before concluding inert, prove whether the
+  new branches fire at all". They fire, hard:
+
+    plan:local-win-refused  26,955      elsewhere:set 1
+    travel:plans 33         travel:boards 32        (against 0 of 32 boardings recorded before it)
+
+  So both branches executed and the score did not move. A change that is never run and a change
+  that is run and does nothing want opposite repairs; this is the second.
+
+WHAT THE SAME RUN THEN SHOWED, AND IT IS THE WHOLE ANSWER
+    known cells at the first level-6 action:  61
+    known cells at the 500th:                 61      — flat, all 40 samples
+    drives: 239 with nobody aboard, 10 with a passenger; ONE camera shift in 285 frames
+
+  The tool was boarding carts and driving them nowhere. Riding is not the problem; the ride is.
+
+ROOT CAUSE — GENERIC, AND IT IS NOT ABOUT PEG SOLITAIRE
+  A REFUSED DRIVE AND A LAGGING FRAME ARE THE SAME PICTURE, and _sync resolved every one of them
+  as a lag. Its history test accepts any frame reproducing a state the tool has already left, and
+  the state before a drive is always one of those. So a board saying "the carts did not move" was
+  dismissed as an animation one action behind; the model marched its carts down track that does not
+  exist (pixel rail-reading is over-inclusive — floor drawn in the track's colour reads as track —
+  and m.rails was union-only, so nothing could ever retract a cell); and the same refused drive
+  came back forever. This is the measured 73 ACTION3 presses, and the coordinator's whole-level
+  figure of 359 inert actions in 500.
+
+THE REPAIR AND WHAT IT MOVED (_settle_drive)
+  Read the last drive's verdict off the first SETTLED frame, judged on the WINDOW only (a cart
+  scrolled off screen is absent for reasons that have nothing to do with the drive). Put the whole
+  state back — pieces, carts and cargo. Retract the cell ahead as track only on a SECOND identical
+  refusal, because one refusal is indistinguishable from an action swallowed by an animation.
+
+    known cells      61 -> 61 (flat)     becomes   61 -> 99      the map GROWS, first time ever
+    drive:empty      239                 becomes   1
+    drive:with-passenger 10              becomes   43
+    plan:local-win-refused 26,955        becomes   3,099
+    ONE retracted rail cell (drive:refused 2, drive:track-retracted 1) redirected the whole level.
+
+  ⛔ The level still does not clear. Per rule 7o a measurement of a MECHANISM does not license a
+  change of BEHAVIOUR — this is banked on the gate, not on the count above.
+
+A DEFECT I INTRODUCED AND THE MEASUREMENT THAT CAUGHT IT
+  The first _settle_drive restored m.carts and NOT m.pieces. A cart carries its passenger, so the
+  piece was left standing where the ride would have taken it. The tell was railhead:nobody-aboard
+  = 8 — at every barren moment on the level the model had nobody on any cart, which is impossible
+  on a board it had just ridden. Fixed by restoring the whole state.
+
+WHAT STOPPED IT NEXT, AND THE TIER BUILT FOR IT
+  After the ride the tool reaches the edge of its own map and every tier reports no gain — which is
+  CORRECT on the map it has. Novelty is measured over KNOWN cells, so the one destination worth the
+  journey scores exactly zero, and _shunt rolls a cart only onto a cell already called track, so
+  every ride stops one cell short of the frontier.
+    * _rail_reach now scores a component whose track runs off the SCREEN above every known cell;
+    * railhead_moves drives a LADEN cart at that gap — the one move the simulation cannot plan.
+  Both are gated on the track COMING FROM the opposite side, or any rail touching the window edge
+  reads as heading out of it in all four directions, including straight up.
+  This is safe only because a refused drive is now read: a wrong guess costs two actions and is
+  never repeated.
+
+MEASURED AND NOT BUILT
+  Frame evidence that the board is cut by the camera is available on action ONE: a known cell in
+  the outermost admissible column on 285 of 285 level-6 frames, against 0 of 7 on level 1, which
+  clears. But the win-claim refutation already sets _elsewhere by frame 5, so it buys ~4 actions
+  and carries a false-positive risk on the other games railpeg bids into. Parked deliberately.
+
+RAW
+  lf52fire.jsonl  6 seeds, the previous change alone — the baseline every delta above is against
+  lf52fix.jsonl   3 seeds, + _settle_drive (carts-only restore)
+  lf52rail.jsonl  3 seeds, + the frontier bonus and the railhead tier, over the same defect
+  lf52edge.jsonl  4 seeds, the camera-edge contrast between level 1 and level 6
+
+RESULT OF THE FRONTIER WORK — A NEGATIVE, RECORDED (lf52r2.jsonl, 3 seeds, deterministic)
+  known 61 -> 98 · drive:empty 1 · drive:with-passenger 66 (was 43) · railpeg held 121 actions of
+  500 (was 86, and 299 before any of this) · travel:reach-top 11 against field-top 10, so the
+  frontier bonus DOES outrank the known map. LEVEL 6 STILL DOES NOT CLEAR.
+
+  railhead:nobody-aboard 8 of 8 — the tier never fired once. The travel objective's second term
+  maximises where the PIECE stands, so every plan ends by hopping OFF the cart onto the best cell
+  it can reach, and at each barren moment there is no passenger for railhead to drive. The next
+  question is whether those moments have no cart in reach or no legal jump at all: lf52 is peg
+  solitaire, a lone piece cannot move without something to jump over, and after the local captures
+  the visible region holds one green and one red. If they are not adjacent then NOTHING is legal
+  and the missing objective is "bring a cart to the piece", which no tier currently values.
+  ⛔ That counter conflates "no carts" with "carts but nobody aboard" — split it before acting.
+
+NO REGRESSION ON THE LEVELS THAT CLEAR, and this is the check that says so: level 6 begins at
+action 323 in EVERY arm — the untouched baseline, _settle_drive alone, and both frontier variants.
+Levels 1 to 5 cost exactly the same in all four.

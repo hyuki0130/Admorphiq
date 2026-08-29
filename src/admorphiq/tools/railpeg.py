@@ -533,6 +533,7 @@ def capture_reachable(state: Any, ground: Ground, noncapture: frozenset[int],
 
 def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
                lookahead: int = _LOOKAHEAD, refuse_fatal: bool = False,
+               refuse_local_win: bool = False,
                why: Counter | None = None) -> tuple[list[Move], bool] | None:
     """Cheapest action sequence to the whole level, or failing that to a SURVIVABLE next capture.
 
@@ -552,6 +553,16 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
     never require — the map is partial, so "nothing further is reachable" is often just "the rest
     of the board has not been seen yet", and refusing to move at all is strictly worse than
     risking a wrong branch.
+
+    ⛔ A PREDICATE OVER A CAMERA IS NOT A PREDICATE OVER THE STATE, and `refuse_local_win` is where
+    that gets enforced. `_won` counts the pieces in the MODEL, and on a board wider than the screen
+    the model is a tenth of the board. Measured on the widest one: the tool walks a piece down the
+    left column using a piece of ANOTHER COLOUR as a ladder, takes both captures that region
+    offers, arrives at one piece of each colour — its own `_won`, exactly — and the level does not
+    end, because four more pieces are scrolled away. It then claims the same win forty-three times.
+    So once the board is KNOWN to extend past the screen, a `_won` state is still worth playing
+    toward, since it is the cheapest route to real captures, but it is no longer a SOLUTION. Saying
+    so is what lets the tool go looking instead of celebrating.
     """
     if not m.pieces:
         return None
@@ -577,7 +588,10 @@ def plan_level(m: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
         if cost > cost_of.get(state, cost):
             continue
         if _won(state, targets):
-            return _path(parent, state), True
+            if not refuse_local_win:
+                return _path(parent, state), True
+            if why is not None:
+                why["plan:local-win-refused"] += 1
         if len(state[0]) < total and len(captures) < lookahead:
             # ⛔ COUNT OUTCOMES, NOT PATHS. One action drives EVERY cart at once, so a great many
             # different drive orders arrive at the same board with the carts parked differently —
@@ -667,7 +681,7 @@ def approach_moves(m: Model, noncapture: frozenset[int], visited: set[Any],
     parent: dict[Any, tuple[Any, Move]] = {}
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
     tie = 0
-    best: tuple[int, int, Any] | None = None
+    best: tuple[tuple[int, int], int, Any] | None = None
     while heap:
         cost, _t, state = heapq.heappop(heap)
         if cost > cost_of.get(state, cost) or cost > cost_cap:
@@ -709,6 +723,117 @@ def _novelty_field(m: Model, touched: set[Cell]) -> dict[Cell, int]:
     return field
 
 
+def _aboard(state: Any) -> int:
+    """How many pieces are standing on a cart in this state."""
+    carts = set(state[1])
+    return sum(1 for cell, _v in state[0] if cell in carts)
+
+
+def _rail_reach(m: Model, field: dict[Cell, int]) -> dict[Cell, int]:
+    """For every rail cell, the highest novelty anywhere its own track can carry a cart.
+
+    ⛔ THE REWARD FOR BOARDING ARRIVES AFTER THE DRIVES, WHICH IS WHY PLAIN NOVELTY CANNOT RANK IT.
+    A cart parked at the end of the region a tool has already worked is, by the novelty measure, an
+    ordinary cell a step or two from home — while the track under it runs off the screen. Measured:
+    thirty-two travel plans on a board whose only route onward was a cart, and ZERO of them put a
+    piece on one. Scoring a boarded piece by what its TRACK can reach, rather than by where the
+    cart currently stands, is the whole difference between riding a cart you happen to be on and
+    going to get on one.
+
+    This stays honest about short track: a spur whose cells are all near home scores near zero and
+    boarding it wins nothing, so the bonus does not hijack boards where the rails go nowhere.
+
+    ⛔ AND A TRACK THAT LEAVES THE SCREEN OUTRANKS EVERYTHING ON THE MAP. Novelty is measured over
+    cells this tool KNOWS, so the one destination worth the journey — the part of the board it has
+    never seen — scores exactly zero, because unknown cells are not in the field at all. Measured
+    after the drive survey landed: the map grew 61 cells to 99, the tool arrived at the frontier,
+    and every tier then reported no gain, because on the map it now had it was standing on the best
+    cell there was. An OPEN track end (a rail cell whose continuation is off screen, so the board
+    cannot say whether track carries on) is the evidence that the journey is not finished, and a
+    component holding one is worth more than any known cell can be.
+
+    ⚠️ Off SCREEN, not merely unknown. A rail cell in plain view with background beyond it is a
+    buffer stop and the tool can see that it is — treating that as an open end sends a piece to
+    the end of a spur and parks it there, which is the dead-end trap `approach_moves` documents.
+    """
+    rails = m.rails | m.carts
+    horizon = max(field.values(), default=0) + 1
+    reach: dict[Cell, int] = {}
+    seen: set[Cell] = set()
+    for origin in rails:
+        if origin in seen:
+            continue
+        comp = [origin]
+        seen.add(origin)
+        i = 0
+        while i < len(comp):
+            c = comp[i]
+            i += 1
+            for d in DIRS:
+                n = (c[0] + d[0], c[1] + d[1])
+                if n in rails and n not in seen:
+                    seen.add(n)
+                    comp.append(n)
+        top = max((field.get(c, 0) for c in comp), default=0)
+        if any(_offscreen(m, rails, c, d) for c in comp for d in DIRS):
+            top = max(top, horizon)
+        for c in comp:
+            reach[c] = top
+    return reach
+
+
+def _offscreen(m: Model, rails: set[Cell], cell: Cell, d: Delta) -> bool:
+    """Is the TRACK running off the screen here, rather than simply stopping?
+
+    ⚠️ Three conditions, and dropping any one of them was measured to break something. The cell
+    beyond must be unknown (or there is nothing to learn); it must also be off SCREEN, because a
+    cell in plain view with no track on it is a buffer stop the tool can see is a buffer stop; and
+    the track must be COMING FROM the opposite side, or every rail cell touching the edge of the
+    window counts as heading out of it in all four directions — including straight up, where a
+    board that merely reaches the bottom of the frame has no track at all.
+    """
+    n = (cell[0] + d[0], cell[1] + d[1])
+    back = (cell[0] - d[0], cell[1] - d[1])
+    return back in rails and n not in m.known() and n not in m.window
+
+
+def railhead_moves(m: Model, why: Counter | None = None,
+                   refused: Counter | None = None) -> list[Move]:
+    """Drive a laden cart at the point where its track leaves the screen.
+
+    ⛔ THE SIMULATION CANNOT PLAN THIS MOVE AND THAT IS WHY IT NEEDS ITS OWN TIER. `_shunt` rolls a
+    cart only onto a cell the model already calls track, so at the edge of the known map every ride
+    is one cell short of the only place worth going, and the search reports — correctly, on the map
+    it has — that nothing gains. The board past the screen is not a gap in the plan; it is the
+    plan's destination, and the only way to learn it is to drive at it and read the frame.
+
+    That is safe now and was not before: a drive the engine refuses is READ (`_settle_drive`), so a
+    guess at track that is not there costs two actions and is never repeated, while a guess that is
+    right scrolls the camera and hands back a strip of board nobody had seen.
+
+    A passenger is required. The camera follows a piece, so an empty cart driven off the map
+    reveals nothing and the tool would never see what it had done.
+    """
+    laden = {c for c in m.carts if c in m.pieces}
+    if not laden:
+        if why is not None:
+            why["railhead:nobody-aboard"] += 1
+        return []
+    rails = m.rails | m.carts
+    for cell in sorted(laden):
+        for d in DIRS:
+            if not _offscreen(m, rails, cell, d):
+                continue
+            if refused is not None and refused[(d, cell)] >= 2:
+                continue
+            if why is not None:
+                why["railhead:driving"] += 1
+            return [("drive", None, d)]
+    if why is not None:
+        why["railhead:no-open-end"] += 1
+    return []
+
+
 def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visited: set[Any],
                  cost_cap: int = 40, node_cap: int = 60_000,
                  why: Counter | None = None) -> list[Move]:
@@ -727,6 +852,13 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
     got backwards, and driving a cart with a piece aboard is the cheapest way to climb it — which
     is exactly the move the camera follows, so it pays twice.
 
+    ⛔ AND THE OBJECTIVE HAS TO WANT TO GET ON, not merely to ride. A cart is only worth boarding
+    for where its TRACK goes, and that payoff is several drives away, so the plain measure scores
+    the cart cell itself — an ordinary cell near home — and never proposes the jump. Measured on a
+    board whose only route onward was a cart: thirty-two travel plans, ZERO boardings, while the
+    line that clears the level leapfrogs a piece five cells along a row and lands it on the cart.
+    `_rail_reach` supplies the missing term.
+
     The budget is deliberately loose. A journey between regions is only expensive if the
     alternative pays something; when the visible region is exhausted the alternative pays zero,
     and forty drives against a six-hundred-action level is noise.
@@ -737,9 +869,20 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
             why["travel:no-field"] += 1
         return []
     ground = _ground(m)
+    reach = _rail_reach(m, field)
 
-    def novelty(state: Any) -> int:
-        return max((field.get(cell, 0) for cell, _v in state[0]), default=0)
+    def novelty(state: Any) -> tuple[int, int]:
+        """(what this state can still reach, how far it has actually got).
+
+        A piece standing on a cart is worth what its TRACK reaches, because the drives that collect
+        it are one action each and the search has already paid for the boarding jump. The second
+        term breaks the plateau that would otherwise stop a ride dead: every cell of a journey
+        scores the same on the first term, so without it the tool boards a cart and never moves.
+        """
+        carts = set(state[1])
+        walked = max((field.get(cell, 0) for cell, _v in state[0]), default=0)
+        aboard = max((reach.get(cell, 0) for cell, _v in state[0] if cell in carts), default=0)
+        return (max(walked, aboard), walked)
 
     start = m.state()
     base = novelty(start)
@@ -747,7 +890,7 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
     parent: dict[Any, tuple[Any, Move]] = {}
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
     tie = 0
-    best: tuple[int, int, Any] | None = None
+    best: tuple[tuple[int, int], int, Any] | None = None
     while heap:
         cost, _t, state = heapq.heappop(heap)
         if cost > cost_of.get(state, cost) or cost > cost_cap:
@@ -769,7 +912,20 @@ def travel_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visit
         if why is not None:
             why["travel:all-visited" if best is None else "travel:no-gain"] += 1
         return []
-    return _path(parent, best[2])
+    path = _path(parent, best[2])
+    if why is not None:
+        # ⛔ A BRANCH THAT COULD FIRE IS NOT A BRANCH THAT DOES (rule 7g). These three say whether
+        # the rail bonus is even in play: `reach-top` is the best novelty any track can carry a
+        # cart to, `field-top` the best a walking piece can reach, and `boards` counts the plans
+        # that actually put a piece on a cart. A `reach-top` of zero means every rail cell this
+        # tool knows about sits where pieces have already been, so the bonus is arithmetically
+        # incapable of changing a ranking, however many carts are on the board.
+        why["travel:reach-top"] = max(why["travel:reach-top"], max(reach.values(), default=0))
+        why["travel:field-top"] = max(why["travel:field-top"], max(field.values(), default=0))
+        why["travel:plans"] += 1
+        if _aboard(best[2]) > _aboard(start):
+            why["travel:boards"] += 1
+    return path
 
 
 def probe_moves(m: Model, noncapture: frozenset[int], touched: set[Cell], visited: set[Any],
@@ -849,6 +1005,8 @@ class RailPegTool:
         self._prev_seen: tuple[Any, ...] | None = None
         self._settles = 0
         self._retried = False
+        self._drove: tuple[Delta, tuple[Any, ...]] | None = None
+        self._refusals: Counter[tuple[Delta, Cell]] = Counter()
         self._read_key: bytes | None = None
         self._read: Board | None = None
         self._sync_key: bytes | None = None
@@ -975,6 +1133,12 @@ class RailPegTool:
                      or bool({shift(c) for c in board.obstacles} & m.sockets))
         self._calibrate(seen[1], settled=not unsettled)
         if not unsettled:
+            self._settle_drive(m, seen)
+            # The verdict may have put the carts back, so what the model claims to show has
+            # changed with it — comparing against the pre-verdict reading would re-adopt the
+            # belief just retracted.
+            here = _seen(m.state(), m.window)
+        if not unsettled:
             # ⛔ An obstacle is the ONLY thing on this board that an animation can invent, and it
             # is therefore the only claim that is both DEFERRED and RETRACTABLE.
             #   Deferred: a piece in flight is drawn across two cells and fills whatever it passes
@@ -1078,6 +1242,64 @@ class RailPegTool:
             return
         self._pending = (aid, before, age + 1, want)
 
+    def _settle_drive(self, m: Model, seen: tuple[Any, ...]) -> None:
+        """Read the last drive's VERDICT off the first settled frame after it.
+
+        ⛔ A REFUSED DRIVE AND A LAGGING FRAME ARE THE SAME PICTURE, AND THE TOOL WAS RESOLVING
+        EVERY ONE OF THEM AS A LAG. `_sync`'s history test accepts any frame reproducing a state
+        this tool has already left, and the state before a drive is always one of those — so a
+        board saying "the carts did not move" is dismissed as an animation one action behind, the
+        model marches its carts on down track that does not exist, and the same refused drive is
+        proposed again. Measured on the widest board: SEVENTY-THREE presses of one direction, none
+        of which moved anything, on a level with a five-hundred-action allowance.
+
+        The engine only rolls a cart onto a cell that actually carries track, so a refusal is the
+        cheapest survey there is: it proves the cell ahead of every cart that could have moved is
+        NOT track. Reading rails from pixels is over-inclusive — floor drawn in the track's colour
+        reads as track — and nothing else in this tool can ever retract one, because `m.rails` is
+        union-only.
+
+        ⚠️ Judged on the WINDOW, never on the whole model. A cart scrolled off screen is absent
+        from the frame for reasons that have nothing to do with the drive, and counting that as
+        agreement would retract real track.
+        """
+        if self._drove is None:
+            return
+        d, was = self._drove
+        self._drove = None
+        vis = tuple(sorted(c for c in was[1] if c in m.window))
+        now = tuple(sorted(c for c in seen[1] if c in m.window))
+        if not vis or now != vis:
+            self._why['drive:took'] += 1
+            return
+        # Every cart the model expected to advance stayed put. Put the carts back first — that
+        # correction is free and always right, because the frame is settled and it is showing them.
+        self._why['drive:refused'] += 1
+        # ⛔ PUT THE WHOLE STATE BACK, not just the carts. A cart carries its passenger, so undoing
+        # the carts alone leaves the piece standing where the ride would have taken it — a piece
+        # floating one cell off the cart it is supposedly riding. Measured, from a first version of
+        # this method that restored only `m.carts`: at every barren moment on the level the model
+        # had NOBODY aboard any cart, and the tier that drives a laden cart at the frontier could
+        # never fire.
+        m.pieces = dict(was[0])
+        m.carts = set(was[1])
+        m.cargo = set(was[2])
+        # The rest of the plan was written for a journey that did not start; playing it out spends
+        # actions on a position the board never reached.
+        self._plan = []
+        # ⚠️ Retracting track is NOT free, and it is the one thing here that can break a level this
+        # tool already clears: an action SWALLOWED by an animation looks exactly like a refusal,
+        # and a spuriously deleted rail cell removes a route permanently. So the survey needs the
+        # same reading twice — a swallow does not repeat from the same cart on the same axis, a
+        # missing sleeper always does.
+        for c in was[1]:
+            key = (d, c)
+            self._refusals[key] += 1
+            ahead = (c[0] + d[0], c[1] + d[1])
+            if self._refusals[key] >= 2 and ahead not in was[1] and ahead in m.rails:
+                m.rails.discard(ahead)
+                self._why['drive:track-retracted'] += 1
+
     # -- planning ----------------------------------------------------------
     def _ensure_plan(self, m: Model) -> float:
         """Fill the queue of moves and report how strong the claim on this board is."""
@@ -1093,6 +1315,8 @@ class RailPegTool:
         # The harness resets this tool on a level-up, so still being here with the plan played out
         # IS the refutation.
         if self._claiming:
+            if not self._elsewhere:
+                self._why['elsewhere:set'] += 1
             self._elsewhere = True
             self._claiming = False
         pieces = len(m.pieces)
@@ -1105,7 +1329,8 @@ class RailPegTool:
         if stuck:
             self._why['plan:skipped-region-finished'] += 1
         found = None if stuck else plan_level(
-            m, self._noncapture, refuse_fatal=self._elsewhere, why=self._why)
+            m, self._noncapture, refuse_fatal=self._elsewhere,
+            refuse_local_win=self._elsewhere, why=self._why)
         if found is not None and found[0]:
             self._plan = list(found[0])
             self._claiming = found[1]
@@ -1160,6 +1385,10 @@ class RailPegTool:
             moves = probe_moves(m, self._noncapture, self._touched, self._visited,
                                 why=self._why)
             tier = "probe"
+        if not moves and self._elsewhere:
+            # Last: the track leaves the screen and the map cannot plan past its own edge.
+            moves = railhead_moves(m, why=self._why, refused=self._refusals)
+            tier = "railhead"
         if not moves:
             self._tiers["none"] += 1
             return 0.0
@@ -1199,11 +1428,23 @@ class RailPegTool:
                 self._refused = ((tuple(sorted(refused.items())), tuple(sorted(m.carts)),
                                   tuple(sorted(m.cargo))), colour)
         else:
-            res = _shunt(tuple(sorted(m.carts)), tuple(sorted(m.cargo)), m.pieces,
-                         frozenset(m.rails), d)
+            was = m.state()
+            before = _aboard(was)
+            res = _shunt(was[1], was[2], m.pieces, frozenset(m.rails), d)
             if res is not None:
                 carts, cargo, pieces = res
                 m.carts, m.cargo, m.pieces = set(carts), set(cargo), pieces
+                # What the next settled frame has to show if the engine agreed with the model
+                # about where this track goes. See `_settle_drive`.
+                self._drove = (d, was)
+                self._why['drive:with-passenger' if before else 'drive:empty'] += 1
+            else:
+                # ⛔ The model could not simulate this drive — which is the WHOLE POINT of the
+                # railhead tier, and it must still be READ. Without this the one move made
+                # specifically to learn unknown track is the only move that learns nothing from
+                # its own outcome, and a wrong guess repeats forever.
+                self._drove = (d, was)
+                self._why['drive:speculative'] += 1
         self._touched |= set(m.pieces)
         self._history.append(m.state())
         self._history = self._history[-_HISTORY:]
