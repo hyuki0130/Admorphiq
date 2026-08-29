@@ -78,9 +78,11 @@ def instrument():
             got = rigid_translation(before, board, {self._avatar, self._marker})
             if got is not None:
                 slide = (int(got[0][0]), int(got[0][1]), int(got[1].sum()))
-        if slide is not None:
+        changed = int((before != board).sum()) if before is not None else -1
+        if STATE["level"] == 5 and changed:
             STATE["slides"].append((STATE["n"], tuple(click),
-                                    tuple(self._before_pos) if self._before_pos else None, slide))
+                                    tuple(self._before_pos) if self._before_pos else None,
+                                    slide if slide else changed))
         return orig_resolve(self, geom, click)
 
     GantryCraneTool._resolve_press = _resolve_press

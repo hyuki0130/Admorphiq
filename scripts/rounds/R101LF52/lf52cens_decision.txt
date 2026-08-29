@@ -1,0 +1,12 @@
+=== level-6 action 114 (engine used=114 cam=(-57, 5) legal=2 zv=False red=[6, 6]) offset=(-2, 3) match=4/6
+    model pieces [([0, 17], 14), ([0, 18], 14), ([3, 25], 14), ([5, 23], 14), ([8, 3], 14)]
+    engine pieces [[[6, 6], 'fozwvlovdui_red'], [[14, 2], 'fozwvlovdui'], [[15, 2], 'fozwvlovdui'], [[20, 7], 'fozwvlovdui'], [[22, 5], 'fozwvlovdui'], [[26, 3], 'fozwvlovdui']]
+    known=98 cols=(0, 25) rows=(-1, 8) elsewhere=True nonc=[] score=0.0
+    plan_res=None
+    {"k": 0, "reachable": false, "land_model": [[0, 19]], "land_engine": [[16, 2]], "gone_model": [[0, 18], [0, 17]], "colours": {"14": 4}, "nsucc": 4, "njump": 0, "spread": 4, "FATAL_ENGINE": true}
+
+=== level-6 action 115 (engine used=115 cam=(-57, 5) legal=2 zv=False red=[6, 6]) offset=(-2, 3) match=4/6
+    model pieces [([0, 17], 14), ([0, 18], 14), ([3, 25], 14), ([5, 23], 14), ([8, 3], 14)]
+    engine pieces [[[6, 6], 'fozwvlovdui_red'], [[14, 2], 'fozwvlovdui'], [[15, 2], 'fozwvlovdui'], [[20, 7], 'fozwvlovdui'], [[22, 5], 'fozwvlovdui'], [[26, 3], 'fozwvlovdui']]
+    known=98 cols=(0, 25) rows=(-1, 8) elsewhere=True nonc=[] score=0.0
+    plan_res=None

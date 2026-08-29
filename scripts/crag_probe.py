@@ -8,11 +8,22 @@ final number is still taken from `harness_probe.py`; this is the microscope, not
 
     uv run python scripts/crag_probe.py bp35 --tool crag --cap 400 --verbose
     uv run python scripts/crag_probe.py bp35 --dump 3        # settled board as glyphs
+
+⛔ MEASUREMENTS BELONG ON THE BOX, so this is fan-shaped: `--json` prints one `{...}` line and a
+leading all-digit argv is swallowed as the fan's seed, which is what `pfan.sh` passes.
+
+    bash scripts/pfan.sh cragone scripts/crag_probe.py 1 "bp35 --harness --cap 1500 --json" 1
+
+⛔ AND THE SCORE IS NOT COMPUTED HERE. `level_score` and `game_score` are imported from
+`score_efficiency.py` so the arithmetic in this report is the gate's own, not a second copy of it
+that can drift. Per-level action counts include the RESET the revive costs, exactly as the gate
+counts it.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import sys
 
@@ -178,6 +189,48 @@ def _truth_report(tool, grids, level: int) -> None:
               f"{'IN the map' if inside else 'NEVER SEEN'}")
 
 
+def _harness_agent():
+    """The REAL harness, built as `harness_probe.py` builds it — the configuration that is scored."""
+    from admorphiq.harness.loop import UnifiedAgent
+    from admorphiq.harness.registry import default_tools
+
+    def _no_llm(*_a, **_k):
+        raise RuntimeError("LLM-free: the signature fallback is what this measures")
+
+    return UnifiedAgent(default_tools(), _no_llm, giveup=10**6, stall=80, ctx_budget=6000)
+
+
+def _run_harness(env, agent, cap: int) -> tuple[int, list[int], int]:
+    """Drive the real harness and return (levels, actions spent per level, deaths).
+
+    ⛔ The harness issues its own RESET on GAME_OVER (`loop.py`, `restart_on_game_over`), so this
+    loop must NOT break there and must NOT reset on its behalf — it counts and keeps going, which
+    is what `score_efficiency.py` does. A driver that stops at the first death measures the first
+    attempt of a level and reports it as the level.
+    """
+    obs = env.reset()
+    per_level: list[int] = []
+    levels = spent = deaths = 0
+    for _ in range(cap):
+        action = agent.choose_action([], obs)
+        data = action.action_data.model_dump() if getattr(action, "action_data", None) else None
+        obs = env.step(action, data=data) if data else env.step(action)
+        if obs is None:
+            break
+        spent += 1
+        now = int(getattr(obs, "levels_completed", levels) or 0)
+        if now > levels:
+            for _ in range(now - levels):
+                per_level.append(spent)
+                spent = 0
+            levels = now
+        if "GAME_OVER" in str(getattr(obs, "state", "")):
+            deaths += 1
+        if "WIN" in str(getattr(obs, "state", "")):
+            break
+    return levels, per_level, deaths
+
+
 def _make_tool(name: str):
     if name == "crag":
         from admorphiq.tools.crag import CragTool
@@ -199,12 +252,22 @@ def main() -> None:
     ap.add_argument("--dump", type=int, default=0, help="print the settled board every N actions")
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--map", action="store_true", help="print the tool's stitched world at the end")
+    ap.add_argument("--harness", action="store_true",
+                    help="drive the REAL harness (every registered tool) instead of one tool")
+    ap.add_argument("--json", action="store_true",
+                    help="print one JSON line: levels, per-level actions, and the GATE's own score")
     ap.add_argument("--bids", action="store_true",
                     help="bid on the FIRST frame of every sample game (selectivity)")
     ap.add_argument("--truth", type=int, default=-1, metavar="LEVEL",
                     help="when the tool first stops proposing on this level (0-indexed), score its "
                          "stitched map and its glyph vocabulary against the game's own level data")
-    args = ap.parse_args()
+    # ⛔ `pfan.sh` invokes `python <probe> <seed> <rest>`, so argv[1] is a bare integer that this
+    # probe has no use for. Swallowing it here is what lets the same file be run by hand and by the
+    # fan; without it the seed binds to `title` and every fanned row measures a game called "1".
+    argv = sys.argv[1:]
+    if argv and argv[0].isdigit():
+        argv = argv[1:]
+    args = ap.parse_args(argv)
 
     from arc_agi import Arcade, OperationMode
 
@@ -231,7 +294,19 @@ def main() -> None:
     obs = env.reset()
     print(f"{info.title}  baselines={getattr(info, 'baseline_actions', None)}")
 
-    tool = _make_tool(args.tool)
+    tool = _harness_agent() if args.harness else _make_tool(args.tool)
+    if args.harness:
+        from score_efficiency import game_score, level_score
+
+        levels, per_level, deaths = _run_harness(env, tool, args.cap)
+        base = list(getattr(info, "baseline_actions", None) or [])
+        scores = [level_score(base[i], a) for i, a in enumerate(per_level) if i < len(base)]
+        total = game_score(scores, len(base)) if base else 0.0
+        row = {"game": args.title, "levels": levels, "of": len(base), "actions": per_level,
+               "human": base[: len(per_level)], "deaths": deaths,
+               "per_level": [round(v, 4) for v in scores], "game_score": round(total, 4)}
+        print(json.dumps(row) if args.json else row)
+        return
     grids = _level_grids(args.title) if args.truth >= 0 else []
     told = False
     legend: dict = {}

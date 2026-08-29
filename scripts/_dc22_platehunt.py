@@ -28,7 +28,8 @@ import score_efficiency as SE  # noqa: E402
 from _dc22_gantryx import apply as apply_gantryx  # noqa: E402
 from _dc22_percep import apply as apply_percep  # noqa: E402
 
-STATE: dict = {"n": 0, "level": None, "hits": [], "tried": set(), "budget": 200}
+STATE: dict = {"n": 0, "level": None, "hits": [], "tried": set(), "budget": 200,
+               "dumps": 0}
 
 
 def instrument():
@@ -41,10 +42,17 @@ def instrument():
         # crane drives are visible everywhere and act from one cell each; a probe that only fires
         # where the tool happens to have no plan cannot enumerate cells.
         if STATE["n"] < STATE["budget"]:
-            for click in panel:
+            # ⛔ Inert controls FIRST, and never a control already known to carry the avatar away
+            # from here: the teleport moved the avatar off the plate before three of the four crane
+            # buttons had been tried there, so the cell was left half-measured.
+            order = sorted(panel, key=lambda c: (self._kind.get(c) is not None, c))
+            for click in order:
                 if self._kind.get(click) not in (None, "idle"):
                     continue
                 if (click, start) in STATE["tried"]:
+                    continue
+                entry = self._warps.get((click, start))
+                if entry and any(v != start for v in entry.values()):
                     continue
                 STATE["tried"].add((click, start))
                 STATE["n"] += 1
@@ -74,6 +82,18 @@ def instrument():
                        "from": list(self._before_pos) if self._before_pos else None,
                        "changed_px": changed,
                        "slide": [int(got[0][0]), int(got[0][1]), int(got[1].sum())] if got else None}
+                # ⛔ A press that ANSWERS and is refused by the slide reader is the interesting
+                # case; dump the pixels so the refusal has a cause instead of a name.
+                if (got is None and 8 <= changed <= 200 and STATE["dumps"] < 8
+                        and self._kind.get(click) in (None, "idle")):
+                    STATE["dumps"] += 1
+                    ys, xs = np.where(before != board)
+                    rec["diff"] = [[int(y), int(x), int(before[y][x]), int(board[y][x])]
+                                   for y, x in zip(ys, xs)]
+                    rec["hist_before"] = {str(int(c)): int((before == c).sum())
+                                          for c in np.unique(before[ys, xs])}
+                    rec["hist_after"] = {str(int(c)): int((board == c).sum())
+                                         for c in np.unique(board[ys, xs])}
                 STATE["hits"].append(rec)
                 print(json.dumps(rec), flush=True)
         return orig_resolve(self, geom, click)

@@ -375,3 +375,112 @@ eight pads visible), but it cannot be opened FROM HERE. Whatever opens it has to
 the choices that lead into this position — which is the branch `refuse_fatal` is already, correctly,
 declining to take blind. ⛔ Do not build a frontier tier for this board; six measurements now say
 the frontier is not what is missing.
+
+================================================================================
+SIXTH PASS — RULE 7au's TARGET IS NOT REACHABLE, AND THE TRAP IT NAMES IS NOT
+WHAT COSTS THE LEVEL. FOUR MEASUREMENTS, TWO OF THEM ATTRIBUTION CORRECTIONS.
+
+Rule 7au handed over two tasks: (1) "stop clicking when nothing is legal", (2) "make the third
+capture the eighth candidate rather than the first". Both rest on the claim that `railpeg` takes the
+losing jump at level-6 action 124 and then clicks for 143 actions. ⛔ IT DOES NEITHER.
+
+HOW EVERY NUMBER HERE WAS TAKEN
+  Four probes, each driving `score_efficiency.run_game` (the loop is never re-implemented — rule
+  7aj.1), fanned out of a PRIVATE snapshot through `scripts/pfan.sh`. Every one carries the negative
+  control: per-level [8, 52, 60, 64, 139] and 823 actions, `control_neg_ok true` on all of them.
+  `scripts/_lf52_map.py` (the engine oracle written by the previous pass) plus three new ones:
+  `_lf52_cens.py`, `_lf52_who.py`, `_lf52_disarm.py`.
+
+(1) WHAT railpeg ACTUALLY DOES AT THE DECISION (`_lf52_cens.py`, lf52cens.jsonl).
+  The candidate list is recorded out of the REAL final loop of `plan_level`, by wrapping
+  `capture_reachable` — so the search is read, never re-implemented. Twenty candidate turns on level
+  6, and the answer is the same at every one of them:
+
+      plan_res = None at ALL 20 TURNS.  capture_reachable = false for EVERY candidate.
+      at actions 114-121 the list holds exactly ONE candidate — the (16,2) landing — and
+      `refuse_fatal` REFUSES it.  railpeg's own score at those turns: 0.0.
+
+  ⛔ `railpeg` never ranks the fatal capture first. It never ranks it at all: it refuses every
+  capture on level 6, twenty times out of twenty, and then bids zero. **There is no eighth candidate
+  to prefer, and no candidate ORDER to repair.** Its usual list length is ONE.
+
+(2) WHO MAKES THE JUMP, AND WHO CLICKS (`_lf52_who.py`, lf52who.jsonl) — the harness's own
+  `_current`, read per action.
+
+      level 6 tenure:  railpeg 0-120  ·  pegjump 121-132  ·  graph 133-499
+      the three level-6 captures, by tool:   14 railpeg · 16 railpeg · 124 PEGJUMP
+      the 143 dead-position actions, by tool: graph 133 · pegjump 9
+      the restart click at action 266:        GRAPH
+
+  ⛔ TWO ATTRIBUTIONS IN RULE 7au ARE WRONG. The losing jump is `pegjump`'s, made ten actions after
+  `railpeg` was retired into `_failed`. The restarting click is `graph`'s — and the rule's
+  explanation for it ("the hot zone is SCREEN space and railpeg plans in WORLD space") describes a
+  tool that was not holding the board. ⚠️ Neither error is in the engine reading; both come from
+  attributing an action to the tool that had been playing earlier. Rule 7ak's instrument
+  (`scripts/trace_attribute.py`) exists for exactly this and was not used.
+
+(3) WHEN THE TRAP IS ARMED, AND WHETHER IT CAN STILL BE DISARMED (`_lf52_arm.py`, lf52arm.jsonl).
+  Asked with the engine's OWN legality predicate `qikmikecdf`, about the RED piece:
+
+      red's track on level 6:   (2,2) -> (2,4) -> (2,6) -> (4,6) -> (6,6), arriving at action 24
+      actions at which a legal move would VACATE (6,6):  24 25 26 27 28  and  79 80 81
+      all legal moves at action 124 (after the capture):  0
+
+  So the second half of the engine's conjunction is NOT frozen when the branch is lost. It is open
+  at EIGHT actions, the last of them forty-three actions before the capture.
+
+(4) THE FUNDED MEASUREMENT — FORCE THE DISARM AND SEE (`_lf52_disarm.py`, lf52disarm.jsonl).
+  Nine arms in one fan: a control that plays nothing, and one arm per opportunity that plays the
+  jump off (6,6) itself, two clicks in the game's own select-then-land protocol, then hands control
+  straight back. Rule 7ai's positive control is `vacated`, read over the TEN frames after the jump
+  rather than the first (a piece is in flight for several).
+
+      arm  forced_at  vacated  zv_at   levels  score
+      -1   —          —        124     5       0.272727      <- reproduces the banked run exactly
+       0   24         True     None    5       0.272727
+       1   25         True     None    5       0.272727
+       2   26         True     None    5       0.272727
+       3   27         True     None    5       0.272727
+       4   28         True     None    5       0.272727
+       5   79         True     None    5       0.272727
+       6   80         True     None    5       0.272727
+       7   81         True     None    5       0.272727
+
+  ⭐ THE DISARM WORKS: `zv_at` is None on all eight — the engine's dead-position detector NEVER
+  FIRES, so the branch is never lost, there is no 143-action frozen board and no restart click.
+  ⛔ AND THE LEVEL STILL DOES NOT CLEAR. Levels 1-5 identical in every arm.
+
+WHAT THAT SETTLES, and it settles BOTH handed-over tasks at once:
+  * The designed losing move is not what costs lf52 its level. Prevent it at any of the eight
+    moments the board allows and the score is byte-identical.
+  * Therefore the 376 wasted actions after it are worth ZERO to the score as well — level 6 gets a
+    500-action window from `no_progress` whatever happens inside it, and it never clears. "Stop
+    clicking when nothing is legal" is a real safety property with no measurable price on this game.
+  * Per rule 7b nothing was kept. NO SOURCE CHANGE IN THIS PASS.
+
+WHERE THE 0.7273 ACTUALLY SITS, stated as the next pass's starting point rather than as a lead:
+  railpeg refuses every capture on level 6 because `capture_reachable` is false for every candidate
+  on a map that stops at 98 cells / 6 of 8 pads. That refusal is CORRECT twice over — the fourth
+  pass measured that it has never once been asked over a complete board, and this pass measured that
+  the one capture it is offered at the end really is the losing one. So the tool is not misplaying
+  the branch point; it cannot see enough board to have a branch point. The winning line is known
+  (`scripts/_lf52_l6_line.json`, 55 moves / 85 actions, found offline over 384,219 states) and it
+  needs the SECOND camera scroll, which the engine grants only for a jump landing on (18,2) at
+  offset (-57,5). ⛔ Six earlier measurements say the map cannot be opened from the positions the
+  tool reaches; this pass adds a seventh reason not to look at the trap.
+
+WHAT THE DISARM COSTS AS WELL AS SAVES (lf52disarm2.jsonl, the same nine arms re-run with the
+level-6 capture list recorded). The control takes THREE captures and the third is the losing one;
+every forced arm takes TWO and never reaches a third:
+
+    arm -1   captures at level-6 rows [14, 16, 118]   fewest pieces 5   zv fires
+    arms 0-7 captures at level-6 rows [14, 16]        fewest pieces 6   zv never fires
+
+⚠️ The row indices in THIS probe are its own (its oracle returns None on a few transition frames, so
+its level-6 row 118 is the engine's in-level action 124 that `_lf52_map.py`, `_lf52_cens.py` and
+`_lf52_who.py` all report from the engine's own counter). The COUNT is what the arm is for and the
+count is unambiguous: 3 captures against 2.
+
+⛔ So the disarm does not buy progress that merely falls short — it buys NO third capture at all. The
+trap costs nothing because the tool cannot get past that point either way. That is the sharpest form
+of the negative and it is why nothing was built on it.
