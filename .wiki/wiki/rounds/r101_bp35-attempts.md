@@ -323,3 +323,80 @@ re-derived: it is a property of the board's art"). `_idle`, `_mute` and `_refute
 because only `_quit` writes them and `detect` never calls it. **Asking crag whether it recognises a
 board costs it none of its patience**, so the probes on this page are not perturbing what they
 measure.
+
+---
+
+## ⛔ CLOSED — the flat turns TRAVERSE, they do not revisit. bp35's remaining 0.1084 has no lever left (2026-08-30)
+
+The previous section handed over one surviving signal with an explicit warning: the longest unbroken
+run of turns during which the world map gains nothing separates the boards (4, 5, 10 at >= 0.956
+against 25 and 40 at <= 0.515), but *"only revisiting is waste"* and a flat map during a long walk to
+a known exit is also what a correct traversal of a 39-row board looks like. **Measured
+(`scripts/_bp35_flatcensus.py`), it is traversal. The signal is route LENGTH, not waste.**
+
+### The instrument correction that had to come first
+
+⛔ A turn on which the body does not move is NOT pacing when the action was a click. `_click` leaves
+the body where it is unless the click was aimed at its own support — a terrain edit reads as a
+repeated state **by construction** — and on bp35 half the turns in a flat run are clicks (20 of 41 on
+board 2). Counting those as revisits overstates the waste, so consecutive duplicates are separated
+out and their preceding action is recorded.
+
+```
+100% of the consecutive duplicates are click-frozen turns:  9 of 9 (board 2), 3 of 3 (board 3), 2 of 2 (board 5)
+```
+
+### The census — longest flat run per board
+
+```
+board  score    flat  distinct  revisits  click-frozen  TRUE revisits  max visits  states >2x
+  1    1.0000     5       5         0           0             0             1          0
+  4    1.0000     6       6         0           0             0             1          0
+  3    0.9560    11       6         5           3             2             3          1
+  5    0.5147    26      23         3           2             1             2          0
+  2    0.3044    41      30        11           9             2             3          1
+```
+
+⛔ **Board 2's 41-turn plateau is thirty distinct states and TWO true revisits.** Board 5's 26-turn
+plateau is twenty-three distinct states and ONE. These are single traversals with clicks interleaved,
+not cycles. Board 2's row sequence descends monotonically — `6, 5, -2, -6, -7, -10, -13, -14, -15,
+-16` — while the column works along each ledge; that is a body crossing the board.
+
+### And the contrast REVERSES the sign
+
+Read per whole attempt, which is the honest unit because a flat run can span a restart:
+
+```
+board 3  (0.9560)  attempt 1:  45 turns, 26 distinct, TRUE revisits 4, max visits 4, SIX states >2x
+board 2  (0.3044)  attempt 3:  44 turns, 33 distinct, TRUE revisits 2, max visits 3, ONE state  >2x
+```
+
+**The board scoring 0.9560 does TWICE the true revisiting of the board scoring 0.3044, over six
+states rather than one.** Revisiting is anti-correlated with the score. There is no pacing waste on
+the expensive boards to recover, and the `fresh = 1` reading of the plateau is refuted.
+
+⇒ The longest-flat-run correlation is explained without any appeal to waste: a longer flat run means
+a longer walk, and a longer walk means a board whose exit is further from the opening — which is the
+same property that makes the board expensive. **Do not reorder `_search`'s ranking on the strength of
+it.** The +0.0142-per-term-position warning stands and there is now nothing on this game to spend it
+on.
+
+### What board 2's eighty-seven actions are, finally
+
+```
+attempt 1   7 actions   6 distinct states, 0 true revisits   spike discovery — PROVEN irreducible
+attempt 2  34 actions  25 distinct states, 2 true revisits   builds 140 of the board's 370 map cells
+attempt 3  44 actions  33 distinct states, 2 true revisits   CLEARS, 43 < human 48
+```
+
+Every attempt is a near-pure traversal. There is no slack in any of them.
+
+⚠️ **And the human clears board 2 in ONE attempt** — its baseline of 48 is inside the 64-action
+allowance, so unlike boards 6, 8 and 9 this baseline contains no retry. The whole gap is that the
+human does not die to the spike and does not get walled in on the way. The lethality half of that is
+already proven NOT frame-readable (nothing in the frame says which of the ten drawn kinds kills), and
+the walled-in half is `_stranded`, already refuted above. Our winning attempt is faster than the
+human's once it knows the board.
+
+**bp35 is closed at 0.245560 unless something changes what the FIRST attempt can know.** Level 6
+stays closed on its own separate proof.
