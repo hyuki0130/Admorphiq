@@ -681,3 +681,29 @@ Declined. Not because it cannot be done, but because it is worth three ten-thous
 ⛔ This is the first item this round that was sized before it was built. The previous thirteen were
 inferred from behaviour, built, and then measured inert — the same loop each time. The difference
 costs one probe: ask what the repair would be WORTH before asking how to write it.
+
+## ⛔ The depth work, RANKED — and I spent the round on the wrong games
+
+Applying "size it before building it" to the whole depth half. What ONE more level is worth on the
+25-game mean, computed from the scorer's own output with no runs at all:
+
+```
+game    now    cleared  next  of    mean gain from one more level
+dc22   0.7143      5      6    6      +0.0114     <- the next level is its LAST; clearing it
+wa30   0.8000      8      9    9      +0.0080        finishes the game outright
+s5i5   0.5833      6      7    8      +0.0078
+bp35   0.2220      5      6    9      +0.0053
+lf52   0.2727      5      6   10      +0.0044
+                                      +0.0369 if every stuck game gains exactly one level
+```
+
+**dc22 is worth more than twice bp35 and is ONE level from completion**, and I never opened it. The
+whole round went to bp35 and lf52 — the two CHEAPEST items on this list — because they were the two
+whose failures looked most interesting.
+
+The level-index weighting is what makes this counter-intuitive: a game five levels into six has its
+biggest weight still unclaimed, while a game five into ten has four more walls behind the one in
+front of it. **A low score is not the same as a big opportunity.**
+
+⚠️ This ranking cost one command against files the round had already generated. It should have been
+the round's FIRST act, not its last.
