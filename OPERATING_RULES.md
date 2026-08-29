@@ -1722,6 +1722,16 @@ different failure — a tool that scores 1.0 on a lucky ordering — and says no
 different mechanics. The ten games without an archive remain untested for transfer by any means we
 have, and that is a real hole: **bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87, wa30.**
 
-⛔ Cheap and worth repeating after any wave of per-game tool work. Combined with rule 7ab (12 of 15
-archived games identical action-for-action) the set now has **21 of 25 games with at least one form
-of stability evidence** — 15 by re-render, six more by repetition.
+**The remaining four were then repeated too** — the LOSING games with no archive:
+
+```
+bp35  0.2456  726 726 726        lp85  0.9677  189 189 189
+lf52  0.2727  823 823 823        ls20  0.9121  645 645 645
+```
+
+⭐ **All ten games without an archive are deterministic action-for-action, so ALL 25 now carry at
+least one form of stability evidence** — 15 by re-render (12 of them identical action-for-action,
+rule 7ab) and 10 by repetition. Every gated number in `scripts/rounds/R101BP35` is a rate.
+
+⛔ Cheap and worth repeating after any wave of per-game tool work. ⚠️ And it stays a DIFFERENT claim
+from transfer: the ten remain untested against different mechanics by any means we have.
