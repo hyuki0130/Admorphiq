@@ -17,9 +17,25 @@ import ast
 import pathlib
 import subprocess
 
+import pytest
 
-def _tracked() -> set[str]:
-    out = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True)
+
+def _tracked() -> set[str] | None:
+    """Every file git tracks, or None where there is no repository to ask.
+
+    ⛔ `scripts/ptest.sh` runs the suite from a `git archive` SNAPSHOT on ceph-build (rule 7l — a
+    measurement must not write to a shared path), and a snapshot is not a repository. `git ls-files`
+    exits non-zero there, `check=True` raised, and this test reported RED on every box run for a
+    reason that has nothing to do with the invariant it defends. Measured 2026-08-30, and two agents
+    each spent time deciding whether it was their change.
+
+    ⚠️ SKIPPING is right here and would be wrong for most guards: this one compares committed files
+    against git's own index, so without an index there is no question to answer. A guard that cannot
+    see must say so rather than fail (rule 7bm) — and rather than pass (rule 7q).
+    """
+    out = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
+    if out.returncode != 0:
+        return None
     return set(out.stdout.split())
 
 
@@ -30,6 +46,8 @@ def test_no_committed_file_imports_an_untracked_module() -> None:
     missing, and it will not be noticed until someone runs exactly that path.
     """
     tracked = _tracked()
+    if tracked is None:
+        pytest.skip("no git index here (a ptest.sh snapshot) — nothing to compare against")
     offenders: list[str] = []
     for name in sorted(tracked):
         if not name.endswith(".py"):
