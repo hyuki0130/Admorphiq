@@ -794,3 +794,26 @@ been looked at.
 ⚠️ Note the shape, because it recurs: a mechanic that is genuinely new, genuinely unmodelled, and
 genuinely NOT the blocker. bp35's crumbling platform has not been tested this way, and the same
 question is open there.
+
+### dc22 level 6's GOAL is also a switch — and it is pixel-identical to every earlier goal
+
+The win is `jfva` reaching `goknoi`'s cell. Level 6 does not use the `goknoi` sprite the first five
+levels use; it uses `goknoi-dokmdr`, which appears nowhere else:
+
+```
+goknoi          pixels=[[11,11],[11,11]]   tags=["goknoi"]
+goknoi-dokmdr   pixels=[[11,11],[11,11]]   tags=["buezna", "goknoi"]
+```
+
+**Identical pixels. Different tags.** The level-6 goal is ALSO a `buezna` — the entity class whose
+activation drives the colour cycle. So the goal cell is dual-purpose, and reaching it runs the switch
+machinery before the win check.
+
+⛔ **A frame-only tool cannot see this difference at all.** The two sprites are the same four pixels
+of colour 11. Whatever separates them, it is not visible — which is the same fact already recorded
+for bp35, where "two distinct legend characters share an identical pixel signature, so the game
+separates by something a pixel comparison cannot see". Two games, same trap.
+
+That is a much better candidate for what stops dc22 than the cycling tile, which was tested and does
+not block. The next check is whether the goal is reachable at all — `gantry`'s BFS returns no path,
+and a goal that behaves as a switch when touched may not register as reached.
