@@ -106,6 +106,47 @@ That turns this page's central premise — a verbatim repeat cannot end differen
 about death-length shape into a direct measurement. It also bounds the upside honestly: if 3,000 more
 actions of the same tool buy nothing, the public-25 prize is measurably zero.
 
+## GATE RESULT and the ENGAGEMENT RATE — the ledger is learned once and acts never (public 25)
+
+Gated `a8ee8be6` vs `R101RE86`: **PASS, kept, new baseline 0.8986** (`scripts/rounds/R101ALLOW2/games`).
+All eighteen 1.0 games byte-identical; of the seven allowed to move only lp85 did (+0.0578), and that
+is the separately-committed cyclepress change. ⚠️ HEAD also carried the lf52 railpeg commit, so the
+attribution is JOINT — "18 identical" does not isolate this change, though railpeg cannot touch those
+eighteen either.
+
+⛔ **WHY IT WAS IDENTITY, mechanically — and this is the answer to "should a tool that KNOWS it has 12
+actions left plan differently?"** Derived from the committed artefacts, no new run required.
+
+A death resets the board to level 0. To die AGAIN on level L the agent must first REPLAY levels
+1..L. So one death CYCLE costs `replay(1..L) + allowance`. Trust needs TWO deaths; the retirement
+needs a THIRD attempt to actually act. Against each game's measured trailing window:
+
+```
+game  tail  lvl  allow  replay  cycle  deaths that fit  ban can act?
+bp35   507    5     64     233    297         2         NO  - trusted at action 361 of 507, and the
+                                                             level it bans is 233 replay-actions
+                                                             away; the give-up fires first
+s5i5   502    6    200     192    392         1         NO  - never even reaches trust
+dc22   500    -   none                                  -   no level gets two agreeing deaths ([1023])
+lf52   500    -   none                                  -   same ([640])
+```
+
+**So on the public 25 a tool is NEVER in the position of planning with a known allowance.** Exactly
+one game learns an allowance at all, and it learns it ~146 actions before `no_progress` ends the
+game, with a 233-action replay between it and the level the ban applies to. The engagement rate of
+this mechanism on the public set is one game, too late to act — which is a stronger statement than
+the headroom section's "the deaths sit in already-zero territory", and it is the reason the gate
+returned identity rather than noise.
+
+⛔ **Therefore: do NOT build allowance-aware PLANNING against the public 25.** There is no position in
+which it could execute, so any such change would be gated against a board that cannot exercise it —
+and a change measured where it cannot act is measured at zero for a reason that has nothing to do
+with whether it works. The one configuration where the retirement CAN act is a longer give-up
+(bp35 at `HARNESS_NOPROGRESS=3500` gets ~12 cycles instead of 2). ⚠️ The coordinator measured 500 vs
+3500 as score-neutral on all five wall games — but on the tree WITHOUT this ledger, so that A/B does
+not answer whether the retirement helps when it gets the chance. That A/B re-run on HEAD is the only
+cheap decisive experiment left on this axis, and it is worth exactly one round, not a campaign.
+
 ## Files
 
 - `src/admorphiq/harness/allowance.py` — `AllowanceLedger` (record, trust gate, remaining clock).

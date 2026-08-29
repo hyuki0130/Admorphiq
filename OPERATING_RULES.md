@@ -840,3 +840,35 @@ SAY SO.** `compare.py` now returns NO VERDICT when any baseline game is missing,
 the venv, proves the snapshot is not shadowed, and refuses to reach the comparator below 25 results.
 Both verified in both directions — the empty round now refuses, the real one still passes and says
 how many games it compared.
+
+### 7r — `pfan.sh` could not test an edit to `src/`, and wrote to the shared tree (2026-08-29)
+
+Reported by the lf52 agent while it was trying to measure its own change. `pfan.sh` shipped ONLY
+`scripts/`, extracted it INTO the shared `~/admorphiq`, and ran from there — so every probe imported
+the box's shared `src` no matter what its author had just edited, and the fan itself wrote to the
+path rule 7l exists to keep measurements out of.
+
+⛔ This is rule 7n's trap in a SECOND place, and the same asymmetry makes it expensive: a NEW symbol
+fails loudly with a traceback naming a file that plainly contains it; a CHANGED function PASSES,
+against the old code. Every probe anyone ran against a `src/` edit before this fix measured the
+shared tree.
+
+`pfan.sh` now snapshots the WORKING tree (`src` + `scripts` — uncommitted edits INCLUDED, because a
+probe is a red-green loop and not a gate), links `.venv` / `environment_files` / `data` /
+`ARC-AGI-3-Agents` read-only, and REFUSES to fan if the `admorphiq` it would import is not the
+snapshot's. Proved by reporting the import PATH rather than a pass:
+
+```
+{"seed": "1", "admorphiq_from": "/home/ubuntu/pfan_selftest/src/admorphiq/__init__.py"}
+{"seed": "2", "admorphiq_from": "/home/ubuntu/pfan_selftest/src/admorphiq/__init__.py"}
+{"seed": "3", "admorphiq_from": "/home/ubuntu/pfan_selftest/src/admorphiq/__init__.py"}
+```
+
+⚠️ A green tick could not have told those apart from the shared path. `scripts/_pfan_selftest.py`
+stays committed for that reason — it asserts nothing and prints where the code came from.
+
+⚠️ AND ONE MORE FAIL-OPEN, found while fixing it: passing arguments to the remote as
+`bash -s "$SNAP" "$PROBE" "$N" "$REST" "$PAR"` breaks whenever `REST` is empty — the common case,
+since most probes take only a seed. Under `set -u` the remote dies with `$5: unbound variable`
+**after the launcher has already printed "launched"**. Arguments now go through the environment.
+That is the fourth guard-or-launcher today that reported success for something that did not happen.
