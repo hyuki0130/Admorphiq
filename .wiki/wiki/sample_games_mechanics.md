@@ -548,3 +548,29 @@ actions, and plan a tour that never lets the counter reach zero.
 **Everything ls20 needs is now known**: the budget (42 at 2 per action), the refill (touch the ring),
 the penalty (one of three lives, back to the start, items restored), the detector (a full-screen
 repaint), and the six pickup positions. What does not exist is a tool that uses any of it.
+
+### What a fuel-aware ls20 tool can actually SEE (2026-08-29)
+
+Colour 11 is BOTH the gauge and the pickups, which cost one instrument before the split was made.
+Separated by position — a bar pinned to the frame edge versus rings out on the board:
+
+```
+step:   1    2    3    4    5    6    7    8    9   10
+gauge: 80   76   72   68   64   60   56   52   48   44      -4 every action, max 84, min 0
+board: 17   18   18   18   18   18   18   18   18   18      a ring is 8 px
+```
+
+- **The fuel level is directly readable** from the edge gauge and falls exactly 4 pixels per action,
+  which is `StepsDecrement=2` rendered two pixels per unit. A tool does not have to infer its fuel;
+  it can measure it every frame.
+- **Pickups are visible, but only two or three of the six at a time** (interior colour-11 runs 17-24
+  pixels against 8 per ring). The fog hides the rest until the avatar gets near.
+
+So the lever is real but BOUNDED: a router can aim at the pickups it can see and must still explore
+to find the others. "Plan a tour through all six" is not available from the frame; "never let the
+gauge reach zero, and divert to a visible ring when it gets low" is.
+
+⛔ Two more instrument failures on the way here, both already-known kinds. The counter was wiped by
+the final level-up so the script reported "level 7 not observed" — the exact bug fixed earlier in
+this same round, in a different file, because the fix lived in a script instead of a shared helper.
+And the pickup counter was reading the fuel gauge, because both are colour 11.
