@@ -2746,6 +2746,19 @@ summary while the game itself falls from 1.0000).
 "IDENTICAL" and treated that as a formality. It is not — **on five levels identical is the only
 acceptable outcome**, and the gate's per-game column is the only thing that checks it.
 
+⭐ **AND THE CLIFF IS NOT BEING FALLEN OFF — measured, five repeats of each canary from a private
+snapshot of HEAD:**
+
+```
+re86  IDENTICAL 1.0000  [25,42,49,59,113,139,101,168]     sc25  IDENTICAL 1.0000  [17,6,12,31,40,39]
+sb26  IDENTICAL 1.0000  [9,15,15,15,17,19,17,17]          tu93  IDENTICAL 1.0000  [18,10,19,17,29,28,14,23,29]
+```
+
+⚠️ That distinction matters: a zero-margin level that VARIED run to run would already be losing the
+cap some of the time, and no single gate would show it. These do not vary — **the risk is entirely
+in what a future change does, not in noise.**
+
 ⛔ SO THE STANDING INSTRUCTION IS NOW QUANTIFIED: after any change to `harness/` or to a tool that
 bids on more than one game, confirm re86 / sc25 / tu93 / sb26 are byte-identical BEFORE reading the
-mean. Their tightest levels are the canaries and they are cheaper to check than to lose.
+mean. ⭐ `scripts/rounds/compare.py` now NAMES them in every verdict, so nobody has to remember four
+game names at the moment they are looking at a mean.

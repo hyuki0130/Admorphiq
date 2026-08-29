@@ -1,0 +1,59 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 1.0,
+  "total_score_pct": 100.0,
+  "games": [
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 6,
+      "elapsed_s": 5.5,
+      "total_actions": 145,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 17,
+          "human_actions": 36,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 6,
+          "human_actions": 6,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 12,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 31,
+          "human_actions": 83,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 40,
+          "human_actions": 143,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 39,
+          "human_actions": 50,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25"
+    }
+  ]
+}
