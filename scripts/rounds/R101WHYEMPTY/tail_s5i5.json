@@ -1,0 +1,249 @@
+{
+ "arm": {
+  "game": "s5i5",
+  "tool": "swivel",
+  "mode": "census",
+  "seed": 8
+ },
+ "tail": [
+  {
+   "step": 215,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=15",
+     "len=14"
+    ]
+   }
+  },
+  {
+   "step": 216,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=14",
+     "len=13"
+    ]
+   }
+  },
+  {
+   "step": 217,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=13",
+     "len=12"
+    ]
+   }
+  },
+  {
+   "step": 218,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=12",
+     "len=11"
+    ]
+   }
+  },
+  {
+   "step": 219,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=11",
+     "len=10"
+    ]
+   }
+  },
+  {
+   "step": 220,
+   "level": 6,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1022
+   ],
+   "note": null,
+   "changed": {
+    "_plan": [
+     "len=10",
+     "len=9"
+    ]
+   }
+  },
+  {
+   "step": 221,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 703,
+   "ret_last_line": [
+    "_next",
+    1018
+   ],
+   "note": null,
+   "changed": {
+    "_pending": [
+     "len=3",
+     null
+    ],
+    "_plan": [
+     "len=9",
+     "len=0"
+    ],
+    "_dead": [
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "step": 222,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 223,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 224,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 225,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 226,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 227,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  },
+  {
+   "step": 228,
+   "level": 6,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 680,
+   "ret_last_line": [
+    "propose",
+    680
+   ],
+   "note": null,
+   "changed": {}
+  }
+ ]
+}

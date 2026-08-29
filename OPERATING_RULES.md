@@ -2402,3 +2402,74 @@ read. On bp35 and lf52 the successor cannot read the board either, so the handov
 never hold a board), rule 7ac (routing cannot lose a tie) and now this, the registry has been
 measured from FOUR independent directions and **none of them locates the remaining 0.0918 in the tool
 set as it stands.**
+
+### 7bf — WHY the strong tool goes empty: two games, two OPPOSITE reasons, and zero score either way (2026-08-30)
+
+Rule 7bd left one question open — *"why does the strong tool go empty, and is the successor better
+than nothing?"* Asked of the TOOL, not of the harness's stderr (which reports `_feedback`, the last
+message set, not the retirement cause — rule 7ac). Instrument `scripts/_why_empty.py`, artefacts
+`scripts/rounds/R101WHYEMPTY/`; every `propose()` of the target tool is line-traced through its own
+shallow methods, so the exact `return []` that fired is named, and every scalar it carries is
+snapshotted before and after.
+
+⛔ **CONTROLS FIRST (rule 7ai).** `pure` (no wrapping) and `census` (wrapped + traced) both reproduce
+the banked `R101LP85GATE` per-level counts EXACTLY, four times across two fans:
+`bp35 [18,87,45,23,46] 726a lv5 = 0.24556`, `s5i5 [13,30,47,39,32,31] 694a lv6 = 0.583333`. The
+instrument does not move the run, and both games are deterministic.
+
+**Both are NOPLAN. ZERO ILLEGAL in 459 traced calls** — the 43/43 prior holds.
+
+```
+bp35  crag    230 calls   222 PLAN   8 NOPLAN   all 8 = _quit("window does not belong to this board")
+s5i5  swivel  229 calls   221 PLAN   8 NOPLAN   1 = _next sets _dead=True, then 7 = the dead latch
+```
+
+⭐ **bp35 — ONE FIELD, and the tool's own docstring predicted it.** At the first empty call the ONLY
+thing that changed is `self._rows` **10 → 9**, and `_stitch` returned `"lost"`. That is verbatim what
+`crag._widen_band` warns about: *"the window is a fixed height in pixels but not in CELLS: where the
+lattice origin happens to fall decides whether the last row is whole, so the same window reads as ten
+rows on one frame and nine on the next."* The author guarded the BAND against it and left the STITCH
+exposed. The eight empty calls are otherwise inert — the only other field that moves is `_idle`.
+
+⛔ **AND THE TOOL'S OWN PATIENCE IS NEVER CONSULTED.** crag budgets itself `_GIVE_UP` = 16 idles
+before `_mute` even increments and `_MUTE_AFTER` = 3 mutes before it stops bidding. The harness's
+`_EMPTY_TOLERANCE` = 8 fires at **exactly half the tool's own first threshold**: at retirement
+`_idle`=8, `_mute`=0, `_refuted`=False. The tool has not given up; the harness has.
+
+**s5i5 — a permanent latch over a genuine "no plan exists".** In one call: the click was refused (an
+extra frame layer), `_settle(refused=True)` banned the edge and cleared a nine-step plan, `_replan()`
+exhausted EVERY rider pairing without finding a route, `_retry_unknown()` had no control left under
+`_MAX_RETRIES`=1, so `swivel.py:1017` sets `_dead = True`. That is the wall rule 7ao named — the win
+needs a rider that is already home to move, which `choose_pairing`/`solved` cannot propose. `_dead` is
+cleared only by `reset()` at a level change, so the seven trailing empties are ceremony: swivel is
+already gone at the first one and the harness spends seven more asks finding out.
+
+⭐ **DOES IT RECOVER IF HANDED BACK? OPPOSITE ANSWERS — AND BOTH ARE WORTH ZERO.**
+
+```
+                    shadow (asked off-run after retirement)      hold (never retired)
+bp35 crag    487 asks, 436 SPEAK (89.5%), first at +52a     360a held (was 229) -> per-level IDENTICAL
+s5i5 swivel  464 asks,   0 SPEAK  (dead latch)              671a held (was 228) -> per-level IDENTICAL
+```
+
+⛔ **The `hold` arms did not change a single per-level count on either game** — 0.24556 and 0.583333,
+unchanged. So there is no full-25 gate to run here: the arm that acts on rule 7bd's finding is
+measurably inert. Every action after the wall level begins is scored at zero however it is spent.
+
+⚠️ **AND crag's "recovery" is caused by the SUCCESSOR, not by time.** It re-reads the board only
+while `graph` is driving it somewhere the window reads ten rows again. Given the board in its own
+hands (`hold`) it does NOT re-sync: 126 of 360 calls NOPLAN with the same note, and its own give-up
+finally fires (`_mute` 6, `_refuted` True). ⭐ Handing a stalled tool its board back is the OPPOSITE
+of what it needs on bp35 — being displaced is what fixes it.
+
+⛔ **RULE 7bd's NAMED ANOMALY IS CLOSED, NULL.** `telescope` (solo depth 5 on s5i5, never holds a
+board on any of the 25) was sampled 464 times on the s5i5 wall level after swivel died: **`detect`
+returns 0.00 EVERY time.** It cannot take that board — swivel's own docstring says the two tools
+partition the family by whether a one-way control exists, and level 6 has one. "One cheap pair away"
+is measured and it is not a pair. ⚠️ The sampling perturbed `linkage` exactly as rule 7ah predicts
+(its tenure fell 463 → 126 and graph took 336) and the per-level counts STILL did not move.
+
+**What is left that this does NOT close**: the `_rows` 10↔9 read is a one-field perception defect
+with a named cause, in a tool that reaches bp35's best depth. It is a repair candidate — and rule 7o
+applies in full, because the arm that keeps crag on the board after it is fixed is the `hold` arm,
+which is measured inert.

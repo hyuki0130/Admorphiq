@@ -1,0 +1,412 @@
+{
+ "arm": {
+  "game": "bp35",
+  "tool": "crag",
+  "mode": "census",
+  "seed": 3
+ },
+ "tail": [
+  {
+   "step": 219,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_aimed": [
+     "len=3",
+     null
+    ],
+    "_aim": [
+     "len=2",
+     null
+    ],
+    "_world": [
+     "len=9",
+     "len=100"
+    ],
+    "_opening": [
+     null,
+     "len=99"
+    ],
+    "_home": [
+     null,
+     "len=2"
+    ],
+    "_seen_rows": [
+     "len=0",
+     "len=10"
+    ],
+    "_grade": [
+     0,
+     2
+    ],
+    "_at": [
+     null,
+     "len=2"
+    ],
+    "_gdir": [
+     0,
+     -1
+    ],
+    "_visited": [
+     "len=0",
+     "len=1"
+    ],
+    "_plan": [
+     "len=0",
+     "len=2"
+    ],
+    "_last": [
+     null,
+     "len=7"
+    ],
+    "_expect": [
+     null,
+     "len=2"
+    ],
+    "_took": [
+     null,
+     "len=2"
+    ],
+    "_level": [
+     4,
+     5
+    ],
+    "_note": [
+     "exit route x1",
+     "explore route x3"
+    ],
+    "_trace": [
+     "at=None g=0 cells=9 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | exit route x1",
+     "at=(6, 3) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 220,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_visited": [
+     "len=1",
+     "len=2"
+    ],
+    "_plan": [
+     "len=2",
+     "len=1"
+    ],
+    "_trace": [
+     "at=(6, 3) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3",
+     "at=(6, 4) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 221,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_visited": [
+     "len=2",
+     "len=3"
+    ],
+    "_plan": [
+     "len=1",
+     "len=0"
+    ],
+    "_trace": [
+     "at=(6, 4) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3",
+     "at=(6, 5) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 222,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_solid": [
+     "len=3",
+     "len=4"
+    ],
+    "_safe": [
+     "len=3",
+     "len=4"
+    ],
+    "_known": [
+     14,
+     15
+    ],
+    "_visited": [
+     "len=3",
+     "len=4"
+    ],
+    "_plan": [
+     "len=0",
+     "len=2"
+    ],
+    "_trace": [
+     "at=(6, 5) g=-1 cells=100 air=True exit=True open=2 solid=3 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3",
+     "at=(6, 6) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 223,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_visited": [
+     "len=4",
+     "len=5"
+    ],
+    "_plan": [
+     "len=2",
+     "len=1"
+    ],
+    "_trace": [
+     "at=(6, 6) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3",
+     "at=(6, 7) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 224,
+   "level": 5,
+   "n_steps": 1,
+   "n_legal": 1,
+   "kind": "PLAN",
+   "ret_propose_line": 1279,
+   "ret_last_line": [
+    "_take",
+    1556
+   ],
+   "note": "explore route x3",
+   "changed": {
+    "_edits": [
+     "len=0",
+     "len=1"
+    ],
+    "_visited": [
+     "len=5",
+     "len=6"
+    ],
+    "_plan": [
+     "len=1",
+     "len=0"
+    ],
+    "_trace": [
+     "at=(6, 7) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=0 | explore route x3",
+     "at=(6, 8) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=1 | explore route x3"
+    ]
+   }
+  },
+  {
+   "step": 225,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_rows": [
+     10,
+     9
+    ],
+    "_last": [
+     "len=7",
+     null
+    ],
+    "_idle": [
+     0,
+     1
+    ],
+    "_note": [
+     "explore route x3",
+     "window does not belong to this board"
+    ],
+    "_trace": [
+     "at=(6, 8) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=1 | explore route x3",
+     "at=(6, 8) g=-1 cells=100 air=True exit=True open=2 solid=4 kill=2 gone=1 swap=2 flip=1 edits=1 | window does not belong to this board"
+    ]
+   }
+  },
+  {
+   "step": 226,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "step": 227,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     2,
+     3
+    ]
+   }
+  },
+  {
+   "step": 228,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     3,
+     4
+    ]
+   }
+  },
+  {
+   "step": 229,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     4,
+     5
+    ]
+   }
+  },
+  {
+   "step": 230,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     5,
+     6
+    ]
+   }
+  },
+  {
+   "step": 231,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     6,
+     7
+    ]
+   }
+  },
+  {
+   "step": 232,
+   "level": 5,
+   "n_steps": 0,
+   "n_legal": 0,
+   "kind": "NOPLAN",
+   "ret_propose_line": 1250,
+   "ret_last_line": [
+    "_quit",
+    1214
+   ],
+   "note": "window does not belong to this board",
+   "changed": {
+    "_idle": [
+     7,
+     8
+    ]
+   }
+  }
+ ]
+}
