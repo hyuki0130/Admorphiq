@@ -44,19 +44,29 @@ cat \$S.d/*.json > /tmp/solo/out.jsonl 2>/dev/null
 echo DONE >> /tmp/solo/out.jsonl"
 
 echo "=== results: the best tool per game, and anything that beats the current best"
-"${SSH[@]}" 'cd /tmp/solo && python3 -c "
-import json
+# ⛔ THE RESULT BLOCK NEVER RAN. Its python was single-quoted inside a single-quoted ssh argument, so
+# every escaped quote reached bash as a literal backslash and `bash -n` fails at line 48 — measured
+# 2026-08-30, and `git show HEAD~1` proves it predates today's edits. **This script has never
+# executed to completion.** A tool nobody has run is a tool that does not work; the 235-pair sweep
+# this file was written for had to be driven by hand.
+#
+# Fixed by keeping the analysis LOCAL: pull the jsonl and read it here, where quoting is not nested.
+scp -q -i "$KEY" "$REMOTE:/tmp/solo/out.jsonl" /tmp/sweep_out.jsonl 2>/dev/null
+python3 - /tmp/sweep_out.jsonl <<'PYEOF'
+import json, sys
 best = {}
-for line in open(\"out.jsonl\"):
-    line = line.strip()
-    if not line or line == \"DONE\":
+for line in open(sys.argv[1]):
+    try:
+        d = json.loads(line)
+    except Exception:
         continue
-    d = json.loads(line)
-    if \"levels\" not in d:
+    if "levels" not in d:
         continue
-    k = d[\"game\"]
-    if k not in best or d[\"levels\"] > best[k][\"levels\"]:
+    k = d["game"]
+    if k not in best or d["levels"] > best[k]["levels"]:
         best[k] = d
+if not best:
+    print("  no results — see ~/sweep.d on the box")
 for g, d in sorted(best.items()):
-    print(f\"  {g}: {d[\'levels\']} levels by {d[\'tool\']} in {d[\'actions\']} actions\")
-"'
+    print(f"  {g}: {d['levels']} levels by {d['tool']} in {d['actions']} actions")
+PYEOF
