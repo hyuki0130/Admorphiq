@@ -624,3 +624,28 @@ about ls20.
 ⚠️ Third time this round the repair I built was aimed at a stage downstream of the real defect —
 after crag's alignment threshold and its vocabulary probe. The pattern is the same each time: I
 inferred the gap from behaviour, built for it, and the measurement showed the gap was further back.
+
+### Why the fuel model is empty: fogscout NEVER PLAYS the easy levels
+
+Attributing every action to the tool that issued it, per level:
+
+```
+levels 1-6   keymaze   408 actions, all of them
+level 7      fogscout  291   keymaze 9
+```
+
+**The tool that owns the fuel model arrives for the first time on the fogged level.** It has never
+seen this game when it takes over: no gauge colour, no refill glyphs, no glyph kinds — which is
+exactly what `refills=0 kinds=0 bar=None` at every level boundary was reporting. The state was not
+lost; it was never built, because fogscout was not playing.
+
+And the level it debuts on is the one that punishes learning time with death: about 21 actions of
+fuel, and `_read_bar` needs four frames of watching a colour fall before it can even find the gauge.
+
+So ls20's efficiency gap is a TENURE problem, not a routing or bookkeeping one. The fix is not inside
+fogscout — it is that the tool holding the model for a mechanic should meet that mechanic before the
+level where it is fatal.
+
+⚠️ This also retires two of my own repairs from this round: carrying the vocabulary across a level
+(nothing to carry) and not resetting a tool that returns mid-level (fogscout has exactly one tenure
+on ls20, so there is no return). Both were aimed at preserving a state that was never created.
