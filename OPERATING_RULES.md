@@ -2792,3 +2792,39 @@ been paid for, three days apart.**
 leaves a tarball and there were dozens that day. `snapgate.sh` and `ptest.sh` now sweep `/tmp/*.tgz`
 older than 30 minutes locally as well. **A fix that solves a problem in one place and leaves its twin
 standing is half a fix.**
+
+### 7bn — keeping a change that moves nothing: lf52 goes from DESTROYED to still-winnable (2026-08-30)
+
+Rule 7b says keep nothing that does not move the score, and it has been right fifteen times. **This
+is the exception, and the reason is worth stating so the exception does not become a habit.**
+
+`cef09932` (pegjump: a win over a WINDOW is not a win) gates CLEAN — mean 0.9082 both sides, **no
+game's score changed at all** — and lf52 stays 0.272727. What it changes is the STATE OF THE BOARD:
+
+```
+lost_at 124 -> None            restarts [267] -> []
+attempt-1 end NOT winnable -> WINNABLE      third capture taken -> never made
+camera pinned at -57 -> 12 distinct positions
+```
+
+⛔ **Before it, the run DESTROYED the level at action 124 and spent the remaining 376 actions on a
+dead board. After it, the level is still winnable at action 500.** Every future attempt on lf52 has
+to happen after that point, so the change is not an improvement to the score — it is the removal of a
+measured obstacle to ever improving it.
+
+⚠️ **THE TEST FOR THIS EXCEPTION, so it is not abused**: the change must remove a MEASURED
+destruction, not a suspected inefficiency; it must gate with no game's score moving at all; and the
+before/after must be stated in the board's own terms rather than in the tool's. ⭐ Its author
+volunteered that rule 7b argues against keeping it and that reverting costs nothing — which is the
+disclosure that makes the exception safe to grant.
+
+⭐ AND THE TENTH lf52 HYPOTHESIS DIED IN THE SAME PASS: "widen perception and the move changes" is
+FALSE. Handed the engine's TRUE six pads offline, `plan_moves` stops saying solved **and returns the
+IDENTICAL fatal capture**, because tier 1 is cheapest-capture and that capture is the cheapest. **A
+perception repair alone would have been inert.** What separates it is survivability on a map KNOWN
+partial — and `runs_offscreen` is TRUE at all ten of pegjump's level-6 decisions, so the signal was
+available before the claim.
+
+⛔ WHERE lf52 SITS NOW: **TENURE.** pegjump holds 19 of level 6's 500 actions; `graph` holds 225 and
+`world_model` 117 — and with pegjump stopped, **`graph` made the identical fatal capture 193 actions
+later.** That is rule 7bd's pattern, and it is the whole remaining distance.
