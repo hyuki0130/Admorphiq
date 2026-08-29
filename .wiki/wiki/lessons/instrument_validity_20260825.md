@@ -191,6 +191,9 @@ had been reverted were never needed. The model was mostly right the whole time.
   numbers rather than to instruments.
 - [[unanimous_wrong_answers_are_a_prompt_defect_20260823]] — when several models agree on
   a wrong answer, suspect the question; the instrument-validity analogue for prompts.
+- [[probe_validated_on_one_game_20260827]] — the INVERSE of the fourth kind: the agent came
+  from the runner and the LOOP was hand-written. Two divergences that changed nothing on six
+  games and 0.16 of score on the seventh, so every check that hit one of the six agreed.
 
 ## A fifth kind: two machines, two trees — "both dirty" is not "both the same dirty" (2026-08-27)
 
