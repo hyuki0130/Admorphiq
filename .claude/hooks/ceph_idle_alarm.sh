@@ -15,7 +15,14 @@ OUT=$(ssh -o ConnectTimeout=4 -o BatchMode=yes -i "$KEY" ubuntu@ceph-build \
         'n=$(pgrep -fc "uv run python" 2>/dev/null || echo 0); l=$(cut -d" " -f1 /proc/loadavg); echo "$n $l"' 2>/dev/null) || exit 0
 PROCS=${OUT%% *}
 LOAD=${OUT##* }
-if [ "${PROCS:-0}" -lt 8 ]; then
+# ⛔ 60 IS A CEILING, NOT A TARGET. The box has 64 cores and saturating them locks out SSH, so the
+# round becomes unreachable while it runs. With one agent per game each fanning out 60-way, the
+# TOTAL is what matters — measured 2026-08-29: eight agents took it to 129 processes at load 64.6.
+if [ "${PROCS:-0}" -gt 60 ]; then
+  echo "⛔ ceph-build is OVERLOADED — $PROCS processes, load $LOAD. The cap is 60 of 64 cores;"
+  echo "   above it SSH stops answering and the box cannot even be checked on. Agents each fan out"
+  echo "   60-way, so the TOTAL is what breaks the cap. Throttle before launching anything else."
+elif [ "${PROCS:-0}" -lt 8 ]; then
   echo "⛔ ceph-build is IDLE — $PROCS processes, load $LOAD of 64 cores."
   echo "   Do not run a probe once. Enumerate every hypothesis that could explain what you are"
   echo "   looking at (rule 7h) and fan them out:  bash scripts/pfan.sh PROBE.py 60 ARG"

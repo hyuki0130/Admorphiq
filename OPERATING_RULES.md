@@ -557,3 +557,26 @@ together. If the list has one entry, that is the tell that the enumeration was s
 tested, so the first result that is consistent with it gets accepted — "wa30 declares 70 and spends
 508, therefore budget" — and the alternatives that would have refuted it were never on the list.
 Enumerating first is the same discipline that prevents both failures.
+
+### 7i — the box's tree was a SHARED resource, and 60 cores is a TOTAL (2026-08-29)
+
+Two defects surfaced the moment eight agents ran at once, and both had been invisible while work was
+serial.
+
+**The tree.** `~/admorphiq` was the only checkout on ceph-build, and every sync overwrote it with a
+whole-tree tar. That is why `gate_tool.sh` grew a check that REFUSES its verdict when the tree moves
+mid-measurement — a guard wrapped around a shared resource instead of a fix for it. With eight agents
+each syncing, they overwrite each other's source WHILE measuring, so every number is suspect.
+
+```
+bash scripts/ceph_worktree.sh <name>      # ~/wt/<name>, its own source, env files symlinked
+```
+
+⛔ A worker that measures must own its bytes. `environment_files` is large, read-only and identical
+for everyone, so it is linked rather than copied.
+
+**The 60-core cap is a TOTAL, not a per-worker budget.** The cap has been stated repeatedly and was
+still broken: each agent fanned out 60-way, and the box reached **129 processes at load 64.6** —
+above 60 SSH stops answering and the round cannot even be checked on. `ceph_idle_alarm.sh` now
+reports the overload in every turn, because a ceiling that lives in a document is a ceiling nobody
+sees at the moment they exceed it.
