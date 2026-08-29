@@ -980,3 +980,36 @@ clear eight; it simply cannot do the ninth in seventy moves.
 
 ⚠️ Which also predicts fragility above it: a level cleared at 134 of 150 is one unlucky draw from
 failing, so wa30's 8 levels are not as safe as the score suggests.
+
+### wa30 DRAWS its budget plainly — and the repository's reader cannot see it (2026-08-29)
+
+`src/admorphiq/tools/budget.py` exists, holds a complete `BudgetReader`, and its docstring records
+the measurement that thirteen of the twenty-five games declare a per-level budget and END on
+overrun. **Exactly one tool imports it** (`reforge.py`). shepherd — which plays every wa30 level and
+spends 508 actions against level 9's allowance of 70 — does not, and shepherd's own docstring lists
+reading the drawn budget as "still untested".
+
+That looks like rule 7b's unused asset. It was checked before being wired, and the check saved the
+work:
+
+```
+level 1..9: reader total=None remaining=None   on every single level
+```
+
+**The reader returns None everywhere on wa30.** Wiring it into shepherd would have connected a tool
+to a value that is never available — this round's fifteenth wasted repair.
+
+And the reason is precise. wa30 draws its budget in `render_interface` as clearly as a game can:
+
+```python
+frame[63, x] = 7 if x < round(64 * current_steps / total) else 4
+```
+
+**The whole last row, repainted as a ratio bar** — colour 7 for remaining, colour 4 for spent. But
+`BudgetReader` looks for "the LINE in the outer band where cells stop matching their initial value",
+which assumes an indicator that consumes cells monotonically from a fixed drawing. A bar that is
+re-rendered as a PROPORTION every action does not match that model, so the reader finds no line.
+
+**So the gap is not a missing reader, it is a reader that models one drawing style.** wa30's budget
+is a two-colour ratio bar on a known row; reading it is `count(row 63 == 7) / 64 * total`. That is a
+much smaller and better-specified change than "teach shepherd about budgets".
