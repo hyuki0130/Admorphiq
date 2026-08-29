@@ -553,3 +553,31 @@ a quantity it is not measuring.
 ls20 is "a routing problem worth up to +0.0062" stands on one suggestive distribution and nothing
 else. Computing it needs the avatar's actual start cell and the actual exit cell, neither of which
 the centroid shortcut provides.
+
+## Why the ls20 floor cannot be computed this way — and that is itself the finding
+
+Second attempt, tracking the avatar as "the small blob that moves between consecutive frames"
+instead of a centroid:
+
+```
+ls20 level 7: 20 tracked steps of 302; avatar (61,17) -> (61,17)
+```
+
+**Only 20 of 302 steps change 40 pixels or fewer.** On this board a single step re-renders a large
+part of the frame, because it is a FOG level — moving changes what is revealed, not just where the
+avatar is. So "the avatar is the small moving thing" is false here, the 20 tracked points are not a
+trajectory, and start equals end.
+
+⚠️ My own print label was over-claiming too: "largest single-step displacement 38 px (the cell
+pitch)" measures the gap between consecutive TRACKED points, which are far apart in time. It is not
+the pitch.
+
+⛔ **Seventh instrument failure in this thread**, and the honest conclusion is about the method, not
+the game: frame-diff heuristics cannot locate the avatar on a board where every step redraws the
+fog. A floor for ls20 needs a different route entirely — the game's own level data, the way rule 0
+settled bp35's crumbling platform and lf52's pad count — not another pixel heuristic.
+
+**Status of the efficiency claim, stated exactly**: the decomposition (depth 0.0919, efficiency
+0.0147) is solid and comes from the scorer's own per-level output. ls20 being the largest efficiency
+item is solid. **How much of ls20's 302-vs-186 is recoverable remains unmeasured**, and three
+attempts to measure it have failed in three different ways.
