@@ -81,6 +81,18 @@ def main() -> int:
         )
         return 1
 
+    # ⛔ THE CANARIES. Five capped levels sit at EXACTLY the human action count — re86 L2 42/42 and
+    # L6 139/139, sc25 L2 6/6, tu93 L7 14/14 and L8 23/23 — so ONE extra action drops that game off
+    # the 1.0 cap. Measured 2026-08-30: sc25 L2 costs 0.00101 of the mean for a single action, which
+    # ROUNDS AWAY in a four-decimal summary while the game itself falls from 1.0000. The score
+    # comparison above cannot see a change that has not yet crossed the cliff, so name them.
+    canaries = ("re86", "sc25", "tu93", "sb26")
+    at_risk = [g for g in canaries if g in new and g in old and abs(new[g] - old[g]) < 1e-9
+               and new[g] > 0.9999]
+    if at_risk:
+        print(f"canaries hold at 1.0000: {', '.join(at_risk)} "
+              f"(zero-margin levels — one extra action would drop them)")
+
     print(f"no game regressed ({len(new)} games compared)")
     return 0
 
