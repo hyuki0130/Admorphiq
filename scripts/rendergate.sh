@@ -57,9 +57,16 @@ find /tmp -maxdepth 1 -name "rend_*.tgz" -mmin +30 -delete 2>/dev/null
 git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$ARMS" "$TITLES" <<'EOS'
+# ⛔ ssh does NOT preserve argv — it joins the command into ONE string that the remote
+# shell re-parses. An argument containing spaces silently becomes several, shifting every
+# argument after it: the first smoke run reported "arms:[identity] games:1" because the
+# arm list split and the titles argument was read from the middle of it. Arms travel
+# COMMA-SEPARATED for that reason.
+ARMS_CSV=$(echo "$ARMS" | tr -s ' ' ',')
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$ARMS_CSV" "${TITLES:-ALL}" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; ARMS="$5"; TITLES="$6"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; ARMS=$(echo "$5" | tr ',' ' '); TITLES="$6"
+[ "$TITLES" = "ALL" ] && TITLES=""
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
 # ⛔ rule 7bi — the box's disk filled with our own snapshots once already.
