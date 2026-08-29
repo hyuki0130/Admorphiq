@@ -1008,3 +1008,26 @@ an agent's third-pass files were swept into **a peer's dc22 commit**, because th
 message describing it did not, so the artefacts are filed under a game they are not about.
 
 **Stage and commit in ONE step.** A staged file is a file any concurrent `git commit` will claim.
+
+### 7x — a diagnostic that disagrees with the instrument it explains is explaining a different run
+
+⛔ Measured 2026-08-29: **a hand-rolled harness loop clears FOUR bp35 boards where
+`score_efficiency.py --agent unified` clears five.** `harness_probe.py` passes accumulated frames to
+`is_done`/`choose_action` and ignores `restart_on_game_over`; the scorer passes an EMPTY list and
+honours it. So every explanation built on the hand-rolled loop was an explanation of a game the
+scorer never played.
+
+**Drive the scorer's own `_make_agent` and mirror its loop.** Two probes were rewritten this way the
+same day and both then reproduced banked numbers exactly — ls20 at 17/101/63/66/67/100/231 and
+railpeg holding 121 of lf52's 500 — which is the validity check that makes the rest of their figures
+usable.
+
+⚠️ Same family, same day, from the other end: a probe that broke out on GAME_OVER reported ls20 at 6
+levels / 481 actions where the gated run clears 7 in 651, because `UnifiedAgent.restart_on_game_over`
+is True (`loop.py:138`) and the scorer REVIVES the env. **A probe that stops early does not look
+broken — it looks like a game that stopped early.** And a fan that returns fewer rows than games,
+with no error, is not a game that ended early.
+
+⛔ `arcengine.GameAction.RESET` is an Enum MEMBER; `.reset()` is `admorphiq.types`' API. Calling the
+wrong one raises ONLY on a death, so games that never die run clean and games that do exit 0 with an
+empty log. Two silent failures in one afternoon, both on a path only some games take.
