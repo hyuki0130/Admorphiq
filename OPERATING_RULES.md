@@ -1179,7 +1179,14 @@ s5i5  live [13,30,47, 39, 32, 31]          arch [13,30,47, 61, 32, 31]          
 cn04  live 6 levels                        arch 5 levels     <- a genuinely different level SET
 ```
 
-The tools do not merely score the same on a re-render; they play the same moves. ⚠️ cn04's archive
+The tools do not merely score the same on a re-render; they play the same moves.
+
+⭐ **AND s5i5's LONE OUTLIER IS EXPLAINED, by running the same four search-budget arms against the
+archive**: level 4 costs **61 actions at EVERY margin — unbounded, 0, 3 and 6** — so it is completely
+invariant to the size of the search space. **The 39 → 61 difference is not a planning effect; it is
+in the READING the model is built from.** A per-level count that moves on a re-render while being
+immune to the search budget is a PERCEPTION difference, and that distinction is cheap to make: vary
+the budget and see whether the number follows. ⚠️ cn04's archive
 has a different number of levels, so its 1.0000-vs-1.0000 is agreement on different content and is
 NOT evidence of action-level transfer. s5i5's whole -0.0240 is one level going 39 -> 61.
 
@@ -1671,3 +1678,24 @@ future gate cheaper. It changes nothing about what the tool believes.
 ⭐ The arm carries its own falsification test: **level 6 is the board that MUST swing a bar off the
 top edge**, and it stays at 31 actions. A margin of 0 cannot win — 132s and a loss — which is the
 proof that the bound is a bound and not a removal.
+
+### 7aq — a wall-clock win can be LIVE-ONLY, and the gate must be read for that (2026-08-30)
+
+`12aa7f19` bounds how far a bar may leave the frame and buys **219s → 45s on s5i5** with the score and
+all six per-level counts identical. Gated: every game unchanged, kept.
+
+⚠️ **Its author then measured the same four arms against the archived re-render and reported that the
+saving does NOT transfer**: on the archive every margin sits at ~198s, because there the tool spends
+its time elsewhere. Score and per-level counts are identical on BOTH versions, so the commit is
+transfer-neutral — but the *benefit* is one version deep.
+
+⛔ **That is worth stating as a rule because a wall-clock claim is not a score claim and the gate does
+not check it.** The gate compares scores; it says nothing about whether the run got faster, and a
+change kept "for the wall clock" can be inert on any board where the cost lives somewhere else. Read
+the gate for what it proves — no regression — and measure the saving separately, on more than the
+board it was tuned on.
+
+⭐ And the author volunteered the caveat before anyone asked, alongside the falsification test that
+makes the bound trustworthy (level 6 MUST swing a bar off the top edge and stays at 31 actions;
+margin 0 cannot win at all). **A negative volunteered about your own change is worth more than a
+positive you were asked for.**
