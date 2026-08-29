@@ -22,8 +22,34 @@ ls20  0.9040   gap 0.0960   all 8 fallback presses are inert; it is a FUEL game
 lp85  0.9677   gap 0.0323
 ```
 
+## ⭐ THE DECOMPOSITION THAT SAYS WHAT KIND OF PROBLEM EACH GAME IS (2026-08-29, from the gate's own per_level)
+
+```
+game     score  reached  per-level (* = at the 1.0 cap)      what is actually lost
+dc22    0.7143     5     * * * * *                           DEPTH ONLY — one level, its last
+lf52    0.2727     5     * * * * *                           DEPTH ONLY
+s5i5    0.5833     6     * * * * * *                         DEPTH ONLY
+wa30    0.8000     8     * * * * * * * *                     DEPTH ONLY — one level, its last
+ls20    0.9040     7     * * * * * * +                       EFFICIENCY, L7 = 0.62, one level
+lp85    0.9677     8     * * + . * * * *                     EFFICIENCY, L4 = 0.24, L3 = 0.94
+bp35    0.2220     5     * . + * .                           BOTH — L2 = 0.30, L5 = 0.30
+```
+
+⛔ **FOUR OF THE SEVEN LOSE NOTHING BUT DEPTH.** Every level they reach is at the cap, several
+faster than the human, and the game simply ends short. For those games there is no efficiency work
+to do at all and a "make the tool faster" change cannot help — the target is the NEXT level and
+only the next level. dc22 and wa30 are one level from the end.
+
+⚠️ Reading a stuck game as ONE NUMBER hides this completely, and it is one command away:
+`per_level` in `scripts/rounds/*/games/*.json`.
+
+⚠️ bp35's two 0.30 levels are not slowness. Its human baselines EXCEED the game's own action
+allowance (87/131/163 against 64/128/192), so those baselines already contain a retry — "87 actions
+vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
+
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. Four agents are live: dc22-into-gantry, lf52 camera-vs-state, the allowance ledger, s5i5.
+1. SIX agents are live: dc22-into-gantry, lf52 camera-vs-state, s5i5, wa30 level 9,
+   ls20 level 7, and the death-clock allowance ledger.
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
 
