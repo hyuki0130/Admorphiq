@@ -16,13 +16,19 @@ TITLE="${1:?a short rule title}"
 F=OPERATING_RULES.md
 
 # Suffixes run 7c, 7d ... 7z, then 7aa, 7ab ... — the same order the file already uses.
+# ⛔ `local letters=({a..z})` does NOT expand — brace expansion happens before `local` assigns, so the
+# array holds the literal "{a..z}" and the first "free" suffix printed was `7(z)`. Build it without
+# a brace inside an assignment.
 next() {
-  local letters=({a..z}) i j
-  for i in "${letters[@]}"; do
-    grep -q "^### 7$i " "$F" || { echo "7$i"; return; }
+  local letters i j
+  letters=$(printf '%s ' {a..z})
+  # ⚠️ 7a and 7b predate the "### 7x — " header style and appear in other forms, so a grep for the
+  # HEADER alone reports them free. Match the number anywhere it is cited.
+  for i in $letters; do
+    grep -q "\b7$i\b" "$F" || { echo "7$i"; return; }
   done
-  for i in "${letters[@]}"; do for j in "${letters[@]}"; do
-    grep -q "^### 7$i$j " "$F" || { echo "7$i$j"; return; }
+  for i in $letters; do for j in $letters; do
+    grep -q "\b7$i$j\b" "$F" || { echo "7$i$j"; return; }
   done; done
   echo "7zzz"
 }
