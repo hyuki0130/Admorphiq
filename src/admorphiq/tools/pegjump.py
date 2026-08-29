@@ -76,7 +76,8 @@ import numpy as np
 
 from admorphiq.tools.base import Step, availability, frame_2d, has_frame
 
-__all__ = ["PegJumpTool", "Board", "read_board", "plan_moves"]
+__all__ = ["PegJumpTool", "Board", "read_board", "plan_moves", "railhead_moves",
+           "runs_offscreen", "capture_reachable"]
 
 Cell = tuple[int, int]          # (row, col) on the lattice
 Delta = tuple[int, int]
@@ -91,6 +92,8 @@ _MAX_PITCH = 16
 _MIN_CELLS = 8
 _NODE_CAP = 120_000
 _HISTORY = 8
+_LOOKAHEAD = 8
+_REACH_CAP = 25_000
 
 
 # --------------------------------------------------------------------------- perception
@@ -404,6 +407,87 @@ def _successors(state: Any, sockets: set[Cell], rails: set[Cell],
                    ("drive", None, d), 1)
 
 
+def railhead_moves(model: Model, noncapture: frozenset[int],
+                   cost_cap: int = 16, node_cap: int = 40_000) -> list[Move]:
+    """Put a piece on a carrier and ride it toward the side where the track leaves the screen.
+
+    ⛔ THE ONLY MOVE THAT WIDENS THE MAP ON A BOARD WIDER THAN THE FRAME, and neither of the tiers
+    below it can propose one. The frontier tier maximises how much unknown territory sits next to a
+    piece — a quantity computed in MODEL coordinates, where nothing a simulated move does ever
+    changes what is knowable, because the simulation has no camera in it. Measured on the widest
+    board: eleven consecutive planning decisions, the known map fixed at 26 cells at every one of
+    them, and the tool then bid zero and handed a board it could still have opened to a blind
+    searcher that spent 193 actions and made the losing capture anyway.
+
+    ⛔ A PASSENGER IS REQUIRED. The camera follows a PIECE; an empty carrier driven off the map
+    reveals nothing and the tool would never see what it had done. So this is two mechanisms, not
+    one — board, then ride — which is exactly the composition no single-action probe reaches.
+
+    ⛔ THE OPEN END BELONGS TO THE TRACK, NOT TO THE CARRIER, and reading it the other way made this
+    tier silent on the board it was written for: its carriers sat in the middle of the visible
+    strip while the rails ran off both sides, so "a carrier at an open end" existed nowhere and
+    nothing was ever proposed. What matters is the DIRECTION the track leaves the screen in; a
+    carrier riding that way arrives at the edge in as many actions as it takes.
+
+    ⛔ AND THE END MUST LEAVE THE SCREEN, not merely the map. A run of track that stops in plain
+    view is a buffer stop the tool can see is a buffer stop, and driving at it teaches nothing.
+
+    ⛔ THE RIDE IS NOT SIMULATED, AND THAT IS THE WHOLE POINT OF A SEPARATE TIER. The drive model
+    rolls a carrier only onto a cell the map ALREADY calls track, so at the edge of the known map
+    every ride is one cell short of the only place worth going, and the search reports — correctly,
+    on the map it has — that nothing gains. So the ride is emitted raw. That is safe because a
+    drive the engine refuses is read off the next frame like any other, and the barren counter
+    bounds how many times this tier may be wrong; a ride that is right scrolls the camera and hands
+    back a strip of board nobody had seen.
+    """
+    track = model.rails | model.carriers
+    known = model.sockets | track | model.blockers
+    ends: Counter[Delta] = Counter()
+    for d in DIRS:
+        for c in track:
+            n = (c[0] + d[0], c[1] + d[1])
+            back = (c[0] - d[0], c[1] - d[1])
+            if back in track and n not in known and n not in model.window:
+                ends[d] += 1
+    if not ends or not model.carriers:
+        return []
+    # The side with the most open track is the likeliest continuation; DIRS order breaks a tie.
+    ride = min(ends, key=lambda d: (-ends[d], DIRS.index(d)))
+    carriers = tuple(sorted(model.carriers))
+    if any(c in model.pieces for c in model.carriers):
+        return [("drive", None, ride)]
+
+    start = (tuple(sorted(model.pieces.items())), carriers, tuple(sorted(model.blockers)))
+    cost_of: dict[Any, int] = {start: 0}
+    parent: dict[Any, tuple[Any, Move]] = {}
+    heap: list[tuple[int, int, Any]] = [(0, 0, start)]
+    tie = 0
+    while heap:
+        cost, _t, state = heapq.heappop(heap)
+        if cost > cost_of.get(state, cost) or cost > cost_cap:
+            continue
+        aboard = set(state[1]) & {c for c, _v in state[0]}
+        if aboard and state != start:
+            out: list[Move] = []
+            node = state
+            while node in parent:
+                node, mv = parent[node]
+                out.append(mv)
+            out.reverse()
+            out.append(("drive", None, ride))
+            return out
+        if len(cost_of) > node_cap:
+            break
+        for ns, mv, step_cost in _successors(state, model.sockets, model.rails, noncapture):
+            nc = cost + step_cost
+            if nc <= cost_cap and nc < cost_of.get(ns, 1 << 30):
+                cost_of[ns] = nc
+                parent[ns] = (state, mv)
+                tie += 1
+                heapq.heappush(heap, (nc, tie, ns))
+    return []
+
+
 def explore_moves(model: Model, noncapture: frozenset[int], visited: set[Any],
                   cost_cap: int = 30, node_cap: int = 40_000) -> list[Move]:
     """Cheapest way to put a piece where the map runs out, when no capture is reachable.
@@ -499,12 +583,80 @@ def probe_moves(model: Model, noncapture: frozenset[int], touched: set[Cell],
     return []
 
 
+def runs_offscreen(model: Model) -> bool:
+    """Does the board's own structure CONTINUE past the edge of the screen?
+
+    ⛔ THE SIGNAL A PLANNER NEEDS BEFORE ITS FIRST CLAIM, not after a refuted one. A board wider
+    than the frame is the normal case here, and the model is then a strip of it — so a state in
+    which every piece this tool can SEE has been reduced to one is not a solved level, it is a
+    solved window. The sister tool learns this by playing a win that does not win and remembering
+    it; that route cannot help a tool whose very first claim is the losing move, which is what was
+    measured on the widest board: ONE win claim in the whole level, and it is the capture that
+    kills it.
+
+    Three conditions, and each one is load-bearing (the same shape the sister tool's travel tier
+    uses). The cell beyond must be UNKNOWN, or there is nothing out there to learn; it must also be
+    outside the WINDOW, because a cell in plain view with no track on it is a buffer stop the tool
+    can see is a buffer stop; and the track must be coming FROM the opposite side, or every cell
+    against the frame edge counts as heading out of it in all four directions.
+    """
+    track = model.rails | model.carriers
+    known = model.sockets | track | model.blockers
+    for cell in model.sockets | track:
+        for d in DIRS:
+            n = (cell[0] + d[0], cell[1] + d[1])
+            back = (cell[0] - d[0], cell[1] - d[1])
+            if back in track and n not in known and n not in model.window:
+                return True
+    return False
+
+
+def capture_reachable(state: Any, sockets: set[Cell], rails: set[Cell],
+                      noncapture: frozenset[int], node_cap: int = _REACH_CAP) -> bool:
+    """Can ANOTHER capture still be reached from here? Bounded, so False means "not cheaply"."""
+    total = len(state[0])
+    cost_of: dict[Any, int] = {state: 0}
+    heap: list[tuple[int, int, Any]] = [(0, 0, state)]
+    tie = 0
+    while heap:
+        cost, _t, st = heapq.heappop(heap)
+        if cost > cost_of.get(st, cost):
+            continue
+        if len(st[0]) < total:
+            return True
+        if len(cost_of) > node_cap:
+            return False
+        for ns, _mv, step in _successors(st, sockets, rails, noncapture):
+            nc = cost + step
+            if nc < cost_of.get(ns, 1 << 30):
+                cost_of[ns] = nc
+                tie += 1
+                heapq.heappush(heap, (nc, tie, ns))
+    return False
+
+
 def plan_moves(model: Model, noncapture: frozenset[int], node_cap: int = _NODE_CAP,
+               partial: bool = False, lookahead: int = _LOOKAHEAD,
                ) -> tuple[list[Move], bool] | None:
     """Cheapest action sequence to the next capture, or to the whole level when it fits.
 
     Returns (moves, solved). `solved` is True when the sequence takes every capturable colour
     down to a single piece; otherwise it is the shortest route to one more capture.
+
+    ⛔ `partial` SAYS THE MAP IS A WINDOW ONTO A BIGGER BOARD, and it changes two things that are
+    both wrong without it. First, a solved state is no longer a SOLUTION — reducing every piece on
+    screen to one says nothing about the pieces scrolled away — though it stays worth playing
+    toward, because it is still the cheapest route to a real capture. Second, a capture cannot be
+    undone, so on a partial map the cheapest one is not automatically the move: the distinct
+    capture OUTCOMES are collected and the cheapest one FROM WHICH ANOTHER CAPTURE IS STILL
+    REACHABLE is taken. When none of them is, this returns None so the caller goes and LOOKS
+    instead — which is only safe because a partial map has somewhere to look, and looking is
+    reversible where a capture is not.
+
+    ⛔ COUNT OUTCOMES, NOT PATHS. One action drives every carrier at once, so many different drive
+    orders arrive at the same board with the carriers parked differently, and a cost-ordered search
+    enumerates them one after another. Keyed by the pieces, a window of eight holds eight real
+    choices instead of one repeated eight times.
     """
     sockets, rails = model.sockets, model.rails
     if not model.pieces:
@@ -526,6 +678,8 @@ def plan_moves(model: Model, noncapture: frozenset[int], node_cap: int = _NODE_C
     heap: list[tuple[int, int, Any]] = [(0, 0, start)]
     tie = 0
     capture_state: Any = None
+    outcomes: list[Any] = []
+    seen_outcomes: set[Any] = set()
     expanded = 0
 
     def path(state: Any) -> list[Move]:
@@ -541,10 +695,14 @@ def plan_moves(model: Model, noncapture: frozenset[int], node_cap: int = _NODE_C
         if cost > cost_of.get(state, cost):
             continue
         pieces = dict(state[0])
-        if is_solved(pieces):
+        if is_solved(pieces) and not partial:
             return path(state), True
-        if capture_state is None and len(pieces) < total:
-            capture_state = state
+        if len(pieces) < total:
+            if capture_state is None:
+                capture_state = state
+            if partial and len(outcomes) < lookahead and state[0] not in seen_outcomes:
+                seen_outcomes.add(state[0])
+                outcomes.append(state)
         expanded += 1
         if expanded > node_cap:
             break
@@ -557,6 +715,11 @@ def plan_moves(model: Model, noncapture: frozenset[int], node_cap: int = _NODE_C
                 tie += 1
                 heapq.heappush(heap, (nc, tie, ns))
 
+    if partial:
+        for st in outcomes:
+            if capture_reachable(st, sockets, rails, noncapture):
+                return path(st), False
+        return None
     if capture_state is not None:
         return path(capture_state), False
     return None
@@ -808,7 +971,16 @@ class PegJumpTool:
         """Fill the queue of moves and report how strong the claim on this board is."""
         if self._plan:
             return 0.9
-        found = plan_moves(m, self._noncapture)
+        # ⛔ A WIN OVER A WINDOW IS NOT A WIN, and this is the only place that can say so before the
+        # move is made. Measured on the widest board: the model held two of the board's six pieces
+        # — every one of the other four simply scrolled off, with no filter dropping anything and
+        # nothing forgotten — so jumping one over the other left ONE and the search returned it as
+        # a solved level. That single claim is the capture that makes the level unwinnable, and it
+        # is the ONLY claim the tool makes there, so no amount of learning-from-refutation reaches
+        # it. Handed the true six pieces the same search stops calling it a win and STILL takes it,
+        # because it is the cheapest capture — which is why the survivability half is not optional.
+        partial = runs_offscreen(m)
+        found = plan_moves(m, self._noncapture, partial=partial)
         if found is not None and found[0]:
             self._plan = list(found[0])
             return 0.95 if found[1] else 0.9
@@ -820,7 +992,13 @@ class PegJumpTool:
             self._known, self._barren = known, 0
         if self._barren >= 3:
             return 0.0
-        moves = explore_moves(m, self._noncapture, self._explored)
+        # ⛔ ORDER MATTERS AND IT IS MEASURED. On a map known to be a window, opening it is worth
+        # more than any move computed inside it, because the frontier objective is blind to the
+        # camera and cannot grow the map at all — so it goes FIRST when the board runs off screen,
+        # and is not offered at all when the board fits.
+        moves = railhead_moves(m, self._noncapture) if partial else []
+        if not moves:
+            moves = explore_moves(m, self._noncapture, self._explored)
         if not moves:
             moves = probe_moves(m, self._noncapture, self._touched, self._explored)
         if not moves:
