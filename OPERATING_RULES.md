@@ -693,3 +693,12 @@ something counts, it counts.**
 version of it: the previous three were rules that participants forgot, and this one is a rule that
 participants FOLLOWED. A correctly-obeyed rule can be the defect. When a limit is breached, read
 what the rule actually licenses before looking for who ignored it.
+
+⛔ **AND THE RULE DID NOT HOLD BY BEING WRITTEN.** Within minutes of the three suites being killed
+and every agent being told in writing, **two more respawned** — `pytest tests -q` at 95.5% CPU and a
+`-k "tool or registry or harness"` run at 50.9% — and a peer agent found and killed them. So the
+enforcement is now a hook, `.claude/hooks/block_local_pytest.sh` (PreToolUse on Bash), which REFUSES
+a local `pytest` or game run and prints the box command to use instead. Anything routed through
+`ssh` / `pfan.sh` / `snapgate.sh` / `ptest.sh` passes untouched.
+
+⚠️ A blocked run costs one re-run and nothing else. A rule that is merely written costs a laptop.

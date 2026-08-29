@@ -27,6 +27,15 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce_wiki_skill.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block_local_pytest.sh"
+          }
+        ]
       }
     ],
     "Stop": [
