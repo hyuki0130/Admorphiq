@@ -113,18 +113,6 @@ def _split_columns(g: np.ndarray, top: int, bot: int) -> tuple[int, int] | None:
     return start, start
 
 
-def _one_square(board: np.ndarray, colour: int) -> Cell | None:
-    """Top-left corner if `colour` paints exactly one filled square, else None."""
-    cells = np.argwhere(np.asarray(board) == colour)
-    if not len(cells):
-        return None
-    y0, x0 = int(cells[:, 0].min()), int(cells[:, 1].min())
-    y1, x1 = int(cells[:, 0].max()), int(cells[:, 1].max())
-    if (y1 - y0) != (x1 - x0) or len(cells) != (y1 - y0 + 1) ** 2:
-        return None
-    return y0, x0
-
-
 def _solid_block(board: np.ndarray, colour: int) -> tuple[int, int, int] | None:
     """(y, x, side) of the ONE solid square block this colour fills, or None.
 
@@ -206,6 +194,37 @@ def _pieces(board: np.ndarray) -> tuple[int, int, int] | None:
     return None
 
 
+def _squares_of_side(board: np.ndarray, colour: int, side: int) -> list[Cell]:
+    """Every filled `side`x`side` square of `colour` that can be grown in NO direction.
+
+    ⛔ Maximality is tested on all four sides, not only up and left. A 2x2 read out of the
+    interior of a 4x4 control is a square by every local test; what separates a PIECE from a
+    control is that the piece cannot be grown and the control's interior can. Measured on the
+    board this exists for: the marker's colour paints one 2x2 on every level of the game AND a
+    4x4 button in the panel on the last three, so a rule that refuses two blocks as ambiguous
+    throws away a goal it could have named by SIZE.
+    """
+    grid = np.asarray(board)
+    h, w = grid.shape
+    out: list[Cell] = []
+    for y, x in np.argwhere(grid == colour):
+        y, x = int(y), int(x)
+        if y + side > h or x + side > w:
+            continue
+        if not bool((grid[y:y + side, x:x + side] == colour).all()):
+            continue
+        if y and bool((grid[y - 1, x:x + side] == colour).all()):
+            continue
+        if x and bool((grid[y:y + side, x - 1] == colour).all()):
+            continue
+        if y + side < h and bool((grid[y + side, x:x + side] == colour).all()):
+            continue
+        if x + side < w and bool((grid[y:y + side, x + side] == colour).all()):
+            continue
+        out.append((y, x))
+    return out
+
+
 class PhaseGridTool:
     """Walk the avatar to its marker, flipping tile groups when the walk needs them."""
 
@@ -214,6 +233,9 @@ class PhaseGridTool:
     def __init__(self) -> None:
         self._level = -1
         self._dead = False
+        # ⛔ Outside `reset`, on purpose: `reset` runs at every level change and the whole point of
+        # the carry is that the avatar and the marker keep their colours across a game's levels.
+        self._carry: tuple[int, int, int] | None = None
         self.reset()
 
     # --- lifecycle ---------------------------------------------------------
@@ -245,6 +267,7 @@ class PhaseGridTool:
         self._retired = False
         self._plan: list[Step] = []
         self._stalls = 0
+        self._track: dict[int, Cell] = {}
 
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """Transitions are re-read from the live frame in propose; nothing to bank here."""
@@ -252,6 +275,17 @@ class PhaseGridTool:
     # --- perception --------------------------------------------------------
 
     def _read(self, g: np.ndarray) -> dict[str, Any] | None:
+        """The board, its ground, and the two pieces — WIDENING only when the marker demands it.
+
+        ⛔ The board is the columns left of the panel, as it has always been, UNLESS the carried
+        pair cannot be located there and can be in the whole frame. A board that is always the
+        whole frame is MEASURED HARMFUL — the game this exists for goes from 5 levels to 2, 3 or 4
+        depending on what it is paired with, and its first level from 31 actions to 52 — because
+        widening turns every control in the panel into an object to walk to and a tile to press on.
+        Naming the panel's ground as non-floor, which was the recorded diagnosis, is necessary and
+        NOT sufficient. Widening on the evidence that the goal is not in the narrow board leaves
+        every level whose goal IS in it identical by construction rather than by luck.
+        """
         top, bot = _chrome_span(g)
         if bot - top < _MIN_BOARD_ROWS:
             return None
@@ -259,18 +293,75 @@ class PhaseGridTool:
         if split is None:
             return None
         right, panel = split
-        board = np.asarray(g)[top:bot + 1, 0:right]
-        found = _pieces(board)
-        if found is None:
-            return None
-        c0, c1, side = found
-        bg = Counter(int(v) for row in board for v in row).most_common(1)[0][0]
+        left = np.asarray(g)[top:bot + 1, 0:right]
+        whole = np.asarray(g)[top:bot + 1, :]
+        # ⛔ The ground is the BOARD's, read on the board's own columns. Taking the modal colour of
+        # a widened board flips to the panel's ground the moment the panel is the wider half, and
+        # every floor test then inverts.
+        bg = Counter(int(v) for row in left for v in row).most_common(1)[0][0]
+        board, pair = left, None
+        if self._carry is not None:
+            for cand in (left, whole):
+                # ⛔ A board that does not CONTAIN a piece where it was last seen is not a board
+                # that piece resolves in, however many lookalikes it holds.
+                if any(c in self._track and self._track[c][1] >= cand.shape[1]
+                       for c in self._carry[:2]):
+                    continue
+                if self._locatable(cand, self._carry):
+                    board, pair = cand, self._carry
+                    break
+        if pair is None:
+            pair = _pieces(left)
+            if pair is None:
+                return None
+            board = left
+        if board is whole:
+            strip = np.asarray(g)[top:bot + 1, right:]
+            panel_bg = int(Counter(int(v) for row in strip for v in row).most_common(1)[0][0])
+            if panel_bg != bg:
+                self._not_floor.add(panel_bg)
+        if self._rare == (pair[0], pair[1]):
+            # ⛔ Banked only once the tool has COMMITTED to this pair for this level. `_read` is
+            # called from `detect` on every frame of every game, including the transitional one a
+            # level-up draws, and a pair read off that frame is not a pair the tool ever used.
+            self._carry = pair
         return {"top": top, "bot": bot, "panel": panel, "board": board,
-                "bg": bg, "side": side, "rare": (c0, c1)}
+                "bg": bg, "side": pair[2], "rare": (pair[0], pair[1])}
 
-    @staticmethod
-    def _at(board: np.ndarray, colour: int) -> Cell | None:
-        return _one_square(board, colour)
+    def _locatable(self, board: np.ndarray, pair: tuple[int, int, int]) -> bool:
+        """Can `_at` name both pieces on this board? The SAME rule `_at` uses, tracking included."""
+        c0, c1, side = pair
+        for colour in (c0, c1):
+            found = _squares_of_side(board, colour, side)
+            if not found or (len(found) > 1 and colour not in self._track):
+                return False
+        return True
+
+    def _at(self, board: np.ndarray, colour: int) -> Cell | None:
+        """The piece of `colour`, by SIZE first and by CONTINUITY when the board grows a twin.
+
+        ⛔ "This colour paints exactly one square" is too strict for a whole game and uniqueness
+        alone is too brittle for one level. Measured on the board this exists for: the marker's
+        colour also paints a 4x4 control, so the strict rule refuses and the tool latches dead at
+        action 6; and at action 293 a control UNLOCKS as a second 2x2 of the marker's own colour,
+        so the unique-square rule returns None and the tool goes silent for the rest of the level.
+        A piece that was somewhere last turn is the candidate nearest to where it was — the avatar
+        moves one step and the marker does not move at all — and no button drawn elsewhere can
+        break that.
+        """
+        side = self._side or 2
+        found = _squares_of_side(board, colour, side)
+        if not found:
+            return None
+        if len(found) == 1:
+            self._track[colour] = found[0]
+            return found[0]
+        was = self._track.get(colour)
+        if was is None:
+            return None
+        best = min(found, key=lambda c: abs(c[0] - was[0]) + abs(c[1] - was[1]))
+        self._track[colour] = best
+        return best
 
     def _panel_buttons(self, g: np.ndarray, geom: dict[str, Any]) -> list[Cell]:
         """One click point per island in the panel, largest island first.
