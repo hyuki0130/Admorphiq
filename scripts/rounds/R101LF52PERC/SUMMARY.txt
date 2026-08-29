@@ -92,3 +92,14 @@ FINAL MEASURED STATE (scripts/_lf52_rail2.jsonl, _lf52_ride.jsonl — both seeds
 WHAT THIS LEAVES OPEN
   The remaining distance on lf52 is TENURE, not perception and not ranking. The tool that can open
   the board gets nineteen actions; the two that cannot get three hundred and forty-two.
+
+FULL-25 GATE (scripts/rounds/R101LF52PART, snapgate out of a private snapshot of cef09932, budget
+4000, baseline scripts/rounds/R101LP85GATE)
+
+      MEAN new = 0.9082 over 25
+      MEAN old = 0.9082 over 25
+      no game regressed (25 games compared), and no game MOVED — the delta table is empty
+
+  So the change is non-regressive and score-neutral. Under rule 7b that is not a keep on its own;
+  what it buys is a level that is no longer destroyed, an opening tier that did not exist, and a
+  next question that is about tenure rather than about this tool. The coordinator gates.
