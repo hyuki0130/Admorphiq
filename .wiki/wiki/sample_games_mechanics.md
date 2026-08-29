@@ -1014,3 +1014,39 @@ So the real state is not "no reader" and not "a reader that cannot see this styl
 used by one tool out of forty-seven, returning unverified values on nineteen games**. Verifying it
 against the declared StepCounter per game is a small measurement with a large blast radius, and it
 has to come before any tool is wired to trust it.
+
+### BudgetReader's accuracy, measured for the first time (2026-08-29)
+
+Ten of the twenty-five games declare a `StepCounter` in their level data. Comparing the reader's
+total against the declared budget of the level it was reading:
+
+```
+game   declared L1   reader   verdict
+ka59          100      102    MATCH        (within 10%)
+lp85           13       12    MATCH
+re86          100      103    MATCH
+s5i5           50       52    MATCH
+tu93           50       49    MATCH
+wa30          200      217    MATCH
+ar25           64      179    wrong
+dc22          128       96    wrong
+ls20           42       71    wrong
+vc33           50     None    no reading
+```
+
+**Six of the nine that both declare a budget and produce a reading are right to within 10%.**
+
+⚠️ Two corrections to my own claims, both from the last two ticks. "BudgetReader returns None on
+wa30" was wrong — I asked only at level boundaries. "wa30's 217 is a wrong value" was also wrong — I
+compared it against level 9's allowance of 70 while the reading came from level 1, whose budget is
+200. The reader is accurate there.
+
+So the position is: **a working, unverified-until-now budget reader with 6/9 accuracy, imported by
+one tool out of forty-seven** — while thirteen games END THE GAME on overrun and wa30 loses its last
+level by spending 508 actions against 70. That is exactly the shape CLAUDE.md records for every gain
+this project has actually made: an asset already present and not being used.
+
+⛔ Before wiring: the three wrong readings matter. ar25 reads 179 against 64 and ls20 reads 71
+against 42 — both nearly 3x and 1.7x too generous, and a tool told it has more budget than it does
+will plan past the end of the level. Any use must be gated on the reader agreeing with itself across
+frames, not just on it returning a number.
