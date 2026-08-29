@@ -460,8 +460,9 @@ is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our ow
 
 **Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
 is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bf** (why the
-strong tool goes empty, and why handing the board back is INERT), **7bc** (lf52 —
-read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an + **7bj** (bp35 — 7bj corrects 7bh's
+strong tool goes empty, and why handing the board back is INERT), **7bk** (lf52 — the pads are lost
+to the CAMERA, no filter drops one, and widening perception changes the CLAIM not the MOVE),
+**7bc** (lf52 — read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an + **7bj** (bp35 — 7bj corrects 7bh's
 named field and prices the repair at zero), 7ao (s5i5), 7ak (dc22).
 
 **Is the level even still winnable?** → **7bc**. An engine state fed to an offline solver answers it;
@@ -2658,3 +2659,93 @@ cells in ten" false fit `_stitch`'s own docstring records as having cost every l
 no scoring level had anything to repair; all eight losses are on the wall level, closed
 independently. And `crag` bids 0.5 on bp35 and **0.00 on all 24 other games**, so no second game
 could pay either. **Check where a defect actually occurs before pricing its repair.**
+
+### 7bk — lf52: the pads are lost to the CAMERA, and widening perception does NOT change the move (2026-08-30)
+
+Round `scripts/rounds/R101LF52PERC`. Five probes, both seeds agreeing on every arm, each one
+reproducing the banked `[8, 52, 60, 64, 139]` / 823 / 0.272727 control. Rule 7be asked why both peg
+tools model a fraction of the board and whether either can be made to see more. Answered, and the
+obvious follow-through is REFUTED.
+
+**⛔ IT IS THE CAMERA AND NOTHING ELSE IS WRONG** (`scripts/_lf52_pcen.py`, which instruments
+`pegjump`'s pipeline stage by stage — a pad can be lost in four places that want four repairs). At
+level-6 action 122:
+
+```
+frame          14 socket squares, 2 discs
+on_phase_discs  2      off_phase_discs 0      disc_colour_refused 0
+board.pieces    2      model 2                engine 6
+model_pieces_peak over the WHOLE level: 2
+```
+
+No filter drops anything — 7be's own candidate, a minimum-blob-size filter of the kind that makes
+lf52's four-two-pixel move markers read as "there is no oracle", is refuted for this tool. And
+nothing is forgotten: the model never held more than two. The board is 28 cells at pitch 6 against
+64 pixels with the camera at ox=-57; four pads were never on screen while the tool held the board.
+
+**⛔ AND SEEING ALL SIX CHANGES THE CLAIM, NOT THE MOVE** (`scripts/_lf52_wide.py`, offline, no
+engine; controls: root winnable uncapped in 242,384 states, and the window arm reproduces the
+defect exactly). Handed the engine's true board, `plan_moves` stops saying `solved` — and returns
+the identical fatal capture, because tier 1 is "cheapest route to one more capture" and that
+capture is the cheapest. **A perception repair alone would have been inert.**
+
+**⭐ WHAT DOES SEPARATE IT IS SURVIVABILITY, ON A MAP KNOWN TO BE PARTIAL.** On the wide map that
+position offers exactly ONE capture outcome within cost 26, it is the fatal one, and
+`capture_reachable` after it is FALSE (`scripts/_lf52_wsurv.py`). So 7bc's inert guard was not
+wrong — it was asked about a plan claiming to be a SOLUTION. And the signal is available BEFORE the
+claim, which matters because railpeg learns this from a REFUTED claim and `pegjump` makes exactly
+ONE claim on this level, the losing move: `runs_offscreen` is TRUE at all 10 of its level-6
+decisions (`scripts/_lf52_partial.py`).
+
+**⛔ AND THE TIER THAT IS SUPPOSED TO "GO AND LOOK" CANNOT WIDEN A WINDOW BY CONSTRUCTION.** With
+the win refused, `pegjump` fell to `explore_moves` for eleven consecutive decisions with **the known
+map fixed at 26 cells**, then bid zero. That tier maximises unknown territory next to a piece in
+MODEL coordinates — and **the simulation has no camera in it**, so no simulated move ever changes
+what is knowable. The move that opens such a board is board-a-carrier-then-ride, and it needed two
+corrections that each made it silent first: the open end belongs to the **track**, not to a carrier
+(lf52's carriers sit mid-strip while the rails run off both sides), and the ride must be emitted
+**unsimulated**, because the drive model rolls a carrier only onto cells the map already calls track
+and is therefore always one cell short of the only place worth going.
+
+**MEASURED OUTCOME** (`cef09932`, both seeds identical):
+
+```
+lost_at         124  ->  None            third capture   taken  ->  never made
+restarts      [267]  ->  []              attempt-1 end   NOT winnable -> WINNABLE
+camera   pinned -57  ->  12 positions    score       0.272727  ->  0.272727
+```
+
+**⭐ LEVEL 6 STOPS BEING DESTROYED AND IS STILL NEVER FINISHED**, and the reason is now 7bd's
+pattern rather than a defect in the tool: `pegjump` holds **19 of the level's 500 actions** while
+`graph` holds 225 and `world_model` 117 — and 5 of those 19 are direction-calibration probes, each
+of which CLEARS the plan by design. ⛔ The remaining distance on lf52 is TENURE. With `pegjump`
+stopped, `graph` made the identical fatal capture 193 actions later, which is what an intermediate
+measurement showed before the opening tier landed.
+
+### 7bl — FIVE capped levels sit at exactly the human count — the cliff nobody was pricing (2026-08-30)
+
+Nineteen games sit at the 1.0 cap, and a capped game holds that only while EVERY level stays at or
+under the human action count. Nobody had measured how much room they have. **Five levels have NONE:**
+
+```
+re86 L2   42 vs human  42      sc25 L2    6 vs human   6      tu93 L7   14 vs human  14
+re86 L6  139 vs human 139      tu93 L8   23 vs human  23
++1 action of margin: re86 L1 (25/26) · sb26 L8 (17/18) · tu93 L1 (18/19)
+```
+
+⛔ **A SINGLE EXTRA ACTION on any of those five drops its game off the cap.** Priced through RHAE's
+level-index weighting: sc25 L2 costs **0.00101 of the mean** for one action, tu93 L7 **0.00080**,
+tu93 L8 **0.00058**. If all eight slipped by one, **-0.0026** — comparable to a whole day's gain.
+
+⚠️ **THIS IS THE DOWNSIDE NOBODY WAS PRICING WHEN TOUCHING A SHARED FILE.** Every rule about reading
+the PER-GAME column rather than the mean now has a number behind it: a change that adds ONE action to
+a capped game is not neutral, and the mean can hide it (0.00101 rounds away in a four-decimal
+summary while the game itself falls from 1.0000).
+
+⭐ AND IT EXPLAINS A PATTERN IN TODAY'S RESULTS: several agents reported per-level counts as
+"IDENTICAL" and treated that as a formality. It is not — **on five levels identical is the only
+acceptable outcome**, and the gate's per-game column is the only thing that checks it.
+
+⛔ SO THE STANDING INSTRUCTION IS NOW QUANTIFIED: after any change to `harness/` or to a tool that
+bids on more than one game, confirm re86 / sc25 / tu93 / sb26 are byte-identical BEFORE reading the
+mean. Their tightest levels are the canaries and they are cheaper to check than to lose.
