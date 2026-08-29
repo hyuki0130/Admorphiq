@@ -5,7 +5,7 @@
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
 **MEAN = 0.9069**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101WA30/games` — use it as the gate's BASE.
+Baseline dir: `scripts/rounds/R101GRAPHOWN/games` — use it as the gate's BASE.
 
 ⭐ **AND THE GAINS REACH THE SUBMISSION PATH**, measured 2026-08-30 after fifteen source changes:
 `--agent unified` 0.9069 and `--agent kaggle_unified` (through the official wrapper the notebook
