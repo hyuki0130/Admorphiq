@@ -581,3 +581,29 @@ settled bp35's crumbling platform and lf52's pad count — not another pixel heu
 0.0147) is solid and comes from the scorer's own per-level output. ls20 being the largest efficiency
 item is solid. **How much of ls20's 302-vs-186 is recoverable remains unmeasured**, and three
 attempts to measure it have failed in three different ways.
+
+## The efficiency slice is the price of DISCOVERY, not waste — all four items measured
+
+Every action on each of the four efficiency-losing levels, tagged by issuer and by whether the BOARD
+changed:
+
+```
+ls20 L7   288 of 302 effective   (95%)   fogscout
+lp85 L4    32 of  32 effective  (100%)   cyclepress
+bp35 L2    83 of  84 effective   (99%)   crag
+bp35 L5    57 of  57 effective  (100%)   crag
+```
+
+**There is essentially no waste anywhere.** No probe-fallback burn, no re-decide churn, no refused
+actions to speak of. Each tool's solution is simply longer than the human's: 302 against 186, 32
+against 16, 84 against 48, 57 against 33 — between 1.6x and 2.1x, all of it real work.
+
+So the 0.0147 efficiency slice is not overhead that better engineering removes. It is the cost of
+solving a game you have not been told the rules of: the human baseline is set by someone who knows
+the mechanic, and these tools are discovering it as they play. On ls20 that is literal — the tool
+must spend four of its twenty-one actions working out which colour the fuel gauge is.
+
+⚠️ Which revises the correction that opened this thread. Splitting the gap into "depth 0.0919 needs
+new mechanics, efficiency 0.0147 does not" was right about where the points are and wrong about the
+second half being cheaper. **Both halves are discovery problems**; the efficiency half is just
+discovery that succeeds slowly rather than discovery that fails.
