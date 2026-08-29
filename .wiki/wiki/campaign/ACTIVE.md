@@ -4,8 +4,8 @@
 
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
-**MEAN = 0.8962**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101RE86/games` — use it as the gate's BASE.
+**MEAN = 0.8986**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101ALLOW2/games` — use it as the gate's BASE.
 
 Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
 lp85 0.9099 -> 0.9677. First movement in a day.
@@ -55,7 +55,7 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101RE86 8 4000
+bash scripts/snapgate.sh <name> scripts/rounds/R101ALLOW2 8 4000
 ```
 ⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
 agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
@@ -63,6 +63,15 @@ agent's work-in-progress and the tree moves under it. Both of its documented tra
 ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
 ## CLOSED BY MEASUREMENT — do not reopen without new evidence
+- **the give-up budget**: `HARNESS_NOPROGRESS` 500 -> 3500 gives all five dying games ~7x the
+  actions on their wall level and clears NOTHING (bp35 740->3787a, dc22 925->3928a, lf52 823->3828a,
+  s5i5 694->3709a, wa30 1091->4000a, every score identical). ⛔ In RHAE an UNCLEARED level scores
+  zero however long it runs, so this was pure upside if it worked at all. The wall is not a budget.
+  Corroborated independently: 54,000 blind actions on dc22 level 6 clear nothing.
+- **dc22's 70% inert actions are a SYMPTOM, not a lever**: `gantry` latches dead at action 6 and the
+  500 actions are graph/world_model on an 18-cell island with gated exits. Saving them buys 0.0000
+  because the level scores zero either way. (Elsewhere the same waste on a level that DOES clear
+  would be a real efficiency lever — the number is right, the game is wrong.)
 - **frame_2d reading the last layer**: the measurement was RIGHT (layer 0 is stale at 100% of level
   transitions in all 21 games) and the change cost **0.8962 -> 0.6525, fourteen games**. Rule 7o.
 - **bp35 level 6**: reachable in 41 actions, and getting there costs 4.6x search states +
