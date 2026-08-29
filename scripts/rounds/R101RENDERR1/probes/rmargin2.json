@@ -1,0 +1,177 @@
+[
+ {
+  "game": "ar25",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "bp35",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 2,
+  "control_margin": 4
+ },
+ {
+  "game": "cd82",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "cn04",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "dc22",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "ft09",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "g50t",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "ka59",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "lf52",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 16,
+  "control_margin": 4
+ },
+ {
+  "game": "lp85",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "ls20",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "m0r0",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "r11l",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 3,
+  "control_margin": 4
+ },
+ {
+  "game": "re86",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "s5i5",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "sb26",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "sc25",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 22,
+  "control_margin": 4
+ },
+ {
+  "game": "sk48",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "sp80",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "su15",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 5,
+  "control_margin": 4
+ },
+ {
+  "game": "tn36",
+  "opening_margin": 1,
+  "walk_margin": 1,
+  "layers": 0,
+  "control_margin": 4
+ },
+ {
+  "game": "tr87",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "tu93",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 8,
+  "control_margin": 4
+ },
+ {
+  "game": "vc33",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ },
+ {
+  "game": "wa30",
+  "opening_margin": 0,
+  "walk_margin": 0,
+  "layers": 1,
+  "control_margin": 4
+ }
+]

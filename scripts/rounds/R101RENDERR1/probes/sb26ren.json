@@ -1,0 +1,17 @@
+[
+ {
+  "game": "sb26",
+  "status": "DIFFERENT",
+  "poison_detected": true,
+  "poisoned_pixels": 4023,
+  "renamed_tokens": 21,
+  "frames": 60,
+  "first_divergence": null,
+  "len_plain": 60,
+  "len_renamed": 3,
+  "detail": [
+   "12b5d595f19e5c95c2a0e8f5666c16fa",
+   "d869143c83a7ad9e9df79bd9f1882b05"
+  ]
+ }
+]

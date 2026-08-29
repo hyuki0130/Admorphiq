@@ -1,0 +1,202 @@
+[
+ {
+  "game": "ar25",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 1057,
+  "renamed_tokens": 57,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "bp35",
+  "status": "same-frames",
+  "poison_detected": false,
+  "poisoned_pixels": 1,
+  "renamed_tokens": 4,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "cd82",
+  "status": "not-constructible",
+  "why": "string 'eoqnvkspoa-' overlaps sprite name 'eoqnvkspoa-pqwme3-1' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "cn04",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 1420,
+  "renamed_tokens": 48,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "dc22",
+  "status": "not-constructible",
+  "why": "string 'tewfut-color-cycle' overlaps sprite name 'tewfut' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "ft09",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 3487,
+  "renamed_tokens": 183,
+  "frames": 2,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "g50t",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 33060,
+  "renamed_tokens": 61,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "ka59",
+  "status": "not-constructible",
+  "why": "string 'explode-' overlaps sprite name 'explode-3-1' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "lf52",
+  "status": "not-constructible",
+  "why": "string 'lgbyiaitpdi_0' overlaps sprite name 'lgbyiaitpdi' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "lp85",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 1020,
+  "renamed_tokens": 92,
+  "frames": 2,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "ls20",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 5149,
+  "renamed_tokens": 39,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "m0r0",
+  "status": "not-constructible",
+  "why": "string 'grwjuk' overlaps sprite name 'gayktr-grwjuk' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "r11l",
+  "status": "not-constructible",
+  "why": "string 'roefwu-' overlaps sprite name 'roefwu-orrqljliwocqblxuubpumlzd' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "re86",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 47223,
+  "renamed_tokens": 62,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "s5i5",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 28853,
+  "renamed_tokens": 97,
+  "frames": 2,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "sb26",
+  "status": "DIFFERENT",
+  "poison_detected": true,
+  "poisoned_pixels": 4023,
+  "renamed_tokens": 21,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "sc25",
+  "status": "not-constructible",
+  "why": "string 'acyylh' overlaps sprite name 'acyylh-tevyeq-inkpfx' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "sk48",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 627,
+  "renamed_tokens": 18,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "sp80",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 2061,
+  "renamed_tokens": 20,
+  "frames": 31,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "su15",
+  "status": "not-constructible",
+  "why": "string '0030xjmmfvfpqm' overlaps sprite name '0' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "tn36",
+  "status": "not-constructible",
+  "why": "string 'bltjrl not found' overlaps sprite name 'bltjrl' \u2014 the module groups sprites by prefix, so a rename would split a family"
+ },
+ {
+  "game": "tr87",
+  "status": "not-constructible",
+  "why": "sprite key(s) ['background'] are engine vocabulary \u2014 renaming changes behaviour"
+ },
+ {
+  "game": "tu93",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 10721,
+  "renamed_tokens": 49,
+  "frames": 51,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "vc33",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 6621,
+  "renamed_tokens": 70,
+  "frames": 2,
+  "first_divergence": null,
+  "detail": null
+ },
+ {
+  "game": "wa30",
+  "status": "same-frames",
+  "poison_detected": true,
+  "poisoned_pixels": 3328,
+  "renamed_tokens": 28,
+  "frames": 60,
+  "first_divergence": null,
+  "detail": null
+ }
+]
