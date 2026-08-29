@@ -656,3 +656,40 @@ while a peer's gate was in flight, and both measurements stood. I went looking f
 42 scoring processes on the box in order to stop them, and found the answer to a problem three rules
 had failed to solve. **Look at what a parallel worker is doing before stopping it; the deviation may
 be the fix.**
+
+### 7m — the Mac rule SAID "pytest" and that is what melted the laptop (2026-08-29)
+
+The user, twice within a minute: *"아직도 로컬에서 돌아가는것들 있어! 정리해서 ceph 인스턴스 사용하도록해!
+랩탑이 너무 느려"* / *"에이전트들에게 확실히 인스턴스 사용하도록 지시를 하라고!"*
+
+I went looking for a game measurement and there wasn't one. The local load was **three concurrent
+`pytest tests -q` runs** at 57% / 56% / 55% CPU, laptop load 27, on the machine the session itself
+runs on. `local_measurement_alarm.sh` reported nothing because it matches `score_efficiency` and
+`scripts/_`, and the suite is neither.
+
+⛔ **NOBODY BROKE A RULE. THE RULE WAS WRONG.** Rule 0 has always read *"the Mac is edit/lint/**pytest**
+only"*, so every agent running the suite locally was obeying it exactly. That sentence was written
+when there was one worker. With eight, ~1700 tests is a minute of a core times eight agents times
+every edit — the laptop's entire capacity, spent beside 64 idle cores one ssh away.
+
+**Tests run on the box, out of a private snapshot, like every other measurement:**
+
+```
+bash scripts/ptest.sh tests/test_crag.py        # just yours — PREFER THIS
+bash scripts/ptest.sh                           # whole suite, when you truly need it
+bash scripts/ptest.sh --dirty tests/test_x.py   # include uncommitted edits (red-green loop)
+```
+
+Default is HEAD and it NAMES the uncommitted files it excluded; `--dirty` ships the working tree,
+because a red-green loop testing HEAD is testing the wrong thing. `-p no:randomly` is forced so two
+runs are comparable. The snapshot is deleted on exit.
+
+**The Mac now runs an editor, `grep`, and `ruff`. Nothing else.** Not pytest, not a solver, not a
+replay, not a "quick" offline enumeration — that last one was argued for explicitly ("plain python,
+no engine") while the user was complaining about laptop speed. ⚠️ **If you are unsure whether
+something counts, it counts.**
+
+⛔ This is the FOURTH rule in a row with the same shape (7i, 7j, 7k, and now this) and the sharpest
+version of it: the previous three were rules that participants forgot, and this one is a rule that
+participants FOLLOWED. A correctly-obeyed rule can be the defect. When a limit is breached, read
+what the rule actually licenses before looking for who ignored it.
