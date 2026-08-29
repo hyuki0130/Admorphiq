@@ -3310,3 +3310,38 @@ takes twelve minutes, and answers "does the card that ships behave like the card
 exact question that went unanswered while five research commits drifted into the deployed fallback
 and the hidden score moved 0.20 -> 0.18 with no attributable cause. **Push after any day of harness
 work.** Artefacts banked in `scripts/rounds/R101KAGGLE/`.
+
+### 7ca — the LLM target draw has never once succeeded, anywhere (2026-08-30)
+
+Found by reading the banked Kaggle log for something else. `loop.py:666` calls `self.draw_llm(...)`
+to draw a target when a tool's pursuit stalls, and catches every exception. **In all three
+environments this campaign measures, that call has failed every single time it was made:**
+
+```
+ceph-build gate    [harness] target draw failed: HTTP Error 404: Not Found
+Kaggle kernel      [harness] target draw failed: <urlopen error [Errno 111] Connection refused>
+```
+
+⛔ **The box's failure is a MODEL-NAME MISMATCH, not a design choice.** ollama IS running there and
+IS serving `gemma4:26b`; `registry.py:139` defaults `HARNESS_MODEL` to `gemma4:31b-it-q8_0`, which
+is not pulled, so every draw 404s. Nobody chose that — it has simply been true through every gate.
+
+⭐ **SO 0.9082 IS TOOLS PLUS SIGNATURE ROUTING, WITH THE LLM LAYER CONTRIBUTING EXACTLY ZERO.** Every
+number in this campaign is an LLM-free number. That was TRUE of the older cards and stated as such;
+it is true of this one and was not, because the reason changed from "the runners set no
+`HARNESS_MODEL`" to "they set the wrong one".
+
+⚠️ **AND IT MEANS AN AXIS IS OPEN, NOT CLOSED.** Six measurements closed the TOOL-SET axis. None of
+them touched the LLM, because the LLM was never in the loop. "Would a working target draw help at
+0.9082?" is unmeasured — and it is the axis the top policy's stage 2 is entirely about.
+`snapgate.sh` now forwards `HARNESS_MODEL`, so the arm is one command:
+`HARNESS_MODEL=gemma4:26b bash scripts/snapgate.sh llmdraw scripts/rounds/R101SHIPPED 8 4000`.
+
+⭐ **THE COST IS SMALL AND MEASURED, WHICH IS WHY THE ARM IS WORTH RUNNING**: the whole 25-game
+Kaggle run made **FOUR draw attempts, on three games** (bp35 1, lf52 1, s5i5 2) — draws only fire
+when a tool's pursuit stalls, so an LLM gate is not 25 games of inference. ⚠️ And on Kaggle the
+failure is bounded for a reason worth knowing: the endpoint is `localhost:11434`, which REFUSES
+instantly, so the 180-second timeout never engages. A non-local endpoint that blackholed would cost
+180s × 2 attempts × every stall against a 9-hour budget for 110 games. ⛔ Do not "fix" this with a
+shorter timeout — nothing is broken and rule 7o forbids speculative safety nets — but do not point
+the shipped default at a non-local host either.
