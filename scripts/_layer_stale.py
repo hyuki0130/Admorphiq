@@ -81,10 +81,12 @@ def main() -> None:
     frames = [obs]
     done = 0
     seen_layers: dict[int, int] = {}
-    stale0 = trans_stale = trans_fills = fill_inert = 0
-    at_transition = True          # the very first frame of the game counts as one
-    was_transition = False        # whether the frame BEING judged for staleness was one
-    prev = _layers(obs)
+    stale0 = trans_stale = trans_fills = fill_inert = alt_layer = 0
+    multi = tail_eq = 0
+    # ⛔ The first frame is NOT a transition. Seeding this True made every game report at least
+    # one stale transition — `prev` is that same frame, so the equality is trivially true — and
+    # the constant 1 read exactly like a finding.
+    at_transition = False
     n = 0
     for n in range(cap):
         if agent.is_done(frames, obs):
@@ -95,31 +97,52 @@ def main() -> None:
         was_fill = filled["n"] > before
         board = _layers(obs)
         seen_layers[len(board)] = seen_layers.get(len(board), 0) + 1
-        # ⛔ "Layer 0 is BEHIND" is only demonstrated by the layer 0 that CATCHES UP. The first
-        # version of this test asked whether layer 0 held still while a later layer moved
-        # SINCE THE LAST FRAME — and it scored re86, the board it was written from, at zero,
-        # because re86's frames carry one layer until the transition, so there is no previous
-        # later layer to compare against. An instrument that cannot see its own known positive
-        # measures nothing (rule 7b). The test now spans two frames and is decisive: this frame
-        # shows something in a later layer that layer 0 does not, and the NEXT frame's layer 0
-        # is exactly that. An overlay or an animation cannot satisfy the second half.
-        if prev and len(prev) > 1 and prev[0].shape == prev[-1].shape \
-                and (prev[0] != prev[-1]).any() and board \
-                and board[0].shape == prev[-1].shape \
-                and (board[0] == prev[-1]).all():
-            stale0 += 1
-            if was_transition:
-                trans_stale += 1
+        # ⛔ THIRD version of this test. The two before it each failed on the SAME known
+        # positive — re86's level-transition frame, where layer 0 provably still holds the old
+        # level's board while layer 1 holds the new one.
+        #   v1 asked "layer 0 held still while a LATER layer moved since the last frame". re86
+        #      emits ONE layer until the transition, so `prev[1:]` is empty and the clause could
+        #      never fire; it scored the board it was written from at zero.
+        #   v2 asked "a later layer showed what layer 0 did not, and the NEXT frame's layer 0 is
+        #      exactly that". An ACTION happens in between and moves a piece, so the equality
+        #      never holds — and on games with animation layers it fired 150 times on an
+        #      animation settling, which is not staleness at all.
+        # What matters to a tool is narrower and needs no later layer to interpret: ON A LEVEL
+        # TRANSITION, is layer 0 still the PREVIOUS frame's board? That is exactly what leaves
+        # the tool reading the level it has just left. Whether a better layer existed on that
+        # same frame is a SECOND question, counted separately as `alt_layer`.
         if was_fill and at_transition:
             trans_fills += 1
-        was_transition = at_transition
-        prev = board
         obs = env.step(act, data=data) if data else env.step(act)
         frames.append(obs)
         after = _layers(obs)
         if was_fill and board and after and board[0].shape == after[0].shape \
                 and not board_changed(board[0], after[0]):
             fill_inert += 1
+        # ⛔ FIFTH version of this test, and the four before it each scored re86 — the board it
+        # was written from, where layer 0 provably holds the finished level and layer 1 the new
+        # one — at ZERO. Every one of them was an EQUALITY, and an equality cannot hold across
+        # a frame boundary because an action happens there and moves a piece. What survives is a
+        # COMPARISON: on the transition frame, is the LAST layer closer than layer 0 to the
+        # board the tool is handed NEXT? If it is, layer 0 was behind and a different layer
+        # choice would have shown the tool the level it is actually playing. An animation or an
+        # overlay layer is FURTHER from the next frame, not closer, so it does not score.
+        if len(board) > 1 and after and board[0].shape == after[0].shape \
+                and board[-1].shape == after[0].shape:
+            multi += 1
+            d_first = int((board[0] != after[0]).sum())
+            d_last = int((board[-1] != after[0]).sum())
+            if d_last < d_first:
+                stale0 += 1
+                if at_transition:
+                    trans_stale += 1
+            if d_last == 0:
+                # The decisive one: the LAST layer of this frame IS the board the tool is handed
+                # next. Where that holds, the layer order is oldest-first beyond argument, and
+                # `frame_2d`'s "first layer" is the OLDEST state the engine emitted.
+                tail_eq += 1
+                if at_transition:
+                    alt_layer += 1
         now = int(getattr(obs, "levels_completed", done) or 0)
         at_transition = now > done
         if at_transition:
@@ -130,6 +153,7 @@ def main() -> None:
     print(json.dumps({
         "game": title, "actions": n + 1, "levels": done,
         "layers": seen_layers, "stale0": stale0, "trans_stale": trans_stale,
+        "alt_layer": alt_layer, "multi": multi, "tail_eq": tail_eq,
         "fills": filled["n"], "trans_fills": trans_fills, "fill_inert": fill_inert,
     }))
 
