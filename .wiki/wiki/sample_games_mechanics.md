@@ -1050,3 +1050,28 @@ this project has actually made: an asset already present and not being used.
 against 42 — both nearly 3x and 1.7x too generous, and a tool told it has more budget than it does
 will plan past the end of the level. Any use must be gated on the reader agreeing with itself across
 frames, not just on it returning a number.
+
+### ⛔ RETRACTED — wa30 is NOT lost on its budget; the budget never bites
+
+Last tick I concluded wa30's level 9 is "an EFFICIENCY problem, not a missing mechanic", because the
+level declares 70 steps and shepherd spends 508. Measuring what those 508 actually are:
+
+```
+attempts on level 9 (actions, actions that moved the board): [(507, 506)]
+```
+
+**One unbroken attempt.** No restart, no repaint, and 506 of the 507 actions change the board. So the
+declared allowance of 70 is not enforced here — `elif not current_steps: self.lose()` does not fire —
+and wa30's last level is not lost on time.
+
+Which withdraws the whole reading: shepherd plays 507 effective actions on a level it never loses and
+still cannot clear it. That is the same wall as dc22, bp35 and lf52, not a different and cheaper one.
+
+⚠️ And it removes the case for wiring `BudgetReader` into shepherd. The reader is real, 6/9 accurate
+and used by one tool of forty-seven — that finding stands — but the game it was going to be wired
+for does not enforce the budget it reads. **A working asset is only a lever where the thing it
+measures actually binds.**
+
+⛔ Third retraction of the round, and all three share a shape: a number read from the game's SOURCE
+(a declared StepCounter, a lose() branch) taken as a description of what the game DOES, without
+checking that the branch runs. The source says what is possible; only the run says what happens.
