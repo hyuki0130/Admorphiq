@@ -2404,7 +2404,7 @@ never hold a board), rule 7ac (routing cannot lose a tie) and now this, the regi
 measured from FOUR independent directions and **none of them locates the remaining 0.0918 in the tool
 set as it stands.**
 
-### 7bf — WHY the strong tool goes empty: two games, two OPPOSITE reasons, and zero score either way (2026-08-30)
+### 7bg — WHY the strong tool goes empty: two games, two OPPOSITE reasons, and zero score either way (2026-08-30)
 
 Rule 7bd left one question open — *"why does the strong tool go empty, and is the successor better
 than nothing?"* Asked of the TOOL, not of the harness's stderr (which reports `_feedback`, the last
@@ -2474,3 +2474,49 @@ is measured and it is not a pair. ⚠️ The sampling perturbed `linkage` exactl
 with a named cause, in a tool that reaches bp35's best depth. It is a repair candidate — and rule 7o
 applies in full, because the arm that keeps crag on the board after it is fixed is the `hold` arm,
 which is measured inert.
+
+### 7bh — BEING DISPLACED is what fixes `crag`; handing the board back is the opposite of the repair (2026-08-30)
+
+Rule 7bd asked why the strong tool goes empty. Answered on both games, with `pure` and `census`
+controls each reproducing the banked per-level counts exactly, four times over two fans.
+
+**459 traced `propose` calls, ZERO ILLEGAL** — the 43/43 NOPLAN prior holds. And the two games give
+OPPOSITE reasons:
+
+- **bp35 / `crag`** — 230 calls, 222 PLAN, 8 NOPLAN, all eight `_quit("window does not belong to
+  this board")`. ⭐ At the first empty **the only field that moves is `self._rows` 10 → 9** — verbatim
+  the hazard `crag`'s own `_widen_band` docstring names ("the same window reads as ten rows on one
+  frame and nine on the next"). **The author guarded the BAND and left the STITCH exposed.**
+- ⛔ AND `crag`'s OWN PATIENCE IS NEVER CONSULTED: `_GIVE_UP` = 16 idles before `_mute` even
+  increments and `_MUTE_AFTER` = 3 before it stops bidding, while the harness's `_EMPTY_TOLERANCE` = 8
+  fires at **exactly HALF the tool's first threshold**. At retirement `_idle` = 8, `_mute` = 0,
+  `_refuted` = False. The tool has not given up; the harness gave up on it.
+- **s5i5 / `swivel`** — ONE call does it: a refused click makes `_settle` ban the edge and clear a
+  9-step plan, `_replan` exhausts every rider pairing, `_retry_unknown` has no control left, and
+  `swivel.py:1017` latches `_dead`. That is rule 7ao's wall. The other seven empties are ceremony
+  against a latch.
+
+⭐ **AND THE RECOVERY ANSWER REVERSES THE OBVIOUS REPAIR:**
+
+```
+              shadow (asked off-run after retirement)      hold (never retired)
+bp35 crag     487 asks, 436 SPEAK (89.5%), first at +52a   360a held (was 229) -> per-level IDENTICAL
+s5i5 swivel   464 asks,   0 SPEAK (dead latch)             671a held (was 228) -> per-level IDENTICAL
+```
+
+⛔ **`crag` recovers only because the SUCCESSOR drives it back into a ten-row window.** Given the
+board in its own hands it does NOT re-sync — 126 of 360 NOPLAN, `_mute` 6, `_refuted` True. **Being
+displaced is what fixes it**, so "hand the board back to the strong tool" is the opposite of the
+repair. And both `hold` arms changed **not one per-level count**: every action after the wall level
+begins is scored zero however it is spent (rule 7ax's shape again).
+
+⛔ THE `telescope` ANOMALY IS CLOSED NULL: sampled 464 times on the s5i5 wall level after `swivel`
+died, `detect` returns **0.00 every time**. The two tools partition the family by whether a one-way
+control exists, and level 6 has one. "One cheap pair away" was not a pair. ⚠️ And the sampling
+perturbed `linkage` exactly as rule 7ah predicts (tenure 463 → 126) while the counts still did not
+move.
+
+**WHAT SURVIVES AS A REPAIR CANDIDATE:** the `_rows` 10↔9 read is a ONE-FIELD perception defect with
+a named cause, in the tool that reaches bp35's best depth. ⛔ But rule 7o applies in full — the arm
+that keeps `crag` on the board after such a fix is the `hold` arm, and **`hold` is measured inert**,
+so a perception repair has to earn its level on its own.
