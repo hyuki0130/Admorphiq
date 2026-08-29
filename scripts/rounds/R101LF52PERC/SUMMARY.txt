@@ -1,0 +1,94 @@
+R101LF52PERC — lf52 level 6, 2026-08-30. THE PERCEPTION QUESTION ANSWERED, AND IT IS NOT A FILTER.
+
+The briefing asked three things. All three are measured, both seeds agree on every arm, and every
+arm reproduces the banked negative control [8, 52, 60, 64, 139] / 823 / 0.272727.
+
+HOW EVERY NUMBER WAS TAKEN
+  scripts/_lf52_pcen.py / _lf52_wide.py / _lf52_wsurv.py / _lf52_partial.py / _lf52_ride.py, each
+  driving score_efficiency.run_game where an engine is needed (rule 7aj.1 — the loop is never
+  re-implemented) and scripts/_lf52_l6_model.py where it is not, fanned through scripts/pfan.sh out
+  of a PRIVATE snapshot on ceph-build. `detect` is never sampled off-schedule (rule 7ah): the tool's
+  own `_ensure_plan`, `read_board`, `_adopt`, `_install` and `propose` are wrapped where it calls
+  them.
+
+Q1  WHAT DOES pegjump READ, AND WHY 2 OF 6? — IT IS THE CAMERA, AND NOTHING ELSE IS WRONG.
+  The pipeline was instrumented stage by stage, because a pad can be lost in four different places
+  that want four different repairs. At level-6 action 122:
+
+      frame            14 socket squares,  2 discs
+      on_phase_discs    2      off_phase_discs 0      disc_colour_refused 0
+      board.pieces      2      model pieces    2      engine pads 6
+
+  ⛔ NO FILTER DROPS ANYTHING. The briefing's candidate — a minimum-blob-size filter of the kind
+  that makes lf52's four-two-pixel-blob move markers read as "there is no oracle" — is REFUTED for
+  this tool: every disc the frame contains survives to the board, and the colour classifier refuses
+  none of them.
+  ⛔ AND NOTHING IS FORGOTTEN EITHER. `model_pieces_peak` is 2 across the WHOLE level (10 model
+  reads, 12 board reads, 2 adopts, 1 install), so the model never held more and never threw any
+  away. The board is 28 cells wide at pitch 6 against a 64-pixel screen and the camera sits at
+  ox=-57; four of the six pads are off screen and were never on it while this tool held the board.
+
+Q2  WOULD SEEING THE WHOLE BOARD CHANGE THE MOVE? — NO. (scripts/_lf52_wide.py, offline, no engine)
+  A pegjump Model was built from the engine's true state and `plan_moves` asked directly. Controls:
+  the root is winnable uncapped in 242,384 states, and the WINDOW arm reproduces the observed
+  defect exactly (`solved` True, jump (14,2) over (15,2) to (16,2)).
+
+      arm        pieces  sockets  solved  first move              engine verdict after it
+      window        2      12     TRUE    (14,2)->(16,2)          NOT winnable
+      wide          6      63     false   (14,2)->(16,2)          NOT winnable
+      wide, red marked uncapturable       (14,2)->(16,2)          NOT winnable
+
+  ⛔ A TENTH HYPOTHESIS CLOSED: "widen perception and the move changes" is FALSE. Widening fixes
+  the CLAIM — `solved` correctly becomes false — and leaves the MOVE identical, because tier 1 is
+  "cheapest route to one more capture" and that capture is the cheapest.
+
+Q3  SO WHAT DOES SEPARATE IT? — SURVIVABILITY, AND ONLY ON A MAP KNOWN TO BE PARTIAL.
+  scripts/_lf52_wsurv.py enumerated every distinct capture OUTCOME on the wide map within cost 26:
+  there is exactly ONE, it is the fatal one, and `capture_reachable` after it is FALSE. So the
+  guard that was measured INERT last round (refusals 0) is not wrong — it was asked about a plan
+  that claimed to be a SOLUTION, where a guard on capture routes cannot see it.
+
+  scripts/_lf52_partial.py then measured the signal live, because railpeg reaches this rule through
+  a REFUTED claim and pegjump makes exactly ONE claim on this level — the losing move — so there is
+  nothing to learn from. `runs_offscreen` (railpeg's `_offscreen` shape: track continuing past the
+  window into cells the map has never held) is TRUE at all 10 of pegjump's level-6 decisions, and
+  the counterfactual at the decision that mattered returns 1 candidate, survivable 0, all_fatal.
+
+WHAT WAS BUILT, AND WHAT IT DID
+  plan_moves gained `partial`: a solved state is no longer a solution (it stays worth playing
+  toward), and the cheapest SURVIVABLE capture outcome is taken, returning None when none survives.
+
+      captures 14/16 (railpeg) + 124 (pegjump)  ->  14/16 (railpeg) + 317 (GRAPH)
+      lost_at 124 -> 317, restart 267 -> 339, score 0.272727 unchanged
+
+  ⛔ pegjump stopped making the move and `graph` made the identical one 193 actions later. Then the
+  reason the tool went idle was measured: eleven consecutive decisions with the known map fixed at
+  26 cells. `explore_moves` maximises unknown territory next to a piece in MODEL coordinates, where
+  no simulated move changes what is knowable — THE SIMULATION HAS NO CAMERA IN IT — so the tier
+  meant to "go and look" cannot widen a window by construction.
+
+  So railhead_moves was added: board a carrier, ride it toward the side where the TRACK leaves the
+  screen. Two corrections, each measured:
+    * reading the open end as "a CARRIER at an open end" (railpeg's form) made the tier silent —
+      lf52's carriers sit mid-strip while the rails run off both sides. The open end belongs to the
+      track; the carrier rides to it.
+    * filtering the ride through `_drive` made it silent again — the drive model rolls a carrier
+      only onto cells the map already calls track, so every ride is one cell short of the only
+      place worth going. The ride is emitted UNSIMULATED, bounded by the barren counter.
+
+FINAL MEASURED STATE (scripts/_lf52_rail2.jsonl, _lf52_ride.jsonl — both seeds identical)
+      lost_at        124  ->  None
+      restarts       [267] ->  []
+      attempt-1 end  NOT winnable  ->  WINNABLE
+      third capture  taken  ->  never made
+      camera         pinned at -57 at every pegjump read  ->  12 distinct positions
+      score          0.272727  ->  0.272727
+
+  ⭐ LEVEL 6 STOPS BEING DESTROYED. It is still never finished, and the reason is now rule 7bd's
+  pattern rather than a defect in this tool: pegjump holds 19 of the level's 500 actions while
+  `graph` holds 225 and `world_model` 117, and 5 of pegjump's 19 are direction-calibration probes,
+  each of which CLEARS the plan by design.
+
+WHAT THIS LEAVES OPEN
+  The remaining distance on lf52 is TENURE, not perception and not ranking. The tool that can open
+  the board gets nineteen actions; the two that cannot get three hundred and forty-two.
