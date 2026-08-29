@@ -65,13 +65,19 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
-1. **LIVE (four agents)**: lf52's third capture · ⛔ ls20's handover is CLOSED (my
-   briefing was wrong twice: only TWO of the ten actions are keymaze's and both MOVE; 231 is
-   INVARIANT for every handover from action 9 to 17) · **cross-level mechanic carry**,
-   the only axis today that describes the private 110 · and the gate-guard wiring.
-   ⛔ lp85 DONE (0.9767). bp35, s5i5, dc22 and ls20's ORDERING axis are all CLOSED WITH PROOFS.
+⛔ **FIVE OF THE SIX SHORT GAMES ARE CLOSED WITH PROOFS. lf52 IS THE ONLY ONE OPEN**, and its target
+is ONE MOVE: the third capture at action 124 is the level author's own marked losing branch, and
+`railpeg` ARMS it earlier by moving red to (6,6). See the lf52 row below.
+
+1. **lf52's third capture** — make it the eighth candidate rather than the first, and stop clicking
+   when nothing is legal (which also removes the (6,56) restart exposure and 143 wasted actions).
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
+
+⚠️ **AND THE HONEST POSITION ON THE REMAINING 0.0918**: bp35, s5i5 and dc22 each need a capability
+the tool set does not have — a first attempt that knows which glyph kills; a planner that can move a
+piece already home; a 297k-state joint planner on a game with 8 actions of slack. lf52 needs one
+better choice. Nothing here is a constant to tune.
 
 ### ⛔ CLOSED TODAY WITH PROOFS — do not re-open without NEW evidence.
 
