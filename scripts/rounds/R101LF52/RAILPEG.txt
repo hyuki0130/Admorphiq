@@ -325,3 +325,53 @@ objective is maxed on the map it has) and `railhead` needs a passenger that noth
 (nobody-aboard 8 of 8). Getting a piece ONTO a cart and driving it outward when exploration has
 stalled is a two-step plan no single tier expresses — and ⛔ that is a HYPOTHESIS, not a finding.
 The ferry experiment already showed one plausible-sounding version of it firing zero times.
+
+================================================================================
+FIFTH PASS — THE FUNDED MEASUREMENT: IS THERE ANY SINGLE ACTION THAT GROWS THE MAP
+FROM THE STALL? ASKED ORACULARLY, ANSWERED NO.
+
+scripts/_lf52_stall.py. At the first moment railpeg's OWN `_ensure_plan` returns 0.0 — so the stall
+is the tool's verdict, not mine — one arm per run FORCES one of the moves the tool's own successor
+function offers at that instant, played through the harness's own converter, then hands control
+back and watches whether the known-cell count ever exceeds what it was. Eight arms in parallel.
+
+    THE POSITION AT THE STALL (identical in all eight runs, action 115 of the level)
+        known 98 cells · pieces 5 · carts 3 · ABOARD 0 · six legal moves, and that is all:
+        jump (0,17) down · jump (0,17) right · drive up · drive down · drive left · drive right
+
+    arm  forced                       grew
+     0   jump:(0, 17):(1, 0)           0
+     1   jump:(0, 17):(0, 1)          +1
+     2   drive up                      0
+     3   drive down                    0
+     4   drive left                    0
+     5   drive right                   0
+
+⛔ NO SINGLE ACTION OPENS THE BOARD. The best move on offer grows the map by ONE CELL. And the four
+drives — the entire mechanism the two-step hypothesis rests on — grow it by ZERO, from a position
+where they are legal and were tried directly.
+
+⛔ AND THE HYPOTHESIS I LABELLED IS REFUTED AT ITS ROOT, not merely unsupported. "Get a piece ONTO a
+cart and drive it outward" requires a boarding move to exist; at the stall the position offers SIX
+moves and NEITHER of the two jumps lands on a cart. There is no boarding move to find, so no tier
+however clever could express one. The ferry experiment firing zero times was not a bug in the ferry
+— the position genuinely has nothing for it.
+
+Only ONE piece has any legal jump at all (the one at (0,17)); the other four are frozen for want of
+anything to jump over. That is what a peg-solitaire dead end looks like from the inside, and it is
+the same verdict `refuse_fatal` reaches by search — reached here by playing every alternative.
+
+⚠️ INSTRUMENT DEFECT IN MY OWN CONTROL ARM, caught reading the table. The control (arm -1) forces
+nothing, so `forced_at` stays None, `known_after` is never written, and it prints 0. **That zero is
+not a measurement** — it is the variable's initial value, and it sits in a column next to six real
+zeros where it reads exactly like a seventh. The six forced arms are sound; the control row must be
+struck. Same family as everything else caught this round: a plausible number for a quantity the
+instrument is not measuring.
+
+WHERE THAT LEAVES LF52, and it is a closure rather than a lead: exploration stalls at 98 cells with
+6 of 8 pads because the position it reaches is genuinely closed — one mobile piece, no boarding
+move, four inert drives. The map is still the lever (the veto has never once been asked with all
+eight pads visible), but it cannot be opened FROM HERE. Whatever opens it has to happen EARLIER, in
+the choices that lead into this position — which is the branch `refuse_fatal` is already, correctly,
+declining to take blind. ⛔ Do not build a frontier tier for this board; six measurements now say
+the frontier is not what is missing.
