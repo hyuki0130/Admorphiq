@@ -30,7 +30,12 @@ MSG
   exit 2
 fi
 
-if printf '%s' "$cmd" | grep -qE 'score_efficiency|scripts/_[a-z0-9]+_'; then
+# ⛔ MATCH THE EXECUTION OF A PROBE, NOT ITS NAME. The first version matched `scripts/_x_y` anywhere
+# in the command string, so WRITING a probe with a heredoc, grepping it, or `ast.parse`-ing it was
+# refused — and it refused the edit to this very file, because the file contains the pattern. A guard
+# that blocks authoring is a guard people switch off. Require an interpreter with the script in argv,
+# which is the thing that actually costs the laptop.
+if printf '%s' "$cmd" | grep -qE '(^|[;&|[:space:]])((uv run )?python[0-9.]*|\.venv/bin/python[0-9.]*)[[:space:]]+[^|;&]*(score_efficiency|scripts/_[a-z0-9]+_)'; then
   cat >&2 <<'MSG'
 ⛔ BLOCKED: game measurements do not run on the Mac (OPERATING_RULES.md rule 0 and 7k).
 
