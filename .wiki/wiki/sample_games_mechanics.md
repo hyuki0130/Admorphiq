@@ -2650,3 +2650,92 @@ cell, and whether pressing one while standing on its plate slides a body.
 ⚠️ Nothing here is committed to `src` — every number above is a monkeypatch measurement, and the
 score is UNMOVED at 0.714286. What is banked is that four of the five walls are down and the fifth
 is named.
+
+## dc22 level 6 — the crane's gate DECODED, and the plate is FRAME-VISIBLE (2026-08-30)
+
+The previous pass closed on one question: *"which of the four idle controls appear and vanish with
+the avatar's cell, and whether pressing one while standing on its plate slides a body."* Answered,
+from the level's own data and then from the running game. **The score is UNMOVED at 0.714286 and
+nothing was committed to `src` — a no-op is not a change (rule 7b).** What is banked is a mechanism
+that no longer has to be guessed at.
+
+### The mechanism, read off `levels[5]` and `Dc22.yuonzbouxb()`
+
+Five crane controls, all `buezna` + `sys_click`, all shipping **`visible=False`**:
+
+```
+control sprite     game(x,y)  key  drives  its plate (njvd-rolo)  plate game(x,y)  panel island
+crzsjq-up-1        (49,31)     b   UP      sprite_81-1            (34,56)          (32,50)
+crzsjq-lersnf-2    (49,39)     h   DOWN    sprite_81-4            (34,60)          (40,50)
+crzsjq-lersnf-1    (45,35)     e   LEFT    sprite_81              (32,58)          (36,46)
+crzsjq-riidpd-1    (53,35)     a   RIGHT   sprite_81-2            (36,58)          (36,54)
+crzsjq-grawwq-1    (47,17)     g   GRAB    none — a `piyqze` pickup, PERMANENT
+```
+
+`yuonzbouxb()` runs at the top of **every** step: for each `njvd-rolo` plate the avatar OVERLAPS it
+collects the plate's key, then makes every `buezna` carrying that key `visible` + `INTANGIBLE` and
+every other one `INVISIBLE`. `xodizggcom` skips invisible sprites, so **a control whose plate is not
+underfoot is a dead click at a cell that still draws its console art.** That is the whole of the
+"inert D-pad".
+
+⭐ **The four plates are themselves a D-PAD ON THE BOARD**, around frame (58,34) — the same shape as
+the console's own D-pad around frame (36,50). In frame coordinates (row=y, col=x) they occupy
+UP rows 56-57 cols 34-35 · DOWN rows 60-61 cols 34-35 · LEFT rows 58-59 cols 32-33 · RIGHT rows
+58-59 cols 36-37. The avatar is 2x2 and steps 2, so the four are **one or two moves apart**.
+
+⛔ **There is a SECOND gate in series.** The crane is `brixtocrzsjq-1`, so `qnlqkldrl` is True and a
+drive is refused unless a `vcha` sprite is drawn at the crane's target centre (`tnedtgkguq` ->
+`sutqmbilwv`). The `vcha` sprites are the nineteen 4x4 `bg` clones the level places — **the rail is
+a drawn track**, not a rectangle. A press therefore needs BOTH the right plate underfoot AND the
+track continuing that way, which is why three of four are silent at any one moment.
+
+### Measured, because the source only says what is POSSIBLE (rule 7g)
+
+* `scripts/_dc22_rail.py`, 4 runs, avatar held at (49,28): each of (32,50) (36,46) (36,54) (40,50)
+  pressed **23 times for ZERO changed pixels**, while (8,56) changes 32 and (25,51) changes 120 from
+  that same cell. The instrument is attached and the drives really are refused.
+* `/tmp/pfan_dc22pt17.jsonl`: the same (32,50) slides a **28-pixel body by (-4,0), twelve times**,
+  pressed from **(55,34)** — which overlaps plate `b` at rows 56-57 cols 34-35. Source and board
+  agree on the cell.
+* ⭐ **THE PLATE IS VISIBLE IN THE FRAME.** `scripts/_dc22_plate.py` hashes the panel strip every
+  turn. Four distinct panel states over the level; three carry **1304** lit pixels and one carries
+  **1319** — fifteen more — and that one occurs at **exactly one avatar cell, (55,34)**, and
+  **toggles back** the moment the avatar steps to (57,34), twice per run, in both runs. A control
+  being enabled is a fifteen-pixel event in the panel, reversible with the avatar's position. So a
+  frame-only tool can learn "this control is live from here" by WALKING and watching the panel —
+  it does not have to press every control from every cell.
+  ⚠️ Only ONE of the four plates was ever stood on, so "each plate lights its own control" is
+  measured for one of four; and `nonbg` is a COUNT, so the next probe should diff the panel pixels
+  to name WHICH island lit.
+* `scripts/_dc22_plateverify.py`: `_plan_full` reports **all eight plate cells UNREACHABLE** from
+  the start cell (49,28). The plate cluster is not walkable from the start; the only route there
+  runs through the aimed teleport, which itself exists only after a `piyqze` key is picked up. That
+  is why only the arm carrying the teleport repairs ever stood at (55,34).
+
+### One repair built, measured and NOT committed
+
+`_confirm_probe` gives each idle control exactly one chance per level (`_gprobed` is a set of
+clicks), so a control silent at one rail position is condemned for the level.
+`scripts/_dc22_reask.py` clears that memory whenever the provisional body slides, capped.
+Measured: levels 1-5 **byte-identical** (925 actions, 31/53/59/87/195, score 0.714286) and it fires
+**ZERO times on level 6**, because the baseline tool never presses a drive from a plate at all — the
+re-ask has nothing to re-ask after. Correct in principle, inert here, so it stays out of `src`.
+
+### What is left, with the search space attached
+
+```
+(a) a route to the plate cluster        exists ONLY through the aimed teleport (unlocked by a key)
+(b) a per-control PRECONDITION          "this click is live only at cell P" — learnable from the
+                                        panel's 15-pixel change while walking (measured above)
+(c) a rail that is a DRAWN TRACK        `_edges` must be learned per crane position while the
+                                        avatar shuttles between four plates 1-2 moves apart
+(d) a planner over (avatar, crane, slab) the previous pass's oracle needed 297k states / 141 actions
+```
+
+⛔ `gantry` has no notion of (b) at all: `_press` emits a click from wherever the avatar stands, and
+`_plan_full` searches (cell, rail offset, phase) with no cost for "walk to the plate first". Adding
+the precondition is the structural change, and it must be gated hard — **dc22 levels 1-5 are all at
+the 1.0 cap with as little as 8 actions of slack (level 3: 59 ours vs 67 human)**, so any extra
+probing on those levels costs more than level 6 can return.
+
+Probes: `scripts/_dc22_rail.py`, `_dc22_plate.py`, `_dc22_plateverify.py`, `_dc22_reask.py`.
