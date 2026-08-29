@@ -69,16 +69,42 @@ exists (`_better_alternative_exists`: swapping to a weaker tool is pure downside
 
 ## Honest headroom on the public 25
 
-⛔ **Nearly none, and this must not be over-sold.** Read the baseline per-game files
-(`scripts/rounds/R101RE86/games/*.json`): in seventeen games `total_actions` equals the SUM of the
-per-level counts exactly, which means zero deaths and zero trailing waste — those games win. ls20 and
-lp85 are the same. The remaining five (bp35, lf52, s5i5, dc22, wa30) die only in the ~500-action
-trailing window after their LAST clear, on levels they never clear, where the score is already zero.
+⛔ **Nearly none, and this must not be over-sold.** In the R101RE86 baseline (0.8962) **EIGHTEEN**
+games score 1.0000 — ar25 cd82 cn04 ft09 g50t ka59 m0r0 r11l re86 sb26 sc25 sk48 sp80 su15 tn36 tr87
+tu93 vc33 — and every level of every one of them clears at or under the human baseline. The other
+seven (bp35, dc22, lf52, s5i5, wa30, lp85, ls20) die only in the ~500-action trailing window after
+their LAST clear, on levels they never clear, where the score is already zero.
 
 So on these 25 the ledger is a wall-clock instrument and at best a lottery ticket. Its score case is
 the private 110, where a death loop preceding a successful clear costs that level its efficiency
-squared. That distinction is stated here rather than blurred, per `OPERATING_RULES.md` rule 7o: a
-measurement of a MECHANISM does not license a claim about BEHAVIOUR.
+squared. That distinction is stated here rather than blurred, per `OPERATING_RULES.md` rule 7o.
+
+⚠️ **TWO CORRECTIONS TO THIS SECTION'S FIRST DRAFT, both self-inflicted and both instructive.**
+
+1. It said "seventeen", quoted from CLAUDE.md's header — which describes the OLDER 0.8935 baseline.
+   R101RE86 is 0.8962 *because* re86 reached 1.0; the round is named after it. Reading a remembered
+   header instead of the artefact is the failure this repository keeps paying for.
+2. It admitted lp85 and ls20 to the untouched set on the test `total_actions == sum(per_level)`.
+   ⛔ **That test cannot detect a death at all**: `score_efficiency.py` adds the GAME_OVER reset to
+   `action_count_total` AND `action_count_this_level`, so a death PRESERVES the equality. Both games
+   have levels above the human baseline (lp85 L3 32/31, L4 33/16; ls20 L7 237/186), which is exactly
+   where a folded-in death would hide.
+
+⛔ **And the inertness claim is circumstantial, not proved.** The arithmetic route was tried and does
+NOT close: a death resets the board to level 0, so retrying level k costs replay(1..k-1) first, and
+`agent_actions[k] < replay(1..k-1)` would exclude a death there — but level 1 has no replay cost and
+L2/L3 of most games exceed their replay. The bound rules out only ft09 L1 (4 actions), r11l L1 (4)
+and vc33 L1 (3), where two deaths plus a clear cannot fit. What supports inertness is weaker: every
+level of the 18 clears within the human baseline, and the R101ALLOW probe logs their non-terminal
+deaths only in its SECOND pass (it runs 1500 actions and plays past the WIN, where the scored run
+breaks at WIN — cn04 at 261 actions, ft09 at 79). **The gate is the proof; this argument is not.**
+
+⭐ Corroborating measurement (coordinator, same day): `HARNESS_NOPROGRESS` A/B'd at 500 vs 3500 on all
+five wall games gave **seven times the actions and not one extra level** — bp35 740->3787, dc22
+925->3928, lf52 823->3828, s5i5 694->3709, wa30 1091->4000, every score identical to four decimals.
+That turns this page's central premise — a verbatim repeat cannot end differently — from an inference
+about death-length shape into a direct measurement. It also bounds the upside honestly: if 3,000 more
+actions of the same tool buy nothing, the public-25 prize is measurably zero.
 
 ## Files
 

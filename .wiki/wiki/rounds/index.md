@@ -185,4 +185,6 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   tool after two agreeing deaths, scoped to THAT level (the scorer charges a cleared level with every
   death that preceded it; bp35 repeated one 64-action death 19 times). ⚠️ Headroom on the public 25
   is wall-clock only — seventeen games never die and the five that do die only on levels they never
-  clear; the score case is the private 110.
+  clear; the score case is the private 110. ⚠️ EIGHTEEN games score 1.0 in that baseline, not the
+  seventeen CLAUDE.md's header still names (that is the older 0.8935 card) — and `total_actions ==
+  sum(per_level)` does NOT detect a death, since the GAME_OVER reset increments both counters.
