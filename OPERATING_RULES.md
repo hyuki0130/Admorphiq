@@ -1255,3 +1255,44 @@ wrote the guard, then I changed the thing it was watching, and the guard kept re
 Nothing in the process would have caught it — the contradiction (IDLE at load 65) was visible in the
 hook's own output for several ticks before I read it. **A guard that names the quantity it decides on
 can be checked against reality in one glance; one that decides on a pattern cannot.**
+
+### 7ae — in a fan-out, `ptest.sh --dirty` measures the WHOLE TEAM's uncommitted work (2026-08-30)
+
+`--dirty` ships the working tree, which is correct for a red-green loop and misleading in a
+multi-agent round: the tree holds every peer's in-flight edit. Measured 2026-08-30 — a full suite run
+against a one-line `graph_search.py` change came back **38 failed**, and `test_no_untracked_imports`
+was among them because a PEER had an uncommitted module.
+
+⛔ **A red suite under `--dirty` is not evidence about your change.** The cheap disproof is a grep,
+not a control run: none of the 38 failing modules referenced `graph_search`, `GraphSearchTool` or
+`_PRIMARY_CONF` — zero occurrences in all seven — so the change could not be their cause. The agent
+that hit this ran a whole-suite HEAD control to establish the same thing, at **2397% CPU (24 cores)
+of the 60-core total cap, while a gate was running**, and then found the grep answered it for free.
+
+**Ask which modules failed and whether they can even see your change, before spending a control run.**
+
+### 7af — a gate PASSING is not a gate covering everything (2026-08-30)
+
+`7e53372f` denied `graph` the harness's primary-owner latch (its localized-evidence bid 0.80 -> 0.69,
+against `_PRIMARY_CONF` 0.70). Gated: **0.9069, every game in the set identical**, including the three
+capped games its author had named IN ADVANCE as the blast radius — g50t (`clonewalk` 0.75 outbid by
+graph 0.80 in 26 of 30 sampled frames), m0r0 (`decouple` drops to 0.00 mid-play, 8 of 19), ls20.
+
+⚠️ **AND ONE THING THE GATE STRUCTURALLY CANNOT SEE.** The change also reverses graph's ranking
+against anything bidding in [0.69, 0.80) — measured occupants `clonewalk` 0.75 and `llm_goal`/`maze`
+0.70. On ceph the LLM 404s, so `llm_goal` bids 0.05 at every measured handover. **On Kaggle the LLM
+is live and that band is real there.** The full 25 cannot measure it. The change is kept because
+`llm_goal` outranking a general searcher is plausibly correct — but ⛔ nobody should later read
+"gated clean" as covering the deployed configuration.
+
+⭐ AND THE OBVIOUS NEXT LEVER IS ALREADY REFUTED, by the controls, before anyone built it:
+"re-decide when a non-incumbent outbids the incumbent" fires on **26 of 30 g50t frames, 8 of 19 m0r0
+frames, and on ls20** — **a margin trigger would hand three CAPPED games to the general searcher.**
+A tool's confidence peaking between decisions is an architectural limit, not a licence.
+
+⛔ AND A CONTRACT VIOLATION FOUND IN PASSING: **at least one tool's `detect` is NOT side-effect-free.**
+Sampling every tool's bid every 10 actions moved lf52 from 823 to 827 actions (score identical).
+`detect` is a QUESTION — asking must not change the board or the tool. It makes any instrument that
+samples bids off-schedule a measurement of a run it perturbed, and it is a silent cross-tool coupling
+(a tool mutating in `detect` can be perturbed by another tool's `detect` running first). Bisect by
+sampling ONE tool at a time on lf52 against the 823 baseline; one fan, ~48 arms, names it.
