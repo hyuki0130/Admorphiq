@@ -63,6 +63,14 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/campaign_reminder.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/local_measurement_alarm.sh"
+          }
+        ]
       }
     ]
   }

@@ -594,3 +594,21 @@ only thing that sees the total.
 it was still breached, because every one of those places asks a PARTICIPANT to remember it at the
 moment they are thinking about something else. The version that works is enforced by something that
 is not a participant.
+
+### 7k — measurements were running on the MAC, and nobody noticed until the user asked (2026-08-29)
+
+Rule 0 has always said the Mac is edit/lint/pytest only and measurements run on ceph-build. With
+eight agents active it was breached anyway: `_bp35_l6_replay.py` was burning **91.9% CPU on the Mac**
+with a 30,000,000-step argument, a `score_efficiency.py` run was going beside it, and Mac load was
+20.2 — on the machine the session itself runs on.
+
+`.claude/hooks/local_measurement_alarm.sh` now reports any local game measurement into every turn.
+
+⚠️ Its first version matched `python.*scripts/_` against the full process list and counted the
+`ssh` and `zsh` WRAPPERS that launch work on the box — three false alarms in a row. Match the
+interpreter that is actually executing here (`.venv/bin/python`, `python3`), not the command that
+mentions the script's name.
+
+⛔ Same shape as 7i and 7j: a rule that has been true and written down for months, breached the
+moment work went parallel, because every statement of it asks a participant to remember it. The
+version that holds is checked by something that is not a participant.
