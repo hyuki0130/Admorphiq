@@ -461,7 +461,8 @@ is not the quantity), 7r/7n (a probe measuring the box's stale code), 7d (our ow
 **Picking a target on a stuck game** → 7ab/7ar (every gated number is a rate), 7t (the transition tax
 is 0.36 actions), 7ap (unobserved space is not empty — the fingerprint for it), **7bf** (why the
 strong tool goes empty, and why handing the board back is INERT), **7bc** (lf52 —
-read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an (bp35), 7ao (s5i5), 7ak (dc22).
+read it BEFORE 7au, which it corrects twice), 7au (lf52), 7an + **7bj** (bp35 — 7bj corrects 7bh's
+named field and prices the repair at zero), 7ao (s5i5), 7ak (dc22).
 
 **Is the level even still winnable?** → **7bc**. An engine state fed to an offline solver answers it;
 a frame, a level number and a tool's own model all cannot. Winnability is monotone along a played
@@ -2529,6 +2530,11 @@ control exists, and level 6 has one. "One cheap pair away" was not a pair. ⚠�
 perturbed `linkage` exactly as rule 7ah predicts (tenure 463 → 126) while the counts still did not
 move.
 
+⛔ **CORRECTED BY RULE 7bj (same day): the `_rows` 10↔9 read is DOWNSTREAM of the failure, not its
+cause** — `_rows` is 9 at the entry to all 230 stitches, and only a SUCCESSFUL stitch raises it to 10
+via `_shape`. The stitch fails on OVERLAP (a one-window map, 8 of 8), and even the thin-overlap fix
+the file forbids leaves every per-level count unmoved. Read 7bj before acting on the paragraph below.
+
 **WHAT SURVIVES AS A REPAIR CANDIDATE:** the `_rows` 10↔9 read is a ONE-FIELD perception defect with
 a named cause, in the tool that reaches bp35's best depth. ⛔ But rule 7o applies in full — the arm
 that keeps `crag` on the board after such a fix is the `hold` arm, and **`hold` is measured inert**,
@@ -2555,3 +2561,63 @@ finished** — a live fan writes continuously, so a fan in flight is never at ri
 looking.** Rule 7l moved every measurement onto private snapshots and solved a real contamination
 problem; the disk bill arrived silently a day later on a different machine. **When you move work to
 escape a problem, ask what the new place is now paying.**
+
+### 7bj — crag's stitch fails on OVERLAP, not on the row read — and the forbidden fix is inert (2026-08-30)
+
+Rule 7bh named a one-field perception defect in `crag`: at bp35's first empty **the only field that
+moves is `self._rows` 10 -> 9**, which is verbatim the hazard `_widen_band`'s own docstring guards
+against, so "the author guarded the BAND and left the STITCH exposed". Censused
+(`scripts/_crag_stitch.py`, `scripts/rounds/R101CRAGSTITCH/`), with `pure` and `census` controls each
+reproducing the banked `[18,87,45,23,46] / 726a / 0.24556` **four times over two fans**.
+
+⛔ **THE NAMED FIELD IS A CONSEQUENCE OF THE FAILURE, NOT ITS CAUSE.** Measured at the point where it
+is USED rather than side by side across a `propose`: `self._rows` is **9 at the entry to all 230
+stitches**, without exception. It is set by `_readings` to whatever the LAST candidate origin
+happened to yield; the CHOSEN reading's shape is adopted afterwards by `_shape`, which raises it to
+10 — and `_shape` is the one call a "lost" frame skips. So the field reads 10 after every success and
+9 after every failure **by construction**. ⚠️ A before/after snapshot around the whole call cannot
+tell an input from an output; instrument the line that consumes the value.
+
+**What the alignment search actually finds at each of the 8 losses, replayed offline against a
+snapshot of the map taken before the real call, over a shift range widened by `rows+4` both ways:**
+
+```
+best in-range, admissible, over >= _ALIGN_MIN cells   0.600   (threshold _ALIGN_FIT = 0.82)
+best ANYWHERE, admissibility ignored, same floor      0.600   -> RANGE 0/8   ALLOW 0/8
+best ignoring the overlap floor                       0.900   over TEN comparable cells
+best over a 2-D (row AND column) shift                0.824   over SEVENTEEN
+```
+
+⭐ **The cause is OVERLAP, 8 of 8.** All eight losses are consecutive, steps 225-232, and the map at
+that moment is `world_rows [0,9]`, **100 cells — exactly one window**, six actions into the level. A
+click the tool believes reverses gravity moves the camera into board it has never seen, and every
+candidate splits two ways: large overlap and bad agreement (0.565 over 69 cells, 0.600 over 20) or
+good agreement on a sliver (0.900 over 10). ⛔ There is no evidence in a one-window map that can name
+that shift — the failure is a COLD START, not a threshold, a range, a row count, or a horizontal pan
+(the 2-D replay's best is another sliver, 17 cells).
+
+⭐ **AND THE REPAIR IS MEASURED INERT — including the one the file forbids.** A thin-overlap tier was
+added (accept the starved candidate when nothing clears the floor, at `>= 8` cells and `>= 0.9`
+agreement) purely to price it. It FIRES and it changes the run: stitches 230 -> 352, losses 8 -> 24,
+`crag` holds the board to 732 actions instead of 726.
+
+```
+per-level counts   [18, 87, 45, 23, 46]  ->  [18, 87, 45, 23, 46]   depth 5 -> 5   0.24556 unchanged
+```
+
+⛔ **Not one count moved**, which is rule 7bh's `hold` arm again and rule 7ax's shape: **all 8 losses
+are on the WALL level**, levels 1-5 record 219 `grow` + 3 `home` and **zero** losses, so there was
+never anything there to repair. It was reverted; `0.9 over ten cells` is literally "nine cells in
+ten", the false fit `_stitch`'s docstring records as having cost every later board, and paying that
+risk for a measured zero is the worst trade on offer.
+
+⚠️ And the level it would buy is independently closed: `sample_games_mechanics.md` proves bp35's
+level 6 EXHAUSTS at 24,644 states with zero wins under `crag`'s own `_sites` rule, and no six-click
+win exists at any reach, so `_MAX_EDITS` excludes it whatever the stitch does. **`crag` bids on
+exactly ONE of the 25 games** (0.5 on bp35, 0.00 on the other 24), so there is no second game where
+a stitch repair could have paid either.
+
+⛔ THE GENERAL SHAPE, and it is the third time this week: **a true measurement of a mechanism named a
+field that is downstream of the fault** (rule 7o's warning, arriving from a new direction). Before
+building on a diagnosed field, check whether the fault could PRODUCE it — and check where the failing
+calls sit relative to the levels that score.

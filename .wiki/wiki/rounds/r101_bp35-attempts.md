@@ -400,3 +400,49 @@ human's once it knows the board.
 
 **bp35 is closed at 0.245560 unless something changes what the FIRST attempt can know.** Level 6
 stays closed on its own separate proof.
+
+## 2026-08-30 — the `_stitch` census: the diagnosed field was downstream, and the forbidden fix is inert
+
+Rule 7bh handed this page a repair candidate: *"at the first empty the ONLY field that moves is
+`self._rows` 10 -> 9"*, verbatim the hazard `crag`'s own `_widen_band` docstring guards against, so
+*"the author guarded the BAND and left the STITCH exposed"*. Censused with
+`scripts/_crag_stitch.py`; raw arms in `scripts/rounds/R101CRAGSTITCH/`. Controls (`pure` x2,
+`census` x2) reproduce `[18, 87, 45, 23, 46] / 726a / 0.245560` exactly, four times over two fans.
+
+**The field is an OUTPUT of the failure.** Instrumented at the line that CONSUMES it rather than
+around the whole `propose`, `self._rows` is **9 at the entry to all 230 stitches**. `_readings` leaves
+it at whatever the last candidate origin yielded; the chosen reading's shape is adopted afterwards by
+`_shape`, which raises it to 10 — and `_shape` is exactly the call a "lost" frame skips. The 10 -> 9
+movement is therefore produced by the failure, in every run, by construction.
+
+**The cause is OVERLAP, 8 of 8.** Replaying the alignment offline against a snapshot of the map taken
+before each real call, over a shift range widened by `rows + 4` in both directions:
+
+```
+best in-range + admissible, over >= _ALIGN_MIN cells   0.600     RANGE 0/8, ALLOW 0/8
+best ignoring the overlap floor                        0.900     over TEN comparable cells
+best over a 2-D (row AND column) shift                 0.824     over SEVENTEEN
+```
+
+All eight losses are consecutive (steps 225-232) and the map is `world_rows [0,9]` — **100 cells,
+exactly one window**, six actions into board 6. A click on a believed gravity switch moves the camera
+into board never seen, and every candidate is either large-overlap/bad-agreement (0.565 over 69,
+0.600 over 20) or good-agreement-on-a-sliver. A one-window map cannot name that shift. It is a COLD
+START, not a threshold, a range, a row count, or a horizontal pan.
+
+**Priced anyway, with the fix the file forbids.** A thin-overlap tier (accept the starved candidate
+when nothing clears the floor, at >= 8 cells and >= 0.9 agreement) FIRES and changes the run —
+stitches 230 -> 352, losses 8 -> 24, tenure 726 -> 732 actions:
+
+```
+per-level   [18, 87, 45, 23, 46]  ->  [18, 87, 45, 23, 46]     depth 5 -> 5     0.245560 unchanged
+```
+
+Not one count moved — the same result this page already recorded for map re-seeding, and rule 7bh's
+`hold` arm a third time. **Levels 1-5 record 219 `grow` + 3 `home` and ZERO losses**, so there was
+never anything on the scoring levels to repair. Reverted: `0.9` over ten cells is literally *"nine
+cells in ten"*, the false fit `_stitch`'s docstring records as having cost every later board.
+
+⚠️ `crag` bids **0.5 on bp35 and 0.00 on the other twenty-four games**, so no second game could have
+paid for it either. Board 6 stays closed on its own proof (`_sites` exhausts at 24,644 states with
+zero wins; no six-click win exists at any reach). Rule 7bj.

@@ -1,0 +1,15 @@
+R101CRAGSTITCH — 2026-08-30 — crag `_stitch` census on bp35 (rule 7bh's repair candidate)
+
+VERDICT: MEASURED NEGATIVE, twice over.
+  1. The diagnosed field is downstream of the fault. `self._rows` is 9 at the entry to ALL 230
+     stitches; only a SUCCESSFUL stitch raises it to 10 (via `_shape`, the call a lost frame skips).
+  2. The cause is OVERLAP, 8 of 8: the map is one window (100 cells, world_rows [0,9]) when the
+     camera moves into unseen board. RANGE 0/8, ALLOW 0/8, 2-D pan 0/8.
+  3. The forbidden thin-overlap fix FIRES (stitches 230->352, losses 8->24, 726->732 actions) and
+     leaves every per-level count identical. Reverted, not committed.
+
+CONTROLS: pure x2 + census x2 reproduce [18,87,45,23,46] / 726a / 0.245560 across two fans.
+SCOPE:    crag bids 0.5 on bp35 and 0.00 on the other 24 games.
+FILES:    census_v1.jsonl (cause split) · census_overlap.jsonl (overlap floor + per-shift profile)
+          census_pan.jsonl (2-D shift replay) · thin_tier_arm.jsonl (the forbidden fix, measured)
+PROBE:    scripts/_crag_stitch.py   (pure | census | bids arms, mirrors score_efficiency.run_game)
