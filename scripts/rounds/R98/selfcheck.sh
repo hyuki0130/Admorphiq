@@ -44,10 +44,17 @@ step "adapter quarantine lint"     uv run python scripts/adapters25_lint.py
 step "summaries match their data"  uv run python scripts/summary_agrees.py
 step "R99 instruments listed"      uv run pytest tests/test_r99_instruments_listed.py -q
 
+# The R101 guards. Same reason as the R99 block above — run together or they stop holding
+# quietly. ⛔ Measured 2026-08-30: all four guards built that weekend ran NOWHERE automatically,
+# not in a hook and not here, and `fogscout` has already been committed-but-unregistered once at
+# a cost of +0.0942.
+step "every tool is registered"   uv run pytest tests/test_every_tool_is_registered.py -q
+step "detect is side-effect free" uv run pytest tests/test_detect_purity.py -q
+
 if [ "$fail" -eq 0 ] && [ "$skipped" -eq 1 ]; then
-  echo "[R98 selfcheck] five guards hold; the harness self-test was SKIPPED (no game environments)"
+  echo "[R98 selfcheck] eleven guards hold; the harness self-test was SKIPPED (no game environments)"
 elif [ "$fail" -eq 0 ]; then
-  echo "[R98 selfcheck] all ten guards hold"
+  echo "[R98 selfcheck] all twelve guards hold"
 else
   echo "[R98 selfcheck] ⛔ a guard is not holding — see above"
 fi
