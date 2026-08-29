@@ -890,6 +890,58 @@ as a property of the game. The second defect was the opposite kind: the engine r
 while a game sits in `GAME_OVER`, which is exactly the moment this probe exists to observe, and
 indexing it crashed the runs on the games that die most.
 
+## The DEATH CLOCK works: one death teaches the allowance, and 47-86% of a run is binned (2026-08-29)
+
+The replacement for the refuted pixel reader, measured on ceph-build (one process per game, 1500
+actions, shipped harness, `scripts/rounds/R101ALLOW/deathclock.jsonl`). No pixels: split the run at
+`obs.state == GAME_OVER` and at level changes, and record how long each attempt ran.
+
+**Where the allowance is what kills, the death length recovers the DECLARED number exactly:**
+
+```
+game  level   death lengths   the game's own declaration
+bp35    L6      64, 65         64   (a bare constant in render_interface)
+cn04    L4     125, 126       125   ("MaxSteps": 125)
+re86    L2     100, 101       100   ("StepCounter": 100)
+m0r0    L6     151, 152       150   (its documented budget)
+r11l    L6      60,  61        --   (declares none; effective allowance 60)
+```
+
+Always `declared + 1`, because the death is observed one action AFTER the counter trips — so the
+rule a tool needs is `allowance = min(death_lengths) - 1`, learned from a single death, on any game,
+with no rendering involved.
+
+**And the discriminator is built into the same measurement.** Where something OTHER than an
+allowance ends the attempt, the lengths scatter and the number must not be trusted:
+
+```
+ls20  L1   132 .. 260      (fuel and three lives, not an allowance)
+ar25  L4   174 .. 196      (declares 128 — so these deaths are not allowance deaths)
+sc25  L2    26 ..  60   L5   67 .. 95
+sb26  L6    69 .. 217
+```
+
+⛔ **What the run actually spends.** Actions inside attempts that ended in GAME_OVER, as a share of
+the run:
+
+```
+bp35 86%   ft09 83%   r11l 81%   sc25 80%   sb26 75%   m0r0 70%   dc22 68%
+sk48 67%   cn04 58%   ls20 58%   ar25 48%   re86 47%   lp85 0%   g50t 0%
+```
+
+Ten of the fourteen games measured spend **half to five-sixths of their actions on attempts that
+were thrown away**, and the metric charges for every one of them. That is the size of the attempt
+problem stated for the whole board rather than for bp35 alone.
+
+⚠️ Read `dc22 68%` and `sk48 67%` carefully — they died ONCE and TWICE respectively, so that share
+is one long failed attempt, not repeated gambling. The number to act on is the DEATH COUNT beside
+it: bp35 23, sc25 23, r11l 22, cn04 9, sb26 9. A game that dies twenty times with a learnable
+allowance is a different problem from one that dies once at the end of the run.
+
+⚠️ And `L*:1-1` rows are an artefact worth naming: they are single-action "attempts" recorded while
+the game sits in GAME_OVER before the harness resets, not real attempts. They inflate the death
+COUNT slightly and do not affect the lengths that matter.
+
 ## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
 
 Read from `environment_files/ls20/9607627b/ls20.py` after three pixel-based attempts to size ls20's
