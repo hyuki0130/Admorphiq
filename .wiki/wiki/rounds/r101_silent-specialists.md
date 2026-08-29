@@ -735,3 +735,34 @@ it is worth knowing that lf52's mechanic is claimed by three tools rather than o
 ⛔ This sweep took eleven minutes of wall-clock on a box that had been sitting at load 7 of 64 while
 the round probed one game at a time for hours. The measurement was always available; what was missing
 was a command, which is now `scripts/ceph_sweep.sh` and the first line of CLAUDE.md.
+
+## And COMBINING the competent tools adds nothing either
+
+The sweep's one lead was lf52, the only stuck game with more than one competent tool (railpeg 5
+levels, pegjump 4, hop 3, independently). If they knew different things, handing the board between
+them should reach further. Measured, in parallel:
+
+```
+lf52   railpeg,pegjump          5L in 820a     identical to railpeg ALONE, action for action
+lf52   railpeg,hop              5L in 820a
+lf52   railpeg,pegjump,hop      5L in 820a
+lf52   railpeg,pegjump,hop,graph 5L in 820a
+lf52   pegjump,hop              4L in 683a     without railpeg it stops at 4
+dc22   gantry,phase_grid        5L in 926a
+wa30   shepherd,haul            8L in 1092a
+s5i5   swivel,telescope,linkage 6L in 695a     matches the harness, does not beat it
+```
+
+**No combination beats the best single tool anywhere.** On lf52 the three-tool run is byte-identical
+in outcome and action count to railpeg alone: the others never get the board, because railpeg never
+stalls in a way that hands it over. They do not know different things — they know the same thing to
+different depths.
+
+So both cheap hypotheses about the tool SET are now closed by measurement at width:
+
+- no tool reaches deeper than the harness already does (235 pairs)
+- no combination of the competent ones reaches deeper than the best of them (9 combinations)
+
+⛔ That leaves exactly one honest reading of the remaining 0.0919: it needs capability that does not
+exist in the tool set, not better use of what is there. Every cheaper explanation has now been tested
+rather than argued.
