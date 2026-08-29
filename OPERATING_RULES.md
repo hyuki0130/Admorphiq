@@ -2812,39 +2812,6 @@ later.** That is rule 7bd's pattern, and it is the whole remaining distance.
 
 ### 7bp — what ends a tenure: NINE events in the whole 25, and every lever on _EMPTY_TOLERANCE is a loss or exactly inert (2026-08-30)
 
-Rule 7bd found that every stuck board is handed to a tool that is weaker alone, and I opened tenure
-as the last axis. **Censused across all 25 games, with every one reproducing its banked per-level
-counts** (25/25, zero mismatches):
-
-```
-tenure-ending events in the ENTIRE corpus:   9      (EMPTY 7 · STALL 2)
-games that NEVER end a tenure:              20 of 25
-total propose round-trips:               7,049
-empty proposes among them:                  70      = 1.0%
-runs of consecutive empties that RECOVERED: 16      (fifteen of length 1, one of length 7)
-runs that reached 8 and retired:             6
-```
-
-⛔ **Twenty of twenty-five games are played start to finish by ONE tool and never hand over at all.**
-The mechanism I called "the last axis" fires nine times in the whole set. There is no distribution to
-tune —  decides six outcomes.
-
-⭐ AND THE SHAPE ANSWERS THE "IS 8 THE RIGHT NUMBER" QUESTION WITHOUT AN ARM: **fifteen of the sixteen
-recovered runs are length ONE.** The empties do not creep toward the threshold and stop — a tool
-either blips once or goes silent for good. Only one run of length 7 ever came back. **A tool that has
-proposed nothing eight times running really has run out**, which is why both "retire later" (the
- arm, inert) and "retire sooner" (evidence-gated, LOST ls20 a level) were refuted.
-
-⚠️ AND THE DIAGNOSTICS AT THE SIX RETIREMENTS SAY THE SAME: bp35's  has  False,
- 0,  8 — the harness fires at exactly half the tool's own 16-idle patience — but its
-map is 15 known cells against a board it cannot stitch. lf52's  retires with 
-True and  0. **These are tools that cannot read the board, not tools that were interrupted.**
-
-⛔ **SO TENURE IS CLOSED, AND WITH IT THE LAST TOOL-SET AXIS.** Six independent measurements now say
-the remaining 0.0918 is not in the registry: no tool alone beats the harness (7ba), 17 of 47 never
-hold a board (7bb), routing cannot lose a tie (7ac), forced pairs are byte-identical (7bf), being
-displaced is what fixes the strong tool (7bh), and tenure fires nine times in 7,049 decisions.
-
 ### 7bq — tenure is not a lever: 9 events in the whole corpus, and 20 of 25 games never end one (2026-08-30)
 
 Rule 7bd found that every stuck board is handed to a tool that is weaker alone, and I opened tenure
@@ -2862,20 +2829,28 @@ runs that reached 8 and retired:             6
 
 ⛔ **Twenty of twenty-five games are played start to finish by ONE tool and never hand over at all.**
 The mechanism I called "the last axis" fires nine times in the whole set. There is no distribution to
-tune —  decides six outcomes.
+tune — `_EMPTY_TOLERANCE` decides six outcomes.
 
 ⭐ AND THE SHAPE ANSWERS THE "IS 8 THE RIGHT NUMBER" QUESTION WITHOUT AN ARM: **fifteen of the sixteen
 recovered runs are length ONE.** The empties do not creep toward the threshold and stop — a tool
 either blips once or goes silent for good. Only one run of length 7 ever came back. **A tool that has
 proposed nothing eight times running really has run out**, which is why both "retire later" (the
- arm, inert) and "retire sooner" (evidence-gated, LOST ls20 a level) were refuted.
+`hold` arm, inert) and "retire sooner" (evidence-gated, LOST ls20 a level) were refuted.
 
-⚠️ AND THE DIAGNOSTICS AT THE SIX RETIREMENTS SAY THE SAME: bp35's  has  False,
- 0,  8 — the harness fires at exactly half the tool's own 16-idle patience — but its
-map is 15 known cells against a board it cannot stitch. lf52's  retires with 
-True and  0. **These are tools that cannot read the board, not tools that were interrupted.**
+⚠️ AND THE DIAGNOSTICS AT THE SIX RETIREMENTS SAY THE SAME: bp35's `crag` has `_refuted` False,
+`_mute` 0, `_idle` 8 — the harness fires at exactly half the tool's own 16-idle patience — but its
+map is 15 known cells against a board it cannot stitch. lf52's `railpeg` retires with `_elsewhere`
+True and `_barren` 0. **These are tools that cannot read the board, not tools that were interrupted.**
 
 ⛔ **SO TENURE IS CLOSED, AND WITH IT THE LAST TOOL-SET AXIS.** Six independent measurements now say
 the remaining 0.0918 is not in the registry: no tool alone beats the harness (7ba), 17 of 47 never
 hold a board (7bb), routing cannot lose a tie (7ac), forced pairs are byte-identical (7bf), being
 displaced is what fixes the strong tool (7bh), and tenure fires nine times in 7,049 decisions.
+
+⚠️ **AND A TOOLING NOTE PAID FOR IN WRITING THIS RULE**: I filled the stub with a heredoc inside a
+`bash` call, and **the shell EXECUTED every backtick** — `_EMPTY_TOLERANCE`, `crag`, `_refuted`,
+`_mute`, `_idle`, `railpeg`, `_elsewhere`, `_barren` and `hold` all vanished from the text, leaving
+sentences like "tune —  decides six outcomes". Worse, the fill also DUPLICATED the whole body.
+⛔ **Write rule text with the Edit/Write tools, never through a shell heredoc** — this file is dense
+with backticked identifiers and every one of them is a command substitution waiting to happen.
+
