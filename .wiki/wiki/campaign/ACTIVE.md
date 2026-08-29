@@ -118,6 +118,26 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > ⚠️ That smallness is a property of THE PUBLIC 25, where nineteen games sit at the cap. It is not
 > evidence that inert actions are harmless on the 110, and must not be quoted in either direction.
 >
+> ⭐ **AND RENDER-DEPENDENCE NOW HAS EXACTLY ONE NAMED INSTANCE** (rule **7cd**): *a frame-only tool
+> that identifies an object by whether it is DRAWN is reading PAINT ORDER, not mechanics.* s5i5 L4's
+> 22 lost actions are ONE cell at (43,31) — the archived source lists the rider before the bar it
+> rides, so the bar covers it, and `telescope`'s candidate set goes from 2 to 9. ⚠️ The fallback
+> costs NOTHING on four of the five archived levels, so this is not "the fallback is bad"; the
+> IDENTITY SIGNAL is a render fact.
+>
+> ⭐ **Colour is safe** (rule **7ce**): two fixed-point-free permutations over all 25 games, 16,810
+> frames, 211M cells relabelled — **one action moves in the whole set** (cd82 L3 33 -> 34, no score
+> change), and there is not one numeric colour literal compared against a frame anywhere in the tool
+> set. ⛔ And the archive covers **FOURTEEN** games, not fifteen: `environment_files_archive/sk48` is
+> byte-identical to the live tree, a self-substitution carrying no evidence.
+>
+> ⭐ **The discarded outer band costs ZERO, and for a reason** (rule **7cf**): of the harness's three
+> change signals only `board_changed` discards the band, exactly one tool consumes it (`deadsig`,
+> the only `augmenter`), and its `_drop_dead` withheld something 918 times — **all 918 on bp35 level
+> 6, which never clears**. The games whose band carries real CONTENT are exactly the ones where it is
+> never called. ⛔ Widening is NOT licensed. ⚠️ What survives for the 110 is the shape: a game that
+> renders feedback in the band AND is driven by `graph` would have its working actions withheld.
+>
 > **So the work is: find and name render-dependence, not chase the last 0.09.** Three things are in
 > flight, and a fresh session should continue one of them rather than open a seventh arm on a closed
 > game:
