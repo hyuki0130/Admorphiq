@@ -1459,8 +1459,28 @@ return not any(bool((tile == c).any()) for c in self._not_floor)
 colour, and the tool condemns the very cells the mechanic needs.** Anything drawn rather than flat
 is at risk, which is most sprites.
 
-⚠️ **THE FILE IS SHARED**: `phase.py` is imported by `gantry` and `sluice`, so this is not a dc22
-repair. And ⛔ **the obvious fix is MEASURED NEGATIVE**: striking a walked-on colour from
+⚠️ **SCOPE, CENSUSED RATHER THAN GREPPED — and my first reading was wrong.** `sluice.py` does NOT
+import `phase.py`; it carries its own module-level `_standable` over its own `Board` class. The only
+importers of `PhaseGridTool` are `phase.py` and `gantry.py`. Censusing those two across the full 25 —
+once per turn, every avatar-sized window classified as rejected-for-background, rejected-and-uniform
+(correct), or MIXED (a drawn thing condemned for one pixel):
+
+```
+dc22             584 turns, _not_floor=[0,5]   107,969 MIXED over 344 distinct cells
+every other game   0 turns, no condemned colours, ZERO rejections
+```
+
+⭐ **TWENTY-FOUR OF TWENTY-FIVE GAMES RECORD ZERO TOOL TURNS AT ALL** — `phase_grid` and `gantry`
+never propose on them. That is `detect`'s conjunction measured from the other side, and it confirms
+gantry's selectivity claim under a census rather than a bid matrix.
+
+⭐ AND THE PROOF IS ONE CELL: **(55,34) is condemned at turn 582 and the avatar STANDS IN IT at turn
+680** — the plate that enables the crane's UP drive. A condemned cell later occupied is a wrong
+rejection with no interpretation needed. (One cell is a floor, not a total: the other three plates are
+only reached under a forced walk, which the census cannot see.)
+
+⛔ So the rule is genuinely wrong and its blast radius across the sample set is ONE GAME. Correctly
+parked, not a shared-file repair. And ⛔ **the obvious fix is MEASURED NEGATIVE**: striking a walked-on colour from
 `_not_floor` FIRES (colour 0 is struck) and still stops at five levels, while costing **+23 actions
 on levels 1-5 — and level 3 has only 8 actions of slack.** Two other repairs are also negative:
 re-asking silent controls after a provisional slide fires ZERO times on level 6, and unioning
