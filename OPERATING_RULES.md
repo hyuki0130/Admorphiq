@@ -2950,3 +2950,30 @@ after the axis is closed is the SECOND INDEPENDENT LOOK.** Twice this round two 
 same verdict by different routes — the ls20 handover (a sixteen-arm sweep and an A/B isolation) and
 the `crag` retirement (a shadow census and an offline replay) — and that is the strongest form a
 verdict comes in.
+
+### 7bs — my own audit reported two live guards MISSING — the checker was wrong, not the guards (2026-08-30)
+
+Twice today a guard turned out to be wired to nothing, so I wrote a one-liner that greps each of the
+day's eleven fixes for a phrase from its own comment. It reported **two of eleven MISSING**:
+`ptest.sh` shipping `data/traces`, and the local-run hook allowing a command that merely NAMES
+pytest.
+
+⛔ **Both were present and working.** The grep patterns were copied from my own commit messages, not
+from the files — one differed in backticks, the other in capitalisation. **The checker was wrong.**
+
+⚠️ **AND NOTE THE DIRECTION: it failed toward "the fix is gone."** That is the eighth instrument in
+three days to fail toward absence — the family this file has been tracking since a min-blob-size
+filter hid a game's own move oracle — and it is the direction that costs most, because a false
+"missing" invites you to re-do work that is already done and possibly to overwrite a working version
+with a worse one.
+
+⭐ **A CHECK OF PRESENCE MUST BE WRITTEN FROM THE ARTEFACT, NOT FROM THE STORY ABOUT IT.** Grep the
+file for a string you have just read out of the file; never for one you remember writing. The
+corrected audit found all eleven fixes intact:
+
+```
+snapgate sweeps stale snapshots · ptest ships data/traces · the gate runs its guards
+compare refuses a no-verdict · compare names the canaries · gate_tool refuses itself
+integrate uses snapgate · the Stop hook skips when blind · the local-run hook allows naming
+the detect-purity population is pinned · untracked-imports skips without a git index
+```
