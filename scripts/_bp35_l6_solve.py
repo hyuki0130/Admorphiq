@@ -36,20 +36,27 @@ GEM_XY = {6: (2, 31)}
 
 
 def solve(seed: int, cap: int, level: int = 6):
-    """mode 0 = plain BFS in the engine's 64-action allowance (finds the SHORTEST win);
+    """mode 0 = plain BFS inside the engine's own 64-action allowance (finds the SHORTEST win);
     mode 1 = greedy best-first on distance to the gem (finds A win fast, not the shortest);
-    mode 2 = BFS with the allowance lifted to 200, which answers "winnable at all?" separately
-    from "winnable inside the budget" — two different claims that must not be conflated."""
+    mode 2 = BFS with the allowance lifted to 200 — "winnable at all?" is a DIFFERENT claim from
+    "winnable inside the budget" and the two must not be conflated.
+
+    ⛔ States are held as (Sim, parent index, action) with the path reconstructed at the end. A
+    per-state path list makes a complete search of this level impossible to run on memory alone."""
     mode = (seed - 1) % 3
     limit = 200 if mode == 2 else BUDGET
     m = load_module()
     _, start = make_level(m, level)
     rng = random.Random(seed)
     t0 = time.time()
-    seen = {(start.key(), start.cam_y)}
     gx0, gy0 = GEM_XY.get(level, (2, 31))
-    q = deque([(start, [])])
-    heap = [(abs(start.px - gx0) + abs(start.py - gy0), 0, start, [])]
+
+    sims = [start]
+    par = [(-1, None)]
+    depth = [0]
+    seen = {(start.key(), start.cam_y)}
+    q = deque([0])
+    heap = [(abs(start.px - gx0) + abs(start.py - gy0), 0.0, 0)]
     best = None
     nodes = 0
     tick = 0
@@ -57,16 +64,18 @@ def solve(seed: int, cap: int, level: int = 6):
         if mode == 1:
             if not heap:
                 break
-            _, _, s, path = heapq.heappop(heap)
+            _, _, idx = heapq.heappop(heap)
         else:
             if not q:
                 break
-            s, path = q.popleft()
+            idx = q.popleft()
+        s = sims[idx]
+        d = depth[idx]
         tick += 1
         if tick % 20000 == 0:
-            print(f"# seed={seed} mode={mode} nodes={nodes} states={len(seen)} "
-                  f"depth={len(path)} secs={round(time.time()-t0,1)}", file=sys.stderr, flush=True)
-        if len(path) >= limit - 1:
+            print(f"# seed={seed} mode={mode} nodes={nodes} states={len(sims)} depth={d} "
+                  f"secs={round(time.time()-t0,1)}", file=sys.stderr, flush=True)
+        if d >= limit - 1:
             continue
         opts = [("L",), ("R",)] + [("C", c) for c in s.clickables()]
         rng.shuffle(opts)
@@ -81,44 +90,48 @@ def solve(seed: int, cap: int, level: int = 6):
             nodes += 1
             if nxt.lost:
                 continue
-            p = path + [a]
             if nxt.won:
-                best = p
-                q.clear()
+                sims.append(nxt); par.append((idx, a)); depth.append(d + 1)
+                best = len(sims) - 1
                 break
             k = (nxt.key(), nxt.cam_y)
             if k in seen:
                 continue
             seen.add(k)
+            sims.append(nxt); par.append((idx, a)); depth.append(d + 1)
+            j = len(sims) - 1
             if mode == 1:
-                heapq.heappush(heap, (abs(nxt.px - gx0) + abs(nxt.py - gy0) + len(p) // 8,
-                                      rng.random(), nxt, p))
+                heapq.heappush(heap, (abs(nxt.px - gx0) + abs(nxt.py - gy0) + (d + 1) // 8,
+                                      rng.random(), j))
             else:
-                q.append((nxt, p))
-        if best or nodes > cap:
+                q.append(j)
+        if best is not None or nodes > cap:
             break
+
     out = {"seed": seed, "mode": mode, "limit": limit, "level": level, "nodes": nodes,
-           "states": len(seen), "secs": round(time.time() - t0, 1)}
-    if best:
-        toggles = sum(1 for a in best if a[0] == "C"
-                      and next(iter(make_level(m, level)[1].at(*a[1])), "") in ())
-        out["actions"] = len(best)
+           "states": len(sims), "secs": round(time.time() - t0, 1)}
+    if best is not None:
+        seq = []
+        j = best
+        while par[j][0] >= 0:
+            seq.append(par[j][1])
+            j = par[j][0]
+        seq.reverse()
+        out["actions"] = len(seq)
         out["plan"] = ["L" if a[0] == "L" else "R" if a[0] == "R" else f"C{a[1][0]},{a[1][1]}"
-                       for a in best]
-        # replay to label which clicks hit a toggle tile at the moment they are made
-        _, s = make_level(m, level)
+                       for a in seq]
+        _, s2 = make_level(m, level)
         kinds = []
-        for a in best:
+        for a in seq:
             if a[0] == "C":
-                n = next(iter(s.at(*a[1])), "")
-                kinds.append(n)
-                s.click_cell(*a[1])
+                kinds.append(next(iter(s2.at(*a[1])), ""))
+                s2.click_cell(*a[1])
             else:
-                s.move(a[0] == "R")
+                s2.move(a[0] == "R")
         out["click_kinds"] = kinds
         out["toggle_clicks"] = sum(1 for n in kinds if n in (SOLID_TOGGLE, PASS_TOGGLE))
-        out["won_replay"] = s.won
-        del toggles
+        out["switch_clicks"] = sum(1 for n in kinds if n == "lrpkmzabbfa")
+        out["won_replay"] = s2.won
     else:
         out["actions"] = None
     print(json.dumps(out), flush=True)

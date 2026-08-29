@@ -451,21 +451,103 @@ grid6  x=0   g=3  2=11  u=10  v=7  +=1   1=1     <- one instance of a character 
 .xxxxx.        .xxx.           .x.
 ```
 
-**It is a CRUMBLING PLATFORM**, and level 6 places exactly one, in the middle of a row of
-pass-through tiles (`oo2222122oo`).
+### ⛔ RETRACTED — it is NOT a crumbling platform, and it is NOT what stops level 6
 
-That single tile explains the whole bp35 investigation:
+The reading above was written from the board table and the sprite list alone, and both halves of the
+conclusion it drew are wrong. `gwfodrkvzx` — the CLICK handler, forty lines further down the same
+file — dispatches on the clicked cell's sprite name, and `yuuqpmlxorv` is one of its five cases:
 
-- crag classifies terrain by PIXEL SIGNATURE, so one crumbling entity presents as FOUR kinds — which
-  is exactly the "4 of 7 unclassified" measured on that board.
-- Clicking any of them does nothing, because the change is driven by use, not by clicks — which is
-  why the two the probe did reach were both learned as `inert`.
-- The route depends on a platform that disappears, so the frontier the tool computes is not the
-  frontier the board has.
+```
+qclfkhjnaac   -> removed                         (one-shot block)
+etlsaqqtjvn   -> copies itself into empty 4-neighbours, then removed
+yuuqpmlxorv   -> becomes oonshderxef             (SOLID  -> pass-through)
+oonshderxef   -> becomes yuuqpmlxorv             (pass-through -> SOLID)
+lrpkmzabbfa   -> `self.vivnprldht = not self.vivnprldht`, then removed   (gravity, ANY distance)
+```
 
-⛔ **The tool's model is static terrain plus click-driven change. This board needs terrain that
-degrades on its own.** No amount of threshold, patience, vocabulary or alignment work reaches that,
-which is precisely what eleven measured interventions found the hard way.
+**It is a CLICK TOGGLE, in both directions, and the four "shrinking" sprites are that swap's
+animation frames** (`["txjcfisalqu", "cvkgqlojfnh", "ltorejwifje", "oonshderxef"]` — the sequence
+ENDS on the pass-through sprite). So the record's *"clicking any of them does nothing, because the
+change is driven by use, not by clicks"* is exactly backwards: the click is the ONLY thing that
+changes it, and nothing in the game consumes it by use.
+
+⚠️ Two consequences that the crumbling reading hid:
+
+- The eleven `oonshderxef` cells on this board are not scenery — each is a block the player can
+  BUILD by clicking it, and un-build by clicking it again. Level 6 has twelve toggle cells, not one.
+- A `lrpkmzabbfa` click takes `pbsitubcfd(..., qssroarxob=True)`, which SKIPS the "clicked cell must
+  be directly below the body" test. Gravity can be reversed from anywhere on screen. The toggle
+  cells keep the test, so a toggle click only moves the body when it is the body's own support —
+  but it still edits the cell from anywhere.
+
+### The level is SOLVABLE inside its own allowance — measured, and cleared on the real engine
+
+A simulator was built from the game's own board table and differential-tested against the engine —
+`scripts/_bp35_sim.py verify 6 40 40` runs 40 random action sequences on both and compares player
+cell, gravity, camera, win/lose and every terrain cell: **0 mismatches** (levels 2, 4, 5 also 0;
+levels 1 and 3 diverge only on `mylefxfaev`, the rising lava that `if self.qswcochjodb > 3: return
+False` restricts to the first three levels). ⚠️ The engine DEFERS every cell mutation, the switch
+removal and the camera move into its animation queue; a first version of the check drove the scene
+directly, never ticked `scene.render()`, and reported 40/40 mismatching — all of it the probe's own
+half-applied actions.
+
+Searching that simulator (`scripts/_bp35_l6_solve.py`, greedy best-first, 30-way fan):
+
+```
+seed  8   46 actions   10 toggle clicks   3 gravity clicks
+seed  2   57 actions   21 toggle clicks   3 gravity clicks
+seed 11   58 actions   18 toggle clicks   3 gravity clicks
+seed  5   59 actions   21 toggle clicks   3 gravity clicks
+```
+
+**Every plan found uses toggle clicks, and every one uses all three gravity switches.** So unlike
+dc22's cycling tile — a real mechanic that turned out not to block — this one is LOAD-BEARING: the
+route runs over blocks that only exist because they were clicked into existence.
+
+And the plan CLEARS THE REAL GAME (`scripts/_bp35_l6_replay.py`, rule 7g): the shipped harness plays
+to level 6 in 233 actions, the 57-action plan is replayed action by action, the simulator and the
+engine agree on the body's cell at every one of them, and `levels_completed` goes **5 -> 6**. Tested
+as `> start`, and the resulting number printed (rule 7f).
+
+### ⛔ bp35 LOSES THE LEVEL AT 64 ACTIONS, and that is the game's real shape
+
+`qmjscfjptx.render_interface` draws `hbqwwgceeqp` — a count of every action taken since the level
+began — as a bar along frame row 63, and:
+
+```
+level 10        hbqwwgceeqp >= 192  ->  lose()
+levels 1..6     hbqwwgceeqp == 64   ->  lose()
+levels 7..9     hbqwwgceeqp == 128  ->  lose()
+```
+
+MEASURED, not read (rule 7g): 64 consecutive ACTION7s from a fresh game give
+`action 63 used=63 state=NOT_FINISHED` / `action 64 used=64 state=GAME_OVER`. The branch fires.
+
+Against the game's own `metadata.json` baselines `[21, 48, 44, 38, 33, 87, 86, 131, 163]`:
+
+- levels 1-5 are all inside 64, so a human clears each in ONE attempt;
+- **level 6's baseline of 87 EXCEEDS its 64-action allowance**, and so do levels 8 (131) and 9 (163)
+  against their 128 — those baselines already contain a RETRY.
+
+This is what bp35's attempt headroom (+0.1283, `scripts/attempt_probe.py`) has been made of all
+along: a level lost on its allowance is silently restarted with a fresh one, the score keeps paying
+for the actions, and the run reads as one slow clear. The measured `L2 87 actions vs 48 human`
+(0.304) is not a slow attempt — 87 > 64, so it is two attempts.
+
+⚠️ And the allowance is FRAME-VISIBLE: row 63 is a bar exactly `hbqwwgceeqp` pixels long. A
+frame-only tool can read its own remaining budget off the bottom row — which is the same edge band
+`tools/segment.board_changed` deliberately ignores, so nothing currently looks at it.
+
+### What this leaves for the tool
+
+crag's vocabulary is already right — it has `_vanish`, `_swap`, `_flip` and `_inert`, and `_swap` is
+precisely this toggle. What it does not have is the SEARCH: `_sites` offers only the support cell and
+the two beside it, and the cheapest measured plan clicks **ten** toggle cells, most of them nowhere
+near the body, to build a walkway across the spike rows. A 46-to-57 action plan with 13 to 24 clicks
+in it is not reachable from a four-candidate frontier two clicks deep, whatever budget it is given.
+
+⛔ So the standing conclusion — *"this board needs terrain that degrades on its own"* — is withdrawn.
+Nothing degrades on its own. The board needs a searcher that will click a cell it is not standing on.
 
 ## ls20 declares a STEP BUDGET, and it reframes the efficiency target (2026-08-29)
 

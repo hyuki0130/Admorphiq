@@ -40,10 +40,15 @@ def load_module():
 
 
 class Sim:
-    __slots__ = ("cells", "px", "py", "grav_up", "cam_y", "used", "won", "lost", "h")
+    """⛔ The static terrain is SHARED and only the handful of cells a click can change is copied.
+    A search over this level opens more than a million states; a per-state copy of the whole 200-cell
+    board is what makes a complete BFS impossible to run rather than merely slow."""
 
-    def __init__(self, cells, px, py, grav_up, cam_y):
-        self.cells = cells          # dict (x,y) -> frozenset of names (terrain only)
+    __slots__ = ("base", "ov", "px", "py", "grav_up", "cam_y", "used", "won", "lost")
+
+    def __init__(self, cells, px, py, grav_up, cam_y, ov=None):
+        self.base = cells           # SHARED dict (x,y) -> frozenset of names (terrain only)
+        self.ov = ov if ov is not None else {}
         self.px, self.py = px, py
         self.grav_up = grav_up      # True == vivnprldht == dy of -1
         self.cam_y = cam_y
@@ -51,13 +56,26 @@ class Sim:
         self.won = False
         self.lost = False
 
+    @property
+    def cells(self):
+        c = dict(self.base)
+        for k, v in self.ov.items():
+            if v is None:
+                c.pop(k, None)
+            else:
+                c[k] = v
+        return c
+
     def clone(self):
-        s = Sim(dict(self.cells), self.px, self.py, self.grav_up, self.cam_y)
+        s = Sim(self.base, self.px, self.py, self.grav_up, self.cam_y, dict(self.ov))
         s.used, s.won, s.lost = self.used, self.won, self.lost
         return s
 
     def at(self, x, y):
-        return self.cells.get((x, y), frozenset())
+        v = self.ov.get((x, y), 0)
+        if (x, y) in self.ov:
+            return v or frozenset()
+        return self.base.get((x, y), frozenset())
 
     # --- fsvnqdbzrp ------------------------------------------------------------------
     def _fall(self, pos):
@@ -132,24 +150,24 @@ class Sim:
         names = self.at(gx, gy)
         if names == frozenset({ONESHOT}):
             self._drop((gx, gy), False)
-            self.cells.pop((gx, gy), None)
+            self.ov[(gx, gy)] = None
         elif names == frozenset({SPREAD}):
             spawned = [(gx + dx, gy + dy) for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1))
                        if not self.at(gx + dx, gy + dy)]
             self._drop((gx, gy), False)
-            self.cells.pop((gx, gy), None)
+            self.ov[(gx, gy)] = None
             for c in spawned:
-                self.cells[c] = frozenset({SPREAD})
+                self.ov[c] = frozenset({SPREAD})
         elif names == frozenset({SOLID_TOGGLE}):
             self._drop((gx, gy), False)
-            self.cells[(gx, gy)] = frozenset({PASS_TOGGLE})
+            self.ov[(gx, gy)] = frozenset({PASS_TOGGLE})
         elif names == frozenset({PASS_TOGGLE}):
             self._drop((gx, gy), False)
-            self.cells[(gx, gy)] = frozenset({SOLID_TOGGLE})
+            self.ov[(gx, gy)] = frozenset({SOLID_TOGGLE})
         elif names == frozenset({SWITCH}):
             self.grav_up = not self.grav_up
             self._drop((gx, gy), True)
-            self.cells.pop((gx, gy), None)
+            self.ov[(gx, gy)] = None
 
     # --- helpers ---------------------------------------------------------------------
     def on_screen(self, gx, gy):
@@ -160,15 +178,25 @@ class Sim:
     def screen_xy(self, gx, gy):
         return gx * 6, gy * 6 - self.cam_y
 
+    def _mutable(self):
+        out = []
+        for (x, y) in self.base:
+            n = self.at(x, y)
+            if len(n) == 1 and next(iter(n)) in CLICKABLE:
+                out.append((x, y, next(iter(n))))
+        for (x, y) in self.ov:
+            if (x, y) in self.base:
+                continue
+            n = self.at(x, y)
+            if len(n) == 1 and next(iter(n)) in CLICKABLE:
+                out.append((x, y, next(iter(n))))
+        return out
+
     def clickables(self):
-        return [(x, y) for (x, y), n in self.cells.items()
-                if len(n) == 1 and next(iter(n)) in CLICKABLE and self.on_screen(x, y)]
+        return [(x, y) for x, y, _ in self._mutable() if self.on_screen(x, y)]
 
     def key(self):
-        mut = tuple(sorted((x, y, next(iter(n)))
-                           for (x, y), n in self.cells.items()
-                           if len(n) == 1 and next(iter(n)) in CLICKABLE))
-        return (self.px, self.py, self.grav_up, mut)
+        return (self.px, self.py, self.grav_up, tuple(sorted(self._mutable())))
 
 
 def from_scene(scene, height=39):
