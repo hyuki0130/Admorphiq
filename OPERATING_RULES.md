@@ -900,3 +900,95 @@ remaining allowance is drawn in the outer band that `segment.board_changed` deli
 ⚠️ Both discoveries came from asking what the harness DOES rather than whether it advanced, which is
 also how rule 7p was found the same day. **"It did not progress" is the least informative thing that
 can be recorded about a failure.**
+
+### 7t — the handover tax is 0.36 actions per transition; CLOSED (2026-08-29)
+
+Two agents independently reported a cost at the level boundary — re86 "2 actions per level, push plus
+undo, because `frame_2d` reads the stale layer" and ls20 "10 actions of handover" — so it was worth
+sizing across all 25 rather than acting on either. `scripts/_handover_tax.py` attributes counters to
+the OFFSET FROM THE RISE, so a slow level cannot masquerade as an expensive handover:
+
+```
+149 transitions over 25 games.  54 inert actions in the 6 actions after a rise.  0.36 each.
+lf52 4.20 · r11l 2.40 · cd82 1.40 · dc22 1.00 · ls20 0.67 · ar25 0.43 · sc25 0.20 · s5i5 0.17
+the other SEVENTEEN games: 0.00
+```
+
+⛔ The UPPER bound closes it. If every one of those 54 actions were pure handover waste and perfectly
+recoverable — the most generous possible reading, with no control and no attribution — that is **~2
+actions per game** against per-level counts of 30–400. It cannot move RHAE. ⚠️ And the claim that
+STARTED the axis does not reproduce: re86 measures **0.00** across its 7 transitions.
+
+⛔ **THE FILL COUNTER IN THAT PROBE IS BLIND, AND A PEER DERIVED IT FROM THE SOURCE BEFORE THE DATA
+CAME BACK.** It counted a harness fill as `_current is None`, but `loop.py:565` clears `_current` only
+after `_EMPTY_TOLERANCE = 8` CONSECUTIVE empty proposes, while `_fill_from_current` fills the turn on
+every one of them. So seven fills in eight happen under a NAMED tool and are invisible to that proxy.
+It duly reported `filled = 0` on all 25 games — which reads exactly like "the harness fill is not the
+problem". Fifth instrument in one day to fail toward "there is nothing here", and the FIRST caught
+before it produced a claim, by someone reading `loop.py` rather than the output.
+
+⚠️ A second peer also flagged the missing CONTROL — 0.36 per transition means nothing without the
+ordinary mid-level inert rate. Correct in principle, and moot here only because the upper bound is
+already too small to matter. Had the number come back at 3 or 4 it would have been decisive.
+
+⭐ NEAR-COLLISION WORTH THE RULE IT PRODUCED: two agents given the same brief independently wrote a
+probe at the IDENTICAL path `scripts/_handover_tax.py`, and `pfan.sh` at the time `tar xzf`'d into the
+SHARED `~/admorphiq`. Launching the second would have swapped the code under the games that had not
+started yet, invisibly, in both directions. That is rule 7l's hole for fans and it is now closed —
+`pfan.sh` snapshots into a private `~/pfan_<name>` (rule 7r). **Two agents on the same brief pick the
+same obvious filename.**
+
+### 7u — the MODEL-level version of a restart test is unsound on any board that scrolls (2026-08-29)
+
+Rule 7s landed the same day and was immediately mis-applied — by the agent that had just helped
+establish it, and caught by that agent before anyone acted on the claim.
+
+7s says a level that RESTARTS reads identically to one that continues, and wa30 was conquered by
+detecting the restart from frames. Applying it to lf52 gave "level 6 is being LOST four times". It
+is not. `scripts/_lf52_restart.py` hashes the RAW FRAME — a restart resets board and camera together,
+so the opening frame must return byte-for-byte — and reports on two seeds identically:
+
+```
+frames 501   distinct 320   OPENING RECURRENCES 0        level 6 never restarts
+```
+
+⛔ **The detector had fired on the MODEL's piece count rising**, and the rows say exactly what it was
+really measuring: act 23, pieces 3→4 while known cells went 87→94; act 26, 4→5 while known went
+94→98; act 40, 5→6. **It was measuring DISCOVERY.** "Pieces only ever leave the board" is true of the
+BOARD and false of a model still uncovering it, so on any scrolling game the model-level test reports
+a restart every time the camera reveals something.
+
+⚠️ wa30's `_reborn` is sound because both of its halves are frame-observable — a carrier TELEPORT
+together with two or more pieces reappearing outside the bays — and wa30's camera does not scroll.
+**Detect a restart from the FRAME, never from the model's own bookkeeping.** The raw-frame opening
+hash is the cheap general test and it answers in one run.
+
+⚠️ A cross-check offered alongside it does NOT extend: `attempt_probe.py` prices attempts per
+COMPLETED level, so it is silent about the level a game is stuck on — evidence about the five levels
+before it, and none about the sixth.
+
+### 7v — a bonus applied to everything is a constant, and it saturates (2026-08-29)
+
+lf52's `travel:no-gain` was blamed on a missing open end. Censused inside `_ensure_plan` over 93
+planning turns: **93 of 93 turns have at least one open end**, and `_offscreen` fires correctly at
+every one. Neither branch of the question was right.
+
+The defect was the frontier term itself. Because EVERY rail component has an open end, `_rail_reach`
+hands every component the same `horizon` — measured without exception, `reach_top == field_top + 1`.
+⛔ **A bonus applied to everything is not a bonus; it is a constant offset that discriminates
+nothing**, so it cannot separate the cart whose track goes somewhere from the cart whose track goes
+nowhere. And it SATURATES: once any piece is aboard any cart, `base` already holds the maximum,
+nothing can beat it, and travel reports no-gain forever.
+
+⚠️ Check a ranking term's SPREAD before believing it ranks. A term whose value is identical across
+every candidate is inert no matter how well-motivated, and it looks exactly like a working term in
+the source.
+
+### 7w — staging and leaving it staged is as unsafe as `git add -A` (2026-08-29)
+
+Rule 8 says never `git add -A` while agents are running. Seen from the other side, the same day:
+an agent's third-pass files were swept into **a peer's dc22 commit**, because the peer ran
+`git commit` while those paths sat STAGED in the shared tree. The content survived; the commit
+message describing it did not, so the artefacts are filed under a game they are not about.
+
+**Stage and commit in ONE step.** A staged file is a file any concurrent `git commit` will claim.
