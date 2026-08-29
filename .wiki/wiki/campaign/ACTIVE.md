@@ -7,6 +7,13 @@
 **MEAN = 0.9069**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
 Baseline dir: `scripts/rounds/R101WA30/games` — use it as the gate's BASE.
 
+⭐ **AND THE GAINS REACH THE SUBMISSION PATH**, measured 2026-08-30 after fifteen source changes:
+`--agent unified` 0.9069 and `--agent kaggle_unified` (through the official wrapper the notebook
+would ship) 0.9069, 25 games compared, none differing. Run that check after any day of harness work —
+the wrapper MIRRORS `_make_agent("unified")` and a mirror drifts; five research commits once shipped
+in the deployed fallback unmeasured and the card moved 0.20 -> 0.18 with no attributable cause.
+⚠️ Not a leaderboard prediction: the hidden score of the generic path is UNMEASURED.
+
 Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
 lp85 0.9099 -> 0.9677. First movement in a day.
 
@@ -81,6 +88,10 @@ agent's work-in-progress and the tree moves under it. Both of its documented tra
 ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
 ## CLOSED BY MEASUREMENT — do not reopen without new evidence
+- **the raw-frame opening hash CANNOT detect a restart** — zero recurrences on a level that dies
+  FIFTY-EIGHT times, because a death RESETs the game to level 0 so the level's opening can never
+  recur while `levels_completed` still reads it. `obs.state == GAME_OVER` is the only reliable
+  signal. ⚠️ This VOIDS "lf52 level 6 never restarts"; it dies 5 times in 3678 actions.
 - **lf52's stall position is genuinely CLOSED**, measured by FORCING every legal move the tool's own
   successor function offers (`scripts/_lf52_stall.py`): 6 moves, best opens ONE cell, all four drives
   open ZERO, and no boarding move EXISTS — so the two-step board-and-drive plan is refuted at its
