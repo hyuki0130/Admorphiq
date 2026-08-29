@@ -158,6 +158,15 @@ The evaluation is 110 games with different MECHANICS, and **1.0000 is not a tran
 What it buys: rule 7by's evidence now covers all 25 games rather than 14, and a future tool that
 scores well on the card and collapses under `cperm` is caught for the price of one run.
 
+⛔ **AND ONE GAP IS ALREADY NAMED BY MEASUREMENT — rule 7cd, [[r101_zorder-rider]].** A colour
+permutation is a bijection, so it preserves WHICH SPRITE IS DRAWN ON TOP, and so would a
+translation. The one defect the archive actually found — s5i5 L4, the only level that moves under
+7by — is a PAINT-ORDER read: one rider cell the re-render does not draw, and `telescope._begin`
+falls back from 2 pinned riders to all 9 bars. Every arm here returns s5i5 identical because none
+of them can HIDE a cell. ⚠️ A flat result from this instrument is evidence about colour and naming
+and about nothing else. The arm that would close the gap — permuting same-layer draw order — does
+not exist in the repository yet, and it is the obvious next build on this axis.
+
 ## Artefacts
 
 * `scripts/rendergate.sh`, `scripts/rendergate_run.py`, `scripts/rendergate_compare.py`

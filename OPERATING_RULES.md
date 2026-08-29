@@ -3646,3 +3646,15 @@ keyed to a literal colour value or a sprite name — and nothing more. The evalu
 different MECHANICS, and ⛔ 1.0000 is not a transfer coefficient. What it buys: rule 7by's evidence
 now reaches all 25 games instead of 14, and a future tool that scores well here and collapses under
 `cperm` is caught for the price of one run.
+
+⛔ **AND ONE GAP IS ALREADY NAMED BY MEASUREMENT — read rule 7cd next.** A colour permutation is a
+bijection, so it preserves WHICH SPRITE IS DRAWN ON TOP; a translation would too. The very defect the
+archive found — s5i5's L4, the only level that moves under 7by — is a PAINT-ORDER read, one cell that
+the re-render does not draw, and every arm here returns s5i5 identical because none of them can hide
+a cell. ⚠️ So a flat result from this instrument is evidence about colour and naming and about
+nothing else, and the arm that would close the gap (permuting same-layer draw order) does not exist
+in the repository yet. That is the honest boundary of the 1.0000 above.
+
+### 7cf — the discarded outer band costs zero — its one consumer fires on the one game where the discard is right (2026-08-30)
+
+_(stub claimed by scripts/newrule.sh — fill this in)_
