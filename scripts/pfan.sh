@@ -70,7 +70,13 @@ export PATH=\$HOME/.local/bin:\$PATH
 export PYTHONPATH="\$HOME/$SNAP/src"
 cd "\$HOME/$SNAP"
 rm -f /tmp/$SNAP.jsonl /tmp/$SNAP.err
-seq 1 $N | xargs -P $PAR -I{} sh -c 'timeout 1800 .venv/bin/python $PROBE {} $REST 2>>/tmp/$SNAP.err | grep "^{" >> /tmp/$SNAP.jsonl'
+# ⛔ ONE FILE PER ARM, then concatenate. Appending every arm's stdout to ONE file with >> is only
+# atomic below the pipe buffer: measured 2026-08-30, a probe printing a JSON line over ~4KB
+# INTERLEAVES with its peers and every run but one reads as "produced nothing" — the
+# fail-toward-nothing shape again, and it silently discards the arms that had the most to say.
+mkdir -p /tmp/$SNAP.d && rm -f /tmp/$SNAP.d/* /tmp/$SNAP.jsonl /tmp/$SNAP.err
+seq 1 $N | xargs -P $PAR -I{} sh -c 'timeout 1800 .venv/bin/python $PROBE {} $REST 2>>/tmp/$SNAP.err | grep "^{" > /tmp/$SNAP.d/{}.json'
+cat /tmp/$SNAP.d/*.json > /tmp/$SNAP.jsonl 2>/dev/null
 echo DONE >> /tmp/$SNAP.jsonl
 INNER
 chmod +x "/tmp/$SNAP.sh"
