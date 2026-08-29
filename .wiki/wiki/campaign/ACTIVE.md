@@ -20,14 +20,12 @@ lp85 0.9099 -> 0.9677. First movement in a day.
 The seven still short, largest gap first:
 
 ```
-lf52  0.2727   gap 0.7273   ⛔ the stall position is CLOSED — see below. Do not build a frontier tier.
-bp35  0.2456   gap 0.7780   ⭐ the WINNING attempt already beats the human (43<48, 30<33); the whole
-                             loss is EXPLORATORY DEATHS. Removing them = 0.3304, +0.0043, WITHOUT
-                             level 6. Needs lethality read from the frame BEFORE contact.
-s5i5  0.5833   gap 0.4167   level 7 solvable in 24-28 clicks; _MAX_OPEN is cut off just short   level 7, allowance 200, every seed COLLAPSES
-dc22  0.7143   gap 0.2857   levels 1-5 all at 1.0; oracle clears 6/6 at 1.0000, 3/3
-ls20  0.9121   gap 0.0879   all 8 fallback presses are inert; it is a FUEL game
-lp85  0.9677   gap 0.0323
+bp35    0.2456   gap 0.7544   ⭐ L2 = 7 discovery + 34 WALLED-IN + 43 clear (43 < human 48). `_stranded` is the whole headroom.
+lf52    0.2727   gap 0.7273   ⛔ the stall position is CLOSED — six forced moves, best opens ONE cell, no boarding move EXISTS.
+s5i5    0.5833   gap 0.4167   ⛔ raising `_MAX_OPEN` is REFUTED — 3.3x budget is byte-identical. `_settle` banks a SUPERSET.
+dc22    0.7143   gap 0.2857   the crane: four drives DRAWN and INERT, alive only while the avatar stands on their plate.
+ls20    0.9121   gap 0.0879   L7 alone; ordering swept in BOTH directions and closed. Needs a new way to meet a mover under fog.
+lp85    0.9677   gap 0.0323
 ```
 
 ## ⭐ THE DECOMPOSITION THAT SAYS WHAT KIND OF PROBLEM EACH GAME IS (2026-08-29, from the gate's own per_level)
