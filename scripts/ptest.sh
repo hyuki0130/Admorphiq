@@ -51,6 +51,15 @@ git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts tests notebooks
 fi
 
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
+
+# ⛔ `data/traces` is GITIGNORED, so `git archive` never carried it and the box has NEVER had it —
+# eleven tests in test_hypothesis_*.py fail there with `FileNotFoundError: data/traces/ft09.npz`,
+# and that was twice reported as a real breakage at HEAD. It is 1.7MB; ship it once per run.
+if [ -d data/traces ]; then
+  tar czf "/tmp/$SNAP.traces.tgz" data/traces 2>/dev/null
+  scp -q -i "$KEY" "/tmp/$SNAP.traces.tgz" "$REMOTE:~/" 2>/dev/null
+  rm -f "/tmp/$SNAP.traces.tgz"
+fi
 # ⛔ PASS THROUGH THE ENVIRONMENT, NOT POSITIONALLY. `ssh host bash -s "$SNAP" "$TARGET"` joins its
 # arguments with spaces, so a TARGET of two files arrives as $2 and $3 — and the remote script,
 # reading only $2, RAN THE FIRST FILE AND SILENTLY DROPPED THE SECOND. Measured 2026-08-30: the gate
@@ -73,7 +82,19 @@ ln -s "$HOME/admorphiq/environment_files" "$HOME/$SNAP/environment_files" 2>/dev
 ln -s "$HOME/admorphiq/ARC-AGI-3-Agents" "$HOME/$SNAP/ARC-AGI-3-Agents" 2>/dev/null
 # Same shape again: tests read recorded traces from data/. Link, never copy — these are large and a
 # per-run copy would be the box's disk instead of the Mac's CPU.
+# ⛔ `data/traces` is GITIGNORED, so `git archive` never carried it and the box has never had it —
+# eleven tests in test_hypothesis_*.py failed there with `FileNotFoundError: data/traces/ft09.npz`
+# and were twice reported as a real breakage at HEAD. Ship it explicitly; it is 1.7MB.
+# ⚠️ The link below is kept for the rest of `data/`, which is large and lives on the box already.
+# The rest of data/ is large and already on the box; traces arrive separately (see above).
 ln -s "$HOME/admorphiq/data" "$HOME/$SNAP/data" 2>/dev/null
+if [ -f "$HOME/$SNAP.traces.tgz" ]; then
+  rm -f "$HOME/$SNAP/data"                      # replace the link with a real dir we can add to
+  mkdir -p "$HOME/$SNAP/data"
+  cp -r "$HOME/admorphiq/data/." "$HOME/$SNAP/data/" 2>/dev/null
+  tar xzf "$HOME/$SNAP.traces.tgz" -C "$HOME/$SNAP" 2>/dev/null
+  rm -f "$HOME/$SNAP.traces.tgz"
+fi
 cd "$HOME/$SNAP"
 # ⛔ PYTHONPATH IS LOAD-BEARING AND ITS ABSENCE WAS SILENT. The linked venv installs admorphiq
 # EDITABLE, and `_editable_impl_admorphiq.pth` carries the ABSOLUTE path `/home/ubuntu/admorphiq/src`
