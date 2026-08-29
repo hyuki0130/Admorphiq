@@ -248,3 +248,80 @@ follow-up — and the last-resort experiment already showed the veto is RIGHT.
 ⚠️ Rule 7s still applies to this game as a QUESTION worth asking; it simply answers "no" here, and
 it took a frame-level instrument to say so. The model-level version of the test is unsound on any
 board that scrolls.
+
+================================================================================
+FOURTH PASS — THE TWO MEASUREMENTS THAT SETTLE WHAT TO BUILD, AND ONE CORRECTION
+TO MY OWN THIRD-PASS CLAIM.
+
+(1) WHAT THE VETO SEES WHEN IT REFUSES (scripts/_lf52_veto.py). The question was whether
+`plan:all-candidates-fatal` means "the map is still too small" or "the veto is asked too early".
+The board holds EIGHT pads and the model knows how many it has actually seen, so the test is exact:
+
+    vetoes                          18
+    vetoes over a PARTIAL board     18        <- every single one
+    ever vetoed with all 8 known     0
+    most pieces ever seen             6 of 8
+    best map ever seen               98 cells, columns [0,25] of 28
+
+⛔ UNAMBIGUOUS: the map is the lever. The tool has NEVER ONCE refused a capture while able to see
+the whole board. Its refusals are correct statements about a board two pads short. The veto acts
+are spread across the level (17, 18, 28, 34, 42, 47, 61, 62, 93, 102, 114-121), so this is not the
+"asked too early" reading either — it is asked over a partial board EVERY time, because the board
+never becomes complete. `plan:no-capture-reachable` fired 0 times, so the candidates exist; they
+are all judged fatal.
+
+⚠️ AND IT IS CLOSE. Columns [0,25] of 28 and 6 of 8 pads. The exploration that is missing is small.
+
+(2) DOES A CANDIDATE FRONTIER TERM ACTUALLY RANK? (scripts/_lf52_spread.py, rule 7v applied to my
+own redesign before writing it — spread measured ACROSS COMPONENTS WITHIN A TURN, never across
+turns, because a term that varies between turns while flat inside each one still cannot choose.)
+
+    open ends by kind        INTERIOR 606   OUTWARD 21
+    cur       (ships)        spread 1 in 34% of multi-component turns, spread 2 in 65%
+    outward   (candidate)    spread 2 in 100%
+    reachable (candidate)    spread 2 in 100%  — identical to `outward` on every row
+
+⛔ THE DEFECT NAMED EXACTLY: 96.7% of the open ends this tool sees point INTO the rectangle it has
+already mapped. Those are holes in the map, not ways off it — the tool is standing next to that
+territory and has merely not filled it in. Because holes are everywhere, EVERY component qualified
+for the frontier bonus, and a bonus applied to everything is a constant.
+
+The depth weighting bought NOTHING over the plain outward test (identical values on every sampled
+row), so the simpler term is the one to ship. And note what the outward rows show: with the bonus
+correctly suppressed, the component novelty UNDERNEATH it separates the candidates on its own, 100%
+of the time. The right fix is not a cleverer bonus, it is a bonus that stops firing.
+
+⛔ CORRECTION TO THE THIRD PASS, WHICH OVERSTATED THIS. I wrote "reach_top == field_top + 1 without
+exception, so the term is a constant". The equality is real but it is a property of the MAXIMUM over
+all cells, which is field+1 whenever ANY component is open. Per COMPONENT — which is what actually
+ranks — the term is flat in 34% of multi-component turns, not 100%. The defect is genuine and the
+fix is unchanged; my statement of its universality was wrong and is withdrawn.
+
+BUILT ON THIS, and only this: `_offscreen` gains a fourth condition — the cell beyond must lie
+OUTSIDE the rectangle the model has already seen. One predicate, used by both `_rail_reach` and
+`railhead_moves`. Expected effect: the frontier bonus fires ~21 times instead of ~627.
+
+RESULT OF THE OUTWARD GATE: MEASURED INERT, REVERTED (rule 7b).
+
+Built exactly as the spread measurement indicated, then run on level 6. Every counter came back
+IDENTICAL to the run without it:
+
+    plan:all-candidates-fatal 18 = 18      travel:reach-top 11 = 11      travel:boards 3 = 3
+    known 61 -> 98 = 61 -> 98              vetoes 18 = 18, all over a partial board
+    best map 98 cells, 6 of 8 pads, veto acts identical action for action
+
+⛔ AND THIS IS RULE 7v TURNED BACK ON ME. I measured the TERM's spread, saw it improve from 65% to
+100% of multi-component turns, and treated that as evidence the DECISION would change. It does not
+follow: `travel_moves` ranks STATES, not components, and the component term only reaches a state
+through pieces standing on cart cells. If the search rarely has a choice between boarding two
+different components, better spread never converts into a different plan. **A ranking term's spread
+is necessary for it to rank and not sufficient for it to matter** — the missing measurement is how
+often the decision actually has two candidates whose ORDER the term changes.
+
+WHAT THE FOURTH PASS ESTABLISHES, then, is not a repair but a target with a number on it:
+exploration stops at 98 cells / columns [0,25] of 28 / 6 of 8 pads, and the veto is right every
+time it is asked. The two tiers that could push further cannot: `travel` saturates (no-gain 9, its
+objective is maxed on the map it has) and `railhead` needs a passenger that nothing puts aboard
+(nobody-aboard 8 of 8). Getting a piece ONTO a cart and driving it outward when exploration has
+stalled is a two-step plan no single tier expresses — and ⛔ that is a HYPOTHESIS, not a finding.
+The ferry experiment already showed one plausible-sounding version of it firing zero times.
