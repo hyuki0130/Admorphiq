@@ -423,3 +423,36 @@ even noticed as changing.** The three fixes are coupled, and applying all three 
 change; the board needs terrain that degrades on use, tracked as one entity across four appearances.
 That is a tool to write, not a knob to turn, and R101's honest verdict is that the remaining 0.1065
 is that kind of work on every one of the eight games.
+
+## ⛔ CORRECTION — 14% of the remaining gap needs NO new mechanic
+
+Prompted to have this round reviewed, the first check asked for was one I had never run: are the
+levels these games ALREADY CLEAR scoring 1.0? Decomposing the 0.1065 from
+`scripts/rounds/R101REACH/games/*.json`:
+
+```
+game    score   eff-loss  depth-loss   cleared levels scoring below 1.0 (agent vs human actions)
+bp35   0.2220    0.1113     0.6667     L2 0.304 (87 vs 48)  L3 0.956  L5 0.302 (60 vs 33)
+ls20   0.8442    0.1558     0.0000     L7 0.377 (303 vs 186)
+lp85   0.9099    0.0901     0.0000     L3 0.938  L4 0.235 (33 vs 16)
+re86   0.9908    0.0092     0.0000     L2 0.834 (46 vs 42)
+dc22 / lf52 / s5i5 / wa30                          0.0000 efficiency loss — pure depth
+                                     TOTAL on the 25-game mean:  efficiency 0.0147  depth 0.0919
+```
+
+**ls20, lp85 and re86 have ZERO depth loss — they clear every level.** Their entire remaining score
+is efficiency: solutions that work but are too long. That is a completely different problem from
+"the level asks for a move the tool has no word for", and this round's verdict does not apply to it.
+
+Available without any model extension:
+
+| game | worth on the mean | what it needs |
+|---|---|---|
+| ls20 | **+0.0062** | level 7 in 186 actions instead of 303 |
+| bp35 | +0.0045 | levels 2 and 5 shorter — reachable WITHOUT solving level 6 |
+| lp85 | +0.0036 | level 4 in 16 instead of 33 |
+| re86 | +0.0004 | level 2 in 42 instead of 46 |
+
+⛔ **I fooled myself by reading each stuck game as ONE number.** "ls20 0.8442, parked, 7/7 cleared"
+was in my own notes all round, and I never asked why a game that clears everything is not at 1.0.
+The per-level breakdown was one command away in files this round had already generated.
