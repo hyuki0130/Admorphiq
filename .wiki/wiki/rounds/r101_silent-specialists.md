@@ -456,3 +456,31 @@ Available without any model extension:
 ⛔ **I fooled myself by reading each stuck game as ONE number.** "ls20 0.8442, parked, 7/7 cleared"
 was in my own notes all round, and I never asked why a game that clears everything is not at 1.0.
 The per-level breakdown was one command away in files this round had already generated.
+
+## The efficiency slice, measured: it is NOT harness overhead
+
+The obvious explanation for a 1.55x action count is that the harness wastes actions — tool-selection
+probing, the `_probe` fallback, re-deciding after a stall. Measured on ls20's level 7, every action
+tagged by who issued it and whether the BOARD changed:
+
+```
+288  fogscout's own proposal, board changed      (95%)
+  7  probe fallback, refused
+  3  fogscout's own proposal, refused
+  1  no tool
+```
+
+**302 actions and only 11 are waste.** The 288 are real, effective moves — all of them simple
+directions, zero clicks (down 104, up 77, right 66, left 43). ls20's level 7 is pure navigation under
+fog, and the tool needs 288 moves where a human needs 186.
+
+So the efficiency gap is not overhead the harness can be tuned out of; it is the cost of revealing a
+map you cannot see. ⚠️ Which also means the +0.0062 headline for ls20 is an UPPER BOUND that assumes
+matching a human who is not paying that cost — the realistically achievable part is smaller, and the
+77-up-against-104-down split says where to look for it: backtracking.
+
+⛔ Codex review was requested for this round and could not run — every model the CLI offers is
+rejected by this account (`gpt-5.3-codex`, `gpt-5.1-codex-max`, `gpt-5-codex`, `o3` all return
+400 "not supported when using Codex with a ChatGPT account"). The review's value arrived anyway,
+from the FIRST question it would have asked and I had never run: are the levels these games already
+clear scoring 1.0? They are not, and that correction is above.
