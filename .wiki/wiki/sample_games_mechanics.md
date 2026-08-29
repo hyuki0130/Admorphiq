@@ -673,3 +673,21 @@ harness rather than of one tool.
 ⚠️ Three of my repairs this round now stand retired by the same measurement: carry the vocabulary
 (nothing to carry), do not reset a returning tool (no return), and let the fog tool learn earlier
 (it correctly declines those levels). Each was built on a mechanism I had not yet checked.
+
+### Identifying the gauge one frame sooner: measured, inert
+
+Of the two routes the correction above left open — make the gauge cheaper to find, or move fuel
+knowledge into the harness — the first is a two-line change and was measured first.
+
+`_read_bar` waits for **four** frames of history before naming the tank colour. But the tank falls a
+fixed four pixels every action, so three frames of a MONOTONE fall identify it just as safely (the
+monotone test is what replaces the fourth frame's evidence). Implemented, and verified to take
+effect: `GAUGE found after 3 frames`, where it previously reported four.
+
+**ls20: 0.8442 -> 0.8442.** One action of twenty-one is about 5% of a tank, and it does not survive
+the squaring. Reverted.
+
+That leaves the second route as the only one with a plausible size: fuel knowledge as a property of
+the HARNESS rather than of whichever tool happens to hold the fogged level. That is not a two-line
+change, and this round has now established what it would have to carry — the gauge colour, the
+refill glyphs, and the fact that a full tank plus a teleport means a death.
