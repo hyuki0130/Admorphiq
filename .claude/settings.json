@@ -46,6 +46,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ceph_idle_alarm.sh"
+          }
+        ]
+      }
     ]
   }
 }
