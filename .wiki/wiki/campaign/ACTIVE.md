@@ -74,6 +74,23 @@ so (below). ⚠️ **Do not open a new arm without first reading which hypothesi
    Nine hypotheses died on lf52 alone; seven of my own briefings were refuted by measurement.
 3. **The honest remaining work is a CAPABILITY, not a constant** — see the closing note.
 
+### ⭐ lf52 HAS MOVED — it is now a TENURE question, not perception (2026-08-30)
+
+`cef09932` is KEPT despite moving no score (rule 7bn's exception): the run went from **DESTROYING
+level 6 at action 124** and spending 376 actions on a dead board, to the level **still winnable at
+action 500**. Restarts [267] → []; the fatal third capture never made; the camera unpinned from -57
+to 12 distinct positions.
+
+⛔ **AND THE TENTH HYPOTHESIS DIED WITH IT**: "widen perception and the move changes" is FALSE.
+Handed the engine's TRUE six pads offline, `plan_moves` stops claiming `solved` **and returns the
+IDENTICAL fatal capture** — tier 1 is cheapest-capture and that capture is the cheapest. A perception
+repair alone would have been inert.
+
+**WHERE IT SITS NOW:** `pegjump` holds **19 of level 6's 500 actions**; `graph` holds 225 and
+`world_model` 117. With pegjump stopped, **`graph` made the identical fatal capture 193 actions
+later.** That is rule 7bd's pattern — the harness hands the board to a tool that is weaker alone —
+and it is the whole remaining distance on this game.
+
 ### ⛔ WHAT NOT TO SPEND A DAY ON (each already measured, with the number)
 
 - **bp35's `crag._rows` 10→9** — I called it a one-field perception defect. It is **downstream**:
