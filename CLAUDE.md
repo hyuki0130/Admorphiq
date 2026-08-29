@@ -41,7 +41,12 @@
 > every agent's work-in-progress and the tree moves under it. `snapgate.sh` archives HEAD into a
 > private directory on the box: two gates run at once, and a rider cannot ride (rule 7l).
 >
-> **The rules that were each learned by losing a day** (full text in `OPERATING_RULES.md`):
+> **`OPERATING_RULES.md` now opens with an INDEX BY SITUATION** — 45 rules, 44 of them written on
+> 2026-08-29/30, and nobody reads 1,876 lines front to back. Find your situation there (writing a
+> probe / gating / fixing something you just diagnosed / an instrument gave you a clean answer) and
+> read those three or four only.
+>
+> **The rules that were each learned by losing a day**:
 > - **7o** a measurement of a MECHANISM does not license a change of BEHAVIOUR. `frame_2d` really
 >   does read a stale layer at 100% of level transitions in all 21 games — and fixing it cost
 >   **0.8962 -> 0.6525 across fourteen games**. Two claims; only the gate supplies the second.
