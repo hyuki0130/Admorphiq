@@ -151,3 +151,55 @@ an OPEN END: the model believes it has seen all of its track, inside a 90-cell w
 28-column board. Either the track genuinely terminates in view and the far side is reached by some
 other mechanic, or the open-end test is wrong. ⛔ Measure which before building anything — I have
 now been wrong once on this exact board by reasoning instead of censusing.
+
+================================================================================
+THIRD PASS — THE OPEN-END QUESTION, CENSUSED. BOTH BRANCHES WERE WRONG, AND THE
+CENSUS FOUND SOMETHING BIGGER THAN THE QUESTION.
+
+scripts/_lf52_open.py, 93 planning turns sampled inside _ensure_plan on level 6, real harness.
+The question was: does the track TERMINATE IN VIEW (branch A), or is `_offscreen` WRONG (branch B)?
+
+⛔ NEITHER.
+
+    turns with at least one OPEN END:  93 of 93
+    offscreen_flag == open            at EVERY row (2, 5, 7, 8, 9 ...)
+
+The track does not terminate in view, and the open-end test is not wrong — it fires at every single
+planning turn, correctly. A third possibility neither of us listed is what is true.
+
+WHAT IS ACTUALLY WRONG, AND IT IS MY OWN FRONTIER TERM: because EVERY rail component has an open
+end, `_rail_reach` hands EVERY component the same `horizon` value. Measured, every row without
+exception:
+
+    reach_top == field_top + 1
+
+A bonus applied to everything is not a bonus. The term is a CONSTANT OFFSET carrying zero
+discriminating information — it cannot separate the cart whose track goes somewhere from the cart
+whose track goes nowhere, because on this board they both leave the screen. Worse, it SATURATES:
+once any piece is aboard any cart, `base = novelty(start)` already contains the maximum, so no
+reachable state can beat it on that term and travel reports no-gain. That is the `travel:no-gain`
+10 I had been attributing to a missing open end.
+
+AND THE MAP IS NOT STUCK AT ALL — the premise the question was built on is dead:
+
+    known   54 -> 87 cells          railCols  [2,9] -> [2,20]
+    winCols [0,9] -> [13,22]        the camera scrolls steadily right across a 28-column board
+
+⚠️⚠️ RULE 7s FIRES ON LF52, AND IT INVALIDATES THE FRAMING OF EVERY EARLIER CENSUS IN THIS FILE.
+`attempts_on_level_6` = 5 attempt boundaries, detected exactly (on a capture game pieces only ever
+leave the board, so a piece count that goes UP is a restart and nothing else). The first is the
+level-5-to-6 transition artefact (2 pieces -> 5), so ~FOUR GENUINE RESTARTS inside one 500-action
+window.
+
+⛔ LEVEL 6 IS NOT STALLING. IT IS BEING LOST AND RETRIED. The tool plays in, reaches a dead end,
+the game restarts it, and it plays in again — four times. A level lost and retried is invisible in
+the score (rule 7a) and reads exactly like one cleared slowly, and the two want OPPOSITE work.
+Every barren-moment census earlier in this file was sampling ACROSS attempts as though they were
+one board; the per-sample facts stand, but "the tool declines every capture and sits there" is the
+wrong story. The right one is "it plays into a loss, repeatedly".
+
+That also re-prices the second pass's last-resort experiment: it was measured against a board that
+restarts, so "it produced a position with zero legal jumps" was one attempt of several.
+
+⛔ NOTHING BUILT ON THIS. The next pass should start from the attempt structure, not from the
+tiers — `scripts/attempt_probe.py where lf52` is the repo's own instrument for pricing it.

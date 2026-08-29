@@ -158,7 +158,7 @@ def main() -> None:
         "final_level": int(getattr(obs, "levels_completed", 0) or 0),
         "turns_with_an_open_end": ever_open["open"],
         "distinct_states": len(runs),
-        "series": runs[:14],
+        "series": runs[:40],
         "why": {k: v for k, v in sorted(peg._why.items()) if v},
     }), flush=True)
 
