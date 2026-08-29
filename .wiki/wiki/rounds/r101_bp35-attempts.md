@@ -215,3 +215,111 @@ L2's 87 is `7 discovery + 34 walled-in + 43 clear`, and the winning attempt stil
 (43 < 48). The remaining headroom is `_stranded`: the tool reaches a pocket after 34 actions on
 board 2 and after 14 on board 5, and ending the attempt early is the best move ONCE THERE. Not
 walking in is a different round. ⛔ Level 6 stays closed — see this page's proof of absence above.
+
+---
+
+## ⛔ REFUTED — `_stranded` is NOT bp35's remaining headroom. The pocket costs ONE turn, not thirty-four (2026-08-30)
+
+The follow-up assignment read *"thirty-four of L2's eighty-seven actions are spent inside a pocket
+the agent walked into"*. Measured (`scripts/_bp35_pocket.py`, which wraps `_act` and `_stranded`,
+snapshots the world map and the vocabulary every turn, and drives the steps with the scorer's own
+`run_game`), that is wrong, and the number is not close.
+
+```
+board 2   85 crag turns:  81 explore route ·  2 exit route · 1 measure · 1 WALLED IN
+board 5   45 crag turns:  43 explore route ·  1 exit route ·             1 WALLED IN
+```
+
+**The whole run strands TWICE, and the body is inside the pocket for 1 turn (board 2) and 2 turns
+(board 5).** The 34-action attempt is not 34 actions of pocket-sitting; it is 33 actions of ordinary
+exploration followed by one turn on which `_search` returns nothing and `_stranded` ends the attempt
+immediately — which is what it is for.
+
+### Q1 — is the pocket visible before entry? NO, and it is not visible AT entry either
+
+A dead end cannot be asserted over an incomplete map, so the census is a boundary count rather than
+a search: a region every one of whose neighbours is already known solid/lethal/off-board is provably
+closed; one unmapped-or-open neighbour and refusing it would be an invention.
+
+```
+                region states   boundary: known_solid   known_lethal   unknown_or_open
+board 2 strand        1                 3                   0                1
+board 5 strand        2                 4                   0                2
+```
+
+⛔ **The region is never provably closed, not even at the moment `_stranded` fires.** The body is not
+sealed in — `_region` follows resting states reached by WALKING, and what it cannot leave by walking
+still has an open or unmapped neighbour beside it. There is nothing for a pre-entry veto to key on.
+
+And the map at entry is the map at the strand: 310 cells vs 320 (board 2), 240 vs 250 (board 5). The
+one or two turns in between change nothing that a test could have used.
+
+### Q2 — under which gravity? Both, and both say the same thing
+
+Recomputed from the ENTRY turn's own map (not hindsight) under each axis, because bp35 reverses
+gravity from anywhere on screen:
+
+```
+board 2   g=+1  1 state, 3 solid / 1 open-or-unknown      g=-1  1 state, 3 solid / 1 open-or-unknown
+board 5   g=+1  2 states, 4 solid / 2 open-or-unknown     g=-1  1 state, 2 solid / 2 open-or-unknown
+```
+
+The axis changes the region and does not change the verdict. ⇒ **Do not build a pocket veto.** It
+would key on evidence that is not there, to recover one turn in eighty-five.
+
+### Where board 2's 87 actions actually go — and the failed attempt is NOT waste
+
+The world map does not shrink on a restart (`_rollback` undoes OUR edits, not the terrain), so its
+size per turn says plainly whether a lost attempt was waste or was the map-building the winning
+attempt runs on. Board 2, cells known per turn:
+
+```
+attempt 1 (7 actions, spike discovery)   100 -> 180
+attempt 2 (34 actions, walled in)        180 -> 320     <- 140 of the board's 370 cells
+attempt 3 (43 actions, CLEARS)           320 -> 320 for FORTY consecutive turns, then 320 -> 370
+```
+
+⛔ **Attempt 2 is where more than a third of the map comes from.** Deleting it does not leave attempt
+3 intact; the "34 wasted actions" are the reason the winning attempt costs 43 and not more. This is
+the lf52 caution in its own form — the veto was correct, and so is the attempt it ended.
+
+### The one discriminator that survived the contrast — stated with its caveat
+
+⚠️ Rule 7b demands the comparison with the boards that clear, and the obvious statistic FAILS it:
+board 3 spends 39 of its 45 turns with a static map and scores 0.9560. Total flat turns do not
+separate anything. The LONGEST UNBROKEN flat run does:
+
+```
+board   turns  human  agent  flat  longest flat run   score
+  1       17     21     18    11          4           1.0000
+  4       23     38     23    14          5           1.0000
+  3       45     44     45    39         10           0.9560
+  5       45     33     46    35         25           0.5147
+  2       85     48     87    72         40           0.3044
+```
+
+A 2.5x gap with nothing in it. Forty consecutive turns on a completely unchanging map is the
+`fresh = 1` pacing crag's own `_search` docstring names — *"a route graded 1 reaches somewhere the
+body has not stood but shows no row the camera has not seen; on a ledge that is every cell along it,
+and the searcher will take them one at a time for as long as they last."*
+
+⛔ **But this is a correlation and it is NOT yet a cause, and it must not be shipped as one.** The
+40-turn plateau lies inside attempt 3, the attempt that CLEARS in 43 against a human 48 — the
+winning attempt already beats the baseline. A flat map during a long walk to a known exit is also
+what a correct traversal of a 39-row board looks like. Before anything is built here, the question
+to answer is whether those forty turns REVISIT states, or traverse new ones on known terrain; only
+the first is waste.
+
+⚠️ And the ranking those turns come out of is the most measured code in the file — its docstrings
+record +0.0142 for moving ONE term's position, and +0.0431 for reading `_reveals` as a magnitude.
+Reordering it is a round with a full-25 gate, not a follow-on.
+
+### Operational — `crag.detect` is NOT in the `railpeg` family
+
+Checked by diffing every instance attribute across each `detect` call over a whole run
+(`detect_calls_that_mutated`): **1 call mutated, changing `_pitch`, `_rows`, `_cols`** — the pitch
+latch on the very first frame, which `_readings` is documented to do deliberately ("the pitch is not
+re-derived: it is a property of the board's art"). `_idle`, `_mute` and `_refuted` are untouched,
+because only `_quit` writes them and `detect` never calls it. **Asking crag whether it recognises a
+board costs it none of its patience**, so the probes on this page are not perturbing what they
+measure.
