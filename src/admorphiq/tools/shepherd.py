@@ -58,56 +58,51 @@ second destination alone is not enough: two boards in this game have a thief and
 walks, and taking those over cost 13 and 21 extra actions apiece for nothing. With the gate in, the
 first seven levels are cleared in exactly the incumbent's own action counts, to the action.
 
-⛔ PARKED, with what would refute it — the FINAL board of this game is not cleared. Nine pieces,
-70 actions declared. One of the two helpers is sealed behind a band the carrier cannot walk on and
-MOVES ZERO CELLS IN SEVENTY ACTIONS, so the board has one helper, not two. Counted by who put each
-piece in its bay:
+⛔ THE FINAL BOARD WAS PARKED AT 8 OF 9 AND IS NOT PARKED ANY MORE — what unparked it was not a
+better plan, it was noticing that the level had started again. Nine pieces, 70 actions declared,
+and on overrun the engine RESTARTS THE LEVEL rather than ending the game, so the harness gets
+EIGHT attempts at it inside one run. Measured on the shipped tool:
 
-    carrier does nothing          carrier 0  helper 3
-    carrier polices, never hauls  carrier 0  helper 4
-    carrier hauls, never polices  carrier 2  helper 4
-    carrier does both             carrier 3  helper 5   = 8 of 9
+    attempt 1     8 of 9, banked by action 63, seven actions to spare
+    attempts 2-7  7 of 9, and identical to each other action for action
+    attempt 8     cut short by the run's own budget
 
-⚠️ Read the third column, not the first: the carrier's hauling is worth FOUR to the board and only
-three of those are its own — taking the far pieces leaves the one working helper a nearer one every
-time, which is what carries it from four to five. That is the rule below doing its job, and it is
-why weighting the bias instead of applying it lexicographically scores SEVEN at every one of eight
-weights tried. Of the 70 actions, 9 are latches, 20 are towing, 6 are turns-or-refusals and 45 are
-the carrier walking to the next piece; about two are recoverable.
+Six of the eight attempts were the same attempt. `levels_completed` is the only thing `propose`
+watched and a restart does not move it, so a plan for a board that no longer existed, a flag
+saying a piece was in hand, and a walker sweep straddling the reset all rode across it. `_reborn`
+below is the fix, and `_start_haul` ranking pieces by the ROUTE to a helper rather than by the
+straight line to one is the other half. **Measured, whole-game through the harness, both halves
+needed and neither sufficient**: restart-aware alone 8 of 9, route-distance alone 8 of 9, the two
+together CLEAR the board — 9 levels, the ninth in 136 actions against a human baseline of 415, and
+levels one to eight cost 27/58/77/67/120/46/55/134, unchanged to the action.
 
-Beaten by none of: five ranking rules, eight weightings of that bias, four drop-cell rules, five
-bay-choice rules, five hand-off caps, 300 randomised target orders, and four beam searches over
-whole deliveries using EXACT engine state rather than frames.
+⚠️ Read the two as one mechanism. What the route distance buys is a carrier that opens on the
+three pieces the sealed helper can never reach; what the restart-aware reset buys is that the
+SECOND attempt gets to open at all, instead of resuming the first one's endgame. Under the old
+rule the carrier's own hauling was worth four to the board and only three of those were its own —
+taking the far pieces leaves the one working helper a nearer one every time.
 
-⚠️ It is a THROUGHPUT claim, not a reachability one, and the difference was nearly banked wrongly:
-twice the beam reported "no further deliveries possible" and twice that was false — the ninth
-piece was loose, grippable from all four sides, with free bays to tow it into. The plan for it
-simply cost 16 actions with 7 left, because a schedule ranked on "most delivered soonest" spends
-the budget on near pieces and strands the far one. So what refutes this park is any schedule that
-banks eight with sixteen actions to spare, or any mechanism that lifts the pair past eight. One is
-still untested: reading the budget the board DRAWS (see `tools/budget.py`) so the carrier can
-decline a plan it cannot finish and stand still instead. Steering the helper by standing in its way
-is NOT untested any more and is the weaker idea it first looked: the carrier already moves the
-helper from three to five just by choosing far pieces, so what is left to steer is small.
+⚠️ ONE THING THAT LOOKED LIKE THE ANSWER AND IS NOT: varying the retries. Shifting the opening
+choice by the attempt number so that the eight tries differ was measured alongside these two and
+made the board WORSE — 8,8,6,4,4,4,4 where the pair alone clears. Diversity is not the lever here;
+the retries were not failing because they were the same, they were failing because they were the
+FIRST attempt's endgame replayed. Learning the allowance from the death and declining a haul too
+long to finish was also measured: it fires (ten refusals in a run) and changes nothing, so it is
+not in the code.
+
+Beaten by none of: five ranking rules, eight weightings of the mover bias, four drop-cell rules,
+five bay-choice rules, five hand-off caps, 300 randomised target orders, and four beam searches
+over whole deliveries using EXACT engine state rather than frames — every one of those searched
+INSIDE one attempt, which is why none of them found this.
 
 ⛔ The final board's NEW elements were checked against what this tool believes them to be, and the
 model is right about all three. Its hazard band reads blocked-and-porous, and the engine forbids
-the carrier there while letting a towed piece ride over — the same rule. Its two bay shapes read as
-bays. Its thief region reads as the second destination. The only thing the reader misses is two
+the carrier there while letting a towed piece ride over — the same rule. Its two bay shapes read
+as bays. Its thief region reads as the second destination. The only thing the reader misses is two
 goal cells sealed in a pocket above the hazard, and those are exactly the two of thirteen that no
 carrier can deliver into, so the reader's eleven usable bays is the right number for nine pieces.
 The second helper is sealed in that same pocket: the carrier cannot reach even a cell beside it,
-which is why it moves zero cells in seventy actions.
-
-⚠️ So "the plan stalls" is not what happens here, and it is worth saying because the two look alike
-from outside: of the 70 actions this tool spends on that board, 55 move the carrier and 9 are latches
-that all do something — four grips, four releases and one kill. Six change nothing and most of those
-are turns. The tool acts on nearly every action it has and still finishes a piece short.
-
-⚠️ One instrument had to be fixed before any of this could be read. Counting delivery EVENTS
-credited the helper with five on a board where three of its pieces were still in a bay — the thief
-takes a delivered piece back out and the same piece is delivered twice. Count distinct pieces
-RESTING in a bay at the end, credited to whoever last held them.
+which is why it moves zero cells in seventy actions — and why a straight line to it was a lie.
 
 ⛔ Frame-only, and the pixel reading is NOT re-derived here. Which tile is a piece, which is the
 carrier and which way it faces, which rectangle is a bay, what blocks a move and what is porous
@@ -197,6 +192,7 @@ class ShepherdRelayTool:
         self._grid: np.ndarray | None = None
         self._blinks = 0
         self._pending: tuple[Cell, Cell | None, int] | None = None
+        self._last: tuple[int | None, Cell | None] = (None, None)
 
     # -- Tool protocol -------------------------------------------------------
 
@@ -215,6 +211,7 @@ class ShepherdRelayTool:
         self._flat = {}
         self._fresh = True
         self._own = False
+        self._last = (None, None)
         # ⛔ Which colour walks and which of those can be removed belongs to the GAME, not to the
         # level: `_friendly` is not cleared here. Re-learning it costs one press per mover per
         # level, and on a board that declares 70 actions that is the whole margin.
@@ -286,6 +283,7 @@ class ShepherdRelayTool:
         if board is not None and not board.hostile:
             board = self._eyes._read(grid)
         if board is not None:
+            self._reborn(board)
             self._sight(board, grid)
         if not self._own:
             # ⛔ A board with nothing undoing the work is the incumbent's board, and this tool
@@ -332,6 +330,56 @@ class ShepherdRelayTool:
         elif self._expected(board, held, action):
             self._pending = (board.carrier, held, action)
         return [(action, None)]
+
+    # -- the level starting again -------------------------------------------
+
+    def _reborn(self, board: _Board) -> None:
+        """A board whose allowance ran out RESTARTS the level, and nothing positional survives it.
+
+        ⛔ MEASURED, and it is the whole of what this game has left. The last board declares 70
+        actions and ENDS THE ATTEMPT on overrun — it does not end the game — so the harness gets
+        eight tries at it inside one run. Only `levels_completed` was being watched, and a restart
+        does not move it, so the tool carried a plan for a board that no longer existed, a flag
+        saying it was holding a piece it had been holding then, and a walker sweep comparing one
+        attempt's last frame with the next attempt's first. The result was six identical retries:
+        attempt 1 banked 8 of 9 and attempts 2 to 7 banked 7 apiece, action for action the same.
+
+        ⛔ The test is a TELEPORT together with pieces reappearing loose, and both halves are
+        needed. The carrier moves at most one cell per action, so a jump is not something play
+        produces; a thief takes at most one piece back out of a bay per turn, so two pieces
+        reappearing outside the bays in one action is not something the field produces either.
+        Neither half alone is safe: the reader loses the carrier on the frame's outermost ring,
+        which reads as a jump, and a board with two thieves could return two pieces at once.
+
+        ⚠️ What is cleared is everything that says WHERE something is. What the GAME taught —
+        which colour walks, which kind the latch removes, which moves the furniture refuses — is
+        as true on the retry as it was on the attempt, and re-learning it costs presses this board
+        has no room for.
+
+        ⚠️ NOT DONE HERE, and named so it is not assumed: when the incumbent is driving the board
+        this clears THIS tool's bookkeeping and not the incumbent's, so `_hands` carries its own
+        plan across a restart. Untested — `shepherd` acts on exactly one of the twenty-five sample
+        games and owns that board outright, so the case has never arisen, and reaching into the
+        incumbent on the strength of a mechanism nobody has measured is how a true finding becomes
+        a regression.
+        """
+        loose = sum(1 for c in board.cargo if c not in board.bays)
+        was_loose, was_carrier = self._last
+        self._last = (loose, board.carrier)
+        if was_carrier is None or board.carrier is None or was_loose is None:
+            return
+        if _span(board.carrier, was_carrier) <= 1 or loose - was_loose < 2:
+            return
+        self._plan = []
+        self._offset = None
+        self._promise = None
+        self._camp = None
+        self._camped = 0
+        self._chase = 0
+        self._pending = None
+        self._fresh = True
+        self._flat = {}
+        self._actors = {}
 
     # -- learning from a refusal --------------------------------------------
 
@@ -639,11 +687,23 @@ class ShepherdRelayTool:
         # one is in danger, not in hand — so counting it here says "leave that piece alone" about
         # the one piece most likely to be stolen. Colours that answered the latch are known.
         movers = sorted(c for c, kind in self._actors.items() if kind not in self._removable)
+        # ⛔ BY THE ROUTE, NOT BY THE PICTURE — the rule `_police` already states for a thief and
+        # this function did not state for a mover. On the last board of this game one of the two
+        # helpers is sealed above a hazard band and moves ZERO cells in seventy actions, and a
+        # straight line puts it four cells from a piece it can never reach: all three pieces on
+        # that side of the board then rank as already-taken-care-of and the carrier walks away
+        # from the only pieces no helper will ever collect. A helper that cannot walk to a piece
+        # is not delivering it. With no movers seen the field is empty and every piece is adrift,
+        # which ties exactly as the straight line's zero did — so a board with nothing walking on
+        # it is unchanged.
+        field = _spread(board, movers)
+        adrift = board.rows + board.cols
         best: tuple[int, int, list[int]] | None = None
         for piece in loose:
             # ⛔ Distance to the nearest MOVER, not to the carrier. The movers work nearest-first,
             # so the piece nearest one of them is the piece being taken care of already.
-            alone = min([_span(piece, m) for m in movers], default=0)
+            walked = _reach(field, piece)
+            alone = adrift if walked is None else walked
             for act in _MOVES:
                 d = _DELTA[act]
                 stance = (piece[0] - d[0], piece[1] - d[1])
