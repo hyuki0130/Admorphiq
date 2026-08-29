@@ -254,3 +254,20 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   17 actions**, with six arms LOSING the level, because the tank those actions burn belongs to a
   first life that runs dry on action 21 regardless. Open: cross-level mechanic carry (a first-time human reaches level 7 having played six levels with
   the same three changers; `fogscout` cannot, because `detect` is 0.00 on every unfogged board).
+
+- **tenure / retirement / EMPTY_TOLERANCE / empty proposal / handover / what ends a tenure** →
+  [[r101_tenure-end]] — the census (rules 7bq + **7bp**) and the arm 7bq said was unnecessary.
+  ⭐ The whole 25-game corpus contains **NINE tenure-ending events** (EMPTY 7 · STALL 2 · CLOCK 0 ·
+  CODE 0) and **twenty of twenty-five games are played start to finish by ONE tool**. The empty
+  channel is 70 proposes of 7,049 round-trips (1.0%), and it is BIMODAL: fifteen recovered runs,
+  **every one of length ONE**, and nothing between a blip and death. ⭐ **SIX of the seven EMPTY
+  retirements land on a level the game NEVER clears**, so they are scored zero however they are
+  spent; the seventh is ls20's, already swept to invariance by 7ax. ⭐ A **175-arm full-25 sweep**
+  makes the shipped `_EMPTY_TOLERANCE = 8` the **measured ARGMAX** (0.9082 vs tol1 0.7756, tol2/16/32
+  0.9017, tol4 0.9049) with **zero dynamic range on 24 of 25 games** — outside tol1, only ls20 ever
+  moves, and its surface reproduces 7ax exactly from an independent instrument. ⛔ tol1 collapses
+  ar25/ft09/re86 from 1.0000 to ~0.03, which is what the fifteen singles are worth. ⚠️ Two things
+  reported and NOT shipped: `_empty_runs` is AGENT-scoped where the concept is tenure-scoped (one
+  retirement is measurably one proposal early), and the tenure-scoped fix is EXACTLY INERT on all 25;
+  and there is **no tool→harness exhaustion channel at all** — re86's `cover_targets` sets
+  `_handover = True` at the moment it stops proposing and nothing reads it.

@@ -2810,7 +2810,77 @@ available before the claim.
 `world_model` 117 — and with pegjump stopped, **`graph` made the identical fatal capture 193 actions
 later.** That is rule 7bd's pattern, and it is the whole remaining distance.
 
-### 7bp — what ends a tenure: NINE events in the whole 25, and every lever on _EMPTY_TOLERANCE is a loss or exactly inert (2026-08-30)
+### 7bp — the shipped `_EMPTY_TOLERANCE = 8` is the measured ARGMAX, and 24 of 25 games do not feel the lever at all (2026-08-30)
+
+⚠️ **PROVENANCE FIRST, because it was got wrong once already.** Rule 7bq below was written from
+commit `1bbc1f42`, and `1bbc1f42` is THIS agent's census — there was no peer duplicate on it. What
+follows is the same agent's second half: the arm 7bq says is unnecessary, run anyway, plus three
+corrections to 7bq's own numbers. Two independent looks at one axis is the strongest form a verdict
+comes in; one look counted twice is not.
+
+**A 175-arm full-25 sweep of the constant** (`scripts/_tenure_tolsweep.py`, seven arms x 25 games,
+`loop._EMPTY_TOLERANCE` rebound per arm, the `tol8` arm reproducing every banked per-level count and
+total-action figure exactly):
+
+```
+arm       tol1     tol2     tol4    tol8=SHIPPED   tol16    tol32    perT8
+MEAN    0.7756   0.9017   0.9049      0.9082      0.9017   0.9017   0.9082
+games moved   5        1        1           -           1        1        0
+```
+
+⭐ **The shipped 8 is the argmax over the whole lever, and every other value LOSES.** ⛔ And on 24 of
+the 25 games the lever's dynamic range is ZERO: outside `tol1`, the only game that ever moves is
+**ls20**, whose surface this reproduces exactly as rule 7ax banked it from a separately built
+instrument — `tol4` gives 327 / 0.830885, `tol2` / `tol16` / `tol32` lose the level at 0.7500,
+`tol8` gives 231 / 0.912085.
+
+⛔ **`tol1` is the reason the singles must be protected**: at a tolerance of one, the fifteen isolated
+blips become fifteen retirements, and **ar25, ft09 and re86 fall from 1.0000 to 0.0278, 0.0476 and
+0.0278** — three games that never end a tenure at all under the shipped value. re86's canaries (L2
+42/42, L6 139/139) are not merely moved, they are gone. That is what "the empties do not creep" costs
+if you act on it in the aggressive direction.
+
+**THREE CORRECTIONS TO 7bq, all in the direction that STRENGTHENS it:**
+
+1. ⛔ **The "one recovered run of length 7" never recovered.** It is lf52's `llm_goal`, and it was
+   RETIRED at seven of its own empty proposals — because `_empty_runs` is AGENT-scoped, not
+   tenure-scoped (nothing in `_reset_level` or `_redecide` clears it), so it inherited `graph`'s
+   trailing single. The corrected distribution is **15 recovered runs, EVERY ONE of length one, and
+   ZERO runs of length 2..7 anywhere in the corpus.** Nothing between a blip and death exists.
+2. There are **SEVEN** EMPTY retirements, not six; the seventh is that `llm_goal`.
+3. The fix for the inherited counter is the `perT8` arm above and it is **EXACTLY INERT — all 25
+   games identical in score AND in action count.** Correctness with no measured benefit, so per rule
+   7o it is reported and NOT shipped.
+
+⭐ **THE NUMBER THAT CLOSES IT, which is not in 7bq: SIX OF THE SEVEN EMPTY RETIREMENTS HAPPEN ON A
+LEVEL THE GAME NEVER CLEARS** — bp35 level 6 of 5 cleared, s5i5 level 7 of 6, lf52 level 6 of 5 four
+times over. Actions spent there are scored zero however they are spent (rule 7ax's shape). The
+seventh is ls20's, on a cleared level, and 7ax already swept exactly that lever to invariance. **The
+entire empty channel has one game's worth of score attached to it and that game is already measured
+flat.**
+
+**THE TWO STALL EVENTS, the thinner half of the nine, since nobody has looked at them:** re86's
+`cover_targets` hands to `reforge` at action 379 on level 6 — a CLEARED level, and one of the five
+capped canaries (139 actions against a human 139) — and it does so with `_stuck` True, `_noplan` True
+and **`_handover` True**. lf52's `graph` hands to `llm_goal` at 690 on the never-cleared wall. So one
+of the two STALLs is on scoring ground, and it is the one where the tool asks to be replaced.
+
+⛔ **AND NOTHING READS THAT REQUEST.** `base.Tool` has no exhaustion method and `loop.py` reads none;
+`cover_targets` sets `self._handover = True` at the moment it stops proposing and the harness learns
+about it only by counting silences. The one duck-typed tool-to-harness channel in the loop is
+`target_stalled`, implemented by exactly one tool, and it gates a target REDRAW rather than a
+retirement. ⚠️ On these 25 that gap is worth nothing — every tool that would use it is standing on a
+level that scores zero. On the private 110 it is the difference between eight wasted probes and none,
+which is a claim about the unseen set and is recorded so it is made knowingly.
+
+⚠️ **FOUND EN ROUTE, unrelated, and someone should look**: ceph-build's `environment_files/sk48`
+holds TWO version directories (`41055498` and `d8078629`) with the SAME `game_id` and baseline but
+DIFFERENT `sk48.py` bytes, where the repository has only the first. `get_environments()` therefore
+returns **26 there and 25 here**, so any index-addressed fan silently runs one game twice and drops
+the last — which is how this was found. Both currently score identically (270 actions), so no banked
+number is wrong; this is the `env_metadata_duplicate_game_id` hazard, latent, on the measurement box.
+
+Round page: `.wiki/wiki/rounds/r101_tenure-end.md`. Artefacts: `scripts/rounds/R101TENUREEND/`.
 
 ### 7bq — tenure is not a lever: 9 events in the whole corpus, and 20 of 25 games never end one (2026-08-30)
 

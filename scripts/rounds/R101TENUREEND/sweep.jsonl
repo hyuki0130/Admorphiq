@@ -1,0 +1,175 @@
+{"seed": 1, "arm": "tol8", "game": "ar25", "tol": 8, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 10, "arm": "tol8", "game": "lp85", "tol": 8, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 100, "arm": "tol4", "game": "wa30", "tol": 4, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 101, "arm": "tol16", "game": "ar25", "tol": 16, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 102, "arm": "tol16", "game": "bp35", "tol": 16, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 103, "arm": "tol16", "game": "cd82", "tol": 16, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 104, "arm": "tol16", "game": "cn04", "tol": 16, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 105, "arm": "tol16", "game": "dc22", "tol": 16, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 106, "arm": "tol16", "game": "ft09", "tol": 16, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 107, "arm": "tol16", "game": "g50t", "tol": 16, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 108, "arm": "tol16", "game": "ka59", "tol": 16, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 109, "arm": "tol16", "game": "lf52", "tol": 16, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 11, "arm": "tol8", "game": "ls20", "tol": 8, "levels": 7, "win_levels": 7, "actions": 645, "per_level": [17, 101, 63, 66, 67, 100, 231], "game_score": 0.912085}
+{"seed": 110, "arm": "tol16", "game": "lp85", "tol": 16, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 111, "arm": "tol16", "game": "ls20", "tol": 16, "levels": 6, "win_levels": 7, "actions": 921, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75}
+{"seed": 112, "arm": "tol16", "game": "m0r0", "tol": 16, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 113, "arm": "tol16", "game": "r11l", "tol": 16, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 114, "arm": "tol16", "game": "re86", "tol": 16, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 115, "arm": "tol16", "game": "s5i5", "tol": 16, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 116, "arm": "tol16", "game": "sb26", "tol": 16, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 117, "arm": "tol16", "game": "sc25", "tol": 16, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 118, "arm": "tol16", "game": "sk48", "tol": 16, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 119, "arm": "tol16", "game": "sp80", "tol": 16, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 12, "arm": "tol8", "game": "m0r0", "tol": 8, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 120, "arm": "tol16", "game": "su15", "tol": 16, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 121, "arm": "tol16", "game": "tn36", "tol": 16, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 122, "arm": "tol16", "game": "tr87", "tol": 16, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 123, "arm": "tol16", "game": "tu93", "tol": 16, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 124, "arm": "tol16", "game": "vc33", "tol": 16, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 125, "arm": "tol16", "game": "wa30", "tol": 16, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 126, "arm": "tol32", "game": "ar25", "tol": 32, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 127, "arm": "tol32", "game": "bp35", "tol": 32, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 128, "arm": "tol32", "game": "cd82", "tol": 32, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 129, "arm": "tol32", "game": "cn04", "tol": 32, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 13, "arm": "tol8", "game": "r11l", "tol": 8, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 130, "arm": "tol32", "game": "dc22", "tol": 32, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 131, "arm": "tol32", "game": "ft09", "tol": 32, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 132, "arm": "tol32", "game": "g50t", "tol": 32, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 133, "arm": "tol32", "game": "ka59", "tol": 32, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 134, "arm": "tol32", "game": "lf52", "tol": 32, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 135, "arm": "tol32", "game": "lp85", "tol": 32, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 136, "arm": "tol32", "game": "ls20", "tol": 32, "levels": 6, "win_levels": 7, "actions": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75}
+{"seed": 137, "arm": "tol32", "game": "m0r0", "tol": 32, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 138, "arm": "tol32", "game": "r11l", "tol": 32, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 139, "arm": "tol32", "game": "re86", "tol": 32, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 14, "arm": "tol8", "game": "re86", "tol": 8, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 140, "arm": "tol32", "game": "s5i5", "tol": 32, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 141, "arm": "tol32", "game": "sb26", "tol": 32, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 142, "arm": "tol32", "game": "sc25", "tol": 32, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 143, "arm": "tol32", "game": "sk48", "tol": 32, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 144, "arm": "tol32", "game": "sp80", "tol": 32, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 145, "arm": "tol32", "game": "su15", "tol": 32, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 146, "arm": "tol32", "game": "tn36", "tol": 32, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 147, "arm": "tol32", "game": "tr87", "tol": 32, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 148, "arm": "tol32", "game": "tu93", "tol": 32, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 149, "arm": "tol32", "game": "vc33", "tol": 32, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 15, "arm": "tol8", "game": "s5i5", "tol": 8, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 150, "arm": "tol32", "game": "wa30", "tol": 32, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 151, "arm": "perT8", "game": "ar25", "tol": 8, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 152, "arm": "perT8", "game": "bp35", "tol": 8, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 153, "arm": "perT8", "game": "cd82", "tol": 8, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 154, "arm": "perT8", "game": "cn04", "tol": 8, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 155, "arm": "perT8", "game": "dc22", "tol": 8, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 156, "arm": "perT8", "game": "ft09", "tol": 8, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 157, "arm": "perT8", "game": "g50t", "tol": 8, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 158, "arm": "perT8", "game": "ka59", "tol": 8, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 159, "arm": "perT8", "game": "lf52", "tol": 8, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 16, "arm": "tol8", "game": "sb26", "tol": 8, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 160, "arm": "perT8", "game": "lp85", "tol": 8, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 161, "arm": "perT8", "game": "ls20", "tol": 8, "levels": 7, "win_levels": 7, "actions": 645, "per_level": [17, 101, 63, 66, 67, 100, 231], "game_score": 0.912085}
+{"seed": 162, "arm": "perT8", "game": "m0r0", "tol": 8, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 163, "arm": "perT8", "game": "r11l", "tol": 8, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 164, "arm": "perT8", "game": "re86", "tol": 8, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 165, "arm": "perT8", "game": "s5i5", "tol": 8, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 166, "arm": "perT8", "game": "sb26", "tol": 8, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 167, "arm": "perT8", "game": "sc25", "tol": 8, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 168, "arm": "perT8", "game": "sk48", "tol": 8, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 169, "arm": "perT8", "game": "sp80", "tol": 8, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 17, "arm": "tol8", "game": "sc25", "tol": 8, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 170, "arm": "perT8", "game": "su15", "tol": 8, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 171, "arm": "perT8", "game": "tn36", "tol": 8, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 172, "arm": "perT8", "game": "tr87", "tol": 8, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 173, "arm": "perT8", "game": "tu93", "tol": 8, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 174, "arm": "perT8", "game": "vc33", "tol": 8, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 175, "arm": "perT8", "game": "wa30", "tol": 8, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 18, "arm": "tol8", "game": "sk48", "tol": 8, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 19, "arm": "tol8", "game": "sp80", "tol": 8, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 2, "arm": "tol8", "game": "bp35", "tol": 8, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 20, "arm": "tol8", "game": "su15", "tol": 8, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 21, "arm": "tol8", "game": "tn36", "tol": 8, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 22, "arm": "tol8", "game": "tr87", "tol": 8, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 23, "arm": "tol8", "game": "tu93", "tol": 8, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 24, "arm": "tol8", "game": "vc33", "tol": 8, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 25, "arm": "tol8", "game": "wa30", "tol": 8, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 26, "arm": "tol1", "game": "ar25", "tol": 1, "levels": 1, "win_levels": 8, "actions": 519, "per_level": [16], "game_score": 0.027778}
+{"seed": 27, "arm": "tol1", "game": "bp35", "tol": 1, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 28, "arm": "tol1", "game": "cd82", "tol": 1, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 29, "arm": "tol1", "game": "cn04", "tol": 1, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 3, "arm": "tol8", "game": "cd82", "tol": 8, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 30, "arm": "tol1", "game": "dc22", "tol": 1, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 31, "arm": "tol1", "game": "ft09", "tol": 1, "levels": 1, "win_levels": 6, "actions": 504, "per_level": [4], "game_score": 0.047619}
+{"seed": 32, "arm": "tol1", "game": "g50t", "tol": 1, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 33, "arm": "tol1", "game": "ka59", "tol": 1, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 34, "arm": "tol1", "game": "lf52", "tol": 1, "levels": 1, "win_levels": 10, "actions": 509, "per_level": [8], "game_score": 0.018182}
+{"seed": 35, "arm": "tol1", "game": "lp85", "tol": 1, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 36, "arm": "tol1", "game": "ls20", "tol": 1, "levels": 6, "win_levels": 7, "actions": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75}
+{"seed": 37, "arm": "tol1", "game": "m0r0", "tol": 1, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 38, "arm": "tol1", "game": "r11l", "tol": 1, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 39, "arm": "tol1", "game": "re86", "tol": 1, "levels": 1, "win_levels": 8, "actions": 530, "per_level": [25], "game_score": 0.027778}
+{"seed": 4, "arm": "tol8", "game": "cn04", "tol": 8, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 40, "arm": "tol1", "game": "s5i5", "tol": 1, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 41, "arm": "tol1", "game": "sb26", "tol": 1, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 42, "arm": "tol1", "game": "sc25", "tol": 1, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 43, "arm": "tol1", "game": "sk48", "tol": 1, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 44, "arm": "tol1", "game": "sp80", "tol": 1, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 45, "arm": "tol1", "game": "su15", "tol": 1, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 46, "arm": "tol1", "game": "tn36", "tol": 1, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 47, "arm": "tol1", "game": "tr87", "tol": 1, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 48, "arm": "tol1", "game": "tu93", "tol": 1, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 49, "arm": "tol1", "game": "vc33", "tol": 1, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 5, "arm": "tol8", "game": "dc22", "tol": 8, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 50, "arm": "tol1", "game": "wa30", "tol": 1, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 51, "arm": "tol2", "game": "ar25", "tol": 2, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 52, "arm": "tol2", "game": "bp35", "tol": 2, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 53, "arm": "tol2", "game": "cd82", "tol": 2, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 54, "arm": "tol2", "game": "cn04", "tol": 2, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 55, "arm": "tol2", "game": "dc22", "tol": 2, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 56, "arm": "tol2", "game": "ft09", "tol": 2, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 57, "arm": "tol2", "game": "g50t", "tol": 2, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 58, "arm": "tol2", "game": "ka59", "tol": 2, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 59, "arm": "tol2", "game": "lf52", "tol": 2, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 6, "arm": "tol8", "game": "ft09", "tol": 8, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 60, "arm": "tol2", "game": "lp85", "tol": 2, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 61, "arm": "tol2", "game": "ls20", "tol": 2, "levels": 6, "win_levels": 7, "actions": 916, "per_level": [17, 101, 63, 66, 67, 100], "game_score": 0.75}
+{"seed": 62, "arm": "tol2", "game": "m0r0", "tol": 2, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 63, "arm": "tol2", "game": "r11l", "tol": 2, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 64, "arm": "tol2", "game": "re86", "tol": 2, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 65, "arm": "tol2", "game": "s5i5", "tol": 2, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 66, "arm": "tol2", "game": "sb26", "tol": 2, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 67, "arm": "tol2", "game": "sc25", "tol": 2, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 68, "arm": "tol2", "game": "sk48", "tol": 2, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 69, "arm": "tol2", "game": "sp80", "tol": 2, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 7, "arm": "tol8", "game": "g50t", "tol": 8, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 70, "arm": "tol2", "game": "su15", "tol": 2, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 71, "arm": "tol2", "game": "tn36", "tol": 2, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 72, "arm": "tol2", "game": "tr87", "tol": 2, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 73, "arm": "tol2", "game": "tu93", "tol": 2, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 74, "arm": "tol2", "game": "vc33", "tol": 2, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
+{"seed": 75, "arm": "tol2", "game": "wa30", "tol": 2, "levels": 9, "win_levels": 9, "actions": 720, "per_level": [27, 58, 77, 67, 120, 46, 55, 134, 136], "game_score": 1.0}
+{"seed": 76, "arm": "tol4", "game": "ar25", "tol": 4, "levels": 8, "win_levels": 8, "actions": 268, "per_level": [16, 13, 42, 24, 30, 55, 39, 49], "game_score": 1.0}
+{"seed": 77, "arm": "tol4", "game": "bp35", "tol": 4, "levels": 5, "win_levels": 9, "actions": 726, "per_level": [18, 87, 45, 23, 46], "game_score": 0.24556}
+{"seed": 78, "arm": "tol4", "game": "cd82", "tol": 4, "levels": 6, "win_levels": 6, "actions": 132, "per_level": [50, 6, 33, 14, 13, 16], "game_score": 1.0}
+{"seed": 79, "arm": "tol4", "game": "cn04", "tol": 4, "levels": 6, "win_levels": 6, "actions": 261, "per_level": [18, 46, 28, 37, 60, 72], "game_score": 1.0}
+{"seed": 8, "arm": "tol8", "game": "ka59", "tol": 8, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 80, "arm": "tol4", "game": "dc22", "tol": 4, "levels": 5, "win_levels": 6, "actions": 925, "per_level": [31, 53, 59, 87, 195], "game_score": 0.714286}
+{"seed": 81, "arm": "tol4", "game": "ft09", "tol": 4, "levels": 6, "win_levels": 6, "actions": 79, "per_level": [4, 9, 16, 16, 21, 13], "game_score": 1.0}
+{"seed": 82, "arm": "tol4", "game": "g50t", "tol": 4, "levels": 7, "win_levels": 7, "actions": 296, "per_level": [26, 31, 64, 31, 52, 49, 43], "game_score": 1.0}
+{"seed": 83, "arm": "tol4", "game": "ka59", "tol": 4, "levels": 7, "win_levels": 7, "actions": 290, "per_level": [12, 44, 33, 39, 24, 46, 92], "game_score": 1.0}
+{"seed": 84, "arm": "tol4", "game": "lf52", "tol": 4, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 85, "arm": "tol4", "game": "lp85", "tol": 4, "levels": 8, "win_levels": 8, "actions": 182, "per_level": [7, 34, 18, 18, 16, 39, 18, 32], "game_score": 0.97668}
+{"seed": 86, "arm": "tol4", "game": "ls20", "tol": 4, "levels": 7, "win_levels": 7, "actions": 741, "per_level": [17, 101, 63, 66, 67, 100, 327], "game_score": 0.830885}
+{"seed": 87, "arm": "tol4", "game": "m0r0", "tol": 4, "levels": 6, "win_levels": 6, "actions": 188, "per_level": [19, 23, 54, 13, 39, 40], "game_score": 1.0}
+{"seed": 88, "arm": "tol4", "game": "r11l", "tol": 4, "levels": 6, "win_levels": 6, "actions": 83, "per_level": [4, 9, 11, 14, 24, 21], "game_score": 1.0}
+{"seed": 89, "arm": "tol4", "game": "re86", "tol": 4, "levels": 8, "win_levels": 8, "actions": 696, "per_level": [25, 42, 49, 59, 113, 139, 101, 168], "game_score": 1.0}
+{"seed": 9, "arm": "tol8", "game": "lf52", "tol": 8, "levels": 5, "win_levels": 10, "actions": 823, "per_level": [8, 52, 60, 64, 139], "game_score": 0.272727}
+{"seed": 90, "arm": "tol4", "game": "s5i5", "tol": 4, "levels": 6, "win_levels": 8, "actions": 694, "per_level": [13, 30, 47, 39, 32, 31], "game_score": 0.583333}
+{"seed": 91, "arm": "tol4", "game": "sb26", "tol": 4, "levels": 8, "win_levels": 8, "actions": 124, "per_level": [9, 15, 15, 15, 17, 19, 17, 17], "game_score": 1.0}
+{"seed": 92, "arm": "tol4", "game": "sc25", "tol": 4, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [17, 6, 12, 31, 40, 39], "game_score": 1.0}
+{"seed": 93, "arm": "tol4", "game": "sk48", "tol": 4, "levels": 8, "win_levels": 8, "actions": 270, "per_level": [14, 30, 34, 27, 41, 56, 41, 27], "game_score": 1.0}
+{"seed": 94, "arm": "tol4", "game": "sp80", "tol": 4, "levels": 6, "win_levels": 6, "actions": 112, "per_level": [6, 8, 11, 26, 29, 32], "game_score": 1.0}
+{"seed": 95, "arm": "tol4", "game": "su15", "tol": 4, "levels": 9, "win_levels": 9, "actions": 89, "per_level": [11, 9, 13, 11, 13, 10, 5, 8, 9], "game_score": 1.0}
+{"seed": 96, "arm": "tol4", "game": "tn36", "tol": 4, "levels": 7, "win_levels": 7, "actions": 137, "per_level": [14, 11, 13, 16, 21, 21, 41], "game_score": 1.0}
+{"seed": 97, "arm": "tol4", "game": "tr87", "tol": 4, "levels": 6, "win_levels": 6, "actions": 145, "per_level": [14, 27, 21, 24, 24, 35], "game_score": 1.0}
+{"seed": 98, "arm": "tol4", "game": "tu93", "tol": 4, "levels": 9, "win_levels": 9, "actions": 187, "per_level": [18, 10, 19, 17, 29, 28, 14, 23, 29], "game_score": 1.0}
+{"seed": 99, "arm": "tol4", "game": "vc33", "tol": 4, "levels": 7, "win_levels": 7, "actions": 199, "per_level": [3, 8, 24, 26, 55, 25, 58], "game_score": 1.0}
