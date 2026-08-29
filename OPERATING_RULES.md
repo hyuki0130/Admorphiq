@@ -3115,3 +3115,162 @@ configuration existed, was correct, was load-bearing, and named a flag the tooli
 That is the same failure as rule 7bm's guards: written discipline that the commands do not support
 gets skipped, and it looks like carelessness afterwards. **When a rule names a measurement, check
 that the runner takes the argument.**
+
+### 7bw — lf52: pegjump's 19 actions are a THREE-LATCH livelock, and removing every latch is worth zero (2026-08-30)
+
+Rule 7bd's open half asked of `pegjump` on lf52, off the TOOL and never off the harness's stderr.
+Round `scripts/rounds/R101LF52TEN`, four probes, every arm reproducing the banked
+`[8, 52, 60, 64, 139]` / 823 / 0.272727 — including the `hold`, `shadow` and lever arms.
+
+**THE TENURE, per level, and it is much longer than "pegjump holds 19":**
+
+```
+levels 1-5   railpeg alone, 8 / 52 / 60 / 64 / 139        (every action changes the board)
+level 6      railpeg 121 · pegjump 19 · graph 225 · world_model 117 · llm_goal 7 · deadsig 7
+```
+
+⛔ **`world_model` spends 117 actions and changes the board ZERO times — ONE distinct frame hash.**
+With `deadsig` (7, zero) and `llm_goal` (7, one) that is **131 of level 6's 500 actions producing a
+combined ONE board change**, which is a bigger waste than pegjump's entire tenure. `graph` by
+contrast changes it 179 times in 225 and visits 172 distinct states.
+
+**`pegjump`'s 19 actions are 19 `propose` calls, and only ONE is a board move:**
+
+```
+1122 return steps       1   the single jump — it BOARDS a piece onto a cart
+1134 calibration probe  3   each one sets `self._plan = []` BY DESIGN
+1087 settle click       6   inert, paid because the board reads as mid-animation
+1096 return []          9   -> _EMPTY_TOLERANCE, retired
+```
+
+⭐ **THE BRIEFED SELF-INFLICTED RETIREMENT IS REAL AND EXACTLY DATED.** A calibration probe clears
+the plan, so the next `_ensure_plan` must re-plan the same railhead move — and re-planning an
+explore/railhead move is what increments `_barren`. **The calibration is billed to the patience
+budget it is buying.** Three probes, three increments, `_GIVE_UP` is 3:
+
+```
+451  third probe        _barren 2 -> 3
+453  _dirmap[(0,-1)] = 3    <-- it LEARNS the direction it wanted
+454  _ensure_plan returns 0.0 because _barren >= 3   <-- one action later
+```
+
+It runs out of patience **one action after the calibration succeeds**, and `_barren` resets only
+when `known` grows, which needs the drive the latch forbids: a latch clearable only by the action
+it prevents.
+
+⛔ **AND IT IS WORTH NOTHING. Four levers, twelve arms, `scripts/_lf52_patience.py`:**
+
+```
+lever                     pegjump's level-6 tenure   known_max   per-level counts
+(none)                          19 actions              24       [8,52,60,64,139]
+nocharge (probe not billed)     25                      24       IDENTICAL
+patient  (no barren cap)        25                      24       IDENTICAL
+patient + hold (never retired) 378                      24       IDENTICAL
+```
+
+**Unlimited patience buys it 359 extra actions and moves its map by ZERO cells and the score by
+ZERO.** That is rule 7bg's `hold` result on a third game, and the eleventh closed lf52 hypothesis.
+
+**WHY 378 ACTIONS PRODUCE NOTHING — a second and a third latch, named by
+`scripts/_lf52_nodrive.py`, identical on both seeds:**
+
+```
+moves popped by propose:   jump/2 x1 · drive/1 x1 · drive/0 x164 · -/1 x15 · -/0 x196
+tiers reached:             railhead HIT x6 · explore NEVER · probe NEVER
+at every drive/0:  settles 205..368 (monotone) · misaligned 0 · doubt 0 · board_read True
+                   sync_res placed=False · the popped drive's direction IS in _dirmap
+```
+
+⭐ **164 times it pops a `drive` it knows how to express and emits NOTHING**, at
+`propose`'s `if self._settles > 8: return []`. `_sync` is IDEMPOTENT PER FRAME (a deliberate,
+correct guard — running it twice installed a stale board), so its `placed=False` verdict is CACHED
+against the frame hash. The tool then declines to emit the one settle click that could change the
+frame, because `_settles` is long past 8. **It is waiting for a board to settle that only its own
+click could disturb, and it has already spent its click budget.**
+
+⛔ THE GENERAL SHAPE, and it is not lf52-specific: **a per-frame memo plus a give-up counter make a
+livelock whenever the tool's own action is the only thing that would invalidate the memo.** Either
+side alone is sound. `_settles` is never reset because reset lives on the path the counter blocks.
+
+⚠️ Both `hold` arms and both `shadow` arms are recorded for the successor question. `pegjump`
+recovers when DISPLACED (90 of 359 shadow asks speak, first at +66 actions) and does NOT recover
+when handed the board (203 consecutive NOPLAN) — the bp35 finding of rule 7bh, third instance.
+`railpeg hold` ends the run at 633 actions instead of 823 with the same per-level counts.
+
+### 7bx — lf52's off-frame board IS reachable — the scroll is armed 376 of 378 decisions and pegjump never fires it (2026-08-30)
+
+The coordinator's target after rule 7bq: *"at each of pegjump's decisions, how much of the board is
+off-frame, and is there any action available that would bring the missing part into view?"* Asked of
+the ENGINE, beside the tool, once per action (`scripts/_lf52_offframe.py`, artefacts
+`scripts/rounds/R101LF52TEN/offframe.json`). Every arm reproduces `[8, 52, 60, 64, 139]` / 823.
+
+The game's own source gives a decidable oracle: on level 6 the camera moves in exactly three ways —
+a jump landing on `(7,6)` at offset `(5,5)`, a jump landing on `(18,2)` at offset `(-57,5)`, or **a
+cart DRIVE while a piece rides that cart**. So "could the camera move from here" is answerable at
+every decision.
+
+```
+who           actions   distinct cams   piece ABOARD a cart   scroll possible   model map
+railpeg          121         12               84 / 121            86 / 121      33 cells, cols 1-7
+pegjump          378          1              376 / 378           376 / 378      26 cells, cols 0-9
+graph            225          7              225 / 225           225 / 225      —
+world_model      117          1              117 / 117           117 / 117      —
+```
+
+⛔ **THE ANSWER IS YES, ALMOST ALWAYS — AND THE TOOL WITH THE MECHANISM NEVER TAKES IT.** `pegjump`
+makes exactly one real move on level 6: it BOARDS a piece onto a cart (the hard half of
+`railhead_moves`, the two-mechanism composition rule 7bo was written for). The rider then sits there
+for 296 consecutive actions and the cart is never driven. Its camera count is **ONE**. `graph`,
+which has no board model at all, moves the camera through **seven** positions; `railpeg` through
+**twelve**, sweeping `5 → -75 → -21 → -57 → -15 → -75 → -57` inside 121 actions.
+
+⚠️ **SO "IT CANNOT SEE THE REST OF THE BOARD" IS REFUTED IN THE STRONGEST AVAILABLE FORM.** The tool
+that matters — `railpeg`, the one that takes levels 1-5 outright and holds level 6 first — **already
+rides the whole board, repeatedly, and still cannot win it.** Widening the window is not the missing
+capability; it is already happening on the tool that could use it. That is the eleventh closed lf52
+hypothesis, and it is closed against the successor of the tenth (rule 7bn: handed the engine's TRUE
+six pads offline, `plan_moves` returns the identical fatal capture).
+
+⭐ What the census DOES leave standing, stated so it is not confused with a repair: `railpeg`
+retires at cam `-57` with a boarding move AVAILABLE (`boarding` = 1 on each of its last six
+decisions) and `aboard` = 0. It put a rider down and stopped. Whether a tier that keeps a rider
+aboard clears the level is UNMEASURED — but rule 7o applies in full, because every arm that gave a
+peg tool more of level 6 (patience, hold, both) moved **no per-level count on any of them**.
+
+⛔ AND ONE INSTRUMENT NOTE. `_lf52_offframe.py` reads `pegjump`'s own view by wrapping
+`_ensure_plan`, never by calling `detect` off-schedule — rule 7ah, and on this family `detect` runs
+the whole planner. The `patient`/`hold` levers used to buy 378 decisions instead of 19 were measured
+INERT first (rule 7bw) and are magnifiers, not a different run.
+
+### 7by — transfer at 0.9082 — one level of one game moves (2026-08-30)
+
+`bash scripts/xfergate.sh xfer10 scripts/rounds/R101SHIPPED 12 4000` — all fifteen archived
+re-renders substituted into a private snapshot, full 25, versus the live card:
+
+```
+MEAN archived 0.9072      MEAN live 0.9082      ratio 0.9989
+ONE game differs in the whole set:  s5i5  0.5833 -> 0.5593
+  and inside it, ONE level:         L4    39 -> 61 actions   (still CLEARS, 1.0 -> 0.7837)
+  L1 13 · L2 30 · L3 47 · L5 32 · L6 31 — action-for-action identical, as are all 24 other games
+```
+
+⭐ **Twenty-four of twenty-five games score identically, action for action, on a board re-rendered
+with different sprite tags and coordinates.** The ten games with no archive run live in both arms
+and are identical too — that is the instrument's own determinism control, and it passed. This is the
+best transfer number the repository has recorded (previously 13 of 14, ratio 0.9981, at 0.8935).
+
+⚠️ **AND IT IS STILL WEAK EVIDENCE, SAID PLAINLY.** A re-render is the SAME GAME. It proves the tools
+read MECHANICS rather than memorised pixels — a floor on brittleness — and it does not predict a
+game we have never seen, which is what all 110 private games are. ⛔ Do not quote 0.9989 as a
+transfer coefficient for the leaderboard.
+
+⛔ **THE COMPARATOR SAYS "REGRESSED" AND IT IS THE WRONG WORD HERE.** `compare.py` is a GATE's
+instrument: its job is to refuse a CODE change that costs a game. In a transfer run the code is
+fixed and the BOARD changed, so a lower score means *failed to transfer*, not *regressed* — and the
+two call for opposite responses (investigate the tool's board-reading vs revert). `xfergate.sh` now
+prints that correction under the verdict. **An instrument borrowed from another question answers
+the question it was built for.**
+
+⚠️ `game_id` is IDENTICAL across both s5i5 arms (`s5i5-18d95033`) even though the content differs —
+the same trap rule 7bu names. The artefact cannot tell you which board it scored; only the procedure
+can, which is why the procedure is now a committed script.

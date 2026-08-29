@@ -1,0 +1,59 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 1.0,
+  "total_score_pct": 100.0,
+  "games": [
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 6,
+      "elapsed_s": 23.54,
+      "total_actions": 112,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 6,
+          "human_actions": 39,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 8,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 11,
+          "human_actions": 25,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 26,
+          "human_actions": 148,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 29,
+          "human_actions": 96,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 32,
+          "human_actions": 152,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80"
+    }
+  ]
+}

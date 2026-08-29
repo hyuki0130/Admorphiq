@@ -88,4 +88,9 @@ EOS
 mkdir -p "$OUT/games"
 scp -q -i "$KEY" "$REMOTE:~/${SNAP}_out/*.json" "$OUT/games/" || { echo "⛔ pull failed"; exit 1; }
 echo "=== transfer: archived re-renders vs $BASE (live)"
+# ⛔ READ compare.py's VERDICT LINE AS "DIFFERED", NOT "REGRESSED". Its language is a GATE's — it
+# exists to refuse a code change that costs a game — and here nothing about the code changed: the
+# BOARD did. A game that scores lower on a re-render has not regressed, it has failed to transfer,
+# and the two call for opposite responses (revert vs investigate the tool's board-reading).
 uv run python scripts/rounds/compare.py "$OUT" "$BASE"
+echo "⚠️  above: 'REGRESSED' means DIFFERED ON A RE-RENDER. Nothing here is a reason to revert."
