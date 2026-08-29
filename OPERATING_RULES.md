@@ -3270,6 +3270,13 @@ ONE game differs in the whole set:  s5i5  0.5833 -> 0.5593
   L1 13 · L2 30 · L3 47 · L5 32 · L6 31 — action-for-action identical, as are all 24 other games
 ```
 
+⛔ **CORRECTED BY A PEER (rule 7ce): the archive covers FOURTEEN games, not fifteen.**
+`environment_files_archive/sk48` is version hash `41055498` — the same hash the LIVE tree holds,
+byte-identical — so substituting it is a self-substitution and carries no evidence. ⚠️ My count came
+from `ls environment_files_archive | wc -l` and never checked whether a substitution CHANGED
+anything: **an instrument that counts inputs instead of effects**, which is the family this file
+keeps meeting. The result stands; what shrinks is how many games the evidence covers.
+
 ⭐ **Twenty-four of twenty-five games score identically, action for action, on a board re-rendered
 with different sprite tags and coordinates.** The ten games with no archive run live in both arms
 and are identical too — that is the instrument's own determinism control, and it passed. This is the
@@ -3398,6 +3405,14 @@ lf52 cleared     34 of 323 = 10.5%      0 dead, 34 edge-only   -> 0% waste
 bp35 level 6    205 of 499 = 41.1%      0 dead, 205 edge-only
 cd82 cleared     44 of 131 = 33.6%     16 dead, 28 edge-only
 ```
+
+⛔ **CORRECTED BY RULE 7cf (same day, and in the GENEROUS direction, which is the dangerous one).**
+The two `-> 0% waste` readings above are WRONG. **`edge-only` is not a safe harbour**: whether it means
+"a real effect we discarded" or "only the counter ticked" depends on whether that game's band IS a
+counter, which has to be measured per game and per action class. r11l's band moves at rate **1.000 on
+every class** — a pure counter — so its 39 edge-only actions are genuinely inert. Recomputed,
+cleared-level dead actions go **68 -> 124 of 6381 (1.07% -> 1.94%)**. The score conclusion is
+unchanged (r11l is at 1.0 on every level), but the RATE is what would transfer.
 
 ⚠️ Read the other way, `raw != any` alone is the trap rule 7c already named: on bp35 and r11l it
 reports **zero** inert actions where the interior test finds hundreds. **Neither test alone is
