@@ -216,11 +216,17 @@
 > --agent unified        (generic tools alone, zero adapters)           0.8874
 > ```
 >
-> ⛔ **`notebooks/kaggle_submission.py` ships `KaggleDetectAgent`** — grep it for `harness`,
-> `UnifiedAgent` or `default_tools` and you get ZERO. The reason was mechanical, not a decision:
-> six Kaggle wrappers existed (BC, online-RL, chained, world-model, detect, graph-frontier) and
-> **none wrapped the generic harness**, so the axis rule 7a develops had no route to a notebook.
-> **`src/admorphiq/kaggle_unified_agent.py` now exists**; `--agent kaggle_unified` measures it and
+> ✅ **RESOLVED — `notebooks/kaggle_submission.py` NOW SHIPS `KaggleUnifiedAgent`** (commit
+> `f1067554`, verified 2026-08-30 by grepping the file: `AVAILABLE_AGENTS[AGENT_KEY] =
+> KaggleUnifiedAgent`). The generic path measured at **0.9082** IS the shipped path; nothing is
+> stranded and there is no switch left to make. ⚠️ Two paragraphs of this file said otherwise for
+> days — if you are about to re-do this work, grep the notebook first.
+>
+> _History, because the reason it was ever stranded is the reusable part:_ the notebook shipped
+> `KaggleDetectAgent`, and the cause was mechanical rather than a decision — six Kaggle wrappers
+> existed (BC, online-RL, chained, world-model, detect, graph-frontier) and **none wrapped the
+> generic harness**, so the axis rule 7a develops had no route to a notebook.
+> **`src/admorphiq/kaggle_unified_agent.py`** closed that; `--agent kaggle_unified` measures it and
 > is verified to give the SAME number as `--agent unified` (lp85 0.9099, ka59 1.0000 both ways).
 > The wrapper MIRRORS `_make_agent("unified")` line for line — diverging is how a card drifts from
 > its own scoreboard.
@@ -2035,10 +2041,11 @@ ssh -i ~/VM/keys/nfw-dev.pem ubuntu@ceph-build \
 ⚠️ `uv` lives at `~/.local/bin` and is NOT on the default ssh PATH. `._*` files there are macOS tar
 artefacts, and any file-list diff between the machines needs `LC_ALL=C sort` or it is nonsense.
 
-**The submission path is `notebooks/kaggle_submission.py` → `KaggleChainedAgent` →
-`WorldModelAgent` + `UnifiedAgent`** — the cd82 `ring_paint`, sb26 `portal_sort` and su15 solvers
-that produced the 0.20 card live in `world_model_agent.py`, NOT in `adapters25`. Measure a candidate
-with `--agent chained`. ⛔ A submission is not made until its BUILD is committed (kernel source,
+⛔ **STALE AS WRITTEN — the submission path is `notebooks/kaggle_submission.py` →
+`KaggleUnifiedAgent` since `f1067554`; measure a candidate with `--agent kaggle_unified`.**
+_(What follows described the 0.20 card and is kept only as provenance.)_ The path WAS
+`KaggleChainedAgent` → `WorldModelAgent` + `UnifiedAgent`; the cd82 `ring_paint`, sb26 `portal_sort`
+and su15 solvers that produced the 0.20 card live in `world_model_agent.py`, NOT in `adapters25`. ⛔ A submission is not made until its BUILD is committed (kernel source,
 `kernel-metadata.json`, push command, dataset-version → commit mapping) — the 0.20 card's build
 procedure was never recorded and had to be recovered from the r53 round page.
 
