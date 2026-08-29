@@ -1870,6 +1870,11 @@ appends, so a probe printing a JSON line over ~4KB INTERLEAVES and every run but
 
 ### 7au — lf52's whole remaining 0.7273 is ONE MOVE, and the tool arms its own trap (2026-08-30)
 
+⛔ **SUPERSEDED IN PART BY RULE 7av (2026-08-30, measured)**: the two attributions below are
+wrong — the losing jump is `pegjump`'s and the restarting click is `graph`'s — and forcing the trap
+not to spring, at each of the eight moments the board allows it, leaves the score byte-identical.
+Read 7av before acting on anything in this entry.
+
 ⭐ **THE THIRD CAPTURE IS THE LEVEL'S DESIGNED LOSING MOVE, read from the game's own source.** At
 level-6 action 124 the tool jumps (14,2) over (15,2) onto (16,2) — and `cfilhtifcb`'s level-6 branch
 says: landing on (16,2) **while red stands on (6,6)** calls `pchvqimdvj()`, the author's own "this
@@ -2037,3 +2042,98 @@ strongest form the verdict comes in.
 experiment cannot ride into a gate — that is what rule 7l bought. But `ptest.sh --dirty` and
 `pfan.sh` ship the WORKING TREE deliberately, so they see everything anyone is holding.
 **If your own numbers look inexplicable, `git status --short src/` is the first thing to check.**
+
+### 7av — lf52: the designed losing move costs NOTHING, and rule 7au mis-attributed it (2026-08-30)
+
+⛔ **THIS SUPERSEDES THE TWO TASKS RULE 7au HANDS OVER.** 7au reads: `railpeg` takes level 6's losing
+jump at action 124, then clicks for 143 actions and restarts the level; the repairs are "stop
+clicking when nothing is legal" and "make the third capture the eighth candidate". Four probes, each
+reproducing the banked `[8, 52, 60, 64, 139]` / 823 / 0.272727 (`scripts/_lf52_cens.py`,
+`_lf52_who.py`, `_lf52_arm.py`, `_lf52_disarm.py`; raw in `scripts/rounds/R101LF52`):
+
+**(a) `railpeg` neither takes the jump nor makes the clicks.** Read off the harness's own `_current`
+per action: level 6 is `railpeg` 0-120, `pegjump` 121-132, `graph` 133-499. The losing capture is
+**pegjump's**, ten actions after railpeg was retired into `_failed`; the restarting click at action
+266 is **graph's** — so 7au's explanation for it ("the hot zone is SCREEN space and railpeg plans in
+WORLD space") describes a tool that was not holding the board. ⚠️ Both errors come from attributing
+an action to whichever tool had been playing earlier. `scripts/trace_attribute.py` exists for this.
+
+**(b) There is no candidate ORDER to repair.** Recording the real final loop of `plan_level` (by
+wrapping `capture_reachable`, never re-implementing the search): over **all 20** of railpeg's
+candidate turns on level 6, `capture_reachable` is False for **every** candidate and `plan_level`
+returns None. At actions 114-121 the list holds exactly ONE candidate — the losing landing — and
+`refuse_fatal` refuses it and bids 0.0. railpeg refuses *every* capture on that level; it never
+ranks the fatal one first because it never ranks one at all.
+
+**(c) The trap is disarmable, and disarming it changes NOTHING.** The engine's fatal branch needs a
+piece standing on (6,6); its own legality predicate says that piece can still leave at level-6
+actions 24, 25, 26, 27, 28, 79, 80 and 81 — the last of them 43 actions before the capture. Nine
+arms in one fan, one per opportunity, each playing that jump itself and handing control straight
+back:
+
+```
+arm -1 (control)  zv fires at 124   5 levels  823a  0.272727   <- reproduces the banked run
+arms 0..7         zv NEVER fires    5 levels  825a  0.272727   levels 1-5 identical in all
+                  the jump lands on every arm (checked over the 10 frames after it, not the first)
+                  control takes 3 captures; every disarmed arm takes 2 and never reaches a third
+```
+
+⭐ **The branch is never lost, there is no frozen board, there is no restart — and the score is
+byte-identical.** Which also prices 7au's other task: the 376 actions after the capture are worth
+zero, because `no_progress` gives level 6 a 500-action window whatever happens inside it and the
+level never clears. "Stop proposing when nothing is legal" remains a real safety property with **no
+measurable price on this game**, so per rule 7b nothing was kept.
+
+⚠️ **THE GENERAL LESSON, and it is the one worth carrying off lf52**: a scripted losing move read out
+of a game's source is a compelling story, and it was still the wrong thing to work on. The board
+freezes, the level dies, the source names the exact conjunction — and preventing it eight different
+ways moves nothing, because the tool cannot get past that point either way. ⛔ **Before repairing the
+move a level dies on, force the death not to happen and check the score.** That question is one fan
+and it retires a whole axis; `scripts/_lf52_disarm.py` is the shape (force it, hand control back,
+positive control = did the forced move actually land).
+
+### 7az — cross-level mechanic carry: CLOSED with a number, and the HYPOTHESIS SHAPE is refuted (2026-08-30)
+
+The premise was "a tool that will own a LATER level sits idle through EARLIER ones, so it arrives
+without the vocabulary a human has just used six times". Censused over all 25 games — a transparent
+spy over `UnifiedAgent` driven through `score_efficiency`'s OWN `run_game`, **every game reproducing
+the banked gate score AND action count exactly**.
+
+```
+20 of 25 games are held by ONE tool from level 1 to the end       nothing to gain, by construction
+ 5 of 25 have a second tool arrive — and in ALL FIVE it arrives at the TERMINAL level
+   bp35 graph 486a  · lf52 pegjump+graph 377a · s5i5 linkage 463a   ALL CLEAR NOTHING
+   ls20 fogscout 220a (clears; efficiency only) · re86 reforge (clears; already 1.0000)
+```
+
+⛔ **THE SHAPE IS REFUTED, NOT JUST THE SIZE: no tool in the 25 ever owns a level with another level
+after it that it sat out.** Every handover is to the terminal level — **the second tool is the
+successor to a failure, not a specialist waiting its turn.** There is no game on which to measure the
+thing the hypothesis describes.
+
+**THE ONE CASE WITH HEADROOM, sized on the tool's own labelled census** (`fogscout` tags each action
+with the planner clause that issued it): of its 220-action tenure, **vocabulary is 56 (25%) and
+walking is 164 (75%)**. Deleting the entire vocabulary slice for free — a fantasy bound, since
+`mark` and `look` read level 7's OWN board — is **+0.0035 on the mean**; deleting only the
+transferable `press` excursions is **+0.0011**.
+
+⛔ AND THE COST IS TWO HARNESS-WIDE CHANGES, ONE ALREADY MEASURED CATASTROPHIC:
+- `observe` is NOT called on every tool (`loop.py:728-757`) — only the ACTIVE tool and tools flagged
+  `augmenter`, of which there is exactly ONE in 47. **R53 already shipped observe-all and measured
+  m0r0 at 0/6 in the full harness while the graph tool ALONE clears it** — every tool's model
+  polluted by other tools' actions. The `augmenter` flag is the carve-out that survived.
+- ⭐ A SECOND WALL NOBODY HAD NAMED: `_reset_level` calls `t.reset()` on EVERY tool at EVERY level-up
+  (`loop.py:210-212`), and `fogscout.reset()` clears `self.kind` — literally the "three changers"
+  vocabulary. **So an observe channel alone buys ZERO**; whatever an idle tool learned is wiped at
+  the boundary.
+
+Against +0.0011..+0.0035: two changes touching all 25 games and all 110 private ones, one whose exact
+form is a measured -1.0 on m0r0, `detect` already impure in 19 of 49 tools, and a much smaller
+harness edit that cost -0.1621 on one game the same day. **Expected value negative. CLOSED.**
+
+⚠️ THE HONEST RESIDUAL, and it is the reason this is closed rather than refuted for the private 110:
+the census is of 25 games where 20 are owned end-to-end by a specialist THAT ALREADY EXISTS. On an
+unseen game with no specialist, `graph` plays from level 1 and the question never arises in this
+form. If cross-level carry is ever built it must be argued from a game where a tool plays levels
+k..n after sitting out 1..k-1 **and then has levels left to play** — and no such game exists on the
+public 25 to measure it on.
