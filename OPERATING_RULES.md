@@ -1699,3 +1699,29 @@ board it was tuned on.
 makes the bound trustworthy (level 6 MUST swing a bar off the top edge and stays at 31 actions;
 margin 0 cannot win at all). **A negative volunteered about your own change is worth more than a
 positive you were asked for.**
+
+### 7ar — the six capped games that CANNOT be transfer-tested are at least DETERMINISTIC (2026-08-30)
+
+Ten of the twenty-five games have no entry in `environment_files_archive/`, so rule 7ab's re-render
+test cannot reach them — and five of those ten sit at the 1.0 cap, including **wa30, conquered
+today**. A capped game with no transfer evidence and no repeat is a number that might be a draw.
+
+Three repeats each, `--agent unified` @4000 from a private snapshot of HEAD:
+
+```
+cd82  1.0000  132 132 132        sb26  1.0000  124 124 124
+ft09  1.0000   79  79  79        tr87  1.0000  145 145 145
+g50t  1.0000  296 296 296        wa30  1.0000  720 720 720
+```
+
+**Six of six are identical ACTION FOR ACTION across three runs.** ⭐ So their gated numbers are rates
+and not draws, and wa30's conquest reproduces exactly three times over.
+
+⚠️ **DETERMINISM IS NOT TRANSFER, and it must not be reported as if it were.** It rules out a
+different failure — a tool that scores 1.0 on a lucky ordering — and says nothing about a board with
+different mechanics. The ten games without an archive remain untested for transfer by any means we
+have, and that is a real hole: **bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87, wa30.**
+
+⛔ Cheap and worth repeating after any wave of per-game tool work. Combined with rule 7ab (12 of 15
+archived games identical action-for-action) the set now has **21 of 25 games with at least one form
+of stability evidence** — 15 by re-render, six more by repetition.
