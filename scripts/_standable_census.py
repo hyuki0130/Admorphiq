@@ -24,7 +24,10 @@ What is counted, once per turn, on the tool's OWN current world:
 ⭐ And the proof that needs no interpretation: a cell that was MIXED-REJECTED on some turn and
 that the avatar LATER STANDS IN. The rejection cannot have been right.
 
-  arg 1 = 1-based index into the sorted game list (a fan slot; 25 games, one per slot).
+  arg 1 = 1-based index into the sorted game list (a fan slot; one game per slot).
+  arg 2/3 = optional `_dc22_percep` / `_dc22_gantryx` masks. The PROOF column can only ever be
+  non-zero where the avatar actually REACHES a condemned cell, and on dc22 that happens only under
+  the previous pass's arms, which carry it through the aimed teleport into the plate cluster.
 Rule 7x: the scorer's own `run_game` drives it.  Rule 7f: the level count prints as a number.
 """
 from __future__ import annotations
@@ -109,6 +112,14 @@ def instrument():
 
 def main():
     idx = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    pmask = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    gmask = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    if pmask:
+        from _dc22_percep import apply as apply_percep
+        apply_percep(pmask)
+    if gmask:
+        from _dc22_gantryx import apply as apply_gantryx
+        apply_gantryx(gmask)
     instrument()
     from arc_agi import Arcade, OperationMode
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
@@ -123,7 +134,7 @@ def main():
              for c in set(ST["condemned_at"]) & set(ST["occupied_at"])
              if ST["occupied_at"][c] > ST["condemned_at"][c]}
     print(json.dumps({
-        "idx": idx, "game": ei.game_id,
+        "idx": idx, "game": ei.game_id, "pmask": pmask, "gmask": gmask,
         "levels_completed": int(res.get("levels_completed") or 0),
         "total_actions": res.get("total_actions"), "game_score": res.get("game_score"),
         "tool_turns": ST["tools"], "turns_with_not_floor": ST["turns_with_nf"],

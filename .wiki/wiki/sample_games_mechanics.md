@@ -2795,4 +2795,16 @@ the precondition is the structural change, and it must be gated hard — **dc22 
 the 1.0 cap with as little as 8 actions of slack (level 3: 59 ours vs 67 human)**, so any extra
 probing on those levels costs more than level 6 can return.
 
-Probes: `scripts/_dc22_rail.py`, `_dc22_plate.py`, `_dc22_plateverify.py`, `_dc22_reask.py`.
+### How far the floor defect reaches — CENSUSED, and it is dc22 alone
+
+`scripts/_standable_census.py`, full 25, one slot per game, zero errors. Only dc22 ever has a
+non-empty `_not_floor` (584 turns, colours `[0, 5]`, 107,969 mixed rejections over 344 distinct
+cells); **every other game records ZERO turns of `phase_grid` or `gantry` at all**, which measures
+those tools' selectivity from the other side. Re-run on dc22 with the arms that carry the avatar
+into the plate cluster, the proof that needs no interpretation appears: **cell (55,34) condemned at
+turn 582, occupied by the avatar at turn 680** — the plate that enables the crane's UP drive.
+⚠️ `sluice.py` does NOT import `phase.py`; it has its own floor rule, so this is a two-tool finding.
+Lesson: [[lessons/floor_rule_condemns_a_drawn_tile_20260830]].
+
+Probes: `scripts/_dc22_rail.py`, `_dc22_plate.py`, `_dc22_plateverify.py`, `_dc22_reask.py`,
+`_dc22_floor.py`, `_standable_census.py`.
