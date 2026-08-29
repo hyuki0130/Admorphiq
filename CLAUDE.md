@@ -1,5 +1,36 @@
 # CLAUDE.md — Admorphiq
 
+> ## ⛔ READ THIS BLOCK, THEN `.wiki/wiki/campaign/ACTIVE.md`. NOTHING ELSE FIRST.
+>
+> This file is 2,300 lines. A fresh session does not read it, which is a measured cause of work
+> being redone. Everything you need to ACT is here or in the campaign file.
+>
+> **State**: generic tools, full 25 on ceph-build = **0.8935**, 17 games at the 1.0 cap, cumulative
+> regressions 0, both machines byte-identical. Eight games incomplete.
+>
+> **Every incomplete game has its own background agent.** Do not write probes for them — orchestrate:
+> integrate what they return, gate it, and keep the box busy. See the campaign file for the table.
+>
+> ```
+> bash scripts/ceph_sweep.sh                  # tools x games, 60-way on ceph
+> bash scripts/pfan.sh PROBE.py 60 ARG        # ANY probe, 60-way — the default shape of a probe
+> bash scripts/rounds/gate_tool.sh NAME BASE vc33 TOOL   # gate one change on the full 25
+> bash scripts/kaggle_bench.sh status|results|push       # no --submit by design; the user decides
+> bash scripts/measure_frozen.sh              # PYTHONPATH does NOT select the code the runner runs
+> ```
+>
+> **The five rules that were each learned by losing a day** (full text in `OPERATING_RULES.md`):
+> - **7e** a probe that prints nothing and exits 0 has lost its `if __name__ == "__main__"`.
+> - **7f** "the level number changed" is NOT "we won" — a collapse looks identical. Test `> start`.
+> - **7g** the source says what is POSSIBLE; only a run says what HAPPENS. Verify the branch fires.
+> - **7h** working serially is caused by generating ONE hypothesis at a time. Enumerate, then fan out.
+> - **7b** sweep for an asset already present before digging — that is where every past gain came from.
+>
+> ⛔ **2026-08-29 cost**: 76 commits, **zero surviving source changes**, 14 of them retractions. The
+> remaining 0.1065 is **depth 0.0919 + efficiency 0.0147**, and both halves need capability the tool
+> set does not have — 47 tools solo and 9 combinations were measured and none goes deeper.
+
+
 > ## ⛔ THE LLM WIKI IS THE SINGLE SOURCE OF TRUTH — GO THROUGH IT, ALWAYS
 >
 > `.wiki/wiki/` is not documentation of the work; it **is** the work's memory, and it is the only copy
