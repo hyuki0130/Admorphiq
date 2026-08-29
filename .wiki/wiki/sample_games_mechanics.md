@@ -715,3 +715,24 @@ to a goal cell over static terrain and has no model of a tile whose type advance
 ⚠️ Same shape as bp35's crumbling platform, found the same way and in the same number of reads: the
 level that stops a game introduces exactly one mechanic the tool has never met. That is now TWO for
 two — worth treating as the first thing to check on any stuck level.
+
+### dc22 level 6's cycle is a SWITCH, not a clock — and it turns on one tile
+
+Verified before building anything, which is the discipline this round arrived at late:
+
+- **The cycle does not advance on its own.** Twelve inert actions on level 6 change exactly one
+  pixel, at row 63 column 0 — the step counter. Nothing on the board moves.
+- **Only ONE tile cycles.** `on_set_level` gives the `tewfut-color-cycle` tag to exactly one sprite,
+  and only on level 6: `if self.level_index == 5: ... if vukjorzngu.x == 18 and vukjorzngu.y == 48`.
+  Every other `tewfut` on the board is static.
+- **The trigger is a `buezna` interaction.** Activating one reads its single-character tag as a group
+  selector, calls `ilvrmetiiv(tag, sprite)`, and when the sprite carries `tewfut-color-buezna` the
+  cycle advances one step through
+  `["tewfutpibpar", "tewfutrefgps", "tewfutyefmyf", "tewfutblrmbx"]`.
+
+So the level is: **a switch that advances one tile's colour through four states**, with the win still
+being the game's usual "two sprites reach the same cell". The tool has to notice that a particular
+interaction changes a particular cell's type, and that the right type is a precondition for the route.
+
+⚠️ `gantry` routes to a goal over static terrain, which is why levels 1-5 fall and this one does not.
+But note what is NOT required: no timing, no clock, no hazard. One switch, one tile, four states.
