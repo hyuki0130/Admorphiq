@@ -692,6 +692,74 @@ the HARNESS rather than of whichever tool happens to hold the fogged level. That
 change, and this round has now established what it would have to carry — the gauge colour, the
 refill glyphs, and the fact that a full tank plus a teleport means a death.
 
+### The refuel rule arrived with an EMPTY TANK — 303 -> 237 actions on level 7 (2026-08-29)
+
+`_refuel` diverted only when `left <= dist + 1`: a route that reaches the pickup with nothing
+in the tank and no margin for the walk being one step longer than the map predicts. Measured
+across three fan-outs of 24 runs each (`scripts/_ls20_fuelfan{,2,3}.py`, twelve policies twice
+over; **every variant returned byte-identical numbers on both runs, so ls20 is deterministic
+and one run is a measurement**):
+
+```
+slack 1 (as written)   303 actions   dry 5   7/7
+slack 2 3 4 5 6        237-239       dry 4   7/7      <- one plateau, not a curve
+refuel REMOVED         506           dry 7   6/7      <- the clause is LOAD-BEARING
+```
+
+Shipped as `dist + max(3, full // 5)` — written against the tank so a smaller one is not
+over-served, and chosen from the middle of the plateau rather than its best point, because a
+2-action difference across slack 2..6 is not a tuning surface. **ls20 0.8442 -> 0.9039**
+(level 7 `(186/237)^2 = 0.6157`), **+0.0024 on the 25-game mean**.
+
+⛔ **THE OVERLAY DEATH DETECTOR UNDERCOUNTS 5-TO-1.** The entry above this one sized level 7 as
+"runs dry TWICE" from frames repainting more than half the board. Reading the tool's own
+`moves_left()` instead: the tank reaches **ZERO at ticks 10, 32, 54, 143 and 225** — five dry
+deaths, of which the full-screen test sees one. On a fogged board a large repaint is ambiguous
+and the tank is not; `moves_left() == 0` is the honest detector and costs nothing.
+
+⛔ **AND THREE OF THE FIVE HAPPEN BEFORE THE TOOL CAN POSSIBLY REFUEL.** The first cell it knows
+to be a refill appears at **tick 73**, because `refill_marks` is learned by standing on one and
+watching the bar jump. Until then `_refuel`'s candidate set is EMPTY and no threshold on it can
+matter. So the deaths split cleanly: three are the price of not yet knowing what a refill is,
+two are the ones slack recovers.
+
+**Where the 303 actually went**, attributed by the tool's own clause, split at the first death:
+
+```
+attempt 1  155 actions   map 59, tread 56, mark 21     stood   1 -> 65
+attempt 2  136 actions   win 87, refuel 30, press 11   stood  65 -> 65   (ZERO new cells)
+```
+
+⛔ **LEVEL 7 IS NOT A DISTANCE PROBLEM, AND THAT RETIRES THE WHOLE "PLAN A TOUR THROUGH THE
+PICKUPS" IDEA.** Taking the map the tool itself finished with — 140 open cells, a 21-move tank,
+its two known refills — and solving start-to-goal as a fuel-constrained BFS over (cell, fuel)
+gives **10 actions**. The goal is ten steps from the start. Every one of the remaining 237 is
+discovery under fog plus the token puzzle, so no routing improvement can approach the human's
+186 by shortening the walk.
+
+**Measured and REJECTED, each twice:**
+
+| idea | result |
+|---|---|
+| gauge-colour prior: the pickup is drawn in the gauge's OWN colour, so a ring is a refill on sight | finds one at tick **4** instead of 73, dry 4 -> 3, and **costs 26 actions** (263) — it then diverts all game, refuel 43 vs 17 |
+| the same prior BOUNDED to "only until one is confirmed" | **263, identical** — the cost is not the prior's lifetime |
+| the prior at baseline slack | **502, level LOST** |
+| top up whenever a refill is one step away and the tank is not full | 382 |
+| refuel first when the goal is further than the tank (`_search` never sets `_plan_dist`, so the win walk is committed to unpriced) | 241 alone, **281 when combined with slack** — the two interfere |
+| an absolute feasibility rule (plan longer than tank + refill in range -> always go) | inert, identical to control |
+| `_PURSUIT_CAP` 15 or 60, `_SIGHT_RETRY` 100, `_STALE_LOOK` 120 | all inert |
+| `_STALE_LOOK` **30** | **502, level LOST** — re-looking twice as often is a cliff, not a dial |
+
+⚠️ The rejected rows matter more than the accepted one: FOUR of them lower the death count or
+look strictly more informed, and every one of them costs actions or loses the level. Fewer
+deaths is not the objective; **arriving with slack is**.
+
+**What is left, and why it is not a fuel question.** At 237 the clauses are map 59, tread 56,
+win 38, mark 22, press 17, refuel 17, look ~28. `win` is tried FIRST in `_plan`, so map and
+tread only ever run *because no winning route exists yet* — they are not waste by construction.
+Closing the last 51 actions to the human's 186 means making the win route available sooner,
+which is a question about learning the target token, not about fuel.
+
 ## dc22 level 6 — COLOUR-CYCLING TILES, and it is the round's best target (2026-08-29)
 
 Ranked by what one more level is worth, dc22 leads at **+0.0114** — its next level is its LAST, so

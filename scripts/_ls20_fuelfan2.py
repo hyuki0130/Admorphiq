@@ -38,7 +38,6 @@ import sys
 from collections import Counter
 from typing import Any
 
-
 NVAR = 12
 # (slack, low-gate divisor or 0 for none, gauge-colour prior, top-up-when-adjacent, absolute)
 CFG: dict[int, tuple[int, int, bool, bool, bool]] = {

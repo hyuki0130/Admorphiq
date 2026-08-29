@@ -1610,8 +1610,17 @@ class FogScoutTool:
         # refuelling was 206 of the 342 actions it was given and it learned
         # ZERO changers in that time — it shuttled between refills for its whole
         # tenure and was retired for making no progress, which was exactly true.
+        # ⛔ GO WITH SLACK, not on the last unit. `left <= dist + 1` is a route
+        # that arrives with an empty tank, and it has no margin for the walk
+        # being longer than the map predicts — a deflector, a refused step, a
+        # refill that turns out to be behind one. Measured over 24 deterministic
+        # runs of ls20 (scripts/_ls20_fuelfan*.py): level 7 costs 303 actions at
+        # slack 1 and 237 at slack 4, running dry five times instead of four,
+        # and every slack from 2 to 6 lands on the same 237-239 plateau. So the
+        # lever is HAVING slack; the exact number is not a tuning surface, and
+        # it is written against the tank so a smaller one is not over-served.
         left = self.moves_left()
         full = self.bar_full // self.bar_drop if self.bar_drop else 0
         if full and left > max(3, full // 3):
             return None
-        return step if left <= dist + 1 else None
+        return step if left <= dist + max(3, full // 5) else None
