@@ -60,13 +60,32 @@ allowance (87/131/163 against 64/128/192), so those baselines already contain a 
 vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. Agents live on: **dc22** (the crane's pressure plate), **bp35** (⛔ `_stranded` REFUTED — the run
-   strands TWICE and the body is in the pocket for 1 turn, not 34; and the walled-in attempt earns
-   140 of the board's 370 cells, so deleting it does not leave the clearing attempt intact), **s5i5** (`_settle` banks a SUPERSET of
-   off-grid cells and the win is reachable ONLY off-grid), **railpeg** (`detect` runs the planner and
-   spends the tool's own give-up budget).
+
+1. **LIVE**: lp85 (level 4 alone, 19 actions against a human 16 — the smallest target on the board)
+   and lf52 (why does the map stop at 98 cells / column 25 of 28).
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
+
+### ⛔ CLOSED TODAY WITH PROOFS — three games. Do not re-open without NEW evidence.
+
+- **bp35 = 0.2456.** Every attempt is a near-pure traversal with no slack: 7 spike discovery (proven
+  irreducible — nothing in the frame says which of the ten drawn kinds kills), 34 building 140 of the
+  board's 370 map cells, 44 clearing in **43 against a human 48**. `_stranded` and a pre-entry veto
+  are both refuted; the flat turns TRAVERSE and revisiting is ANTI-correlated with the score (the
+  0.9560 board does twice the true revisiting of the 0.3044 one). ⚠️ The human clears board 2 in ONE
+  attempt, so the whole gap is that it neither dies to the spike nor gets walled in on the way.
+- **s5i5 = 0.5833, not reachable by `swivel` as built.** Thirty arms across five fans, all 0.5833.
+  An engine A* with nothing banned clears in 45 clicks **opening by moving a rider that is already
+  home** — and `swivel`'s decomposition gives each subproblem only the controls touching its own bar,
+  so that move belongs to no subproblem. All 41 runs banning it are EXHAUSTED. Three missing
+  capabilities, none a constant.
+- **dc22 = 0.7143.** The crane is fully decoded (4 plates measured 1:1, 69 presses, zero cross-talk,
+  precondition frame-visible). ⛔ The blocker is OURS — `phase.py:430` condemns a tile if ANY pixel is
+  a banned colour and every plate sprite contains colour 0. Censused across the 25: dc22 only
+  (107,969 mixed rejections; every other game ZERO, and 24 of 25 record no tool turns at all). Proof
+  is one cell — (55,34) condemned at turn 582, the avatar STANDS IN IT at turn 680. ⚠️ Both repairs
+  are measured negative, and levels 1-5 have EIGHT actions of slack, so probing on them loses more
+  than level 6 returns.
 
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 
