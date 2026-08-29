@@ -1282,10 +1282,20 @@ class FogScoutTool:
             # Not on the beat yet: go stand at the far end of it and let the
             # mark walk back into reach.
             return max(lane, key=lambda q: abs(q[0] - c[0]) + abs(q[1] - c[1]))
-        # ⛔ On the beat and the mark is walking AWAY: WAIT, do not follow. A
-        # chase from behind never closes — both move one cell a tick — and it
-        # was 72 misses out of 74 arrivals. Holding position costs one budget
-        # unit and the patrol brings itself back.
+        # ⛔ On the beat and the mark is walking AWAY: do not follow. A chase
+        # from behind never closes — both move one cell a tick — and it was 72
+        # misses out of 74 arrivals.
+        #
+        # ⛔ BUT HOLDING DOES NOT BRING IT BACK EITHER, and this comment said it
+        # did. Measured from the engine's own state (R101LS20FOG,
+        # `scripts/_ls20_census.py`): this family steps every mover BEFORE the
+        # player's move and UNDOES that step when the move is refused, so a
+        # blocked action leaves the joint (avatar, mark) state exactly as it
+        # was and spends one budget unit for nothing — 18 blocked moves in a
+        # winning run, the mark frozen on 18 of 18. There is no waiting on
+        # these boards; a moving mark is met by ROUTING into the cell it steps
+        # onto. Suppressing `_hold` entirely measured 231 actions, identical
+        # per level, so what is left here is the least-bad of two no-ops.
         return self.pos
 
     def _predict(self, sig: frozenset[tuple[int, int, int]]) -> Cell | None:

@@ -234,3 +234,19 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   contact, not restart bookkeeping.
 
 - **R101CONQUEST** ([[r101_conquest-wave]]) — 0.8935 -> 0.9069, re86 and wa30 CONQUERED, nineteen at the cap. The durable half: a level that RESTARTS is invisible to `levels_completed`; the gate itself was the contamination (snapshot it); nine instruments lied and all in the same direction.
+
+- **ls20 / fogscout / level 7 / fuel / mover / patrol / oracle / cannot wait / measured negative** →
+  [[r101_ls20-fog-cost]] — level 7's 231 against a human 186, decomposed with the ENGINE's own state
+  (`scripts/_ls20_census.py`, control reproduces [17,101,63,66,67,100,231] four runs out of four).
+  ⭐ **You cannot wait for a mover on these boards**: `Ls20.step` moves every mover first and UNDOES
+  that step when the player's move is refused, so a blocked action is a strict no-op — 18 of 18
+  measured — which is WHY the earlier "ambush at its remembered beat" arm was exactly inert, and
+  removing `_hold` outright measures 231 unchanged. ⭐ An oracle BFS over the level's own geometry
+  puts a full-knowledge solve at **61 with fuel, 55 without**, against the tool's own
+  knowledge-complete 75 — so the 45-action gap is **three ~15-action gaps** (10 keymaze handover,
+  14 execution, ~21 discovery), not one defect. ⛔ Twelve arms across four axes all lose or are
+  exactly inert: cycle-closure inference (324 / level LOST), motion conjugation (36 fires, EXACTLY
+  INERT — so the token model's completeness is not what gates this level), fuel-first mark seeking
+  (level LOST x2, 343), refuel ranked by round-trip detour (307 x2, level LOST). Open: the handover,
+  and cross-level mechanic carry (a first-time human reaches level 7 having played six levels with
+  the same three changers; `fogscout` cannot, because `detect` is 0.00 on every unfogged board).
