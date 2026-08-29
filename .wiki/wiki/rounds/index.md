@@ -188,3 +188,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   clear; the score case is the private 110. ⚠️ EIGHTEEN games score 1.0 in that baseline, not the
   seventeen CLAUDE.md's header still names (that is the older 0.8935 card) — and `total_actions ==
   sum(per_level)` does NOT detect a death, since the GAME_OVER reset increments both counters.
+
+
+- **level restart / retry / attempts spent as one / wa30 / shepherd / haulage / mover reachability /
+  route-not-straight-line / conquest** → [[r101_wa30-level-restart]] — **wa30 0.8000 -> 1.0000, 9/9,
+  levels 1-8 unchanged TO THE ACTION.** ⭐ The class of failure: a level whose allowance runs out
+  **RESTARTS**, and `levels_completed` does not move, so a tool that watches only that number cannot
+  see the boundary — wa30's last level got EIGHT attempts and six of them were byte-identical
+  replays of the first attempt's endgame, carrying a plan for a board that no longer existed, a
+  held-piece flag and a walker sweep straight across the reset. The board was never short of moves;
+  it was short of ATTEMPTS. Fix = `_reborn` (a restart is a carrier TELEPORT **and** two or more
+  pieces reappearing outside the bays — neither half alone is safe) **plus** `_start_haul` ranking
+  by the WALKING ROUTE to a helper rather than the straight line (the rule `_police` already stated
+  for a thief): wa30's level 9 has a second helper sealed above a hazard band that moves ZERO cells
+  in seventy actions, and a straight line called it four cells from pieces it can never reach.
+  ⛔ **MEASURED that neither rule works alone** — shipped, restart-aware alone, and route-distance
+  alone all give 8,7,7,7,7,7,7; together they clear on attempt 2. ⚠️ Two negatives worth as much:
+  VARYING the retries per attempt makes it WORSE (8,8,6,4,4,4,4 — they were not failing because
+  they were identical but because each was the first attempt's endgame replayed), and learning the
+  allowance from the first death to decline an over-long haul is INERT even though it FIRES (ten
+  refusals, allowance learnt as 69) — an independent confirmation of [[r101_allowance-ledger]].
+  Blast radius MEASURED not argued (`scripts/_wa30_who.py`: `shepherd` appears in no other game's
+  action histogram). Related: [[r101_silent-specialists]], [[r101_allowance-ledger]].

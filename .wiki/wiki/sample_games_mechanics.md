@@ -834,10 +834,19 @@ reading:
   world map survives the restart is playing the level the way its baseline was set.
 
 ⚠️ ar25 and dc22 declare allowances that no baseline exceeds, so they are the control: an allowance
-existing is not the same as an allowance biting (rule 7g, and wa30's declared 70 was measured NOT to
-fire at all on level 9 — the branch never ran). Which of the twelve actually END on overrun has to
-be measured per game, and bp35's is the only one shown firing so far
-(`action 63 NOT_FINISHED / action 64 GAME_OVER`).
+existing is not the same as an allowance biting (rule 7g). Which of the twelve actually END on
+overrun has to be measured per game; bp35's fires (`action 63 NOT_FINISHED / action 64 GAME_OVER`)
+and so does wa30's.
+
+⛔ **CORRECTED 2026-08-29 — "wa30's declared 70 was measured NOT to fire at all on level 9, the
+branch never ran" was WRONG, and it was the load-bearing fact.** Measured whole-game through the
+real harness (`scripts/_wa30_l9diag.py`): the counter fires and the level RESTARTS, **eight times
+in one 1091-action run**, entering level 9 at action 584 and dying every 70 actions thereafter. The
+earlier reading came from watching `levels_completed`, which a restart does not move — the same
+blindness the tool itself had, which is why the tool replayed one losing attempt six times. What
+the corrected fact bought: [[rounds/r101_wa30-level-restart]], wa30 0.8000 -> 1.0000. ⚠️ The general
+lesson is the one this file already states two paragraphs up and then contradicted: **a level that
+restarts is several attempts, and nothing in `levels_completed` says so.**
 
 ## ⛔ REFUTED — the allowance is NOT frame-readable except on bp35 (2026-08-29)
 
@@ -2418,3 +2427,130 @@ about its SEARCH do not survive this board:
 ⛔ **And neither repair is enough on its own**, because the sequencing wall above is upstream of
 both: no ordering of single-unit clicks from the staged orientation reaches the winning lengths.
 
+
+## dc22 level 6 — the tool now RIDES THE TELEPORT, and the four gaps are down to one (2026-08-29)
+
+The recorded position was that `gantry` retires EMPTY at **action 6** on this board because it
+cannot locate the pair it selected, that no perception repair banks anything, and that the work is
+a new tool. All four halves of that are now measured differently. Artefacts:
+`scripts/_dc22_percep.py` (the perception repairs), `scripts/_dc22_gantryx.py` (the model repairs),
+`scripts/_dc22_ptrace.py` (the instrumented full game), `scripts/_dc22_percepfull.py` (the
+8-way repair matrix), `scripts/_dc22_levelread.py`, `scripts/_dc22_l6dump.py`.
+
+### The marker is colour 11 on ALL SIX levels, and it is one 2x2 on every one
+
+Read at the first settled frame of each level (`scripts/_dc22_levelread.py`), whole frame:
+
+```
+level 0  11 x4   squares(11) [[10,24,2]]                   pieces_left (11,14,2)
+level 3  11 x44  squares(11) [[17,43,4],[36,30,2]]         pieces_left (11,14,2)
+level 4  11 x44  squares(11) [[18,44,4],[49,10,2]]         pieces_left (11,14,2)
+level 5  11 x47  squares(11) [[4,53,4],[5,46,2]]           pieces_left (9,14,2)   <- the wrong pair
+```
+
+**On every level colour 11 paints exactly ONE 2x2, and on levels 4-6 it also paints a 4x4 CONTROL
+in the panel.** `_solid_block` refuses two blocks, so the locator gives up on ambiguity instead of
+discriminating — and a 2x2 and a 4x4 are different SIZES. The 2x2 at frame (5,46) on level 6 is
+the goal. So the tool did not lack a mechanic; it lacked a size test.
+
+### The goal is CONNECTED FLOOR, not an island
+
+Frame rows 3-10, columns 42-49 are the goal platform in colour 2, and rows 5, 6, 9 and 10 carry
+colour 2 continuously from column 32 to column 49 — across columns 40-41, which the split calls
+panel. The goal was never outside the reachable board; it was outside the board the tool SEARCHED.
+
+### ⛔ "The whole-frame board loses two levels because the panel's ground reads as floor" is HALF RIGHT
+
+Measured, all 8 combinations of {S = locate by the avatar's own square size, C = carry the piece
+pair across levels, W = whole-frame board with the panel's ground named non-floor}, full game, per
+level (`scripts/_dc22_percepfull.py`, `scripts/pfan.sh dc22pfull`):
+
+```
+W unconditional (masks 4,5,6,7)   2/6, 2/6, 3/6, 4/6   level 1 goes 31 actions -> 52
+S+C, no W (masks 1,2,3)           5/6, 925 actions, 31/53/59/87/195, 0.714286 — BYTE IDENTICAL
+```
+
+Naming the ground is not enough: widening also turns every panel control into an object to walk to
+and a tile to press on. **Widen only on the evidence that the marker is not locatable in the narrow
+board** and every level whose goal is already in it is identical BY CONSTRUCTION, not by luck. The
+8-way matrix re-run with that condition is 5/6 and 31/53/59/87/195 on all eight masks.
+
+### With S + C + conditional-W the tool is ALIVE for the whole level, and reads all three rings
+
+Instrumented full game (`scripts/_dc22_ptrace.py`), gantry's own state on level 6:
+
+```
+before   n=6   dead=True, avatar=-1, no start, no goal
+after    n=500 alive, board_w 64, start tracked, goal (5,46)
+         rings: (8,56) period 6   (25,51) period 2   (47,50) period 4
+```
+
+Those are the staircase, the teleport and the colour-cycle aimer — the three the game's own source
+declares. The third only appears after the avatar walks onto the `piyqze` key at frame (17,6),
+which the tool reaches on its own at action 300.
+
+### ⛔ A LOCATOR MUST TRACK, NOT JUST DISAMBIGUATE — measured at action 293
+
+Uniqueness alone dies mid-level: at action 293 a control UNLOCKS and is drawn as a **second 2x2 of
+the marker's own colour** at (45,51), so `unique_square` returns None and the tool goes silent for
+the rest of the level. The rule that survives is continuity — the piece is the candidate nearest to
+where it was last seen, and a board cannot break that by drawing a new button elsewhere.
+
+### ⛔ THE "PRESS A CONTROL WHILE STANDING ON A PAIRED TILE" BRANCH WAS UNREACHABLE
+
+`gantry._act` has a branch whose comment says "test a twin tile the moment the avatar is STANDING
+on one". It cannot fire. `_portals` re-reads each remembered object's picture off the live board,
+and the avatar's square is exactly one tile — so the tile it stands on reads as a square of the
+avatar's colour, pairs with nothing and drops out of the set. **Measured: 268 presses over a whole
+game and not one from (47,18), the tile whose teleport is the level's only way off the island**,
+although the tool's own routes stood on it.
+
+⛔ And the obvious repair is measured HARMFUL. Remembering EVERY object's picture takes dc22 from
+5 levels to **3** — this family repaints tiles for a living, so a stale picture pairs tiles the
+board has since changed. Only the ONE tile under the avatar may come from memory.
+
+⛔ A second harmful form: probing the paired tile BEFORE the plan in hand (so the tool does not walk
+across one on its way elsewhere) also gives **3/6**. The probe has to stay where the inherited code
+put it — after the route to the goal has failed — which is already the right cost order.
+
+### THE TELEPORT IS NOW MEASURED, AND IT IS AIMED
+
+With the warp keyed on the phases of the OTHER rings (`scripts/_dc22_gantryx.py`):
+
+```
+(25,51) at (47,18)   staircase=1,2,3            -> (51,32)
+(25,51) at (47,18)   staircase=4, aimer=3       -> (57,34)
+(25,51) at (51,32)                              -> (47,18)
+(25,51) at (57,34)   staircase=4, aimer=3       -> (47,18)
+```
+
+That is the game's own destination selector, recovered from frames with no privileged access. The
+tool rides it: its last position on the level is **(55,34)**, in the plate cluster the oracle's plan
+reaches at the same stage.
+
+⛔ **The aim key must NAME its rings, not count them.** A positional tuple changes LENGTH the moment
+a control unlocks, so every measurement taken before the aimer existed becomes unmatchable — the
+four destinations were all read correctly and the route could use none of them. Keyed by
+`(control, phase)` pairs, an older measurement still matches on the rings it does name.
+
+### What is left, stated as work
+
+```
+levels_completed 5   total_actions 943   0.714286   gantry alive 230 turns on the last level
+kinds  (8,56) phase  (25,51) phase  (47,50) phase  (32,50) phase  + four idle
+drives 0        <- the crane is never found
+```
+
+The tool reaches the plate cluster and then retires after three turns with no route. **The one
+remaining gap is the crane**: four drive buttons, each visible only while the avatar stands on its
+own pressure plate, so each reads as an inert control from anywhere else, `_edges` never learns a
+rail, and `_register_slide` never gets the second control it requires before believing a gantry.
+The gate scaffolding is written (`_gate`, `_hidden`, and a `_plan_full` that refuses a hidden drive
+from a cell it was never visible at) and is a no-op so far because **no control was ever observed
+to DISAPPEAR** — `hidden` is empty at the end of the level, so the gate has no evidence to act on.
+That is the next measurement: which of the four idle controls appear and vanish with the avatar's
+cell, and whether pressing one while standing on its plate slides a body.
+
+⚠️ Nothing here is committed to `src` — every number above is a monkeypatch measurement, and the
+score is UNMOVED at 0.714286. What is banked is that four of the five walls are down and the fifth
+is named.

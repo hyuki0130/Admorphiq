@@ -6,6 +6,10 @@ verdict: CONQUERED — wa30 0.8000 -> 1.0000 (9/9), levels 1-8 unchanged to the 
 commit: see scripts/rounds/R101WA30/COMMIT
 ---
 
+> wa30's last level restarts on its 70-action overrun, so the harness gets EIGHT tries at it —
+> and six of them were byte-identical replays of the first, because nothing was watching for the
+> restart. The board was never short of moves; it was short of ATTEMPTS. 0.8000 -> 1.0000.
+
 # wa30 — the last level was never a planning problem, it was eight attempts spent as one
 
 ## What was wrong
@@ -106,4 +110,4 @@ schedule search over the real engine, replayed outside the search that found it,
 69-action variants in `schedule_search.jsonl`. Those used engine internals as an oracle and are
 proof-of-possibility only — not shippable, and not how the tool gets there.
 
-Related: [[.wiki/wiki/sample_games_mechanics]], [[.wiki/wiki/rounds/r101_silent-specialists]]
+Related: [[sample_games_mechanics]], [[r101_silent-specialists]], [[r101_allowance-ledger]]
