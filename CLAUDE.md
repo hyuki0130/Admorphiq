@@ -40,6 +40,17 @@
 > - **7b** sweep for an asset already present before digging — that is where every past gain came from.
 > - **7e** a probe that prints nothing and exits 0 has lost its `if __name__ == "__main__"`.
 >
+> ⛔ **BEFORE YOU QUOTE A PROBE'S NUMBERS** (full checklist: `OPERATING_RULES.md` rule 7aj, assembled
+> from NINE wrong readings in two days, every one failing toward "there is nothing here"):
+> 1. **Mirror `score_efficiency.py:run_game`** — empty frames list, honour `restart_on_game_over`,
+>    BREAK on WIN. A hand-rolled loop clears FOUR bp35 boards where the scorer clears five.
+> 2. **Reproduce a banked number first.** If your per-level counts differ from the gate's, you are
+>    describing a different run.
+> 3. **TWO controls** — a negative (an all-clean fan is indistinguishable from one that measured
+>    nothing) and a positive (a clean result may mean the effect stopped reproducing).
+> 4. **Prefer a quantity that IS what it measures**: load average over a process count (62 matched,
+>    22 running); `GAME_OVER` over an opening-frame hash (0 recurrences on a level dying 58 times).
+>
 > ⛔ **THE INSTRUMENT THAT LIES TOWARD "NOTHING HERE" IS THE EXPENSIVE ONE.** Three on 2026-08-29: a
 > min-blob-size-4 filter hid a game's own rendered move oracle (its markers are two-pixel blobs); a
 > `!=` level test read a collapse to level 0 as a clear, surviving three commits; and a staleness
