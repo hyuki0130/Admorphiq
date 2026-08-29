@@ -2704,13 +2704,32 @@ track continuing that way, which is why three of four are silent at any one mome
   being enabled is a fifteen-pixel event in the panel, reversible with the avatar's position. So a
   frame-only tool can learn "this control is live from here" by WALKING and watching the panel —
   it does not have to press every control from every cell.
-  ⚠️ Only ONE of the four plates was ever stood on, so "each plate lights its own control" is
-  measured for one of four; and `nonbg` is a COUNT, so the next probe should diff the panel pixels
-  to name WHICH island lit.
-* `scripts/_dc22_plateverify.py`: `_plan_full` reports **all eight plate cells UNREACHABLE** from
-  the start cell (49,28). The plate cluster is not walkable from the start; the only route there
-  runs through the aimed teleport, which itself exists only after a `piyqze` key is picked up. That
-  is why only the arm carrying the teleport repairs ever stood at (55,34).
+* ⭐ **ALL FOUR PLATES MEASURED, AND THE MAP IS 1:1** (`scripts/_dc22_plateverify.py`, both runs
+  identical). Parked on each cell in turn and pressing all four drives three times each:
+
+```
+avatar cell   panel hash   the ONE drive that answers    delta     further presses
+(55,34)       0c8952a1     (32,50)  UP                   (-4, 0)   1 step, then the track ends
+(59,34)       912b4079     (40,50)  DOWN                 (+4, 0)   2 steps
+(57,32)       01bd51a4     (36,46)  LEFT                 ( 0,-4)   1 step
+(57,36)       7556d83c     (36,54)  RIGHT                ( 0,+4)   2 steps
+(57,34)       7eb62eef     none — between plates          —        all four dead, 12 presses
+```
+
+  **Every plate has its own panel hash, and exactly one drive answers on each.** Six hits in
+  sixty-nine presses, zero cross-talk, and the second and third presses stop the moment the drawn
+  track ends — which is the `vcha` gate showing itself. The whole crane is learnable from ONE warp
+  landing at (57,34) for about sixteen presses and ten moves.
+* ⛔ **`_plan_full` CANNOT ROUTE INSIDE THE WARP POCKET, and that is a tool defect rather than a
+  board fact.** It called all eight plate cells unreachable from the start cell (49,28) — correct,
+  the pocket is reached only through the aimed teleport — but it ALSO called every one of them
+  unreachable from (51,32) and from (57,34), *inside the pocket*, including the cell the avatar had
+  just left. The reason is the tool's own conservatism: "cells it has never left stay unknown and
+  are read as the board's ground, which is not standable", so a warp landing puts the avatar in a
+  region where nothing is known standable and no route exists to anywhere. Raw simple moves along
+  the tool's own measured `_deltas` walk between all four plates without trouble — which is how the
+  table above was produced. **Any build on this level needs the world model to seed standability
+  around a warp landing, or the planner will refuse to take one step.**
 
 ### One repair built, measured and NOT committed
 
@@ -2725,10 +2744,12 @@ re-ask has nothing to re-ask after. Correct in principle, inert here, so it stay
 
 ```
 (a) a route to the plate cluster        exists ONLY through the aimed teleport (unlocked by a key)
-(b) a per-control PRECONDITION          "this click is live only at cell P" — learnable from the
-                                        panel's 15-pixel change while walking (measured above)
-(c) a rail that is a DRAWN TRACK        `_edges` must be learned per crane position while the
-                                        avatar shuttles between four plates 1-2 moves apart
+(a2) standability after a warp          MEASURED BLOCKER: _plan_full refuses every cell in the
+                                        pocket, so the tool cannot walk between plates at all
+(b) a per-control PRECONDITION          "this click is live only at cell P" — measured 1:1 for all
+                                        four plates, each with its own panel hash
+(c) a rail that is a DRAWN TRACK        MEASURED: up 1 step, down 2, left 1, right 2 from the
+                                        opening position, so `_edges` is per crane position
 (d) a planner over (avatar, crane, slab) the previous pass's oracle needed 297k states / 141 actions
 ```
 

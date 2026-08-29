@@ -27,6 +27,13 @@ Two questions only a run can answer:
      every silent control from every cell, which is what the previous arm spent 382 presses on.
 
   arg 1 = repetition (fan slot).  arg 2 = presses per parked cell (default 2).
+  arg 3 = `_dc22_percep` mask, arg 4 = `_dc22_gantryx` mask.
+
+⛔ The first version of this probe planned from the START cell and `_plan_full` called all eight
+plate cells UNREACHABLE — correctly: the cluster is reached only through the aimed teleport, which
+needs a `piyqze` pickup first.  So the sweep now WAITS until the tool has carried itself into the
+cluster (frame rows 50-62, cols 28-40) under its own steam and only then parks, which is the only
+position from which the question "does each plate enable its own drive" can be asked.
 Rule 7x: driven by the scorer's own `run_game`.  Rule 7f: the level count prints as a number.
 """
 from __future__ import annotations
@@ -44,10 +51,9 @@ import score_efficiency as SE  # noqa: E402
 
 # Frame (row, col) = game (y, x).  A plate is 2x2; the avatar is 2x2 and steps 2 px, so a cell
 # one row above a plate still overlaps it.
-TARGETS = [(55, 34), (56, 34), (59, 34), (60, 34), (58, 32), (57, 32), (58, 36), (57, 36),
-           (49, 28)]
+TARGETS = [(55, 34), (57, 34), (59, 34), (60, 34), (58, 32), (57, 32), (58, 36), (57, 36)]
 OUT: list = []
-S = {"warm": 0, "i": 0, "phase": "route", "left": 0, "route": [], "pressed": 0,
+S = {"armed": False, "walked": 0, "i": 0, "phase": "route", "left": 0, "route": [], "pressed": 0,
      "prev": None, "click": None, "at": None, "panel": None}
 
 
@@ -61,9 +67,16 @@ def instrument(per_cell: int):
         lvl = int(getattr(obs, "levels_completed", 0) or 0)
         if lvl < 5:
             return orig(self, frames, obs)
-        if S["warm"] < 10:
-            S["warm"] += 1
-            return orig(self, frames, obs)
+        if not S["armed"]:
+            out0 = orig(self, frames, obs)
+            g0 = np.asarray(frame_2d(obs), dtype=int)
+            geom0 = self._read(g0)
+            if geom0 is not None and self._avatar >= 0:
+                at0 = self._at(np.asarray(geom0["board"], dtype=int), self._avatar)
+                if at0 and at0 in ((55, 34), (57, 34)):
+                    S["armed"] = True
+                    OUT.append({"ARMED_AT": list(at0)})
+            return out0
         g = np.asarray(frame_2d(obs), dtype=int)
         geom = self._read(g)
         if geom is None or self._avatar < 0:
@@ -90,20 +103,33 @@ def instrument(per_cell: int):
                 S["phase"], S["left"] = "press", per_cell * 4
                 OUT.append({"ARRIVED": list(want), "panel": ph})
                 return propose(self, frames, obs)
-            if not S["route"]:
-                S["route"] = self._plan_full(board, here, {want}) if here else []
-                if not S["route"]:
-                    OUT.append({"UNREACHABLE": list(want), "from": list(here) if here else None})
-                    S["i"] += 1
-                    return propose(self, frames, obs)
-            step = S["route"].pop(0)
+            # ⛔ Not `_plan_full`: from a warp destination the tool's own world model calls every
+            # cell unreachable — including the one the avatar came from — because a cell it has
+            # never stood on reads as the board's ground.  Rule 7y: ask the BOARD by doing.  The
+            # walk is greedy along the deltas the tool measured for the four simple actions.
+            if S["walked"] >= 24:
+                OUT.append({"GAVE_UP": list(want), "at": list(here) if here else None,
+                            "walked": S["walked"]})
+                S["i"] += 1
+                S["walked"] = 0
+                return propose(self, frames, obs)
+            best, bestd = None, None
+            for a, d in sorted(self._deltas.items()):
+                cand = abs(here[0] + d[0] - want[0]) + abs(here[1] + d[1] - want[1])
+                if bestd is None or cand < bestd:
+                    best, bestd = a, cand
+            if best is None:
+                OUT.append({"NO_DELTAS": list(want)})
+                S["i"] += 1
+                return propose(self, frames, obs)
+            S["walked"] += 1
             self._pending, self._kindof = None, ""
-            return [step[0]]
+            return [(best, None)]
         panel = self._panel_buttons(g, geom)
         drives = [c for c in panel if 30 <= c[0] <= 42 and 44 <= c[1] <= 56]
         if not drives or S["left"] <= 0:
             S["i"] += 1
-            S["phase"], S["route"] = "route", []
+            S["phase"], S["route"], S["walked"] = "route", [], 0
             return propose(self, frames, obs)
         pick = drives[(per_cell * 4 - S["left"]) % len(drives)]
         S["left"] -= 1
@@ -117,6 +143,14 @@ def instrument(per_cell: int):
 def main():
     rep = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     per_cell = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+    pmask = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    gmask = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+    if pmask:
+        from _dc22_percep import apply as apply_percep
+        apply_percep(pmask)
+    if gmask:
+        from _dc22_gantryx import apply as apply_gantryx
+        apply_gantryx(gmask)
     instrument(per_cell)
     from arc_agi import Arcade, OperationMode
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
@@ -129,13 +163,14 @@ def main():
     res = SE.run_game(arcade, ei.game_id, ei.baseline_actions, agent_name="unified",
                       max_actions=4000)
     hits = [r for r in OUT if r.get("moved")]
-    print(json.dumps({"rep": rep, "levels_completed": int(res.get("levels_completed") or 0),
+    print(json.dumps({"rep": rep, "pmask": pmask, "gmask": gmask, "levels_completed": int(res.get("levels_completed") or 0),
                       "total_actions": res.get("total_actions"),
                       "game_score": res.get("game_score"),
                       "records": len(OUT), "hits": len(hits),
                       "panels": sorted({r["panel"] for r in OUT if r.get("panel")}),
+                      "armed": [r["ARMED_AT"] for r in OUT if "ARMED_AT" in r],
                       "arrived": [r["ARRIVED"] for r in OUT if "ARRIVED" in r],
-                      "unreachable": [r["UNREACHABLE"] for r in OUT if "UNREACHABLE" in r]}),
+                      "gave_up": [r["GAVE_UP"] for r in OUT if "GAVE_UP" in r]}),
           flush=True)
     for r in OUT[:200]:
         print(json.dumps(r), flush=True)
