@@ -1515,3 +1515,103 @@ turns REVISIT states or traverse new ones — only the first is waste.
 instance attribute across every `detect` call over a whole run, exactly ONE call mutated — the
 documented pitch latch on the first frame. `_idle`, `_mute`, `_refuted` are untouched because only
 `_quit` writes them and `detect` never calls it.
+
+### 7am — a mechanism correctly described still does not tell you which edit removes it (2026-08-30)
+
+Rule 7ah established that `railpeg.detect` runs the planner and advances two three-unit give-up
+counters. I specified the repair myself: give `_ensure_plan` the same per-frame idempotence guard
+`_sync` carries eight lines away. The agent built exactly that — memo keyed on `_sync_key`, four
+contract tests validated in BOTH directions (guard removed → `builds == 2` fails; restored → 4 pass)
+— **measured it before committing, found it inert in all four cells, and REVERTED it.**
+
+```
+                       control                sample all 47, every 10th action
+UNGUARDED (HEAD)       823 acts, builds 67    827 acts, builds 100
+GUARDED (the memo)     823 acts, builds 67    827 acts, builds 100
+```
+
+⛔ **67 builds with AND without the guard proves there is no same-frame double-build to suppress.**
+Every path in the cascade that advances a counter also fills `_plan`, and a filled `_plan` wins the
+`if self._plan: return 0.9` branch above it. The +33 builds are on frames the harness NEVER ASKED
+ABOUT — each genuinely new — so a per-frame memo is a no-op by construction.
+
+⭐ AND `_sync` WAS EXONERATED BY ITS OWN ARM rather than by assumption: handing the tool 83 frames it
+would never have seen and letting it LEARN every one changes NOTHING (823 actions, 67 builds, tiers
+identical). Two mechanisms could have explained the perturbation and they wanted opposite follow-ups,
+so both were run.
+
+**The general form, and it is rule 7o from the other side: I had the mechanism exactly right and the
+repair exactly wrong.** A correct diagnosis licenses a measurement, not an edit.
+
+⚠️ AND THE REAL REPAIR IS A BID-SEMANTICS CHANGE, NOT A PURITY ONE. `detect` returns the PLAN'S OWN
+QUALITY (0.95 win / 0.9 capture / 0.75 explore / 0.0 barren); `railpeg` bids 0.95 on lf52 and 0.95
+exceeds `_PRIMARY_CONF` 0.70, so making `detect` stop planning changes OWNERSHIP of the game it
+clears to five levels. ⛔ And the prize is small: unsampled the tool plans 67 times in 823 actions,
+which is the normal rate, and **nothing measured says removing the out-of-band builds wins a level.**
+
+⭐ `pegjump` is clean for a STRUCTURAL reason, not by luck — every mutating path in its
+`_ensure_plan` also fills `_plan`, and its one remaining mutation is a monotone max that cannot fire
+twice on the same model. (The earlier "it early-returns" explanation was wrong and its author
+corrected it.)
+
+### 7an — bp35's flat turns TRAVERSE, and revisiting is ANTI-correlated with the score (2026-08-30)
+
+The one surviving correlate on bp35 was the longest UNBROKEN flat run (4 → 1.0000 … 40 → 0.3044).
+Censused, and it is explained without any appeal to waste.
+
+⛔ INSTRUMENT CORRECTION FIRST, and without it the census reports waste that does not exist: **a turn
+on which the body does not move is not pacing when the action was a CLICK** — `_click` leaves the
+body in place unless aimed at its own support, so a terrain edit reads as a repeated state BY
+CONSTRUCTION, and half the turns in a flat run are clicks (20 of 41 on board 2). Separated:
+**100% of consecutive duplicates are click-frozen turns**, 9 of 9, 3 of 3, 2 of 2.
+
+```
+board        flat / distinct / TRUE revisits / max visits / states seen >2x
+board 1  1.0000    5 /  5 / 0 / 1 / 0        board 5  0.5147   26 / 23 / 1 / 2 / 0
+board 4  1.0000    6 /  6 / 0 / 1 / 0        board 2  0.3044   41 / 30 / 2 / 3 / 1
+board 3  0.9560   11 /  6 / 2 / 3 / 1
+```
+
+⭐ **THE CONTRAST REVERSES THE SIGN.** Per whole attempt, board 3 (0.9560) does **twice the true
+revisiting over six states**, against board 2 (0.3044) with two revisits over one. Board 2's 41-turn
+plateau is thirty distinct states whose rows descend monotonically across a 39-row board — a
+corridor, not a loop. **A longer flat run means a longer walk, and a longer walk means an exit
+further from the opening: the same property that makes the board expensive.** ⛔ Do not open the
+ranking round; the +0.0142-per-term-position warning stands and there is nothing here to spend it on.
+
+**bp35's 87 actions, decomposed and with no slack in any attempt**: 7 spike discovery (proven
+irreducible — nothing in the frame says which of the ten drawn kinds kills), 34 building 140 of the
+board's 370 map cells, 44 clearing in 43 against a human 48. ⚠️ And the human clears board 2 in ONE
+attempt — its baseline 48 sits inside the 64-action allowance, so unlike boards 6/8/9 it contains no
+retry. **The entire gap is that the human neither dies to the spike nor gets walled in on the way.**
+bp35 is closed at 0.2456 unless something changes what the FIRST attempt can know.
+
+### 7ao — s5i5 is unwinnable without moving a rider that is already home (2026-08-30)
+
+⭐ THE WITNESS, from an A* over the REAL ENGINE with collisions on and **nothing banned**: level 7
+clears in **45 clicks**, four length caps agreeing, opening with `shrink c10`. ⛔ And every one of
+**41 runs banning `c10` is EXHAUSTED, found=False** — every weight, every cap to 24, up to 292,932
+states. `c10` is the slider of the arm whose rider **already sits on its target**.
+
+⛔ WHY `swivel` CANNOT: `plan()` decomposes when no control moves more than one rider, giving each
+subproblem `allowed = [n for n, t in enumerate(reach) if bar in t]`. `c10` touches the OTHER rider,
+so it belongs to NO subproblem — **the planner can never move a rider that is already home out of the
+way**, and this board's answer opens by doing exactly that. `_joint` may use every control but runs
+only when the decomposition FAILS, and it succeeds with a plan the engine refuses; by then the state
+is poisoned and both 120k and 400k return empty.
+
+This retires an old mystery: recovering `turn c8` changed the run BYTE-IDENTICALLY because the move
+was added to `moves` and then admitted to no subproblem.
+
+⚠️ NEGATIVES, all whole-game with the control reproducing 0.5833 / [13,30,47,39,32,31] exactly —
+`_MAX_OPEN` 120k/400k × weight 2/4; off-grid ban union/none/exactly-one/intersection; bar margin
+0/3/6/9/unbounded; no-rider controls admitted and joint-only — **24 arms, ALL 0.5833.**
+
+⭐ TWO OF THOSE ARE FACTS RATHER THAN FAILURES. Removing the off-grid ban does not free the tool, it
+makes it THRASH (72 plans, 76 refusals, 70 banned configurations, dead at action 392) and the refused
+configurations carry **30 to 111 cells outside the frame** — the model plans to swing a bar bodily
+off the board because it believes everything it cannot see is empty. And **bounding that excursion to
+3 cells cuts s5i5's wall clock 219s → 45s with the score and all six per-level counts unchanged.**
+
+⚠️ SIZE EXPECTATIONS HONESTLY: the engine needed **2.99M opens** with a good heuristic. If the
+model-side search needs the same order, this is a redesign and not a constant.
