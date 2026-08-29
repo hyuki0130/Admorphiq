@@ -1,0 +1,117 @@
+{
+  "agent": "unified",
+  "mutation": "cpermbg",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "sb26-7fbdac44",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 5.92,
+      "total_actions": 124,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 9,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 15,
+          "human_actions": 28,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 15,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 15,
+          "human_actions": 19,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 17,
+          "human_actions": 31,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 19,
+          "human_actions": 23,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 17,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 17,
+          "human_actions": 18,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SB26",
+      "render_mutation": {
+        "mutation": {
+          "name": "cpermbg",
+          "perm": [
+            3,
+            10,
+            1,
+            8,
+            15,
+            6,
+            13,
+            4,
+            11,
+            2,
+            9,
+            0,
+            7,
+            14,
+            5,
+            12
+          ],
+          "fix_background": true,
+          "fixed_points": []
+        },
+        "frames_seen": 248,
+        "frames_changed": 248,
+        "cells_changed": 3836782,
+        "clicks_mapped": 0,
+        "colours_seen": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9,
+          11,
+          12,
+          14,
+          15
+        ],
+        "background_first_frame": 4,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

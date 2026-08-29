@@ -1,0 +1,103 @@
+{
+  "agent": "unified",
+  "mutation": "cperm",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 6,
+      "elapsed_s": 23.3,
+      "total_actions": 112,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 6,
+          "human_actions": 39,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 8,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 11,
+          "human_actions": 25,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 26,
+          "human_actions": 148,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 29,
+          "human_actions": 96,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 32,
+          "human_actions": 152,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80",
+      "render_mutation": {
+        "mutation": {
+          "name": "cperm",
+          "perm": [
+            3,
+            10,
+            1,
+            8,
+            15,
+            6,
+            13,
+            4,
+            11,
+            2,
+            9,
+            0,
+            7,
+            14,
+            5,
+            12
+          ],
+          "fix_background": false,
+          "fixed_points": []
+        },
+        "frames_seen": 224,
+        "frames_changed": 224,
+        "cells_changed": 1916928,
+        "clicks_mapped": 0,
+        "colours_seen": [
+          0,
+          1,
+          4,
+          6,
+          8,
+          9,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "background_first_frame": 12,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "agent": "unified",
+  "mutation": "shift1",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.107143,
+  "games": [
+    {
+      "game_id": "tn36-ef4dde99",
+      "win_levels": 7,
+      "levels_completed": 2,
+      "elapsed_s": 10.57,
+      "total_actions": 534,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 14,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 12,
+          "human_actions": 72,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.107143,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TN36",
+      "render_mutation": {
+        "mutation": {
+          "name": "shift1_1",
+          "dy": 1,
+          "dx": 1
+        },
+        "frames_seen": 1053,
+        "frames_changed": 1053,
+        "cells_changed": 2820261,
+        "clicks_mapped": 526,
+        "colours_seen": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11,
+          14
+        ],
+        "background_first_frame": 5,
+        "violations": [
+          "agent clicked (51,0) in the synthetic band \u2014 no game coordinate",
+          "agent clicked (10,0) in the synthetic band \u2014 no game coordinate",
+          "agent clicked (0,4) in the synthetic band \u2014 no game coordinate",
+          "agent clicked (2,0) in the synthetic band \u2014 no game coordinate"
+        ],
+        "verdict": "invalid"
+      }
+    }
+  ]
+}

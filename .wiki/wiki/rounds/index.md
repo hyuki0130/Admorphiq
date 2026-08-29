@@ -322,3 +322,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   alone returns the level to 39 actions and the game to 0.5833. ⛔ Nondeterminism REFUTED first
   (3/3 identical on both boards). No repair shipped and the reason is measured: the guess is not
   avoidable, only its price, and that is a redesign against four levels already optimal. Rule **7cd**.
+
+- **render mutation / colour permutation / palette relabel / translation / camera pan / full-bleed
+  board / sprite rename / version hash rotation / instrument validity / refusal path / rendergate**
+  → [[r101_render-mutation-transfer]] — the transfer test that MANUFACTURES the re-render, because
+  the archive only covers 14 of the 25 games (⭐ **fourteen, not fifteen**: `environment_files_archive/sk48`
+  is the SAME version hash as the live tree, byte-identical, so substituting it substitutes a game
+  for itself). It mutates the AGENT'S OBSERVATION, never the game, so validity is by construction
+  rather than by reading a 41,463-line source. ⭐ **Three independent colour relabellings, full 25
+  each, against an identity control at the same commit: mean 0.9082 in every arm, and ONE ACTION of
+  one level moves in the whole set** (cd82 L3, 33 -> 34, score unchanged; it is a colour-ORDER
+  tie-break at one of the 8 sites that sort a colour set by index — there is not one numeric colour
+  literal compared against a frame anywhere in the tools). ⛔ **Translation is NOT constructible: 24
+  of 25 boards are FULL-BLEED**, zero uniform margin on all four sides, so there is nowhere to pan
+  to. The one game with a margin, tn36, scored **1.0000 -> 0.1071** under a 1-cell shift and it
+  means NOTHING — four clicks landed in the synthetic band — which is exactly why the instrument
+  prints NO VERDICT instead of a 90% loss. ⭐ The API's own identifier rotation is INERT where it can
+  be built: 14 games render BYTE-IDENTICALLY under a full sprite rename, 10 are not constructible
+  with a stated reason, 1 (bp35) has a failing negative control and is unmeasurable, 1 (sb26) ends
+  the run early and is a broken mutation. ⚠️ Two earlier versions of that rename were broken and both
+  failed by renaming PART of a whole, each producing a column of DIFFERENTs that read as a
+  spectacular transfer failure — the tell is that the divergence was UNIVERSAL and at index 0.
+  ⛔ A recoloured board is the SAME BOARD; 1.0000 is not a transfer coefficient. Rule **7ce**.

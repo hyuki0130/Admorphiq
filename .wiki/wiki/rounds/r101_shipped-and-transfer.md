@@ -127,3 +127,8 @@ deleted from the repo** — the third time in this campaign, after `data/traces`
 ## Related
 
 [[r101_conquest-wave]] · [[r101_tenure-end]] · [[r101_tool-development]] · [[r101_silent-specialists]]
+
+⭐ [[r101_render-mutation-transfer]] extends this measurement to the games with no archive by
+MANUFACTURING the re-render (rule 7ce), and corrects one number here: the archive covers
+**fourteen** games, not fifteen — `environment_files_archive/sk48` is the same version hash as
+the live tree, byte-identical, so substituting it substitutes a game for itself.
