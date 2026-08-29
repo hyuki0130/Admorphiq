@@ -16,9 +16,11 @@
 # working directory. Uncommitted edits (a peer mid-change) are excluded BY CONSTRUCTION, which is
 # the whole point: a rider can no longer ride.
 #
-# ⛔ score_efficiency.py:35 inserts ITS OWN repo's src ahead of PYTHONPATH, so invoking the copy
-# inside the snapshot is what selects the snapshot's code. Running it with cwd=~/admorphiq is what
-# gives it the environment files. Both halves are load-bearing; neither is obvious.
+# ⛔ score_efficiency.py:35 is `sys.path.insert(0, Path(__file__).resolve().parent.parent/"src")` —
+# it resolves relative to THE RUNNER FILE BEING EXECUTED, not to PYTHONPATH and not to cwd. That is
+# why invoking the copy inside the snapshot selects the snapshot's code, and it is why the snapshot
+# MUST carry `scripts/` as well as `src/`: snapshotting src alone and running the SHARED runner
+# silently measures the shared tree. (`scripts/measure_frozen.sh` learned this one the hard way.)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -54,7 +56,13 @@ cd "$HOME"
 rm -rf "$HOME/$SNAP" "$HOME/${SNAP}_out"
 mkdir -p "$HOME/$SNAP" "$HOME/${SNAP}_out"
 tar xzf "$HOME/$SNAP.tgz" -C "$HOME/$SNAP"
-cd "$HOME/admorphiq"                      # for environment_files + the venv
+# ⛔ cwd must be a directory CONTAINING environment_files: score_efficiency.py never reads
+# ENVIRONMENTS_DIR and never passes environments_dir= to the Arcade, so the Arcade falls back to a
+# cwd-relative default. Copy the games INTO the snapshot and cd there, so the gate does not depend
+# on what the shared tree's environment_files becomes mid-run. (The lp85 agent's A/B left this as
+# its one remaining shared dependency and said so; this closes it.)
+cp -r "$HOME/admorphiq/environment_files" "$HOME/$SNAP/" 2>/dev/null
+cd "$HOME/$SNAP"
 ls environment_files | xargs -P "$PAR" -I{} sh -c \
   "timeout 2400 uv run python \$HOME/$SNAP/scripts/score_efficiency.py --agent unified \
      --titles {} --max-actions $BUDGET --out \$HOME/${SNAP}_out/{}.json \
