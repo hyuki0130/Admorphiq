@@ -955,3 +955,28 @@ are too, at rows 5-8.
 win. The honest statement is that dc22's level 6 responds to a small region and nothing found so far
 escapes it — 4,096 click-move pairs, 54,000 random actions, 47 solo tools, 9 tool combinations and
 16 prefix replays, all clearing nothing.
+
+## wa30's last level is lost on the BUDGET, not on the mechanic (2026-08-29)
+
+Ranked second in the depth work at +0.0080, and never opened until now. Its levels differ in one
+setting, and the stuck level has the tightest allowance in the game:
+
+```
+level        1    2    3    4    5    6    7    8    9
+StepCounter 200   70  100  100  125   75  125  150   70
+shepherd     26   58   77   67  120   46   55  134  508   <- actions actually spent
+```
+
+**Overrunning LOSES the level** — `elif not current_steps: self.lose()` — unlike lf52, where the
+counter runs out and play continues. So every one of those numbers has to fit under the one above it.
+
+They barely do: level 3 spends 77 of 100, level 5 spends 120 of 125, level 8 spends 134 of 150. The
+margin shrinks the whole way down, and at level 9 the tool spends **508 actions against a budget of
+70** — seven times over.
+
+**So wa30's last level is an EFFICIENCY problem, not a missing mechanic**, and that is a completely
+different repair from dc22's. `shepherd` plays every level and understands the game well enough to
+clear eight; it simply cannot do the ninth in seventy moves.
+
+⚠️ Which also predicts fragility above it: a level cleared at 134 of 150 is one unlucky draw from
+failing, so wa30's 8 levels are not as safe as the score suggests.
