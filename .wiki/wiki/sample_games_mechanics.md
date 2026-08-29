@@ -491,23 +491,70 @@ removal and the camera move into its animation queue; a first version of the che
 directly, never ticked `scene.render()`, and reported 40/40 mismatching — all of it the probe's own
 half-applied actions.
 
-Searching that simulator (`scripts/_bp35_l6_solve.py`, greedy best-first, 30-way fan):
+Searching that simulator (`scripts/_bp35_l6_solve.py`, 30-way fan on ceph-build):
 
 ```
-seed  8   46 actions   10 toggle clicks   3 gravity clicks
-seed  2   57 actions   21 toggle clicks   3 gravity clicks
-seed 11   58 actions   18 toggle clicks   3 gravity clicks
-seed  5   59 actions   21 toggle clicks   3 gravity clicks
+BFS, allowance 64     seeds 1 4 7 10 13    41 actions   5 toggle clicks  3 gravity clicks
+BFS, allowance 200    seeds 3 6 9 12       41 actions   5 toggle clicks  3 gravity clicks
+greedy best-first     seeds 8 20           46 actions  10 toggle clicks  3 gravity clicks
+greedy best-first     seeds 2 5 11 14 17   54-61        16-23 toggles    3 gravity clicks
 ```
+
+**41 actions is the OPTIMUM** — breadth-first, unit costs, and lifting the allowance to 200 does not
+shorten it. Against the game's own baseline of 87 for this level that is `min(87/41, 1)^2 = 1.0`, so
+level 6 is worth its full weight (6 of 45) — **bp35 0.2220 -> 0.3553** for the one level.
 
 **Every plan found uses toggle clicks, and every one uses all three gravity switches.** So unlike
 dc22's cycling tile — a real mechanic that turned out not to block — this one is LOAD-BEARING: the
 route runs over blocks that only exist because they were clicked into existence.
 
-And the plan CLEARS THE REAL GAME (`scripts/_bp35_l6_replay.py`, rule 7g): the shipped harness plays
-to level 6 in 233 actions, the 57-action plan is replayed action by action, the simulator and the
-engine agree on the body's cell at every one of them, and `levels_completed` goes **5 -> 6**. Tested
-as `> start`, and the resulting number printed (rule 7f).
+And the plan CLEARS THE REAL GAME (`scripts/_bp35_l6_replay.py`, rule 7g). The shipped harness plays
+to level 6 in 233 actions, the plan is replayed action by action, the simulator and the engine agree
+on the body's cell at EVERY action, and `levels_completed` goes **5 -> 6** — for the 57-action plan
+and again for the 41-action optimum. Tested as `> start`, and the resulting number printed (rule 7f).
+
+### ⛔ crag's SITE RULE excludes every solution — a proof of absence, not a budget
+
+`CragTool._sites` offers the searcher five click candidates: the support, the two cells beside the
+body, the two that would hold it one step away — plus every gravity switch on screen. Its docstring
+justifies the narrowness with *"every other editable cell on screen can be reached by walking next to
+it first, so nothing is lost"*, and records a measurement that adding ONE more candidate took the
+tool from three levels to one.
+
+Re-running the same search with the click candidates restricted to exactly that rule
+(`_bp35_l6_solve.py <seed> <cap> local`, nine runs, all three search orders):
+
+```
+9 of 9   actions=None   states=24644   nodes=74615   secs 24-31   (limit 64 AND limit 200)
+```
+
+The reachable state space under crag's own rule is **24,644 states, and it is EXHAUSTED** — the
+search ends because the frontier is empty, at 74,615 nodes against a 30,000,000 cap, in half a
+minute. **There is no win in it, at any depth.**
+
+And the optimum shows exactly why: replaying it and classifying each click against the rule at the
+moment it is made,
+
+```
+ 0 click (6,25) oonshderxef  body=(3,23)  FAR
+ 2 click (7,25) oonshderxef  body=(4,23)  FAR
+ 5 click (6,22) lrpkmzabbfa  body=(6,23)  LOCAL
+ 8 click (4,31) lrpkmzabbfa  body=(8,31)  FAR   (gravity — crag already offers these)
+13 click (5,13) oonshderxef  body=(8,18)  FAR
+17 click (6,13) yuuqpmlxorv  body=(5,14)  LOCAL
+22 click (8,1)  lrpkmzabbfa  body=(7,7)   FAR   (gravity)
+24 click (4,13) oonshderxef  body=(6,8)   FAR
+```
+
+**Four non-gravity clicks land on cells the body is nowhere near**, and the docstring's escape —
+walk next to it first — does not apply to them: they build the block the body then FALLS ONTO, so
+there is nowhere to stand beside them until after the click.
+
+⛔ So bp35's level 6 is not stopped by patience, alignment, thresholds, the stitch, or a mechanic the
+tool cannot model. It is stopped by ONE line of the searcher's candidate generator, and the fix is
+not free — crag's own record says widening it by a single cell cost two levels elsewhere. What the
+level needs is a rule that offers a distant editable cell when it is a LANDING the body could fall
+onto, not a blanket widening.
 
 ### ⛔ bp35 LOSES THE LEVEL AT 64 ACTIONS, and that is the game's real shape
 
@@ -1282,3 +1329,75 @@ visible too — `swivel` gives way to `linkage` on "action no new state x3".
 second target, where is the mover that must reach it, and is that mover reachable at all** — three
 questions with concrete answers, on the game that is closest to a clear of any stuck game on the
 board.
+
+## re86 — CONQUERED, 0.9908 -> 1.0000, and all four actions were the SEAT and the FIRST FRAME (2026-08-29)
+
+re86 cleared every level already; its whole shortfall was **level 2 at 46 actions against a human
+baseline of 42** (`(42/46)^2 = 0.834`, and level 2 carries 2 of the 36 weight, so the game read
+0.9908). It is now **1.0000, 8/8, 696 actions**, measured with the official scorer
+(`--agent unified --titles re86 --max-actions 4000`), and the per-level counts are
+`[25, 42, 49, 59, 113, 139, 101, 168]` against human `[26, 42, 86, 108, 189, 139, 424, 241]` —
+identical across three runs.
+
+### What the 46 actions actually were
+
+`scripts/_re86_l2.py` answers six different questions in one parameterised probe (mode 1 trace,
+2 ground truth, 3 optimal, 4 attempts, 5 fallback, 6 repeat, 7 which-branch-emitted), run together
+rather than one at a time. The classification, from engine truth on every action:
+
+```
+46 actions:  move 40   select 6   INERT 0   refused 0   attempts 1 (never lost, never retried)
+by branch:   _walk 34   _discover 7   _cycle 4   harness fallback 1
+```
+
+⛔ **Every action was effective — the "every action is EFFECTIVE" pattern holds here exactly.** There
+is nothing to prune. The gap is that the tool's route was 46 where the same final placement is
+reachable in 36: the three pieces need 34 moves (level 2's ground truth — pieces at (16,7), (30,21),
+(35,29) walked to (7,37), (12,3), (14,35), 3 pixels a move) plus **2** presses of the cyclic select
+control. `_walk` spent exactly 34. **All ten extra actions were spent choosing WHAT to drive and
+WHICH WAY to nudge it, not on the route.**
+
+### The three defects, each generic, each measured
+
+1. **The discovery nudge was direction-blind.** A piece must be moved on both axes before its shape
+   is measured, and `_toward` took whichever action came first in the learned control map. On this
+   board that is ACTION1 (up) while two of three pieces had to go down — and every such move is paid
+   for twice, once going out and once coming back. The nudge now heads for the middle of the
+   still-uncovered marks wearing the piece's own colour. ⚠️ The NEAREST such mark was tried first and
+   is worse (level 3: 52 against 50) — a piece usually covers several marks, so the middle is the
+   heading.
+2. **The very first move of a level had no heading at all**, because no piece is measured yet, so the
+   choice fell to `known[0]` — again ACTION1. `_heading` uses the odd-coloured cell the driven piece
+   wears at its middle to find which blob is in the seat, and pushes toward that colour's marks.
+   ⛔ **Only before ANY piece is measured.** Offered on every wheel-less turn instead, it took the
+   game from eight levels to four: with a piece known, the same choice recurs deep in a level where
+   an action that closes on a mark can be one the board REFUSES, and three refusals retire a control
+   the tool still needs.
+3. **The plan was taken cheapest-move-first, and the select control is a RING.** The tool cycled past
+   a piece that still had work and cycled back for it later: four presses where two would do. It now
+   serves whoever is in the seat and still has a move, and only hands the controls on when the seated
+   piece is finished. This is what took level 2 from 44 to 42.
+
+### The one action nobody in the tool can fix
+
+⛔ **Action 0 of level 2 is issued by the HARNESS, not by the tool, and it pushes a piece the wrong
+way.** The level-transition frame carries the OLD board in layer 0 and the new board in layer 1;
+`frame_2d` reads layer 0, `_marks` finds fewer than two marks on it and returns None, the tool
+proposes nothing, and `UnifiedAgent._probe` fills the turn with `simple_ids[0]` = ACTION1 — which
+moved a piece three cells up on a board where it had to go down. The tool's next action undoes it, so
+**the cost is 2 actions, on every level**. This is rule 7c's "the fallback presses the lowest-numbered
+key" in a second guise.
+
+⚠️ Parking on the select control instead (the tool's own `_park`, whose docstring already argues for
+exactly this) was MEASURED and is WORSE here: it hands the seat to a different piece and level 2 went
+to 49. And parking on every unreadable frame rather than only the first cost four of the eight levels.
+The fix is not in this tool: either `frame_2d` picks the layer that carries the new board, or the
+harness probe prefers an action that moves nothing. Both are shared files.
+
+### What the probe is for, beyond re86
+
+`scripts/_re86_l2.py` mode 7 tags **which method of the tool emitted each action**. It was written
+after the first heading fix moved two other levels and left level 2 byte-identical: without the tag,
+"the nudge is direction-blind" is a reading of the source, not of the run (rule 7g). It is the same
+instrument `scripts/trace_attribute.py` exists for, at tool-method granularity, and it is what turned
+"four actions somewhere" into "one harness fallback, one blind first move, two ring detours".

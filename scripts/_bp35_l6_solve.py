@@ -35,7 +35,7 @@ BUDGET = 64
 GEM_XY = {6: (2, 31)}
 
 
-def solve(seed: int, cap: int, level: int = 6):
+def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius: int = 0):
     """mode 0 = plain BFS inside the engine's own 64-action allowance (finds the SHORTEST win);
     mode 1 = greedy best-first on distance to the gem (finds A win fast, not the shortest);
     mode 2 = BFS with the allowance lifted to 200 — "winnable at all?" is a DIFFERENT claim from
@@ -43,8 +43,13 @@ def solve(seed: int, cap: int, level: int = 6):
 
     ⛔ States are held as (Sim, parent index, action) with the path reconstructed at the end. A
     per-state path list makes a complete search of this level impossible to run on memory alone."""
-    mode = (seed - 1) % 3
-    limit = 200 if mode == 2 else BUDGET
+    mode = (seed - 1) % 3 if force_local else (seed - 1) % 6
+    limit = 200 if mode % 3 == 2 else BUDGET
+    # modes 3..5 restrict the click candidates to crag's OWN site rule (`_sites`): the support, the
+    # two cells beside the body, the two that would hold it one step away — plus every gravity
+    # switch on screen. If a win still exists under that restriction the tool's frontier is wide
+    # enough and the wall is search depth; if it does not, the site rule itself excludes the route.
+    local = force_local or mode >= 3
     m = load_module()
     _, start = make_level(m, level)
     rng = random.Random(seed)
@@ -77,7 +82,19 @@ def solve(seed: int, cap: int, level: int = 6):
                   f"secs={round(time.time()-t0,1)}", file=sys.stderr, flush=True)
         if d >= limit - 1:
             continue
-        opts = [("L",), ("R",)] + [("C", c) for c in s.clickables()]
+        cand = s.clickables()
+        if local:
+            dy = -1 if s.grav_up else 1
+            near = {(s.px, s.py + dy), (s.px - 1, s.py), (s.px + 1, s.py),
+                    (s.px - 1, s.py + dy), (s.px + 1, s.py + dy)}
+            # radius 0 is crag's rule EXACTLY; radius k also offers every editable cell within
+            # Chebyshev distance k of the body, which is the cheapest way to size how far the site
+            # rule has to widen before a win exists at all.
+            cand = [c for c in cand
+                    if c in near
+                    or next(iter(s.at(*c)), "") == "lrpkmzabbfa"
+                    or (radius and max(abs(c[0] - s.px), abs(c[1] - s.py)) <= radius)]
+        opts = [("L",), ("R",)] + [("C", c) for c in cand]
         rng.shuffle(opts)
         for a in opts:
             nxt = s.clone()
@@ -108,7 +125,7 @@ def solve(seed: int, cap: int, level: int = 6):
         if best is not None or nodes > cap:
             break
 
-    out = {"seed": seed, "mode": mode, "limit": limit, "level": level, "nodes": nodes,
+    out = {"seed": seed, "mode": mode, "local": local, "radius": radius, "limit": limit, "level": level, "nodes": nodes,
            "states": len(sims), "secs": round(time.time() - t0, 1)}
     if best is not None:
         seq = []
@@ -122,12 +139,19 @@ def solve(seed: int, cap: int, level: int = 6):
                        for a in seq]
         _, s2 = make_level(m, level)
         kinds = []
+        far = 0
         for a in seq:
             if a[0] == "C":
                 kinds.append(next(iter(s2.at(*a[1])), ""))
+                dy2 = -1 if s2.grav_up else 1
+                near2 = {(s2.px, s2.py + dy2), (s2.px - 1, s2.py), (s2.px + 1, s2.py),
+                         (s2.px - 1, s2.py + dy2), (s2.px + 1, s2.py + dy2)}
+                if a[1] not in near2 and kinds[-1] != "lrpkmzabbfa":
+                    far += 1
                 s2.click_cell(*a[1])
             else:
                 s2.move(a[0] == "R")
+        out["far_clicks"] = far
         out["click_kinds"] = kinds
         out["toggle_clicks"] = sum(1 for n in kinds if n in (SOLID_TOGGLE, PASS_TOGGLE))
         out["switch_clicks"] = sum(1 for n in kinds if n == "lrpkmzabbfa")
@@ -140,7 +164,13 @@ def solve(seed: int, cap: int, level: int = 6):
 def main() -> None:
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     cap = int(sys.argv[2]) if len(sys.argv) > 2 else 40_000_000
-    solve(seed, cap)
+    arg = sys.argv[3] if len(sys.argv) > 3 else ""
+    if arg.startswith("r"):
+        # seeds walk the radius: r means "crag's rule plus a Chebyshev-k neighbourhood", k from the
+        # seed, so one fan measures the whole widening curve instead of one point on it.
+        solve(seed, cap, force_local=True, radius=(seed - 1) // 3 + 1)
+    else:
+        solve(seed, cap, force_local=(arg == "local"))
 
 
 if __name__ == "__main__":
