@@ -79,6 +79,37 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
+> ⭐ **THE AXIS MOVED ON 2026-08-30. IT IS NO LONGER THE DEV SCORE.**
+>
+> The 0.0918 that remains on the 25 is closed with proofs (below, and every word of it still
+> stands). What replaced it is the question the 25 games cannot answer: **the eval is 110 games we
+> have never seen, all of them rendered differently from anything here, and all of them taking the
+> generic path.** Two measurements on 2026-08-30 turned that from a worry into an axis with an
+> instrument — [[r101_shipped-and-transfer]], rules 7bv + 7by:
+>
+> - the SHIPPED wrapper scores **0.9082, zero games differing** (`AGENT=kaggle_unified bash
+>   scripts/snapgate.sh`) and the notebook has shipped `KaggleUnifiedAgent` since `f1067554`, so
+>   everything below reaches the card;
+> - **24 of 25 games are action-for-action IDENTICAL on an archived re-render** (`bash
+>   scripts/xfergate.sh`, ratio 0.9989). **s5i5 L4 is the ONLY render-dependent thing in the entire
+>   corpus** — 39 -> 61 actions on the same level re-rendered.
+>
+> **So the work is: find and name render-dependence, not chase the last 0.09.** Three things are in
+> flight, and a fresh session should continue one of them rather than open a seventh arm on a closed
+> game:
+> 1. **s5i5 L4** — what does the solving path read that is a render fact rather than a mechanic
+>    fact? Worth 0.0240 of dev score and far more as a defect class.
+> 2. **The ten games with NO archived hash** — bp35, cd82, ft09, g50t, lf52, lp85, ls20, sb26, tr87,
+>    wa30 — have **zero transfer evidence of any kind**, and four are among the six still short. A
+>    render-mutation instrument (AST identifier rename, colour permutation, board offset) is being
+>    built to manufacture the re-render. ⛔ Its hard part is proving the mutation preserves the
+>    MECHANIC: a broken mutation is indistinguishable from a transfer failure.
+> 3. **Inert actions on levels that CLEAR.** Measured on lf52 L6: 131 of 500 actions produced ONE
+>    board change between `world_model`, `deadsig` and `llm_goal`. On a level that never clears that
+>    is worth zero; on a level that clears it is squared efficiency loss, on every one of the 110.
+>    ⛔ An inert action is not automatically waste — `deadsig` EXISTS to discover inertness, and
+>    discovering it costs the action.
+
 ⛔ **EVERY SHORT GAME AND EVERY TOOL-SET AXIS IS NOW CLOSED WITH PROOFS.** The remaining 0.0918 is
 not reachable by tuning, routing, pairing, retiring differently, or repairing a tool — **SIX**
 independent measurements say so. ⚠️ **Do not open a new arm without first reading which hypothesis
