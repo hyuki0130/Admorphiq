@@ -3611,10 +3611,11 @@ arm. cd82's extra action does not change its score (level 3 is far under the hum
 and it appears under `cperm` and `cpermbg` — which differ only in the background's image — so it is a
 colour-ORDER tie-break, not a dependence on the background value. ⚠️ **EIGHT** sites under
 `src/admorphiq/tools/` order a colour set by its index (`crag`, `gantry`, `decouple` ×2, `ledge`,
-`mirror`, `shaft`, `stencil`), which is exactly where such a tie-break lives — and there is not ONE
-numeric colour literal compared against a frame anywhere in the tool set or the harness. That is why
-the arms come back flat: `base.py` derives the background as the modal value rather than as `0`, and
-nothing downstream names a colour.
+`mirror`, `shaft`, `stencil`), which is exactly where such a tie-break lives. And of the 229 numeric
+`== 0..15` comparisons in the tool set and harness, NOT ONE has a colour-named quantity on its left
+(they are sizes, counts, indices and action ids) — `base.py` derives the background as the modal
+value rather than as `0`, and nothing downstream names a colour. ⚠️ That grep is corroboration, not
+the evidence; the three flat arms are the evidence.
 
 ⛔ **TRANSLATION IS NOT CONSTRUCTIBLE ON THIS GAME SET, AND THAT IS A MEASUREMENT.**
 `scripts/_render_margin.py`, 25-way, each run carrying its own positive control (a synthetic 4-wide

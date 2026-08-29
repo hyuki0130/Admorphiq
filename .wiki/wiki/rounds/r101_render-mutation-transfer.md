@@ -86,9 +86,10 @@ tie-break, not a dependence on the background value.
 
 ⭐ **The mechanism is visible in the source and it is small.** Eight sites under
 `src/admorphiq/tools/` order a colour set by its index (`crag`, `gantry`, `decouple` ×2, `ledge`,
-`mirror`, `shaft`, `stencil`). There is **not one numeric colour literal compared against a frame**
-anywhere in the tool set or the harness — `base.py` derives the background as the modal value rather
-than as `0`. That is why the arms come back flat.
+`mirror`, `shaft`, `stencil`). And of the **229** numeric `== 0..15` comparisons across the tool set
+and harness, not one has a colour-named quantity on its left — they are sizes, counts, indices and
+action ids. `base.py` derives the background as the modal value rather than as `0`, and nothing
+downstream names a colour. ⚠️ The grep is corroboration; the three flat arms are the evidence.
 
 ## Translation: NOT CONSTRUCTIBLE, and the measurement says why
 
