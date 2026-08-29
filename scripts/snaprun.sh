@@ -37,14 +37,18 @@ rm -f "/tmp/_snaprun_$NAME.tgz"
 export PATH=\$HOME/.local/bin:\$PATH
 rm -rf \$HOME/snap_$NAME && mkdir -p \$HOME/snap_$NAME
 tar xzf \$HOME/_snaprun_$NAME.tgz -C \$HOME/snap_$NAME 2>/dev/null
-rm -f \$HOME/_snaprun_$NAME.tgz /tmp/snaprun_$NAME.jsonl
+rm -f \$HOME/_snaprun_$NAME.tgz /tmp/snaprun_$NAME.jsonl /tmp/snaprun_$NAME.err
 # ⛔ cwd is the SHARED tree because that is where environment_files lives and the Arcade reads it
 # relative to cwd; the CODE comes from the snapshot because the probe inserts its own ../src at
 # sys.path[0] (score_efficiency.py:35's trick, and rule 7n's fix).
 cd \$HOME/admorphiq
-echo $ARGS | tr ' ' '\n' | xargs -P $PAR -I{} sh -c 'timeout 3000 uv run python \$HOME/snap_$NAME/$PROBE {} $EXTRA 2>/dev/null | grep \"^{\" >> /tmp/snaprun_$NAME.jsonl'
+echo $ARGS | tr ' ' '\n' | xargs -P $PAR -I{} sh -c 'timeout 3000 uv run python \$HOME/snap_$NAME/$PROBE {} $EXTRA 2>>/tmp/snaprun_$NAME.err | grep \"^{\" >> /tmp/snaprun_$NAME.jsonl'
 echo DONE >> /tmp/snaprun_$NAME.jsonl
 EOS2
 chmod +x /tmp/snaprun_$NAME.sh && nohup /tmp/snaprun_$NAME.sh >/dev/null 2>&1 &"
 echo "launched: $ARGS  (-P $PAR) out of ~/snap_$NAME"
 echo "results:  ssh -i $KEY $REMOTE 'cat /tmp/snaprun_$NAME.jsonl'"
+# ⛔ STDERR IS KEPT. The first version sent it to /dev/null, and a probe that raised on a code
+# path only some games reach (a death) then exited 0 with an empty log — which reads as a game
+# that ended early, not as a crash. Rule 7e, in its quietest form.
+echo "errors:   ssh -i $KEY $REMOTE 'tail -40 /tmp/snaprun_$NAME.err'"

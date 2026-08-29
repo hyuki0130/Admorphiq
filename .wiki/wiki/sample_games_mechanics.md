@@ -1413,10 +1413,24 @@ dc22 L6   gantry 12  ->  phase_grid 12  ->  graph 474 (337 inert, 71%)
 
 ⭐ **`graph` NEVER fills — it always has a proposal — and between half and three quarters of them
 change nothing.** It is the general searcher, so this is the one shape here that also describes the
-private 110. The contrast is sharp: on games that score 1.0 the holding tool's inert rate is
-**0% (lp85/cyclepress), 0% (m0r0/decouple), 7% (vc33/pillar_transfer)**.
+private 110. Eight games measured, and the split is clean:
 
-⚠️ **But the direction of that correlation is not established.** A searcher bumping walls it has
+```
+STUCK level, graph holds it, high inert, ZERO fills        CLEARING game, a specialist holds it
+  lf52 L6   graph 366 actions   181 inert  49%   0 fills     g50t  clonewalk 296    3 inert   1%
+  dc22 L6   graph 474 actions   337 inert  71%   0 fills     ls20  keymaze  423   10 inert   2%
+  bp35 L6   graph 486 actions   204 inert  41%   0 fills     ls20  fogscout 220    3 inert   1%
+                                                             lp85  cyclepress 189  0 inert   0%
+  every fill count on every one of the eight games: 0-19     m0r0  decouple 188     0 inert   0%
+                                                             vc33  pillar_transfer 199 14  7%
+```
+
+⛔ **NO TOOL THAT IS SOLVING A BOARD IS MORE THAN 7% INERT, AND `graph` IS NEVER BELOW 41%.** That
+reframes it: `graph` is the fallback that inherits every board no specialist claims, so these games
+are not stuck because graph is inefficient — graph is what a stuck game LOOKS like. The question
+worth funding is selectivity (why does the board fall through to graph), not graph's hit rate.
+
+⚠️ **And the direction of that correlation is not established.** A searcher bumping walls it has
 not mapped is what being stuck LOOKS like; the inert rate is at least as likely to be a symptom as
 a cause, and this file already records the s5i5 case where the missing information was handed over
 by an oracle and the score did not move. Rule 7c's own closing negative applies too: removing
@@ -1435,6 +1449,10 @@ every one of them — so seven fills in eight happen under a NAMED tool. A probe
 reported `filled` = **0 on all 25 games**, which reads as "the harness fill is not the problem" and
 is a null the data does not support: re86 alone has 5 fills, all named, all invisible to it.
 
+⛔ **AND THE FIXED PROBE REPRODUCES THE GATE.** ls20 now measures `stop=win`, 7 levels, per-level
+**17 / 101 / 63 / 66 / 67 / 100 / 231** — the gated numbers exactly, from a third independent
+instrument. bp35 dies ELEVEN times on its sixth level and still spends 507 actions there.
+
 ⛔ **AND MY OWN PROBE TRUNCATED EVERY RUN THAT DIED.** `UnifiedAgent.restart_on_game_over` is True
 (`loop.py:138`), so `score_efficiency.py` REVIVES the env and keeps counting; the first version of
 `_handover_control.py` broke out instead. It reported ls20 at 6 levels / 481 actions where the
@@ -1442,6 +1460,13 @@ gated run clears 7 in 651 — the fuel game loses three lives on level 7 and eve
 first restart was simply missing. Caught by running a probe with a KNOWN-GOOD output
 (`scripts/_ls20_verify.py`, 231 actions on level 7) out of the same snapshot and finding they
 disagreed. ⚠️ A probe that stops early does not look broken; it looks like a game that stopped early.
+
+⛔ **AND THE FIRST FIX HAD THE SAME DEFECT ONE LAYER DOWN.** `arcengine.GameAction` is an Enum whose
+RESET is a MEMBER; `.reset()` is `admorphiq.types.GameAction`'s API. Calling the wrong one raised
+AttributeError on the revive path — which only executes on a DEATH, so lf52 and dc22 ran clean while
+ls20 and bp35 exited 0 with an empty log. `scripts/snaprun.sh` was sending stderr to `/dev/null`, so
+the traceback was gone. It now keeps a per-run `.err` and prints where to read it. ⚠️ Two silent
+failures in one afternoon from the same cause: the crash was on a path only some games take.
 
 ### `pfan.sh` wrote to the shared tree, and two agents chose the same filename
 

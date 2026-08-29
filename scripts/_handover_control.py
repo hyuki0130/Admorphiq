@@ -180,7 +180,12 @@ def main() -> None:
         # finding they disagreed — the disagreement was mine.
         if st.endswith("GAME_OVER"):
             deaths += 1
-            obs = env.step(GameAction.reset())
+            # ⛔ `GameAction.RESET`, the ENUM MEMBER, exactly as score_efficiency.py does.
+            # `arcengine.GameAction` is an Enum; `.reset()` is `admorphiq.types.GameAction`'s API
+            # and raises AttributeError here. It fires ONLY on a death, so lf52 and dc22 (no
+            # deaths) ran clean while ls20 and bp35 died silently — the runner was discarding
+            # stderr, so both looked like games that ended early rather than a probe that crashed.
+            obs = env.step(GameAction.RESET)
             if obs is None:
                 stop = "obs_none_after_reset"
                 break
