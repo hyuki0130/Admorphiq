@@ -4,8 +4,8 @@
 
 ## STATE (2026-08-29 19:35, all gated on the full 25)
 
-**MEAN = 0.8986**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101ALLOW2/games` — use it as the gate's BASE.
+**MEAN = 0.8989**, eighteen games at the 1.0 cap, cumulative regressions ZERO.
+Baseline dir: `scripts/rounds/R101LS20/games` — use it as the gate's BASE.
 
 Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
 lp85 0.9099 -> 0.9677. First movement in a day.
@@ -18,7 +18,7 @@ bp35  0.2220   gap 0.7780   level 6 optimum 41 actions vs 87 human — CLOSED, s
 s5i5  0.5833   gap 0.4167   level 7, allowance 200, every seed COLLAPSES
 dc22  0.7143   gap 0.2857   levels 1-5 all at 1.0; oracle clears 6/6 at 1.0000, 3/3
 wa30  0.8000   gap 0.2000
-ls20  0.9040   gap 0.0960   all 8 fallback presses are inert; it is a FUEL game
+ls20  0.9121   gap 0.0879   all 8 fallback presses are inert; it is a FUEL game
 lp85  0.9677   gap 0.0323
 ```
 
@@ -55,7 +55,7 @@ vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE
 
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
-bash scripts/snapgate.sh <name> scripts/rounds/R101ALLOW2 8 4000
+bash scripts/snapgate.sh <name> scripts/rounds/R101LS20 8 4000
 ```
 ⛔ Do NOT use `scripts/rounds/gate_tool.sh` — it syncs the SHARED `~/admorphiq`, so it carries every
 agent's work-in-progress and the tree moves under it. Both of its documented traps are that cause.
