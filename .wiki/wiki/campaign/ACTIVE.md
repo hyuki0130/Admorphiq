@@ -13,8 +13,10 @@ lp85 0.9099 -> 0.9677. First movement in a day.
 The seven still short, largest gap first:
 
 ```
-lf52  0.2727   gap 0.7273   level 6 CLEARED LIVE by an oracle in 91 of 640 actions
-bp35  0.2220   gap 0.7780   level 6 optimum 41 actions vs 87 human — CLOSED, see below
+lf52  0.2727   gap 0.7273   ⛔ the stall position is CLOSED — see below. Do not build a frontier tier.
+bp35  0.2220   gap 0.7780   ⭐ the WINNING attempt already beats the human (43<48, 30<33); the whole
+                             loss is EXPLORATORY DEATHS. Removing them = 0.3304, +0.0043, WITHOUT
+                             level 6. Needs lethality read from the frame BEFORE contact.
 s5i5  0.5833   gap 0.4167   level 7 solvable in 24-28 clicks; _MAX_OPEN is cut off just short   level 7, allowance 200, every seed COLLAPSES
 dc22  0.7143   gap 0.2857   levels 1-5 all at 1.0; oracle clears 6/6 at 1.0000, 3/3
 ls20  0.9121   gap 0.0879   all 8 fallback presses are inert; it is a FUEL game
@@ -47,10 +49,27 @@ allowance (87/131/163 against 64/128/192), so those baselines already contain a 
 vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
-1. SIX agents are live: dc22-into-gantry, lf52 camera-vs-state, s5i5, wa30 level 9,
-   ls20 level 7, and the death-clock allowance ledger.
+1. Agents live on: dc22 (the crane plate), bp35 (lethality from the frame), s5i5, and SELECTIVITY.
 2. Integrate each result as it lands and GATE it. Keep ceph busy between integrations.
 3. Any surviving change: update the STATE block above with the new gated mean.
+
+## ⭐ THE ONE AXIS THAT DESCRIBES THE PRIVATE 110, not the public 25 (2026-08-29)
+
+```
+no tool that is SOLVING a board is more than 7% inert   0% 0% 1% 1% 2% 7%
+`graph` is NEVER below 41%                              41% 49% 71%
+```
+
+`graph` is the fallback that inherits every board no specialist claims, so **`graph` is what a stuck
+game looks like**. That is a free, frame-independent, game-agnostic STALL DETECTOR — >40% inert over
+a tenure says "no specialist owns this board" without knowing the game.
+
+⛔ The direction of the correlation is NOT established: a searcher bumping walls it has not mapped is
+exactly what being stuck looks like, so the inert rate is at least as likely a symptom as a cause,
+and removing lf52's waste did not open its level. **The question worth funding is SELECTIVITY — why
+does the board fall through to graph — not graph's hit rate.** Measure which tools bid, and what,
+AT THE HANDOVER FRAME (`bid_matrix.py` reads FIRST frames only and cannot answer it). ⚠️ On dc22
+`gantry` bids and then latches dead at action 6, so measure the bid AND whether the bidder survived.
 
 ## THE GATE — one command, private snapshot, no collisions (rule 7l)
 ```
@@ -62,6 +81,14 @@ agent's work-in-progress and the tree moves under it. Both of its documented tra
 ride. Tests: `bash scripts/ptest.sh --dirty tests/test_x.py`.
 
 ## CLOSED BY MEASUREMENT — do not reopen without new evidence
+- **lf52's stall position is genuinely CLOSED**, measured by FORCING every legal move the tool's own
+  successor function offers (`scripts/_lf52_stall.py`): 6 moves, best opens ONE cell, all four drives
+  open ZERO, and no boarding move EXISTS — so the two-step board-and-drive plan is refuted at its
+  root, not merely unsupported. The map is still the lever (the veto has never been asked with all 8
+  pads visible) but it cannot be opened FROM THERE. Six measurements; no frontier tier for this board.
+- **`_reborn` does not transfer to bp35**: its eight attempts are eight DISTINCT sequences. And the
+  re-seed repair WORKS and is worth nothing — crag then emits the identical 64-action loser three
+  times. ⛔ Repairing an EMPTY path can expose a REPLAY problem underneath it.
 - **the level-transition handover tax**: 149 transitions over 25 games, 54 inert actions in the
   6-action window, **0.36 per transition**, seventeen games at exactly ZERO. Even the upper bound —
   every one of those actions pure waste and perfectly recoverable — is ~2 actions per game against
