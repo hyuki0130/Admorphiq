@@ -210,3 +210,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   refusals, allowance learnt as 69) — an independent confirmation of [[r101_allowance-ledger]].
   Blast radius MEASURED not argued (`scripts/_wa30_who.py`: `shepherd` appears in no other game's
   action histogram). Related: [[r101_silent-specialists]], [[r101_allowance-ledger]].
+
+
+- **bp35 / crag / attempts / window does not belong / alignment / re-seed / empty path / measured
+  negative** → [[r101_bp35-attempts]] — the wa30 mechanism taken to bp35 and **REFUTED there**: its
+  eight wall attempts are eight DISTINCT sequences, nothing is replayed. The real wall is that
+  `crag` clears boards 1-5 and then quits eight times on board 6 with one reason, `window does not
+  belong to this board`, body frozen at (6,8) — NOT `_refuted`, `_mute` 0; the harness just retires
+  a tool that keeps returning nothing, and `graph` inherits ~450 actions and dies on the 64-clock
+  six times. ⛔ The three faults behind that one word were SEPARATED rather than guessed
+  (`scripts/_bp35_lost.py`): physics refuses nothing once `allow` goes None, and the best alignment
+  is **0.60 against a 0.82 threshold** — so neither the admissibility window nor the threshold, both
+  of which R101SILENT already tried blind and reverted. Lowering `_ALIGN_FIT` to 0.55 measured
+  INERT. ⭐ Re-seeding the map after N losses DOES fix the silence — crag keeps the board for four
+  whole attempts instead of thirteen actions — **and moves the score by NOTHING**, while CREATING
+  the wa30 disease (it then emits the identical 64-action loser three times). Not shipped: worse in
+  kind at equal score. It is also a live confirmation of the offline proof that crag's candidate
+  rule excludes every board-6 solution — handed a fresh map and four attempts, it still does not
+  clear. ⭐ bp35's real headroom is on the boards it ALREADY clears: L2 = 8+34 spike deaths before a
+  **43-action clear against a human 48**, L5 = 14+14 before a **30 against 33** — the winning
+  attempt already beats the human both times, so the whole loss is exploratory deaths, worth
+  **0.2220 -> 0.3304, +0.0043 on the mean**, and it needs lethality read from the FRAME before
+  contact, not restart bookkeeping.
