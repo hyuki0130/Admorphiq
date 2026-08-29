@@ -578,3 +578,19 @@ topology:
 agent fanned out 60-way and the box reached **129 processes at load 64.6**, above which SSH stops
 answering and the round cannot be checked on. `ceph_idle_alarm.sh` now reports the overload into
 every turn, because a ceiling in a document is one nobody sees at the moment they exceed it.
+
+### 7j — nobody owns the TOTAL, so the box has to own it (2026-08-29)
+
+Eight agents, each honouring its own `-P`, still took ceph-build to **133 processes at load 55.7**.
+Their individual settings were fine — one used `-P 6`, another `-P 12` — and the SUM was nobody's
+responsibility. A cap that every participant must voluntarily divide among themselves is not a cap.
+
+`~/bin/cap.sh` now runs on the box and holds the total at 56: it `SIGSTOP`s the newest processes over
+the line and `SIGCONT`s them when there is room, so no work is lost, only deferred. The daemon is the
+only thing that sees the total.
+
+⛔ This is the same shape as the other process failures today. The 60-core limit was in
+`OPERATING_RULES.md`, in `CLAUDE.md`, in the watchdog tick and in four messages from the user — and
+it was still breached, because every one of those places asks a PARTICIPANT to remember it at the
+moment they are thinking about something else. The version that works is enforced by something that
+is not a participant.
