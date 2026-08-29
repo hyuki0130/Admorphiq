@@ -2754,11 +2754,16 @@ onto a condemned colour at all (`uncondemned: []`, run byte-identical to the con
 still not learned, because pressing each drive from its own plate and learning the rail are
 separate problems.
 
-⛔ **Unioning `_visited` into `_grid` is NOT SHIPPABLE ON WALL CLOCK** (repair 1). The control run
-finishes in about 110 seconds; both repair-1 arms were still running at **814 seconds** and had to
-be killed at the probe's 1800-second cap without producing a result. Widening the standable set
-widens the (cell, phase, rail) search at every node, and this family's search is already the level's
-clock.
+⛔ **Unioning `_visited` into `_grid` LOSES A LEVEL** (repair 1). Both arms finished — with and
+without the previous pass's monkeypatches — at **4 levels, 0.47619, 582 and 586 actions**, against
+the control's 5 levels / 0.714286 / 925. It also took about **ten times the wall clock** (~1000s
+against ~110s), because widening the standable set widens the (cell, phase, rail) search at every
+node and that search is already this level's clock. Slower AND worse.
+
+⚠️ **A correction to this section as first written**: it said the repair-1 arms "were killed at the
+1800-second cap without producing a result", written while they were still at 814 seconds. They were
+not killed and they did produce a result — a worse one. **Do not write down the outcome of a run
+that has not finished**; the guess was in the right direction and still wrong about what happened.
 
 ### One more repair built, measured and NOT committed
 

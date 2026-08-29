@@ -109,7 +109,10 @@ def instrument(per_cell: int):
                 win = [(y, x) for y in range(max(0, here[0] - 6), min(grid.shape[0], here[0] + 7))
                        for x in range(max(0, here[1] - 6), min(grid.shape[1], here[1] + 7))
                        if grid[y][x]]
+                # ⛔ The hash alone does not show the control LIGHTING UP — two panels can differ
+                # for any reason. Count the lit pixels: a plate must ADD some.
                 OUT.append({"ARRIVED": list(want), "panel": ph,
+                            "panel_nonbg": int((strip != geom["bg"]).sum()),
                             "standable_here": bool(grid[here[0]][here[1]])
                             if here[0] < grid.shape[0] and here[1] < grid.shape[1] else None,
                             "standable_in_window": len(win),
