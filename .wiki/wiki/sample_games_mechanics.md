@@ -1959,3 +1959,93 @@ after the first heading fix moved two other levels and left level 2 byte-identic
 "the nudge is direction-blind" is a reading of the source, not of the run (rule 7g). It is the same
 instrument `scripts/trace_attribute.py` exists for, at tool-method granularity, and it is what turned
 "four actions somewhere" into "one harness fallback, one blind first move, two ring detours".
+
+## ⛔ `frame_2d` READS THE OLDEST SUB-FRAME — and every level transition in every game is stale (2026-08-29)
+
+`frame_2d` is documented as "the (64, 64) int grid of the observation's **first layer**", and every
+generic tool reads the board through it. An ARC-AGI-3 observation is not one grid: when an action
+has a scripted consequence the engine returns **several layers, oldest first**. So the tool reads
+the state the engine emitted FIRST — before the consequence — and never the settled board.
+
+Measured across the set with `scripts/_layer_stale.py` (21 of 25 games at the time of writing; the
+remaining four are the slow ones, and the pattern is 21 for 21):
+
+```
+game     acts  lvls  multi  behind  trStale        multi   = frames carrying >1 layer
+ar25      269     8      7       7        7        behind  = of those, the LAST layer is closer
+bp35      741     5    740     493        5                  than layer 0 to the board handed
+cd82      133     6     43      38        5                  back NEXT — layer 0 is behind
+cn04      262     6      5       5        5        trStale = the same, at a LEVEL TRANSITION
+dc22      926     5     36       5        5
+ft09       80     6      5       5        5
+g50t      297     7    293     293        6
+lp85      190     8      7       7        7
+ls20      652     7     46      28        6
+m0r0      189     6      5       5        5
+r11l       84     6     43      43        5
+re86      697     8     25      22        7
+sb26      125     8     65      65        7
+sc25      146     6     28      25        5
+sk48      271     8    250     232        7
+sp80      113     6      5       5        5
+su15       90     9     88      85        8
+tn36      138     7     26      18        6
+tr87      146     6      5       5        5
+tu93      188     9    186     186        8
+vc33      200     7     19      19        6
+TOTAL    5937   144   1927    1591      125
+```
+
+⛔ **`trStale` is `levels − 1` for EVERY GAME.** Not a subset, not a family — **every level
+transition of every game hands the tool the board of the level it has just left.** And away from
+transitions, 1591 of 1927 multi-layer frames (83%) are read stale; on `tu93`, `g50t`, `sk48`,
+`bp35` and `su15` that is most of the run.
+
+**Where it COSTS anything is much narrower, and that is the second measurement.** A stale read only
+turns into a wasted action when the tool cannot make sense of it and returns nothing, because then
+`UnifiedAgent._probe` fills the turn with `simple_ids[0]`:
+
+```
+fills = turns the tool did not propose      trFill = of those, on a transition frame
+  dc22 16 (14 inert)   lf52 13 (8 inert)   bp35 8 (4 inert)   ls20 8 (8 inert)
+  ft09 5 (5 on transitions)   re86 5 (5 on transitions)   ar25 1 (1)
+  the other fourteen games: ZERO
+```
+
+Two different defects wearing one face:
+
+* **transition fills** — ar25 1, ft09 5, re86 5, lf52 1. These are the layer question. On re86 each
+  cost TWO actions, the push and the undo, because ACTION1 moved a piece the wrong way.
+* **inert fills** — dc22 14 of 16, ls20 8 of 8, lf52 8 of 13, bp35 4 of 8. Mid-level, nowhere near a
+  transition: the probe presses a key the engine refuses. The layer choice would not touch these.
+
+⚠️ **Reading the LAST layer is the obvious repair and this measurement does not license it.** What is
+proven is the ORDER — layer 0 is the oldest emitted state. What is NOT measured is whether the last
+layer is the board a tool wants: on animation-heavy boards it may be a frame caught mid-consequence
+rather than a settled one, and 14 of 21 games have no fills at all, so most tools read stale boards
+today without paying for it. The change belongs in the harness, behind a full-25 gate.
+
+### ⛔ THE INSTRUMENT TOOK SIX VERSIONS, AND FIVE OF THEM SCORED THE KNOWN POSITIVE AT ZERO
+
+re86's transition frame was verified BY HAND first — layer 0 carried colour 11 (level 1's palette),
+layer 1 carried 12 and 13 (level 2's pieces). Any correct instrument must report it. Five did not:
+
+```
+v1  layer 0 held still while a LATER layer moved since the last frame
+    -> re86 emits ONE layer until the transition, so prev[1:] is empty and it can never fire
+v2  a later layer showed what layer 0 did not, and the NEXT frame's layer 0 is exactly that
+    -> an ACTION happens in between and moves a piece; and it fired 150x on an animation settling
+v3  at a transition, layer 0 identical to the previous frame's layer 0
+    -> the level-CLEARING move changed the board, so again never equal
+v4  v3 with the seeded first frame removed
+    -> that seed had been adding a constant 1 to every game and reading exactly like a finding
+v5  COMPARISON, not equality: is the LAST layer closer than layer 0 to the board handed back next?
+    -> re86 answers 7, exactly its transition count. The FIRST version that sees its own positive.
+v6  v5 widened off the transitions, where the real claim lives
+```
+
+⛔ **Every failed version was an EQUALITY, and an equality cannot survive a frame boundary** — an
+action happens there. The rule is the one rule 7b already states, paid for again: **run the checker
+on input whose verdict you already know, in both directions, before reading its output.** A zero
+from a detached instrument is indistinguishable from a measured negative, and four of these would
+have been written up as "no other game has re86's problem".
