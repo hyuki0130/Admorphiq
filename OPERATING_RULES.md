@@ -2137,3 +2137,42 @@ unseen game with no specialist, `graph` plays from level 1 and the question neve
 form. If cross-level carry is ever built it must be argued from a game where a tool plays levels
 k..n after sitting out 1..k-1 **and then has levels left to play** — and no such game exists on the
 public 25 to measure it on.
+
+### 7ba — RE-CONFIRMED on the current tree: no single tool goes deeper, and each game has exactly ONE (2026-08-30)
+
+Five games were closed today with the claim "each needs a capability the tool set does not have".
+⛔ That claim rested on a sweep taken when the roster was smaller. **Re-run at 47 tools × 5 games =
+235 pairs, from a private snapshot of HEAD, one tool forced alone at 3000 actions:**
+
+```
+game   harness   best SOLO         tools beating the harness
+bp35     5       5  crag                   NONE
+dc22     5       5  gantry                 NONE
+lf52     5       5  railpeg                NONE
+ls20     7       6  keymaze                NONE   (the harness is DEEPER than any single tool)
+s5i5     6       6  swivel                 NONE
+```
+
+⭐ **AND THE SHAPE IS STARKER THAN "no tool is better" — EXACTLY ONE TOOL DOES ANYTHING AT ALL:**
+
+```
+bp35  1 of 47 reaches depth 5, and 46 of 47 clear NOTHING
+dc22  1 of 47                    45 of 47 clear nothing
+lf52  1 of 47                    43 of 47 clear nothing
+ls20  1 of 47 reaches depth 6,   46 of 47 clear nothing
+s5i5  1 of 47                    44 of 47 clear nothing
+```
+
+**There is no runner-up anywhere.** Each of these boards is held by a single specialist with no
+alternative behind it, which is why ⛔ every one of today's closures is a statement about a
+CAPABILITY rather than about a routing choice or a tuning constant — and it independently confirms
+rule 7ac (routing is not the defect; 41–43 of ~48 tools bid 0.00 at every decision point).
+
+⚠️ ls20 is the sharpest row: **the harness reaches level 7 and no single tool reaches past 6**, so
+the composition is worth a level that none of its parts can reach alone. Any future "just use the
+best tool" simplification would lose it.
+
+⛔ **The remaining 0.0918 is not a sweep away.** This is the third time the sweep has been run and the
+third time it has returned NONE; ⚠️ but it had to be re-run, because the roster grew and the earlier
+result was about a different tool set. **A closure whose evidence predates the current tree is a
+claim, not a measurement.**
