@@ -2975,3 +2975,136 @@ of it". Each step needed the previous instrument to be verified harmless first �
 tool has a `_dirmap` and a settle counter; what it lacks is a per-axis refusal memory. That is a
 small, testable change with a clear verification — levels 1-5 must stay at their 8/52/57/64/138
 actions, and level 6's 500 must stop containing 133 refused ACTION1 presses.
+
+##### lf52 level 6: THE MAP IS NOT WHAT STOPS IT, and the last column is not needed to win
+
+Instrument: `scripts/_lf52_map.py`. `score_efficiency.run_game` drives the steps (rule 7aj.1 — the
+loop is never re-implemented); `arcade.make` is wrapped only to capture the env and the adapter only
+to READ. Once per action the oracle takes the ENGINE's own state — level, in-level counter, camera
+offset `grid.cdpcbbnfdp`, pieces, carts, who rides a cart, and, using the engine's OWN legality
+predicate `qikmikecdf`, how many jumps are legal and how many of them LAND ON A CART — beside
+railpeg's `len(model.known())`, its column span and its piece count. That is a dev-time oracle for
+diagnosis only; the tool is untouched and stays frame-only.
+
+**Both controls, before any arm is read** (rule 7ai):
+
+```
+NEGATIVE  the instrument must not perturb    per-level [8, 52, 60, 64, 139], 823 actions, 0.272727
+                                             — identical to the banked R101BP35 lf52.json        OK
+POSITIVE  the oracle must be able to say YES camera seen MOVING on levels 3, 4, 5, 6
+                                             boarding move seen on levels 2, 3, 4, 5, 6          OK
+```
+
+The positive control is the load-bearing one: without it an all-zero level-6 reading is
+indistinguishable from an oracle that measures nothing, which is how nine instruments failed in two
+days.
+
+**The census, level 6, 500 actions:**
+
+```
+known 54 -> 98 by level-action 44, then FLAT for the remaining 456 actions   known_drops = 0
+camera  (5,5) -> (-15,5) at action 26 -> -21 -21 ... -75 by action 43 -> NEVER past -75
+boarding moves exist at 22 decision points, actions 24..123 — and at none of the 377 after
+the ENGINE offers ZERO legal jumps at 213 of the 500 decision points, from action 29 onward
+pieces 8 -> 7 (a14) -> 6 (a16) -> 5 (a124) -> nothing for the rest of the level
+```
+
+**H4 (the model discards its map) is REFUTED**: `known_drops = 0` and `known_final == known_max ==
+98`. Nothing is retracted, re-anchored or overwritten.
+
+**H3 (growth is possible but never ranked) is REFUTED at the position**: past action 123 there is no
+boarding move to rank, and at five of the seven moments the camera sits at the one offset that still
+matters the engine has NO legal jump at all. `_rail_reach` already ranks boarding by what a track can
+reach, and it fired — the (7,6) boarding at action 26 is that tier working.
+
+**H2 is CONFIRMED, and the game's own source names the mechanism.** In
+`environment_files/lf52/271a04aa/lf52.py` the level-6 camera moves in exactly three ways and no
+others:
+
+```
+(a) cfilhtifcb   a jump LANDING on cell (7,6) — which is a cart — while the offset is (5,5)   -20
+(b) tmhxwcojkh   a cart drive while a plain `fozwvlovdui` rides that cart                     -6 each
+(c) cfilhtifcb   a jump landing on cell (18,2) while the offset is EXACTLY (-57,5)            -44
+```
+
+The run performs (a) once and (b) eleven times, and that is the entire -75. Then (b) is exhausted:
+row 6 carries rail from column 7 to column 17 and the laden cart is at its end. Only (c) is left,
+and (c) is a landing square — (18,2) is reachable only from (16,2) over (17,2) or from (20,2) over
+(19,2), and both midpoints start EMPTY, so the jump has to be CONSTRUCTED two moves ahead. The run
+stands at offset -57 seven times (actions 38, 52, 68, 94, 109, 111, 113) and the engine has zero
+legal jumps at five of them.
+
+⭐ **AND NONE OF IT MATTERS, which is worth more than the census.** The board is 28 columns wide and
+90 cells; the three the tool never sees are (26,2), (26,3), (26,4). Level 6's win predicate is
+`len(ndtvadsrqf("fozwvlovdui")) == 2` — take eight pieces down to two — and the red piece is
+uncapturable (`cfilhtifcb` removes the jumped piece only when `qcerbdpdcl.name == uywtlohliu.name`),
+so the level asks for six captures of the seven plain pieces and **the piece at (26,3) can simply be
+the survivor**. Opening column 26 wins nothing. ⛔ Nobody spends a day on lf52's map.
+
+**What actually stops the level, measured**: the tool is at 6 pieces by action 16 — two captures in
+sixteen actions, the free half — and then takes its third at action 124, after which the ENGINE has
+zero legal jumps for the remaining 143 actions of the attempt. That is the same verdict
+`scripts/_lf52_stall.py` reached by forcing every legal move, and the same one `plan_level`'s own
+docstring records from the other side: *"at the third capture, the seven cheapest candidates are each
+a dead end and the eighth is not — taking it finishes the level in 87 actions against a human
+baseline of 148"*. Three independent readings agree that lf52 level 6 is decided at capture three.
+
+⚠️ So `plan:all-candidates-fatal` firing 11-18 times is the veto being RIGHT, and the one time the
+last-resort override fires it loses the level. The lever is not a bigger map and not a looser veto —
+it is finding the eighth branch among eight, on a map that is already complete enough to contain it.
+
+##### lf52 level 6: the game DECLARES the branch lost, the tool then presses its restart button by accident — and 376 of 500 actions go to that
+
+Same instrument, one field added: the engine's own `zvcnglshzcx` — the flag that means "the restart
+control is live". `equnaohchtj.pchvqimdvj()` raises it when the level reaches a position the DESIGNER
+marks as lost (it greys the pieces and floats a `cwyrzsciwms` sprite up from the bottom-left), and
+`Lf52.jxyktkxwle` then treats **any ACTION6 with `x < 16 and y > 48` as "restart this level"**.
+
+```
+level      zv_points   in-level counter falls   railpeg's piece count at the end
+1-5            0             none                    2   (the level was won)
+6            143          at action 267             5   (the board has EIGHT)
+```
+
+Read the twelve actions before the fall and it is unambiguous:
+
+```
+255 used=255 act=ACTION2 cam=(-57,5) p=5 legal=0 zv=True  mp=5 st=NOT_FINISHED
+...  eleven more, ten of them ACTION6, every one with zv=True and legal=0
+266 used=266 act=ACTION6 cam=(-57,5) p=5 legal=0 zv=True  mp=5 st=NOT_FINISHED
+267 used=  0 act=ACTION1 cam=( 5,5)  p=8 legal=2 zv=False mp=5 st=NOT_FINISHED   <- LEVEL RESTARTED
+```
+
+Three things, each measured:
+
+1. ⭐ **The game hands out a free fatality oracle and the tool does not read it.** `zv` goes TRUE at
+   level-action 124 — the exact action of the third capture — and stays TRUE for 143 actions. The
+   engine is saying *this branch is lost* in the frame, for a quarter of the level, while
+   `plan_level`'s veto is separately deducing the same thing by search. `plan_level`'s own docstring
+   already names this signal (*"the game SHIPS A DETECTOR for exactly that, greying the pieces out
+   and offering a restart"*) — nothing in the tool observes it.
+
+2. ⛔ **The restart has NO state signal, and this is a counterexample to rule 7z.** `obs.state` reads
+   `NOT_FINISHED` on every one of the 500 actions; `levels_completed` never moves; the agent issues
+   zero `RESET`s. The ONLY evidence a restart happened is the engine's private in-level counter
+   falling 266 -> 0 — invisible to any frame-only tool that is not looking for the board to jump back
+   to its opening. Rule 7s said a restarting level reads like a continuing one; rule 7z answered
+   "`GAME_OVER` is the only reliable signal". **On lf52 level 6 there is no `GAME_OVER` either.**
+
+3. ⛔ **The model survives the restart and is then wrong for 233 actions.** After the fall the board
+   holds 8 pieces at the opening camera; railpeg still says 5, and still says so at the last action of
+   the game. `_align` succeeds (the lattice is identical, which is exactly why the restart is
+   invisible) and `_install` deliberately keeps what the window cannot see — correct on a scrolling
+   board, fatal after a restart. The second attempt makes **zero captures and zero camera movement in
+   233 actions**.
+
+**Price**: 143 actions after the game called the branch lost, plus 233 on a stale model = **376 of
+level 6's 500 actions, 75%**, spent in positions that could not produce a clear. It costs nothing in
+RHAE today (an uncleared level scores 0 either way) and it costs the whole of the second attempt,
+which is the only place a different third capture could have been tried.
+
+⚠️ Careful with the obvious repair. "Do not click the bottom-left corner" is NOT it — `_settle_click`
+already avoids the edges (it scans `x >= w // 3`), so the offending clicks are ordinary planned
+`propose` clicks whose coordinates happen to land there once the camera has scrolled. And "detect the
+restart and re-anchor" is only half: re-anchoring without remembering that the third capture was
+fatal buys a second attempt that repeats it.

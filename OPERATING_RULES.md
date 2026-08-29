@@ -1735,3 +1735,33 @@ rule 7ab) and 10 by repetition. Every gated number in `scripts/rounds/R101BP35` 
 
 ⛔ Cheap and worth repeating after any wave of per-game tool work. ⚠️ And it stays a DIFFERENT claim
 from transfer: the ten remain untested against different mechanics by any means we have.
+
+### 7ap — a level can restart with NO signal at all: `GAME_OVER` is not the backstop either (2026-08-30)
+
+Rule 7s said a restarting level reads like a continuing one. Rule 7z answered it: the raw-frame
+opening hash cannot fire, and **`obs.state == GAME_OVER` is the only reliable restart signal**.
+Measured on lf52 level 6, over the scored 823-action run (`scripts/_lf52_map.py`, engine oracle
+beside the tool, negative control reproducing `[8, 52, 60, 64, 139]` exactly):
+
+```
+the level RESTARTS at level-action 267 — pieces 5 -> 8, camera back to its opening offset
+obs.state                       NOT_FINISHED on all 500 actions
+levels_completed                never moves
+RESET actions issued by the agent   0
+the ONLY evidence                 the engine's private in-level counter falling 266 -> 0
+```
+
+⛔ **There was no `GAME_OVER`.** The game ships its own dead-position detector, raises a restart
+control in the bottom-left, and treats any click landing there as "restart this level" — so the tool
+restarted the board itself, with an ordinary planned click, and nothing in the observation changed.
+`levels_completed`, `state` and the opening-frame hash are all blind to it, which is three of three.
+
+**What survives**: the only sound general test is that the BOARD went back to its opening while the
+level index did not change — a model-level comparison, which rule 7u correctly warns is unsound on a
+board that scrolls. So on a scrolling board there is currently NO cheap general restart test, and a
+tool that assumes there is will run a stale model. lf52's did, for **233 actions — 47% of the level**
+— still reporting five pieces to a board holding eight.
+
+⚠️ And the consequence is not "detect the restart". A tool that re-anchors but does not remember WHY
+the attempt died repeats the move that killed it. lf52's restart follows its third capture, which is
+the branch point the level is decided at.
