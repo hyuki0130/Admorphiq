@@ -1797,3 +1797,44 @@ tool that assumes there is will run a stale model. lf52's did, for **233 actions
 ⚠️ And the consequence is not "detect the restart". A tool that re-anchors but does not remember WHY
 the attempt died repeats the move that killed it. lf52's restart follows its third capture, which is
 the branch point the level is decided at.
+
+### 7at — the settled-layer read WORKS when it is NARROW and CONDITIONAL (2026-08-30)
+
+Rule 7o records that `frame_2d` reading the LAST layer instead of the first is TRUE as a measurement
+and cost **0.8962 → 0.6525 across fourteen games** as a change. This is the same mechanism, made to
+pay, and the difference is the whole lesson.
+
+**The mechanism, measured on all 7 of lp85's level transitions**: the first observation of a new
+level carries TWO layers, and layer 0 is **the level that just ENDED** — a board standing on its
+marks by definition. `propose` read it as solved and spent `_nudge`'s off-board click; the real board
+arrived next turn. `solved(layer0) = True, solved(layer-1) = False` on **7 of 7**.
+
+**The change swaps to the last layer ONLY where layer 0 is PROVABLY the wrong board** — nothing
+pressed on the board in hand, AND layer 0 satisfied, AND the last layer not. `detect` untouched.
+
+```
+lp85 0.9677 -> 0.9767 · 189 -> 182 actions · NO level dearer
+per level [7,35,19,19,17,40,19,33] -> [7,34,18,18,16,39,18,32]
+```
+
+⛔ **THE CONTRAST IS THE RULE.** Unconditional: fourteen games regressed, because the last layer is a
+frame caught mid-consequence rather than a settled board. Conditional on a predicate that can only be
+true at a transition: seven levels each one action cheaper and none dearer. **A mechanism that is
+real does not license the general form of its fix; it licenses the NARROWEST form that the evidence
+supports.**
+
+⚠️ AND IT IS GENERIC — any tool reading `frame_2d` at a level transition sees the previous level's
+board. Worth one probe on the games with multi-layer transition frames. ⛔ But note rule 7t measured
+the whole transition tax at **0.36 inert actions per transition** across the 25, so the population
+prize is small; lp85 pays 7 of it because its own `_nudge` costs an action each time.
+
+⭐ AND SEVEN ARMS WERE REFUTED BEFORE THIS ONE LANDED, which is why the six confirmations are known to
+be load-bearing rather than assumed: round-robin confirmation L4 19→31; `_MAX_PRESSES` 3 and 7 both
+worse (L5 17→29, L6 40→49); a ready-check before a fresh press L1 7→21; joint inverse recovery L4
+18→23, where **the joint permutation is adopted CONFIRMED and is wrong — uniqueness is not a guard**;
+and confirm-at-streak-1 never binds. **Every cut confirmation made the model wrong and the plan
+longer by at least what it saved.**
+
+⚠️ INSTRUMENT DEFECT, and it is the fail-toward-nothing shape again: `pfan.sh` collects with `>>`
+appends, so a probe printing a JSON line over ~4KB INTERLEAVES and every run but one reads as
+"produced nothing". **Keep the stdout line short; write detail to a per-arm file.**
