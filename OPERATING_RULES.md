@@ -1903,3 +1903,38 @@ model lacking it is satisfied one capture early, which `_elsewhere` already hand
 ⛔ **The target for whoever takes lf52: make the third capture the eighth candidate rather than the
 first**, and stop the 376 wasted actions that follow the wrong one. Not a bigger map (closed), not a
 looser veto (the veto is right), not the frontier (six measurements).
+
+### 7av — a guard that silently tests LESS than it was asked to (2026-08-30)
+
+The four guards built this weekend — the registered-tool check, the `detect`-purity population, the
+adapter detection contract, the summaries-match-their-data check — **ran nowhere automatically.** Not
+in a hook, not in `R98/selfcheck.sh`. A guard nobody runs is a finding with an expiry date, and this
+repository has already paid for exactly that: `fogscout` committed but unregistered measured like an
+absent tool, worth +0.0942.
+
+So `snapgate.sh` now runs the cheap ones BEFORE spending twenty minutes of box time. ⛔ **And wiring
+them up immediately exposed a defect in the runner they go through.**
+
+```
+ssh host bash -s "$SNAP" "$TARGET"      # TARGET = "tests/a.py tests/b.py"
+```
+
+`ssh` joins its arguments with spaces, so the remote sees `$2 = tests/a.py` and `$3 = tests/b.py` —
+and the remote script reads only `$2`. **It ran the FIRST file and SILENTLY DROPPED THE SECOND.**
+Measured: the gate asked for the registry check and the purity check, only the registry check ran,
+and a **deliberately broken purity pin reported "guards hold"**.
+
+⛔ **A guard that silently tests less than it was asked to is worse than no guard — it reports
+success for work it did not do.** That is the fail-open shape, and this is its FOURTH appearance: the
+bash-3.2 `wait -n` throttle that throttled nothing, `compare.py` printing "no game regressed" over 25
+missing games, an audit script reusing stale frames, and now this.
+
+Arguments go through the environment. ⭐ Proved in BOTH directions with two targets exactly as the
+gate calls it — broken pin → `1 failed, 2 passed` and the gate refuses; healthy → `3 passed` and it
+proceeds. **Note the count: three tests where two ran before, so the fix also revealed that the
+guard had been running less than it appeared to even when it passed.**
+
+⚠️ THE GENERAL FORM: whenever a wrapper takes a LIST and passes it through a boundary — ssh, xargs,
+a heredoc, an env var — check that the far side receives all of it. `pfan.sh` had the same class of
+bug on an empty argument (rule 7r) and `pfan.sh` again on interleaved output (rule 7at). **Count what
+arrived, not what you sent.**
