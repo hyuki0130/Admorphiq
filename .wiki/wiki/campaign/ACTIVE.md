@@ -48,5 +48,23 @@ Never write one probe. List every hypothesis, then run them together:
 2. Keep ceph busy between integrations — the idle hook says when it is not.
 3. Any surviving change: re-measure the full 25 and update the LOG below.
 
+## THE GATE FOR EACH GAME — one line, ready to run the moment an agent returns
+Baseline re-confirmed 2026-08-29 16:48: **R101REACH = 0.8935 over 25, no game differing.**
+
+```
+bash scripts/rounds/gate_tool.sh R101BP35 scripts/rounds/R101REACH vc33 crag
+bash scripts/rounds/gate_tool.sh R101LF52 scripts/rounds/R101REACH vc33 railpeg
+bash scripts/rounds/gate_tool.sh R101S5I5 scripts/rounds/R101REACH vc33 swivel
+bash scripts/rounds/gate_tool.sh R101DC22 scripts/rounds/R101REACH vc33 gantry
+bash scripts/rounds/gate_tool.sh R101WA30 scripts/rounds/R101REACH vc33 shepherd
+bash scripts/rounds/gate_tool.sh R101LS20 scripts/rounds/R101REACH vc33 fogscout
+bash scripts/rounds/gate_tool.sh R101LP85 scripts/rounds/R101REACH vc33 cyclepress
+bash scripts/rounds/gate_tool.sh R101RE86 scripts/rounds/R101REACH vc33 <tool the agent names>
+```
+
+⛔ A gate that does not RAISE the mean means the change is reverted — that is the rule that kept
+cumulative regressions at zero through fifteen reverted repairs today. ⚠️ Gates must not overlap with
+a sweep on the same box; run them one at a time.
+
 ## LOG — what moved the score
 (nothing yet today: 0.8935 unchanged, zero surviving source changes)
