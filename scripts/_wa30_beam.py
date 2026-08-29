@@ -32,10 +32,10 @@ def main() -> None:
 
     job = int(sys.argv[1])
     depth_cap = int(sys.argv[2]) if len(sys.argv) > 2 else 70
-    widths = (20, 40, 80)
+    widths = (150, 400, 1000)
     width = widths[(job - 1) % 3]
-    heur = ((job - 1) // 3) % 3
-    seed = (job - 1) // 9
+    heur = ((job - 1) // 3) % 4
+    seed = (job - 1) // 12
     rng = np.random.default_rng(seed + 1)
 
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
@@ -96,10 +96,27 @@ def main() -> None:
         v = 1000 * cov - dist
         if heur >= 1:
             v += 100 * onbay_held - 200 * thief_held
-        if heur >= 2:
+        if heur == 2:
             p = gm.current_level.get_sprites_by_tag("wbmdvjhthc")[0]
             if loose:
                 v -= 5 * min(abs(s.x - p.x) + abs(s.y - p.y) for s in loose) // C
+        if heur == 3:
+            # potential: the drag work still owed, each loose piece assigned a DISTINCT open bay
+            # nearest-first, plus the walk owed by whichever agent is closest to it.
+            agents = [(a.x, a.y) for a in
+                      gm.current_level.get_sprites_by_tag("wbmdvjhthc")
+                      + gm.current_level.get_sprites_by_tag("kdweefinfi")]
+            pool = list(openbay)
+            work = 0
+            for s in sorted(loose, key=lambda q: -(q.x + q.y)):
+                if not pool:
+                    break
+                b = min(pool, key=lambda q: abs(s.x - q[0]) + abs(s.y - q[1]))
+                pool.remove(b)
+                work += (abs(s.x - b[0]) + abs(s.y - b[1])) // C
+                if agents:
+                    work += min(abs(s.x - a[0]) + abs(s.y - a[1]) for a in agents) // (C * 3)
+            v = 1000 * cov - 3 * work + 100 * onbay_held - 200 * thief_held
         return v, cov
 
     def key(gm):
