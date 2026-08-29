@@ -9,8 +9,14 @@
 #
 #   bash scripts/integrate.sh dc22 gantry        # gate the working tree's change to gantry
 #
-# Refuses if another gate or a sweep is already running on the box (rule 7i: a gate re-syncs, so two
-# at once measure each other's bytes).
+# ⛔ IT USED TO CALL `scripts/rounds/gate_tool.sh`, WHICH RULE 7l FORBIDS — that script syncs the
+# SHARED `~/admorphiq`, so its verdict carries every agent's work-in-progress and the tree can move
+# under it. Both of its own documented traps are that one cause. It now calls `snapgate.sh`, which
+# archives HEAD into a private directory on the box: two gates run at once and a rider cannot ride.
+#
+# ⚠️ Found 2026-08-30 by auditing which scripts were still referenced by anything — this one had been
+# left pointing at the superseded gate for a full day while the rules said not to use it. A wrapper
+# is a place a superseded call hides.
 set -u
 cd "$(dirname "$0")/.."
 GAME="${1:?game, e.g. dc22}"
@@ -19,23 +25,22 @@ BASE="${3:-scripts/rounds/R101REACH}"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 
-BUSY=$(ssh -o ConnectTimeout=10 -i "$KEY" "$REMOTE" 'pgrep -fc "score_efficiency" || true' 2>/dev/null)
-if [ "${BUSY:-0}" -gt 4 ]; then
-  echo "⛔ REFUSING: $BUSY scoring processes already on the box. A gate re-syncs the tree, so it"
-  echo "   would change the source under whatever is measuring. Wait, then re-run."
-  exit 1
-fi
+# ⚠️ No longer refuses on a busy box: `snapgate.sh` runs from a private snapshot, so two gates and a
+# peer's fan coexist (verified 2026-08-29 alongside a 50-run A/B). Load is still worth a glance.
 
-if git diff --quiet -- src/; then
-  echo "⛔ REFUSING: no change in src/. There is nothing to gate."
-  exit 1
+# ⛔ THE CHANGE MUST BE COMMITTED. `snapgate.sh` archives HEAD, which is the whole point of rule 7l:
+# a peer's uncommitted edit cannot ride into the verdict, and the verdict names a COMMIT rather than
+# a working directory. An uncommitted change is simply invisible to it.
+if ! git diff --quiet HEAD -- src/; then
+  echo "⚠️  src/ has UNCOMMITTED edits — the gate archives HEAD, so these are EXCLUDED:"
+  git diff --name-only HEAD -- src/ | sed 's/^/      /'
+  echo "    Commit yours first (stage and commit in ONE step — rule 7w)."
 fi
-echo "=== changed files"
-git diff --name-only -- src/ | sed 's/^/    /'
+echo "=== src/ commits since the baseline"
+git log --oneline -3 -- src/ | sed 's/^/    /'
 
-NAME="R101$(echo "$GAME" | tr 'a-z' 'A-Z')"
-echo "=== gating $NAME against $BASE (canary vc33, tool $TOOL)"
-bash scripts/rounds/gate_tool.sh "$NAME" "$BASE" vc33 "$TOOL" | tail -20
+echo "=== gating $GAME against $BASE"
+bash scripts/snapgate.sh "$GAME" "$BASE" | tail -20
 
 echo
 echo "⛔ KEEP only if the mean ROSE. If it did not:  git checkout src/"
