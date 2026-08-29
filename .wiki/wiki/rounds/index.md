@@ -276,3 +276,18 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   redraw. ⚠️ This first reached the record naming `cover_targets._handover`, which is unread but is
   PIECE-CONTROL semantics; the attribute that actually knows is `_stuck` (`cover_targets.py:499`),
   read only by its own tool. Caught by grepping the assignment sites before writing the claim.
+
+- **shipped card / kaggle_unified / submission path / transfer / re-render / archived hash /
+  brittleness / does it read pixels** → [[r101_shipped-and-transfer]] — the two numbers the campaign
+  quoted without measuring. ⭐ The SHIPPED wrapper scores **0.9082, zero games differing** from the
+  bench member (`AGENT=kaggle_unified bash scripts/snapgate.sh`), and the notebook has shipped
+  `KaggleUnifiedAgent` since `f1067554` — ⚠️ CLAUDE.md claimed `KaggleDetectAgent`/`KaggleChainedAgent`
+  in two places for days. ⭐ **24 of 25 games are action-for-action IDENTICAL on an archived
+  re-render** (ratio 0.9989); the only difference in the whole set is s5i5 L4, 39 -> 61 actions,
+  still clearing. ⚠️ A re-render is the SAME GAME — a floor on brittleness, ⛔ not a leaderboard
+  transfer coefficient. Both had been blocked by INSTRUMENTS, not by the work: `snapgate.sh` could
+  not take an agent argument, so the file's own "measure the card AS SHIPPED" order named a flag the
+  runner refused; and the transfer procedure had been re-derived by hand three times because no
+  round dir ever carried its `run.sh` (now `scripts/xfergate.sh`). Rules **7bv** + **7by**, plus
+  **7bu** — the r59s15 duplicate-`game_id` hazard RECURRED on ceph-build and is measured INERT
+  (both sk48 sources, same score, same action count on all eight levels).
