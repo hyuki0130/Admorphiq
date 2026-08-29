@@ -2,10 +2,12 @@
 
 > The plan that survives a context compaction. Read this before choosing a direction.
 
-## STATE (2026-08-29 19:35, all gated on the full 25)
+## STATE (2026-08-30 08:20, all gated on the full 25)
 
 **MEAN = 0.9082**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
-Baseline dir: `scripts/rounds/R101LP85GATE/games` — use it as the gate's BASE.
+Baseline dir: **`scripts/rounds/R101SHIPPED`** — use it as the gate's BASE. (It is the
+SHIPPED-configuration run and scores identically to `R101LP85GATE`, game for game; prefer it so a
+gate and the card it defends are measured through the same wrapper.)
 
 ⭐ **THE GAINS REACH THE SUBMISSION PATH — GATED AS SHIPPED, 2026-08-30** (rule 7bv). The gate now
 takes `AGENT=`, which it did not until today, so this file's own "measure the card AS SHIPPED"
@@ -28,10 +30,24 @@ games with no archive are the determinism control and are identical too.
 ⚠️ Still weak evidence — a re-render is the SAME GAME. ⛔ Do not quote 0.9989 as a leaderboard
 transfer coefficient; the hidden score of the generic path remains UNMEASURED.
 
-Moved today, each gated: **re86 CONQUERED 0.9908 -> 1.0000 (8/8)**, ls20 0.8442 -> 0.9040,
-lp85 0.9099 -> 0.9677. First movement in a day.
+Conquered on 2026-08-29, each gated: **re86 0.9908 -> 1.0000 (8/8)** and **wa30 0.8000 -> 1.0000
+(9/9)** — wa30's last level was short of ATTEMPTS, not moves; six of its eight tries were
+byte-identical replays.
 
-The seven still short, largest gap first:
+⛔ **SIX still short — and the per-level column is from `R101SHIPPED`, the SHIPPED-configuration
+gate, not from memory.** Four of the six lose NOTHING BUT DEPTH: every level they reach is at the
+1.0 cap and the game simply ends. For those there is no efficiency work to do at all.
+
+```
+bp35 0.2456  reached 5   1.00 0.30 0.96 1.00 0.51   BOTH
+lf52 0.2727  reached 5   1.00 1.00 1.00 1.00 1.00   DEPTH ONLY
+s5i5 0.5833  reached 6   all six at 1.00            DEPTH ONLY
+dc22 0.7143  reached 5   all five at 1.00           DEPTH ONLY — one level from the end
+ls20 0.9121  reached 7   ...1.00 0.65               EFFICIENCY, L7 alone
+lp85 0.9767  reached 8   ...0.79 at L4...           EFFICIENCY, L4 alone
+```
+
+Why each is closed, largest gap first:
 
 ```
 lf52    0.2727   gap 0.7273   ⭐ THE WHOLE GAP IS ONE MOVE — the third capture at action 124 is the
@@ -49,33 +65,31 @@ ls20    0.9121   gap 0.0879   ⛔ FULLY CLOSED — the handover too. L7's 231 = 
                              wait for or ambush a mover: `Ls20.step` moves movers FIRST and UNDOES
                              them when the player's move is refused (18 of 18), so ambushing is
                              IMPOSSIBLE, not mistuned. 12 arms x 4 axes all lose or are inert.
-lp85    0.9767   gap 0.0233   L4 = 18 vs a human 16; the six confirmations are load-bearing.
+lp85    0.9767   gap 0.0233   L4 = 19 vs a human 16; the six confirmations are load-bearing.
+                             ⚠️ Worth 0.0009 of the mean. It is the SMALLEST thing on this list.
 ```
 
-## ⭐ THE DECOMPOSITION THAT SAYS WHAT KIND OF PROBLEM EACH GAME IS (2026-08-29, from the gate's own per_level)
+## ⭐ WHAT KIND OF PROBLEM EACH GAME IS — and the one reading that keeps being got wrong
 
-```
-game     score  reached  per-level (* = at the 1.0 cap)      what is actually lost
-dc22    0.7143     5     * * * * *                           DEPTH ONLY — one level, its last
-lf52    0.2727     5     * * * * *                           DEPTH ONLY
-s5i5    0.5833     6     * * * * * *                         DEPTH ONLY
-wa30    0.8000     8     * * * * * * * *                     DEPTH ONLY — one level, its last
-ls20    0.9040     7     * * * * * * +                       EFFICIENCY, L7 = 0.62, one level
-lp85    0.9677     8     * * + . * * * *                     EFFICIENCY, L4 = 0.24, L3 = 0.94
-bp35    0.2220     5     * . + * .                           BOTH — L2 = 0.30, L5 = 0.30
-```
+⚠️ **The per-level table lives in the STATE block above, refreshed 2026-08-30 from `R101SHIPPED`.**
+It used to be duplicated here with 2026-08-29 numbers, which meant this file disagreed with itself
+about wa30 (conquered), ls20 and bp35. **One copy, at the top.** What survives here is the reading:
 
-⛔ **FOUR OF THE SEVEN LOSE NOTHING BUT DEPTH.** Every level they reach is at the cap, several
-faster than the human, and the game simply ends short. For those games there is no efficiency work
-to do at all and a "make the tool faster" change cannot help — the target is the NEXT level and
-only the next level. dc22 and wa30 are one level from the end.
+⛔ **FOUR OF THE SIX LOSE NOTHING BUT DEPTH.** Every level they reach is at the cap, several faster
+than the human, and the game simply ends short. For those games there is no efficiency work to do at
+all and a "make the tool faster" change cannot help — the target is the NEXT level and only the next
+level. dc22 is one level from the end.
 
 ⚠️ Reading a stuck game as ONE NUMBER hides this completely, and it is one command away:
 `per_level` in `scripts/rounds/*/games/*.json`.
 
-⚠️ bp35's two 0.30 levels are not slowness. Its human baselines EXCEED the game's own action
-allowance (87/131/163 against 64/128/192), so those baselines already contain a retry — "87 actions
-vs 48 human" is TWO ATTEMPTS, not one slow one. Its efficiency loss is a FAILURE RATE.
+⚠️ **bp35's two low levels are not slowness — they are a FAILURE RATE.** Its human baselines EXCEED
+the game's own action allowance (87/131/163 against 64/128/192), so those baselines already contain
+a retry. "87 actions vs 48 human" is TWO ATTEMPTS, not one slow one.
+
+⭐ **AND THE EFFICIENCY HALF IS BOUNDED AT +0.00796 IN TOTAL** (rule 7cb): only FIVE cleared levels
+in the whole 25 score below 1.0 — bp35 L2/L3/L5, lp85 L4, ls20 L7. Compute that bound before opening
+any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
