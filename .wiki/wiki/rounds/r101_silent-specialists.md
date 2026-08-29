@@ -635,3 +635,29 @@ instrument failure of the round, and the fix was deleting one line.
 ⚠️ Scope: this refutes the discovery reading for ls20 specifically. lp85 (32 vs 16) and bp35 (84 vs
 48, 57 vs 33) clear on the first attempt, so they offer no second run and the question stays open
 there.
+
+## What the 146 actions on a known map are actually made of
+
+fogscout labels its own reason for every action, and the counter is already in the tool
+(`self.census`). Over level 7:
+
+```
+win     113   heading for the exit
+tread    56   stepping on cells never stood on
+map      50   exploring while the goal is still unknown (goal=False on all fifty)
+refuel   30   going for fuel — it does this, and my earlier claim that it has no fuel notion was
+              wrong twice over
+press/mark/look  43
+```
+
+**It is not wandering.** The largest single mode is the win search. And `tread` — the obvious
+candidate for waste at 19% of the level — is defended by a measurement in its own docstring: "a
+deflector cell lands the avatar somewhere the map does not predict, and one such cell is the only
+way into a third of this board... gating it on 'the objective is already known' was measured to lose
+the level outright".
+
+So the 302 actions are composed of modes each of which was individually justified by someone's
+measurement. **The remaining gap is not made of separately-fixable defects** — which finally explains
+this round's own shape: thirteen repairs built, thirteen inert or harmful, because the obvious
+defects were already found and fixed by whoever wrote these docstrings. What is left is the
+composition, not any one part.
