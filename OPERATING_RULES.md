@@ -2854,3 +2854,29 @@ sentences like "tune —  decides six outcomes". Worse, the fill also DUPLICATED
 ⛔ **Write rule text with the Edit/Write tools, never through a shell heredoc** — this file is dense
 with backticked identifiers and every one of them is a command substitution waiting to happen.
 
+
+### 7br — I briefed two agents onto the same axis and a peer closed it under both (2026-08-30)
+
+Within twenty minutes I sent one agent at "why does `pegjump` hold 19 of 500 on lf52" and another at
+"tenure as a general defect across the 25". **They are the same question at two scales**, and a third
+agent — already working — landed the corpus-wide census that answered both while they were still
+setting up. Two agents spent box time on a closed axis and I had to stop them.
+
+⛔ **THE COST IS NOT THE DUPLICATION, IT IS THE STOPPING.** Both were mid-instrument; both now have
+to bank a partial result and stand down, which is exactly the outcome rule 0 exists to prevent
+("a measurement that lives only in a session transcript does not exist").
+
+**THE MISTAKE IS NAMEABLE: I briefed the SPECIFIC and the GENERAL form of one question as if they
+were two axes.** They are not. The specific case is a sample of the general one, so whichever
+finishes first answers the other — and the general one is strictly cheaper to run once.
+
+⚠️ THE CHECK, before spawning: **write the question the new agent will answer, then ask whether any
+live agent's question is a special case of it, or it of theirs.** If either direction holds, it is
+one assignment. This is the third coordination cost in two days — two agents wrote a probe at the
+IDENTICAL path (rule 7t), three rule numbers collided (fixed by `scripts/newrule.sh`), and now this.
+
+⭐ AND THE CONSOLATION IS REAL, so a stopped agent should still report: **a negative that arrives
+after the axis is closed is the SECOND INDEPENDENT LOOK.** Twice this round two agents reached the
+same verdict by different routes — the ls20 handover (a sixteen-arm sweep and an A/B isolation) and
+the `crag` retirement (a shadow census and an offline replay) — and that is the strongest form a
+verdict comes in.
