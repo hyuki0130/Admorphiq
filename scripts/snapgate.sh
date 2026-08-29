@@ -33,6 +33,18 @@ BUDGET="${4:-4000}"
 # different wrappers, and CLAUDE.md has a standing warning that they are measured separately.
 #   AGENT=kaggle_unified bash scripts/snapgate.sh shipped <baseline>
 AGENT="${AGENT:-unified}"
+# ⛔ ENV THE RUN ACTUALLY NEEDS, PASSED THROUGH. Measured 2026-08-30: in EVERY environment this
+# campaign has measured — local gate, shipped wrapper, Kaggle — the harness's LLM target draw has
+# never once succeeded (404 on the box for an unpulled model name, connection refused on Kaggle),
+# so 0.9082 is tools + signature routing with the LLM contributing exactly zero. Measuring whether
+# it would help needs HARNESS_MODEL to reach the remote run, and it had no way to.
+#   HARNESS_MODEL=gemma4:26b bash scripts/snapgate.sh llmdraw <baseline> 8 4000
+PASSENV=""
+for v in HARNESS_MODEL HARNESS_HOST HARNESS_CTX OLLAMA_NUM_THREAD GF_GIVEUP GF_EWM; do
+  eval "val=\${$v:-}"
+  [ -n "$val" ] && PASSENV="$PASSENV $v=$val"
+done
+if [ -n "$PASSENV" ]; then echo "=== passing through:$PASSENV"; fi
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -82,9 +94,11 @@ find /tmp -maxdepth 1 -name "*.tgz" -mmin +30 -delete 2>/dev/null
 git archive --format=tar.gz -o "/tmp/$SNAP.tgz" HEAD src scripts
 scp -q -i "$KEY" "/tmp/$SNAP.tgz" "$REMOTE:~/" || { echo "⛔ scp failed"; exit 1; }
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" <<'EOS'
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$PASSENV" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; PASSENV="${5:-}"
+# `export` each NAME=VALUE the caller forwarded; empty is the common case and a no-op.
+for kv in $PASSENV; do export "$kv"; done
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
 # ⛔ Sweep stale snapshots (rule 7d, on the box): ~94MB each, 15GB accumulated by 2026-08-30.
