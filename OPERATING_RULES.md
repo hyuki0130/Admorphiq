@@ -454,3 +454,22 @@ NEXT frame, which `observe` is not given — settle it at the following `propose
 **And the negative that matters more than either**: removing the waste did NOT open a level. lf52
 clears 5 at 500 actions and 5 at 1000. ⛔ A level that stalls with actions to spare is not
 budget-starved, so "N wasted actions" is never by itself a diagnosis of why it stalls.
+
+### 7d — the Mac's disk fills with OUR OWN sync tarballs (2026-08-29)
+
+A Stop hook failed with `cannot create temp file for here document: No space left on device`, and
+the volume was at **100% with 117Mi free**. Nothing in the repository caused it: the round's own
+sync tarballs — `tar czf /tmp/<name>.tgz src scripts`, one per push to ceph-build, kept from three
+days of rounds — had accumulated to **283MB**, and every one is regenerable in seconds.
+
+```
+rm -f /tmp/*.tgz        117Mi -> 412Mi free, hook green again
+```
+
+⚠️ The bulk of the disk was NOT ours: 9.4GB sat in one other project's session scratch under
+`/private/tmp/claude-501/`, with 390 files touched that day — an ACTIVE session, and not something
+to delete on another session's behalf. Check `du -sh /private/tmp/claude-501/*` before assuming the
+space is yours to reclaim, and clear only what this round created.
+
+⛔ A full disk does not announce itself as a disk problem. It arrives as a hook failing on a
+here-document, and the next thing it breaks is a measurement that will look like a tool regression.
