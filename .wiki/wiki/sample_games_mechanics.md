@@ -1583,6 +1583,65 @@ be identified as controls rather than as "everything right of a column".
    seen; what is missing is that reaching a rail cell requires walking to a specific board cell
    between presses, which makes the rail walk a joint (rail, avatar) search rather than a rail one.
 
+### ⛔ dc22 level 6 — where `gantry` ACTUALLY dies, and three perception repairs that do NOT bank it
+
+Driving a fresh `GantryCraneTool` alone on level 6 (`scripts/_dc22_gantrytrace.py`) ends the
+question the round page left open. It is not the route BFS:
+
+```
+n=1..5  rare=(9,14)  avatar=-1  marker=-1  start=None  goal=None
+n=6     dead=True                                   <- "neither square moved under any action"
+```
+
+**The tool latches DEAD in six actions because it cannot LOCATE the pair it just SELECTED.**
+`_pieces` chooses the pair with `_solid_block`; `_at` then locates them with `_one_square`, which
+demands that every pixel of the colour form one filled square. Measured per level
+(`scripts/_dc22_markers.py`):
+
+```
+level 1-5   rare=(11,14)   counts 4 and 4    _one_square OK      _solid_block OK
+level 6     rare=(9,14)    counts 2 and 5    _one_square None    _solid_block (57,34) and (51,28)
+```
+
+Colour 14 is the avatar plus one stray decoration pixel; colour 9 is a terrain tile. `_solid_block`'s
+own docstring already names dc22 level 6 as the board it was written for — **the SELECTOR was
+repaired and the TRACKER never was.**
+
+⛔ **And repairing it banks nothing. Measured, full game, one run per configuration**
+(`scripts/_dc22_patchtest.py`, `scripts/pfan.sh dc22patch`):
+
+```
+control                                     5/6   925a   0.7143
+R2  _at via _solid_block                    5/6   925a   0.7143   identical, action for action
+R1' carry the piece COLOURS across levels   5/6   925a   0.7143   identical
+R2+R1'                                      5/6   925a   0.7143   identical
+R3  board = the whole frame                 3/6   666a   0.2857   ⛔ LOSES TWO LEVELS
+R2+R3 / R1'+R3 / all three                  3/6   666a   0.2857   ⛔ same loss
+```
+
+⚠️ **A fourth repair was measured HARMFUL and would have been shipped on reasoning alone.** The
+naive form of "carry the piece colours across levels" also carries `_avatar`, which makes `propose`
+skip the sense probe — `_deltas` stays empty, `_step()` is 0, and no route is ever planned:
+**2/6 and 0.1429.** The corrected form re-probes the four displacements and is merely inert.
+
+**So the gain is not reachable by patching perception**, and the reason R3 costs two levels is the
+one that names the real work: with the board/panel split removed, `_standable` reads the panel's
+own ground as floor, because its rule is "a tile carrying the board's background is not floor" and
+the panel is not painted in the board's background. The split is load-bearing for TERRAIN and wrong
+for the GOAL, and no split column separates them (the controls occupy columns 45-59 and the goal
+platform columns 42-49).
+
+**What a tool has to do differently, all three measured above:**
+
+1. **Learn the floor palette** from the cells the avatar has actually stood on, instead of inferring
+   floor from "not the background". That is what makes a whole-frame board safe.
+2. **Model a control that can only be pressed from a particular avatar cell.** `_plan_full` reads
+   drives as `self._edges[off][click]` with no avatar term, so a plate-gated drive cannot be planned
+   even once it has been seen.
+3. **Model a warp whose destination is a function of another control's phase.** `_plan_full` reads
+   warps as `warps.get((click, pos), pos)`; on this board the same press from the same cell lands
+   somewhere else after the aiming control has been pressed.
+
 ### ⛔ Four earlier dc22 claims, corrected
 
 - **"the tool arrives in a POCKET of three boards."** WRONG. The avatar's start component is
