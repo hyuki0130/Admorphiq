@@ -44,7 +44,7 @@ lf52 0.2727  reached 5   1.00 1.00 1.00 1.00 1.00   DEPTH ONLY
 s5i5 0.5833  reached 6   all six at 1.00            DEPTH ONLY
 dc22 0.7143  reached 5   all five at 1.00           DEPTH ONLY — one level from the end
 ls20 0.9121  reached 7   ...1.00 0.65               EFFICIENCY, L7 alone
-lp85 0.9767  reached 8   ...0.79 at L4...           EFFICIENCY, L4 alone
+lp85 0.9767  reached 8   ...0.79 at L4...           ⛔ CLOSED — identification, not slack
 ```
 
 Why each is closed, largest gap first:
@@ -65,8 +65,11 @@ ls20    0.9121   gap 0.0879   ⛔ FULLY CLOSED — the handover too. L7's 231 = 
                              wait for or ambush a mover: `Ls20.step` moves movers FIRST and UNDOES
                              them when the player's move is refused (18 of 18), so ambushing is
                              IMPOSSIBLE, not mistuned. 12 arms x 4 axes all lose or are inert.
-lp85    0.9767   gap 0.0233   L4 = 19 vs a human 16; the six confirmations are load-bearing.
-                             ⚠️ Worth 0.0009 of the mean. It is the SMALLEST thing on this list.
+lp85    0.9767   gap 0.0233   ⛔ CLOSED — L4 = 18 vs a human 16 and the whole of it is model
+                             identification: with the converged model at the OPENING the level costs
+                             EIGHT actions, and the ten probes leave the plan the same length. The two
+                             saveable presses are spent at proposes 3 and 4; the evidence they are
+                             unnecessary does not exist until propose 12. FIFTEEN arms refuted.
 ```
 
 ## ⭐ WHAT KIND OF PROBLEM EACH GAME IS — and the one reading that keeps being got wrong
@@ -112,8 +115,9 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > ⚠️ The transfer/110 work below is SECOND. It is real and it is measured, but it is not the goal.
 >
 > ⚠️ Prize per game, so effort is proportional: bp35 +0.0302 · lf52 +0.0291 · s5i5 +0.0167 ·
-> dc22 +0.0114 (**one level from the end**) · ls20 +0.0035 · lp85 +0.0009 (three actions on one
-> level — say so and stop if it costs more than a focused effort).
+> dc22 +0.0114 (**one level from the end**) · ls20 +0.0035 · lp85 ⛔ CLOSED 2026-08-30
+> ([[r101_lp85-level-four]] — two actions on one level, and they are spent before the evidence that
+> they are unnecessary exists).
 
 
 > ⭐ **THE AXIS MOVED ON 2026-08-30. IT IS NO LONGER THE DEV SCORE.**

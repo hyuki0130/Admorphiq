@@ -1,0 +1,95 @@
+R101LP85CAP — lp85 level 4, the last efficiency item in the corpus.   2026-08-30
+=================================================================================
+VERDICT: CLOSED WITH A PROOF. Level 4's discovery presses are load-bearing, and the two
+that would have to be saved are spent BEFORE the evidence that they are unnecessary exists.
+No change kept; the tree is unchanged apart from probes under scripts/.
+
+BANKED (scripts/rounds/R101SHIPPED/games/lp85.json), reproduced to the action by every probe
+here:   per_level [7, 34, 18, 18, 16, 39, 18, 32]   total 182   score 0.97668
+        level 4 = 18 agent actions against a human 16  ->  (16/18)^2 = 0.790123
+        ⚠️ the briefing said 19; the shipped number has been 18 since 808cef67.
+
+THE EIGHTEEN, ONE BY ONE (scripts/_lp85_l4_census.py, scripts/_lp85_l4_converge.py)
+-----------------------------------------------------------------------------------
+ k  action        what it serves
+ 1  press (6,15)  fresh — first control, look class 1
+ 2  press (16,6)  fresh — look class 2
+ 3  press (16,25) fresh — look class 3
+ 4  press (25,16) fresh — look class 4        <- the budget indicator becomes readable here
+ 5  press (6,15)  re-press: no plan exists under the model on hand
+ 6  press (6,15)  re-press
+ 7  press (6,15)  re-press  <- (6,15)'s permutation first equals its converged value
+ 8  press (6,15)  re-press
+ 9  press (16,6)  re-press
+10  press (16,6)  re-press  <- a plan first exists once this press is learned
+11-18  the plan   eight presses: (6,15) x2 and (16,6) x6, one replan, no wasted step
+
+THE FINDING THE EARLIER PASS DID NOT HAVE
+-----------------------------------------
+With the CONVERGED model in hand at the OPENING board, level 4 costs EIGHT actions — half the
+human 16. The plan is eight presses at k=1 and still eight at k=11, so the ten probe presses are
+positionally NET-NEUTRAL. The entire 18 is an eight-press solution plus ten actions of model
+identification. lp85 level 4 is not a planning problem at any point.
+
+`total_if_final_model_here` = (k-1) + len(plan(board_k, final model)):
+    k= 1 -> 8     k= 5 -> 12    k= 8 -> 15    k= 9 -> 15    k=10 -> 17    k=11 -> 18 (actual)
+=> the cap needs the model plannable by propose 9, i.e. after EIGHT presses. Saving ONE press
+   lands on 17 (0.8858); only saving TWO reaches 16.
+
+THE CONFIRMATIONS ARE NOT DISCRETIONARY
+---------------------------------------
+`_next_probe` returns None the moment a plan exists, so every re-press happens BECAUSE no plan
+exists. Measured: `plan_presses` under the tool's own model returns None at every propose until
+press 10 is learned. This is a second, independent proof of the load-bearing finding — stronger
+than "seven arms that cut them lost", because it shows they cannot be cut at all under the rule.
+
+WHY THE TWO PRESSES CANNOT BE SAVED
+-----------------------------------
+The plan uses only (6,15) and (16,6). Controls (16,25) and (25,16) are pressed at proposes 3 and 4
+and never used. The evidence that they are unnecessary — a plan — does not exist until propose 12.
+The one rule that would skip them, a ready-check before a fresh press, is measured to cost level 1
+(7 -> 21 actions, 0.9581) in the first pass.
+
+TWO STRUCTURAL AXES CLOSED BY DIRECT MEASUREMENT
+------------------------------------------------
+1. INVERSE ADOPTION IS UNSOUND AT ONE PRESS (scripts/_lp85_inverse.py). The controls are rings x
+   directions, so each permutation is its twin's exact inverse. Over all eight levels, 11 controls
+   had some other control's recovered permutation invert into something that REPLAYS all of their
+   own transitions — and 9 of the 11 disagree with the permutation the tool converges on, ALL FOUR
+   of them on level 4. A single transition does not pin a permutation, and neither does its inverse.
+2. THE RECOVERY COST CANNOT BE REWEIGHTED (scripts/_lp85_cost.py). The shipped least-total-distance
+   rule recovers 14 of 34 controls EXACTLY from one press. Level 4's two USED controls are not among
+   them, and their truth is not cheapest under any tried objective: it costs MORE total distance
+   (76 vs 70) and has FEWER long steps (4 vs 7) than the permutation the rule picks. Charging per
+   long step (2, 8, 64, 1000) recovers no more controls and breaks ones the shipped rule gets right,
+   including level 1's and level 4's own two easy controls.
+
+EIGHT MORE ARMS, ALL REFUTED (scripts/_lp85_arm2.py; 7 were refuted in the first pass)
+--------------------------------------------------------------------------------------
+arm                     per_level                          L4    game_score
+control                 [7,34,18,18,16,39,18,32]           18    0.976680   <- positive control
+maxpresses4             [7,34,18,18,16,39,18,32]           18    0.976680   IDENTICAL
+maxpresses5             [7,34,18,18,16,39,18,32]           18    0.976680   IDENTICAL
+maxpresses6             [7,34,18,18,16,39,18,32]           18    0.976680   IDENTICAL
+confirm3                [7,34,18,18,16,48,18,33]           18    0.976680   L6 +9, L8 +1
+longstep2               [7,18,20,20,16,39,10,34]           20    0.960000   LOSS
+longstep8               [7,18,20,57,14,60,10,34]           57    0.897644   LOSS
+maxpresses4+longstep8   [7,18,20,57,14,57,10,34]           57    0.897644   LOSS
+
+⛔ `_MAX_PRESSES` is a NEGATIVE CONTROL, not a lever: 4, 5 and 6 are byte-identical to the shipped 5
+   because the cap never binds — (6,15) leaves the confirmation queue on its streak, not on the cap.
+⚠️ `longstep2` makes levels 2 and 7 cheaper (34->18, 18->10) and still LOSES, because both already
+   sit at the metric's cap. Actions are not score.
+
+THE ORACLE, for the record (scripts/_lp85_oracle.py, reading the game's own cycle data)
+---------------------------------------------------------------------------------------
+level 4 draws SIXTEEN button sprites over FOUR distinct controls (two rings x two directions),
+allows 150 actions, and its shortest engine-exact press sequence is 12 (button_B_L x4, button_A_L x8).
+⚠️ The tool's plan is measured at 8 from the same opening board; the two instruments differ because
+`plan_presses` treats tiles of one colour as interchangeable and the oracle tracks named sprites.
+The tool's 8 is the one validated by the level actually clearing on its last press.
+
+WHAT WOULD REOPEN THIS
+----------------------
+Only a recovery that pins a permutation from ONE press on boards where 20 slots move. Nothing in a
+single transition distinguishes the truth from the 14-of-34 the shipped rule already gets right.

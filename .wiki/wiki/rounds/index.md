@@ -510,3 +510,25 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   unowned board. ⚠️ Solo max is a LOWER bound (the harness composes — cd82 and tn36 beat every single
   tool), but it settles the single-tool handoff, which is the only kind 7cm's signal could trigger.
   Rule **7cq**.
+
+- **lp85 / cyclepress / level 4 / discovery cost / permutation recovery / confirmation press / inverse
+  control / ring / one-press identification / RHAE cap / load-bearing** → [[r101_lp85-level-four]] —
+  the corpus's last efficiency item, **CLOSED**. Level 4 costs 18 against a human 16, and the whole of
+  it is model identification: ⭐ **with the converged model in hand at the OPENING the level costs
+  EIGHT actions**, and the plan is eight presses both before and after the ten probes, so the probes
+  are positionally NET-NEUTRAL. `(k-1) + plan(board_k)` prices every outcome — propose 9 -> 15,
+  propose 10 -> 17, propose 11 -> 18 (actual) — so **the cap is a TWO-action problem or nothing**.
+  ⛔ The confirmations are not discretionary: `_next_probe` stops the moment a plan exists and
+  `plan_presses` returns None at EVERY propose until press 10 is learned, which proves the
+  load-bearing claim more strongly than the seven arms that cut them and lost. Two structural axes
+  closed by measurement: **inverse adoption is UNSOUND at one press** (9 of 11 hits across the eight
+  levels disagree with the converged model, all four on level 4 — a transition does not pin a
+  permutation and neither does its inverse), and **the recovery cost cannot be reweighted** (the
+  shipped least-total-distance rule gets 14 of 34 controls exact from ONE press; level 4's two used
+  controls' truth costs MORE distance and has FEWER long steps than the pick, and every long-step
+  penalty breaks controls the shipped rule gets right). Eight more arms refuted, so fifteen in all.
+  ⛔ **`_MAX_PRESSES` is a NEGATIVE CONTROL** — 4, 5 and 6 are byte-identical because the cap never
+  binds. ⚠️ **`longstep2` makes levels 2 and 7 CHEAPER and still LOSES**, because both sit at the cap:
+  actions are not score, and a bench reporting total actions would have promoted it. The two saveable
+  presses are spent at proposes 3 and 4 while the evidence that they are unnecessary does not exist
+  until propose 12 — **no scheduling rule can use information it does not have.**

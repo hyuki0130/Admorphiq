@@ -45,10 +45,13 @@
 > winnable. I read it as a verdict and moved the whole team onto transfer research while the games
 > sat. Research axes are what agents do BETWEEN games, never INSTEAD of them.
 >
-> ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
-> CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
-> Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,
-> column 25 of 28) are live.
+> ⛔ **FOUR OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22 and now lp85.** Read the campaign
+> file's CLOSED section before touching them; each one has hypotheses that are refuted, not merely
+> untried. lp85's level 4 is **18** actions against a human 16 and FIFTEEN arms are refuted — with a
+> perfect model at the opening the level costs EIGHT, so the whole of it is model identification and
+> the two saveable presses are spent before the evidence that they are unnecessary exists
+> ([[.wiki/wiki/rounds/r101_lp85-level-four.md]]). Only lf52 (the map stops at 98 cells, column 25
+> of 28) is live.
 >
 > ⭐ **EVERY GATED NUMBER IS A RATE, not a draw** (rules 7ab / 7ar): 15 games score identically on a
 > DIFFERENT version hash — 12 of them action-for-action — and all 10 games with no archived version
