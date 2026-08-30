@@ -98,6 +98,24 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
+> ⛔ **THE GOAL IS ALL 25 GAMES COMPLETE. "CLOSED WITH PROOFS" IS NOT PERMISSION TO STOP.**
+> (User correction, 2026-08-30 11:41, and it was needed.) Six games are incomplete. This file said
+> each of them was "closed with proofs", I read that as a verdict, and I moved the whole team onto
+> the 110-transfer axis. **A proof that a hypothesis is refuted is a statement about that hypothesis
+> — it is not a statement that the game is unwinnable**, and nothing in the CLOSED section ever
+> claimed otherwise. The distinction had no cost while agents were still on the games and a real one
+> the moment they were not.
+>
+> ⭐ **STANDING: one background agent per incomplete game, in parallel on ceph, at all times.**
+> Six are live now — bp35 · lf52 · s5i5 · dc22 · ls20 · lp85. Each carries its own game's refuted
+> list so it does not re-run a dead arm, and each is gated on the full 25 with the canaries.
+> ⚠️ The transfer/110 work below is SECOND. It is real and it is measured, but it is not the goal.
+>
+> ⚠️ Prize per game, so effort is proportional: bp35 +0.0302 · lf52 +0.0291 · s5i5 +0.0167 ·
+> dc22 +0.0114 (**one level from the end**) · ls20 +0.0035 · lp85 +0.0009 (three actions on one
+> level — say so and stop if it costs more than a focused effort).
+
+
 > ⭐ **THE AXIS MOVED ON 2026-08-30. IT IS NO LONGER THE DEV SCORE.**
 >
 > The 0.0918 that remains on the 25 is closed with proofs (below, and every word of it still
