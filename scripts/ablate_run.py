@@ -179,6 +179,8 @@ def main() -> int:
     p.add_argument("--titles", required=True)
     p.add_argument("--drop", required=True,
                    help="comma-separated tool names to remove, or 'none' for the control arm")
+    p.add_argument("--only", default="",
+                   help="KEEP only this tool (forced-alone). Mutually exclusive with --drop.")
     p.add_argument("--agent", default="unified")
     p.add_argument("--max-actions", type=int, default=4000)
     p.add_argument("--out", required=True)
@@ -188,7 +190,35 @@ def main() -> int:
 
     full = [t.name for t in _UNPATCHED()]
     drop = args.drop.strip()
-    if drop != "none":
+
+    # --- forced-alone: keep exactly one tool -------------------------------------------
+    # ⛔ WHY THIS LIVES HERE AND NOT IN `scripts/_solo_tool.py`. That script hand-rolls its
+    # own env loop — it passes an ACCUMULATING frames list where `run_game` passes `[]`,
+    # honours no `restart_on_game_over`, and reports levels but never a game_score. Rule 7aj
+    # clause 1 exists because a hand-rolled loop clears FOUR bp35 boards where the scorer
+    # clears five, so its numbers cannot be compared with an arm measured through the
+    # scorer. Forcing the registry to one tool inside THIS runner reuses `run_game`
+    # unchanged, so the solo number and the harness number are the same measurement.
+    only = args.only.strip()
+    if only:
+        if drop != "none":
+            print("⛔ REFUSING: --only and --drop are mutually exclusive.", flush=True)
+            return 1
+        if only not in full:
+            print(f"⛔ REFUSING: '{only}' is not in the registry. Names: {sorted(full)}",
+                  flush=True)
+            return 1
+
+        def keep_one() -> list[Any]:
+            return [t for t in _UNPATCHED() if t.name == only]
+
+        registry.default_tools = keep_one
+        after = [t.name for t in registry.default_tools()]
+        if after != [only]:
+            print(f"⛔ REFUSING: the registry is {after}, not exactly ['{only}']", flush=True)
+            return 1
+        drop = f"!only:{only}"
+    elif drop != "none":
         # A multi-drop arm is how the LATCH is tested causally: removing a game's owner AND
         # the tool that then seizes the board says whether the seizure was the cause of the
         # collapse or merely its accompaniment.

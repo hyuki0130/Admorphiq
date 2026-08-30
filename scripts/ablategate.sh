@@ -33,6 +33,9 @@ AGENT="${AGENT:-unified}"
 # TELEM=1 records per-action frame telemetry into each result json (the "can a run tell it
 # is lost" arm). Off by default: it costs one md5 per action and fattens every result.
 TELEM="${TELEM:-0}"
+# ONLY=1 reads the pairs file as "<game> <tool>" and FORCES that tool alone instead of
+# dropping it — the solo sweep, measured through the same scorer as every other arm.
+ONLY="${ONLY:-0}"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -58,9 +61,9 @@ else
   "${SSH[@]}" "rm -f ~/$SNAP.pairs"
 fi
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$TELEM" <<'EOS'
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$TELEM" "$ONLY" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; TELEM="$5"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; TELEM="$5"; ONLY="$6"
 [ "$TELEM" = "1" ] && TFLAG="--telemetry" || TFLAG=""
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
@@ -82,12 +85,17 @@ else
   ls environment_files | sed 's/$/ none/' > pairs.txt
 fi
 NG=$(wc -l < pairs.txt)
-echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT telemetry:$TELEM"
+if [ "$ONLY" = "1" ]; then
+  ARGSPEC='--drop none --only $1'; TAG='$0__$1'
+else
+  ARGSPEC='--drop $1'; TAG='$0'
+fi
+echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT telemetry:$TELEM only:$ONLY"
 
 cat pairs.txt | xargs -P "$PAR" -n 2 sh -c \
   "timeout 5400 .venv/bin/python \$HOME/$SNAP/scripts/ablate_run.py --agent $AGENT $TFLAG \
-     --titles \$0 --drop \$1 --max-actions $BUDGET \
-     --out \$HOME/${SNAP}_out/\$0.json > \$HOME/${SNAP}_out/\$0.log 2>&1"
+     --titles \$0 $ARGSPEC --max-actions $BUDGET \
+     --out \$HOME/${SNAP}_out/$TAG.json > \$HOME/${SNAP}_out/$TAG.log 2>&1"
 
 n=$(ls $HOME/${SNAP}_out/*.json 2>/dev/null | wc -l)
 echo "ABLATEDONE $n/$NG"
