@@ -65,7 +65,19 @@ movers   re86 1.0000 -> 0.9461 · s5i5 0.5833 -> 0.5593 · sc25 1.0000 -> 0.4762
 records that the measurement refuted the title. Three games' cameras make the dependence **maximal**;
 fourteen games carry it.
 
-⛔ **AND BURIAL DOES NOT PREDICT THE COST — the two games that lose everything hide the least:**
+⛔ **CORRECTED THE SAME DAY (rule 7cp) — g50t's ZERO IS THE ARM'S ARTEFACT, AND tu93 IS THE REAL
+ONE.** Replaying each game's own action tape under the patch shows the mutation is render-only on
+BOTH (same actions, same levels), so neither zero is a broken board. But g50t's collapse needs a
+perturbation **no re-render can make**: the sprite the arm buries is one the ENGINE CREATED DURING
+PLAY — there is ZERO burial among g50t's authored sprites on all seven levels — and nine sampled
+re-serialisations that reorder every single frame leave it at **1.0000**. ⭐ tu93 is generic:
+**six of seven sampled re-serialisations destroy it.**
+
+⚠️ Two burial metrics nearly read as a contradiction and both are right: `total_cells_moved=39`
+counts OWNERSHIP changes, `cells_changed=0` counts PIXELS, and two sprites of the SAME COLOUR
+swapping owner move no pixel.
+
+⛔ **Burial still does not predict cost** — that half survives:
 
 ```
 r11l   7 of 27 sprites removed from the picture   1.0000 -> 1.0000   identical action for action
@@ -137,6 +149,26 @@ plays each game and re-score:
 
 ⛔ **Quote the pair, never the mean.** In all eleven claimed games the claimant is another specialist
 we built against a PUBLIC board. **An unseen game has no near-miss waiting, by construction.**
+
+⭐ **AND THE FORK IS SETTLED: CAPABILITY, NOT ROUTING** (rule **7cq**, 47 tools × 25 games forced
+alone = 1175 runs). **An oracle that always picks the best surviving tool recovers 0.0034 of the
+0.7150 the owner was worth — 0.5%.**
+
+```
+mean ablated harness 0.1932   mean BEST surviving solo 0.1966   full harness 0.9082
+ROUTING-recoverable   2 of 25   (lf52 `hop` +0.0909, vc33 `toggle` +0.0012)
+CAPABILITY-bound     23 of 25
+```
+
+⛔ **In 21 of 25 games the best surviving tool scores EXACTLY what the ablated harness scores** —
+bit-identical — and on **10 of 25 nothing in the 47-tool registry clears level 1 without the owner**.
+**Ownership is not merely singular (7bb); it is EXCLUSIVE.** ⚠️ On two games the ablated harness
+BEATS every single tool (cd82 −0.0064, tn36 −0.0004): composition is worth a shade more than the
+best part. ⛔ And 7cj's claimed/unclaimed split does NOT predict recoverability (1 of 11 vs 1 of 14) —
+being claimed means a second tool can play the board, not that a better one was passed over.
+
+**So the destination problem is real and it is not a selection problem.** Detection (§6) has nowhere
+to send the board, and that is now measured rather than inferred.
 
 ## 5. The failure is SILENT — and that is the structural finding
 
