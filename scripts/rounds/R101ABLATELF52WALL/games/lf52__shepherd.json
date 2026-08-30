@@ -1,0 +1,571 @@
+{
+  "agent": "unified",
+  "dropped": "!only:railpeg",
+  "registry_size": 1,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.272727,
+  "games": [
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 5,
+      "elapsed_s": 43.37,
+      "total_actions": 823,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 8,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 52,
+          "human_actions": 81,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 60,
+          "human_actions": 60,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 64,
+          "human_actions": 71,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 139,
+          "human_actions": 205,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.272727,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52",
+      "ownership": {
+        "actions": 823,
+        "by_tool": {
+          "shepherd": 438,
+          "railpeg": 323,
+          "none": 62
+        },
+        "owner": "shepherd",
+        "owner_share": 0.5322,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "railpeg": 8
+          },
+          "1": {
+            "railpeg": 52
+          },
+          "2": {
+            "railpeg": 60
+          },
+          "3": {
+            "railpeg": 64
+          },
+          "4": {
+            "railpeg": 139
+          },
+          "5": {
+            "shepherd": 438,
+            "none": 62
+          }
+        },
+        "swapped": true,
+        "swap_action": 324,
+        "tenures": 126,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "railpeg",
+            "primary_owns": true
+          },
+          {
+            "action": 324,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 334,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 335,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 342,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 343,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 350,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 351,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 358,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 359,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 366,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 367,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 374,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 375,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 382,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 383,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 390,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 391,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 398,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 399,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 406,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 407,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 414,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 415,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 422,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 423,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 430,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 431,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 438,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 439,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 446,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 447,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 454,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 455,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 462,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 463,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 470,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 471,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 478,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 479,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 486,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 487,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 494,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 495,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 502,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 503,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 510,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 511,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 518,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 519,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 526,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 527,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 534,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 535,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 542,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 543,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 550,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 551,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 558,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 559,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 566,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 567,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 574,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 575,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 582,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 583,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 590,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 591,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 598,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 599,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 606,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 607,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 614,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 615,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 622,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 623,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 630,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 631,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          },
+          {
+            "action": 638,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 639,
+            "level": 5,
+            "tool": "shepherd",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

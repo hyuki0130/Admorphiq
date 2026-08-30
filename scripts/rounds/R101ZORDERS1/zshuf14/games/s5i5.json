@@ -1,0 +1,71 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf14",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.277778,
+  "games": [
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 4,
+      "elapsed_s": 54.38,
+      "total_actions": 632,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 13,
+          "human_actions": 20,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 30,
+          "human_actions": 89,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 47,
+          "human_actions": 106,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 39,
+          "human_actions": 54,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.277778,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf14",
+          "seed": 14,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 642,
+        "frames_changed": 405,
+        "cells_changed": 1838,
+        "max_cells_changed_in_a_frame": 54,
+        "first_changed_frame": 1,
+        "buried_max": 3,
+        "buried_seen": 21,
+        "buried_samples": 11,
+        "sprites_max": 20,
+        "layers_seen": [
+          0,
+          1,
+          2
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

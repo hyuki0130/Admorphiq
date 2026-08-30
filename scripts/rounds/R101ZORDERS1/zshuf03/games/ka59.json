@@ -1,0 +1,91 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf03",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "ka59-38d34dbb",
+      "win_levels": 7,
+      "levels_completed": 7,
+      "elapsed_s": 177.69,
+      "total_actions": 290,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 12,
+          "human_actions": 28,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 44,
+          "human_actions": 109,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 33,
+          "human_actions": 51,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 39,
+          "human_actions": 51,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 24,
+          "human_actions": 33,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 46,
+          "human_actions": 132,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 92,
+          "human_actions": 326,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "KA59",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf03",
+          "seed": 3,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 554,
+        "frames_changed": 0,
+        "cells_changed": 0,
+        "max_cells_changed_in_a_frame": 0,
+        "first_changed_frame": null,
+        "buried_max": 0,
+        "buried_seen": 0,
+        "buried_samples": 0,
+        "sprites_max": 25,
+        "layers_seen": [
+          -1,
+          0,
+          1,
+          2,
+          3
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "inert"
+      }
+    }
+  ]
+}

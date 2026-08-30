@@ -1,0 +1,100 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf14",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "wa30-ee6fef47",
+      "win_levels": 9,
+      "levels_completed": 9,
+      "elapsed_s": 39.34,
+      "total_actions": 720,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 27,
+          "human_actions": 71,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 58,
+          "human_actions": 119,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 77,
+          "human_actions": 183,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 67,
+          "human_actions": 98,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 120,
+          "human_actions": 368,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 46,
+          "human_actions": 68,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 55,
+          "human_actions": 79,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 134,
+          "human_actions": 442,
+          "score": 1.0
+        },
+        {
+          "level": 9,
+          "agent_actions": 136,
+          "human_actions": 415,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "WA30",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf14",
+          "seed": 14,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 729,
+        "frames_changed": 0,
+        "cells_changed": 0,
+        "max_cells_changed_in_a_frame": 0,
+        "first_changed_frame": null,
+        "buried_max": 0,
+        "buried_seen": 0,
+        "buried_samples": 0,
+        "sprites_max": 73,
+        "layers_seen": [
+          0,
+          1
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "inert"
+      }
+    }
+  ]
+}

@@ -1,0 +1,571 @@
+{
+  "agent": "unified",
+  "dropped": "!only:railpeg",
+  "registry_size": 1,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.272727,
+  "games": [
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 5,
+      "elapsed_s": 37.9,
+      "total_actions": 823,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 8,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 52,
+          "human_actions": 81,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 60,
+          "human_actions": 60,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 64,
+          "human_actions": 71,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 139,
+          "human_actions": 205,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.272727,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52",
+      "ownership": {
+        "actions": 823,
+        "by_tool": {
+          "phase_grid": 445,
+          "railpeg": 323,
+          "none": 55
+        },
+        "owner": "phase_grid",
+        "owner_share": 0.5407,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "railpeg": 8
+          },
+          "1": {
+            "railpeg": 52
+          },
+          "2": {
+            "railpeg": 60
+          },
+          "3": {
+            "railpeg": 64
+          },
+          "4": {
+            "railpeg": 139
+          },
+          "5": {
+            "phase_grid": 445,
+            "none": 55
+          }
+        },
+        "swapped": true,
+        "swap_action": 324,
+        "tenures": 112,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "railpeg",
+            "primary_owns": true
+          },
+          {
+            "action": 324,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 332,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 333,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 341,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 342,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 350,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 351,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 359,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 360,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 368,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 369,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 377,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 378,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 386,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 387,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 395,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 396,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 404,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 405,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 413,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 414,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 422,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 423,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 431,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 432,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 440,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 441,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 449,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 450,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 458,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 459,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 467,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 468,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 476,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 477,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 485,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 486,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 494,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 495,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 503,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 504,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 512,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 513,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 521,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 522,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 530,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 531,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 539,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 540,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 548,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 549,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 557,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 558,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 566,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 567,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 575,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 576,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 584,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 585,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 593,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 594,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 602,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 603,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 611,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 612,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 620,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 621,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 629,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 630,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 638,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 639,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 647,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 648,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 656,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 657,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 665,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 666,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          },
+          {
+            "action": 674,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 675,
+            "level": 5,
+            "tool": "phase_grid",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

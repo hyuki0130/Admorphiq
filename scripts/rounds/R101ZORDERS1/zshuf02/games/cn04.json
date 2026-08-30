@@ -1,0 +1,82 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf02",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "cn04-2fe56bfb",
+      "win_levels": 6,
+      "levels_completed": 6,
+      "elapsed_s": 1.57,
+      "total_actions": 261,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 29,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 46,
+          "human_actions": 54,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 28,
+          "human_actions": 85,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 37,
+          "human_actions": 300,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 60,
+          "human_actions": 208,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 72,
+          "human_actions": 113,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "CN04",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf02",
+          "seed": 2,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 273,
+        "frames_changed": 0,
+        "cells_changed": 0,
+        "max_cells_changed_in_a_frame": 0,
+        "first_changed_frame": null,
+        "buried_max": 0,
+        "buried_seen": 0,
+        "buried_samples": 0,
+        "sprites_max": 13,
+        "layers_seen": [
+          0,
+          4
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "inert"
+      }
+    }
+  ]
+}

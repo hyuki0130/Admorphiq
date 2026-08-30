@@ -1,0 +1,96 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf10",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "tn36-ef4dde99",
+      "win_levels": 7,
+      "levels_completed": 7,
+      "elapsed_s": 10.32,
+      "total_actions": 137,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 14,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 11,
+          "human_actions": 72,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 13,
+          "human_actions": 26,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 16,
+          "human_actions": 40,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 21,
+          "human_actions": 30,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 21,
+          "human_actions": 55,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 41,
+          "human_actions": 62,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TN36",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf10",
+          "seed": 10,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 304,
+        "frames_changed": 96,
+        "cells_changed": 1023,
+        "max_cells_changed_in_a_frame": 18,
+        "first_changed_frame": 32,
+        "buried_max": 6,
+        "buried_seen": 8,
+        "buried_samples": 3,
+        "sprites_max": 101,
+        "layers_seen": [
+          -3,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          10,
+          15
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

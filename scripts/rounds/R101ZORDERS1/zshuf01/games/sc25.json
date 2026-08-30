@@ -1,0 +1,85 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf01",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.714286,
+  "games": [
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 5,
+      "elapsed_s": 15.4,
+      "total_actions": 611,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 17,
+          "human_actions": 36,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 6,
+          "human_actions": 6,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 12,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 31,
+          "human_actions": 83,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 40,
+          "human_actions": 143,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.714286,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf01",
+          "seed": 1,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 3065,
+        "frames_changed": 2215,
+        "cells_changed": 9284,
+        "max_cells_changed_in_a_frame": 8,
+        "first_changed_frame": 59,
+        "buried_max": 2,
+        "buried_seen": 54,
+        "buried_samples": 56,
+        "sprites_max": 43,
+        "layers_seen": [
+          -41,
+          -4,
+          -3,
+          -1,
+          0,
+          1,
+          2,
+          10,
+          15,
+          16,
+          20
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

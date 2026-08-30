@@ -1,0 +1,53 @@
+{
+  "agent": "unified",
+  "mutation": "zshuf05",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.022222,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 1,
+      "elapsed_s": 5.88,
+      "total_actions": 533,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 19,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.022222,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zshuf05",
+          "seed": 5,
+          "scope": "whole-list uniform",
+          "identity": false
+        },
+        "frames_seen": 2208,
+        "frames_changed": 1658,
+        "cells_changed": 33717,
+        "max_cells_changed_in_a_frame": 27,
+        "first_changed_frame": 146,
+        "buried_max": 3,
+        "buried_seen": 97,
+        "buried_samples": 42,
+        "sprites_max": 4,
+        "layers_seen": [
+          -1,
+          0,
+          1
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}
