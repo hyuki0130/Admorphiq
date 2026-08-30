@@ -30,6 +30,9 @@ PAR="${2:-12}"
 BUDGET="${3:-4000}"
 PAIRS="${4:-}"
 AGENT="${AGENT:-unified}"
+# TELEM=1 records per-action frame telemetry into each result json (the "can a run tell it
+# is lost" arm). Off by default: it costs one md5 per action and fattens every result.
+TELEM="${TELEM:-0}"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -55,9 +58,10 @@ else
   "${SSH[@]}" "rm -f ~/$SNAP.pairs"
 fi
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" <<'EOS'
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$TELEM" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; TELEM="$5"
+[ "$TELEM" = "1" ] && TFLAG="--telemetry" || TFLAG=""
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
 find "$HOME" -maxdepth 1 -name 'abl_*' -type d -mmin +240 -exec rm -rf {} + 2>/dev/null
@@ -78,10 +82,10 @@ else
   ls environment_files | sed 's/$/ none/' > pairs.txt
 fi
 NG=$(wc -l < pairs.txt)
-echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT"
+echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT telemetry:$TELEM"
 
 cat pairs.txt | xargs -P "$PAR" -n 2 sh -c \
-  "timeout 5400 .venv/bin/python \$HOME/$SNAP/scripts/ablate_run.py --agent $AGENT \
+  "timeout 5400 .venv/bin/python \$HOME/$SNAP/scripts/ablate_run.py --agent $AGENT $TFLAG \
      --titles \$0 --drop \$1 --max-actions $BUDGET \
      --out \$HOME/${SNAP}_out/\$0.json > \$HOME/${SNAP}_out/\$0.log 2>&1"
 

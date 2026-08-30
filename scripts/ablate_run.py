@@ -32,6 +32,7 @@ did not.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import Counter
@@ -61,18 +62,78 @@ class OwnershipRecorder:
     is asking, and the round page must say so rather than average over it.
     """
 
-    def __init__(self, inner: Any) -> None:
+    def __init__(self, inner: Any, telemetry: bool = False) -> None:
         self.inner = inner
         self.by_tool: Counter[str] = Counter()
         self.by_level: dict[int, Counter[str]] = {}
         self.picks: list[tuple[int, int, str, bool]] = []  # (action, level, tool, primary_owns)
         self._n = 0
+        # --- per-action telemetry (optional; the "can the harness tell it is lost" arm) ---
+        # ⛔ RAW frame, every layer, hashed by this recorder — NOT `frame_2d`, which takes
+        # layer 0 and is known to read a STALE layer at level transitions (rule 7o). A
+        # novelty signal computed off a stale layer would fire spuriously at exactly the
+        # moment the label changes, which is the one place it must not.
+        self.telemetry = telemetry
+        self.tool_names: list[str] = []
+        self.tel: dict[str, list[Any]] = {k: [] for k in
+                                          ("level", "tool", "since_progress", "n_seen",
+                                           "nchanged", "cx", "cy")}
+        self.novel_raw: list[str] = []
+        self._seen_raw: set[str] = set()
+        self._prev_raw: Any = None
+        self._prev_level = -1
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self.inner, item)
 
     def is_done(self, frames: list[Any], obs: Any) -> bool:
         return self.inner.is_done(frames, obs)
+
+    def _record(self, obs: Any, level: int, who: str) -> None:
+        """Append one action's frame-derived telemetry. Costs one md5 and one compare.
+
+        Purpose: make the candidate "does the run itself know it is lost" signals
+        computable OFFLINE, from quantities available at runtime and nothing else.
+        Expected feedback: `novel_raw` and `nchanged` are the tool-INDEPENDENT twins of
+        the harness's own `_since_progress`, which is measured with the ACTIVE tool's
+        state identity and therefore not comparable across tools.
+        """
+        import numpy as _np  # noqa: PLC0415
+
+        raw = getattr(obs, "frame", None)
+        grid = None
+        if raw is not None:
+            try:
+                grid = _np.asarray(raw)
+            except Exception:  # noqa: BLE001
+                grid = None
+        if level != self._prev_level:
+            self._seen_raw.clear()      # novelty is PER LEVEL, as the harness's own is
+            self._prev_raw = None
+            self._prev_level = level
+        nchanged, cx, cy = -1, -1, -1
+        if grid is not None:
+            h = hashlib.md5(_np.ascontiguousarray(grid).tobytes()).hexdigest()[:12]
+            self.novel_raw.append("0" if h in self._seen_raw else "1")
+            self._seen_raw.add(h)
+            if self._prev_raw is not None and self._prev_raw.shape == grid.shape:
+                diff = self._prev_raw != grid
+                nchanged = int(diff.sum())
+                if nchanged:
+                    idx = _np.argwhere(diff)[:, -2:]
+                    cy, cx = (int(idx[:, 0].mean()), int(idx[:, 1].mean()))
+            self._prev_raw = grid
+        else:
+            self.novel_raw.append("0")
+        if who not in self.tool_names:
+            self.tool_names.append(who)
+        self.tel["level"].append(level)
+        self.tel["tool"].append(self.tool_names.index(who))
+        self.tel["since_progress"].append(int(getattr(self.inner, "_since_progress", -1)))
+        self.tel["n_seen"].append(len(getattr(self.inner, "_seen_states", ()) or ()))
+        self.tel["nchanged"].append(nchanged)
+        self.tel["cx"].append(cx)
+        self.tel["cy"].append(cy)
 
     def choose_action(self, frames: list[Any], obs: Any) -> Any:
         level = int(getattr(obs, "levels_completed", 0) or 0)
@@ -88,6 +149,8 @@ class OwnershipRecorder:
             # Recording it here turns "it was never displaced" into "it COULD not be".
             self.picks.append((self._n, level, who,
                                bool(getattr(self.inner, "_primary_owns", False))))
+        if self.telemetry:
+            self._record(obs, level, who)
         return action
 
     def report(self) -> dict[str, Any]:
@@ -104,6 +167,12 @@ class OwnershipRecorder:
                       for a, lv, t, p in self.picks[:80]],
         }
 
+    def telemetry_report(self) -> dict[str, Any]:
+        """Columnar per-action telemetry, or {} when telemetry was not requested."""
+        if not self.telemetry:
+            return {}
+        return {"tool_names": self.tool_names, "novel_raw": "".join(self.novel_raw), **self.tel}
+
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -113,6 +182,8 @@ def main() -> int:
     p.add_argument("--agent", default="unified")
     p.add_argument("--max-actions", type=int, default=4000)
     p.add_argument("--out", required=True)
+    p.add_argument("--telemetry", action="store_true",
+                   help="record per-action frame telemetry (novelty, change size, centroid)")
     args = p.parse_args()
 
     full = [t.name for t in _UNPATCHED()]
@@ -169,7 +240,8 @@ def main() -> int:
         holder: dict[str, OwnershipRecorder] = {}
 
         def factory() -> OwnershipRecorder:
-            rec = OwnershipRecorder(_make_agent(args.agent, game_id=env_info.game_id))
+            rec = OwnershipRecorder(_make_agent(args.agent, game_id=env_info.game_id),
+                                    telemetry=args.telemetry)
             holder["rec"] = rec
             return rec
 
@@ -178,6 +250,8 @@ def main() -> int:
                           adapter_factory=factory)
         result["title"] = env_info.title or env_info.game_id
         result["ownership"] = holder["rec"].report()
+        if args.telemetry:
+            result["telemetry"] = holder["rec"].telemetry_report()
         results.append(result)
         if result.get("has_baseline"):
             scored.append(result["game_score"])
