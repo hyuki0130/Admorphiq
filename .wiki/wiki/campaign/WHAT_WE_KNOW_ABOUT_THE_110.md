@@ -39,25 +39,83 @@ measured rather than assumed. ⚠️ This says the 25 travel. It says nothing ab
 literal colour or a sprite name — and nothing more. **Do not quote 0.9989 as a transfer
 coefficient.**
 
-## 3. The one render-dependent read in the corpus, proved by intervention
+## 3. Paint order — FOURTEEN of 25 games depend on it
+
+⛔ **THIS SECTION SAID "THE ONE RENDER-DEPENDENT READ IN THE CORPUS" FOR THREE HOURS AND IT WAS
+WRONG.** That was true of the evidence available at the time — the archived re-render, which moves
+exactly one level of one game. A better instrument landed the same day (`scripts/zordergate.sh`,
+rule **7ck**) and it reaches all 25:
+
+```
+identity control     0.9082, reproducing R101SHIPPED — zero drift
+positive control     s5i5 L4  39 -> 61, 0.5833 -> 0.5593  = 7cd's banked answer, to the action
+14 applied · 10 INERT (cannot exhibit it) · 1 PARTIAL
+
+movers   re86 1.0000 -> 0.9461 · s5i5 0.5833 -> 0.5593 · sc25 1.0000 -> 0.4762
+         g50t -> 0.0000 · tu93 -> 0.0000
+```
+
+⚠️ The rule was CLAIMED under the title *"only three games' cameras let it move"* and its own author
+records that the measurement refuted the title. Three games' cameras make the dependence **maximal**;
+fourteen games carry it.
+
+⛔ **AND BURIAL DOES NOT PREDICT THE COST — the two games that lose everything hide the least:**
+
+```
+r11l   7 of 27 sprites removed from the picture   1.0000 -> 1.0000   identical action for action
+tn36   6 of 101                                   1.0000 -> 1.0000   identical
+sk48   5 of 59                                    1.0000 -> 1.0000   identical
+g50t   1 of 18                                    1.0000 -> 0.0000
+```
+
+So "the mutation hid an object, therefore the board is broken" is refuted by the instrument's own
+column. **What matters is WHICH object, not how many.**
+
+⭐ **Validity is one line of the engine.** `Camera.render` has exactly ONE caller inside arcengine and
+its return value is the observation frame; game logic reads through `_raw_render` and clicks resolve
+through `Level.get_sprite_at`. The patch touches neither, so the state trajectory stays a function of
+the action sequence alone. ⛔ Do NOT patch `_raw_render` — games call that as logic. And the human
+denominator is invariant **by measurement**: the two s5i5 serializations differ only in list order and
+ship identical `baseline_actions`.
+
+⚠️ **"Permute same-layer siblings only" is right for 22 games and MEANINGLESS for three.** s5i5, tu93
+and wa30 override `_raw_render` with a version that never sorts, so the raw list order IS the z-order
+and `layer` decides nothing — s5i5's rider and its bar are on DIFFERENT declared layers. The
+conservative arm changed 0 cells on seven of s5i5's eight levels and lost its own positive control.
+
+### The mechanism, named and proved by intervention
 
 **A frame-only tool that identifies an object by whether it is DRAWN is reading PAINT ORDER, not
 mechanics** (rule **7cd**). s5i5 L4 costs 39 actions live and 61 on the re-render because ONE cell at
-(43,31) is occluded — the archived source lists the rider before the bar it rides — and `telescope`'s
-candidate set goes from 2 to 9.
+(43,31) is occluded, and `telescope`'s candidate set goes from 2 to 9.
 
 ⭐ **Proved causally**: inject the rider evidence back, change nothing else, and the level returns to
 39 actions and the game to 0.5833 — `[13, 30, 47, 39, 32, 31]` in both arms.
 
-**Population** (rule **7cl**): not one. 63 sites, **14** with that exact structure, **five** filtering
-on what is painted, **three live on a run**. ⚠️ The automated arm caught 3 of the 5. ⭐ And the worst
-site has NO fallback, so 7cd's own shape under-counts the class: `lattice_maze:484` compares a colour
-read NOW against one REMEMBERED — **6.9x** blow-up on tu93's re-render against telescope's 1.56x —
-**already repaired** by dead reckoning, and invisible to any vocabulary because no word in it names
-paint.
+**Population** (rule **7cl**): 63 sites, **14** with that exact structure, **five** filtering on what
+is painted, **three live on a run**. ⚠️ The automated arm caught 3 of the 5. ⭐ And the worst site has
+NO fallback, so 7cd's shape under-counts: `lattice_maze:484` compares a colour read NOW against one
+REMEMBERED — **6.9x** on tu93's re-render against telescope's 1.56x — already repaired, and invisible
+to any vocabulary because no word in it names paint.
 
-⛔ **No repair to the three live sites.** Removing a visibility filter takes the tool to the
-unfiltered set EVERYWHERE, which IS the 61-action behaviour.
+### Why the repair that works does not travel
+
+Rule **7cn**. `lattice_maze._locate` does not remove the paint read (that is what 7cd forbids, and it
+IS the 61-action behaviour) — it **demotes paint from IDENTITY to CANDIDATE GENERATION** and lets
+tracked state pick among the candidates, never trusting its prediction unless the frame agrees.
+
+⛔ **Its precondition is a prior position and a spent action, and a run says where that exists:**
+
+```
+lattice_maze:484  tu93  187 evaluations,  9 on an opening frame   178 of 187 have the state
+blastclock:631    ka59   33 evaluations, 19 on an opening frame    14 of 33 do
+swivel:734        s5i5    2 evaluations,  2 on an opening frame    NONE — both at action 0
+telescope:1183    s5i5    5 evaluations,  5 on an opening frame    NONE — all five at action 0
+```
+
+`lattice_maze` re-reads identity EVERY action. `telescope` and `swivel` commit the rider set ONCE per
+level, on the opening frame, into a model that is never revised. **There is nothing to reckon from,
+so the repair cannot be ported — the axis is closed with a reason rather than a shrug.**
 
 ## 4. What does NOT transfer: the tools fit THESE games
 
