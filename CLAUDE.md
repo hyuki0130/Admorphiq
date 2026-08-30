@@ -32,6 +32,12 @@
 > ⚠️ 7ch measured a live LLM on a GPU as byte-identical to no LLM here — and this is exactly the case
 > 7ch says these 25 cannot see, because routing is what breaks when the right tool is absent.
 >
+> ⭐ **ONE PAGE, EVERYTHING MEASURED ABOUT THE 110**:
+> [`.wiki/wiki/campaign/WHAT_WE_KNOW_ABOUT_THE_110.md`](.wiki/wiki/campaign/WHAT_WE_KNOW_ABOUT_THE_110.md)
+> — the card travels, the tools read mechanics not pixels, ONE render-dependent read exists and is
+> proved by intervention, and the harness cannot tell when no tool fits. Boundaries stated per
+> claim.
+>
 > ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
 > CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
 > Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,

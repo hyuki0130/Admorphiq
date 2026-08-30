@@ -91,6 +91,11 @@ a retry. "87 actions vs 48 human" is TWO ATTEMPTS, not one slow one.
 in the whole 25 score below 1.0 — bp35 L2/L3/L5, lp85 L4, ls20 L7. Compute that bound before opening
 any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 
+> ⭐ **THE ONE-PAGE SYNTHESIS OF EVERYTHING MEASURED ABOUT THE 110 IS**
+> [[WHAT_WE_KNOW_ABOUT_THE_110]] — what transfers, what does not, and **which questions these 25
+> games are structurally incapable of answering.** Read it before choosing a direction; this
+> section is the work list, that page is the picture.
+
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
 > ⭐ **THE AXIS MOVED ON 2026-08-30. IT IS NO LONGER THE DEV SCORE.**
