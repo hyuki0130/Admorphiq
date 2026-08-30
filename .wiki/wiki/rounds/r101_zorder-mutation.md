@@ -26,7 +26,7 @@ construction. That gap was named in 7ce's own closing paragraph and this round c
 ## What was built
 
 `scripts/zordergate.sh` + `scripts/zordergate_run.py` + `src/admorphiq/zorder_mutation.py`
-(15 contract tests), plus two probes: `scripts/_zorder_census.py` (population) and
+(12 contract tests), plus two probes: `scripts/_zorder_census.py` (population) and
 `scripts/_zorder_occlude.py` (what a permutation buries).
 
 ```
