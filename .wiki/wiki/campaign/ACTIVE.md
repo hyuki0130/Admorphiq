@@ -121,6 +121,16 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > goes silent and never stalls, so it looks productive by every signal the harness watches. ⛔ Not a
 > `graph` problem: dropping `graph` too gives 0.1925 because `world_model` does the identical thing.
 >
+> ⚠️ **AND THE OBVIOUS REPAIR — "teach the harness to notice" — IS MEASURED AND WORTH 0.0000 TODAY**
+> ([[r101_lost-signal]], rule **7cm**). A run-intrinsic signal DOES exist (`coverage`, AUC 0.815 at
+> action 50 over 255 outcome-labelled level segments — ⛔ labelled by outcome, not shape, because
+> `m0r0` latches for 731 actions and clears FIVE levels). But it **loses to the clock alone** —
+> 28.7% of doomed actions saved against the zero-loss clock's 34.9% — and only pays as a SUPPLEMENT
+> (51.5%, zero levels lost). ⛔ All ten flagged segments come from the ABLATED arm, so on the shipped
+> card it fires zero times; and what it saves are actions on levels scoring zero however they are
+> spent, so it frees wall-clock, not points — **there is no better tool to hand the board to (7ba)**.
+> ⭐ **So the lever is NOT a smarter give-up rule. It is having a second claimant at all.**
+>
 > ⭐ **AND EFFICIENCY OVER CLEARED LEVELS HAS A STRUCTURAL CEILING OF +0.00796** (rule 7cb, one pass
 > over `rounds/*/games/*.json`): only **FIVE** cleared levels in the whole 25 score below 1.0 —
 > bp35 L2/L3/L5, lp85 L4, ls20 L7. Driving all five to a perfect 1.0 is worth eight thousandths of

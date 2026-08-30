@@ -3893,3 +3893,67 @@ says it cannot see**, since routing is what breaks when the right tool is absent
 ⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
 Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
 it, the work either did not finish or its author stopped. Fill it in, or delete it.
+
+### 7cl — the visibility-identity census — five fallback sites, three live (2026-08-30)
+
+⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
+Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
+it, the work either did not finish or its author stopped. Fill it in, or delete it.
+
+### 7cm — a run CAN tell it is lost, but only on top of the clock and only in-sample (2026-08-30)
+
+7cj ended with a HYPOTHESIS — *the harness owns no signal meaning "I do not understand this board"*
+— and a hypothesis about a signal is testable before anything is built. Both ablation arms re-run
+with `TELEM=1` (per-action raw-frame novelty, `_since_progress`, `_seen_states`, changed-cell count,
+change centroid). ⛔ Telemetry verified INERT: both arms 0 of 25 differing from their non-telemetry
+twins in score, levels AND actions.
+
+⛔ **THE CLASSES ARE DEFINED BY OUTCOME, NOT BY SHAPE, and `m0r0` is why.** "The fourteen latched
+runs are the negatives" is wrong: m0r0 latches — one tenure, 731 actions, never re-decided — and
+CLEARS FIVE LEVELS. The unit is a LEVEL SEGMENT labelled by whether that level cleared: **255
+segments, 205 cleared, 50 doomed** (cleared median 27 actions, doomed median 500).
+
+⛔ **ONLY TWO PREFIXES HAVE ENOUGH WINNERS TO DEFINE AN FPR-0 THRESHOLD** — eligible pos/neg is
+111/45 at k=25 and 48/35 at k=50, then **2/31 at k=150 and 1/29 at k=300**. A threshold set by one
+winner is not a measurement, so `inert_rate`'s 20/29 at k=300 is NO VERDICT. Read k=25/50 only:
+best AUC `coverage` 0.721 / **0.815**; best CATCH@FPR0 0/45 and **10/35**.
+
+⭐ **ELAPSED TIME CARRIES ZERO INFORMATION AT A FIXED DECISION POINT** — scoring "how long has this
+segment run" gives **AUC 0.500 BY CONSTRUCTION**, because every segment alive at action k has used
+exactly k actions. **A clock does not discriminate between runs; it only decides when to stop.** So
+the baseline is a POLICY, not a ranking, and the disqualified baseline had to be reformulated:
+
+```
+clock bail at 150                 2 levels lost   10248 actions saved   65.3% of doomed
+clock bail at 311 (ZERO-LOSS)     0 levels lost    5481 actions saved   34.9%
+best signal ALONE, coverage@50    0 levels lost    4500 actions saved   28.7%   <- LOSES to the clock
+coverage@50 OR clock@311          0 levels lost    8091 actions saved   51.5%   <- +2610
++ inert_rate@50                   0 levels lost    8352 actions saved   53.2%
+```
+
+311 is one past the longest cleared segment in the corpus (vc33 L0, 310 actions). ⛔ **Alone, no
+candidate beats the clock. As a SUPPLEMENT to it, `coverage` takes half the doomed actions at zero
+cost in levels.** (`coverage` = 1 − distinct 4×4-quantised change centroids ÷ actions.)
+
+⛔ **BOTH CONTROLS HOLD.** Negative: all twenty segments of re86, wa30 and ls20 sit at or below the
+threshold, and **re86 L5 (139 actions) PINS it exactly** at 0.8400 — the slow winners really are
+what limits the signal. Positive: 10 of 35 doomed segments flagged, every one at the full 500-action
+allowance. ⭐ And m0r0 comes out right — its four winning segments pass, only its doomed L5 fires.
+
+⛔ **AND THE THIRD CAVEAT DECIDES WHETHER ANY OF IT IS WORTH ANYTHING: ALL TEN FLAGGED SEGMENTS COME
+FROM THE ABLATED ARM.** On the shipped configuration the signal fires ZERO times and is worth
+**0.0000** today. What it saves are actions on levels that score zero however they are spent (7ax /
+7bq), so it frees WALL-CLOCK, not points — **unless there is a better tool to hand the board to, and
+7ba says on these boards there is not.** ⚠️ The threshold is also fitted IN-SAMPLE, set by one
+winning segment, with no held-out set: 51.5% is an upper bound, not a transferable number. ⚠️ And
+nineteen of these 25 sit at the cap, so this is validated on the easy case.
+
+⚠️ `norm_clock` (segment length ÷ median cost of the levels this game already cleared) is the WEAKEST
+candidate measured — AUC 0.449/0.482 — **and undefined on a run that has cleared nothing**, i.e.
+exactly the nine games that clear zero after ablation. The normaliser is missing where it is needed.
+
+⭐ **THE DESIGN CONSEQUENCE POINTS AWAY FROM BAILING.** A signal worth 0.0000 unless something
+better exists to take the board says the lever is not a smarter give-up rule but having a second
+claimant at all — the same conclusion 7cj reached from the other direction. ⛔ Nothing ships (7o);
+the gate would measure exactly zero, which argues for leaving it alone, not for shipping it quietly.
+Round page [[.wiki/wiki/rounds/r101_lost-signal.md]]; instrument `scripts/signal_report.py`.

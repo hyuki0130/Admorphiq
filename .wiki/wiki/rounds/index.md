@@ -392,3 +392,22 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   fallback POSITION, so "demote graph" is closed. ⚠️ Ownership by ACTION SHARE inverts on 3 of 5
   multi-tool games (bp35's 486-action `graph` is worth EXACTLY ZERO; `crag` clears the levels).
   Rule **7cj**.
+
+- **lost signal / does a run know it is lost / give-up / bail / no-progress / novelty saturation /
+  coverage / inert rate / revisit / level-segment / FPR0 / budget threshold** →
+  [[r101_lost-signal]] — 7cj's closing hypothesis, tested before anything was built. Both ablation
+  arms re-run with per-action telemetry (verified INERT, 0 of 25 differing either arm), giving **255
+  level segments, 205 cleared / 50 doomed**. ⛔ **The classes are labelled by OUTCOME, not shape —
+  `m0r0` latches for 731 actions and CLEARS FIVE LEVELS**, so latch-shape is the wrong label. ⛔ Only
+  k=25 and k=50 have enough winners to define an FPR-0 threshold (2/31 by k=150), so the strong-looking
+  late columns are NO VERDICT. ⭐ **Elapsed time carries ZERO information at a fixed decision point
+  (AUC 0.500 BY CONSTRUCTION)** — a clock does not discriminate, it only decides when to stop, so the
+  baseline is a POLICY. **Alone no signal beats it**: clock@311 saves 34.9% of doomed actions at zero
+  levels lost, best signal `coverage@50` only 28.7%. **As a supplement it pays**: coverage OR clock =
+  **51.5%**, plus inert_rate 53.2%, still zero levels lost. Controls hold — all 20 re86/wa30/ls20
+  segments below threshold with **re86 L5 PINNING it**, 10 of 35 doomed flagged. ⛔ **All ten flagged
+  segments come from the ABLATED arm, so on the shipped card it fires zero times and is worth
+  0.0000**; the actions saved are on levels scoring zero anyway (7ax/7bq), so it frees wall-clock not
+  points, and 7ba says there is no better tool to hand the board to. ⚠️ Threshold fitted IN-SAMPLE by
+  one segment. ⭐ The consequence points AWAY from a smarter give-up rule and toward having a second
+  claimant at all. Rule **7cm**.

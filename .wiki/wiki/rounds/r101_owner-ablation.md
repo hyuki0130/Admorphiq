@@ -221,6 +221,10 @@ gate on the full 25 showing no game regressed.
 
 ## Related
 
+- [[r101_lost-signal]] — **the follow-up that tested item 3 above before anything was built.** A
+  run-intrinsic signal DOES exist (`coverage`, AUC 0.815 at action 50) but loses to the clock alone
+  (28.7% vs 34.9% of doomed actions saved) and only pays as a supplement (51.5%). ⛔ All ten flagged
+  segments come from the ablated arm, so on the shipped configuration it fires zero times.
 - [[r101_silent-specialists]] — the map of where the remaining loss sits
 - Rule **7cj** in `OPERATING_RULES.md` — the condensed form of this round
 - Rules 7ba / 7bb / 7bq — no tool alone beats the harness; 17 of 47 never hold a board; tenure
