@@ -39,6 +39,12 @@ measured rather than assumed. ⚠️ This says the 25 travel. It says nothing ab
 literal colour or a sprite name — and nothing more. **Do not quote 0.9989 as a transfer
 coefficient.**
 
+⛔ **AND THE HEADING ABOVE IS ONLY HALF TRUE — READ §3 BEFORE QUOTING THIS TABLE.** Every
+perturbation in it is one a colour bijection or a rename can express, and all of them are
+**order-preserving by construction**. The one axis they cannot touch is the one that turns out to
+matter: **fourteen of the 25 games depend on PAINT ORDER**, and two lose everything. A clean sweep
+here is evidence about colour and naming, and about nothing else.
+
 ## 3. Paint order — FOURTEEN of 25 games depend on it
 
 ⛔ **THIS SECTION SAID "THE ONE RENDER-DEPENDENT READ IN THE CORPUS" FOR THREE HOURS AND IT WAS
