@@ -532,3 +532,23 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   actions are not score, and a bench reporting total actions would have promoted it. The two saveable
   presses are spent at proposes 3 and 4 while the evidence that they are unnecessary does not exist
   until propose 12 — **no scheduling rule can use information it does not have.**
+
+- **bp35 / crag / perception / stitch / lost / alignment / _volatile / crumbling platform / level 6 /
+  ALIGN_FIT / reanchor / bp35see** → [[r101_bp35-perception]] — can `crag` SEE bp35's level 6?
+  On a run reproducing banked 0.24556 / [18,87,45,23,46]: **crag gets FOURTEEN turns on level 6 and
+  never bids again** — `_idle` 8 against its own `_GIVE_UP` 16 with `_mute` 0, so it never retires
+  itself; `GraphSearchTool` then takes 382 actions and clears nothing, and `edits_max` is 1 against
+  4-19 elsewhere. All eight quits are `_stitch` returning `lost` through the SCORE threshold (best
+  0.60 vs `_ALIGN_FIT` 0.82) — **never the physics gate, never too-few-cells** — and acts 7-13 are
+  byte-identical, one frozen state re-evaluated seven times. ⭐ **The orthogonal defect is a
+  SEQUENCING one**: `_volatile` (crag's own "this glyph changes, don't align against it") is filled
+  only inside `_absorb`, which runs only after a stitch SUCCEEDS, so a glyph that changes enough to
+  break alignment can never be learned as volatile — **level 3 learns 2 and clears at 0.9560, level
+  6 learns 0 and is the only level ever refused**. ⚠️ *"15 known cells"* was a misread field:
+  `_known` is the glyph VOCABULARY (15); the map is 100 cells against 260-370 on clearing levels.
+  ⛔ **My reading of WHY the 0.60 is low is NOT established** — a peer's in-flight `_reanchor`
+  explains the same number as a spurious off-strip overlap, and with 68 shifts dropped as too thin
+  at every refusal my data cannot separate them (rule 7b's trap, fourth time). ⛔ Nothing built, no
+  gate: `crag.py` held 103 uncommitted lines from another agent in the same function (rule 8); all
+  four probe snapshots verified to contain zero `_reanchor`, so the numbers describe HEAD. ⭐ `crag`
+  is selected on bp35 and NO other game — blast radius one. Rule **7cr**.

@@ -4371,3 +4371,76 @@ top policy, now the measured conclusion rather than the assumed one. ⛔ Nothing
 Round page [[.wiki/wiki/rounds/r101_routing-or-capability.md]]; `scripts/solo_report.py`.
 ⚠️ The 1175 raw results are 12MB — a fifth of the repo's history for one sweep — so they are rolled
 into `R101ABLATESOLOALL/SOLO.jsonl` (127KB), VERIFIED to reproduce the report byte-for-byte first.
+
+### 7cr — what crag can and cannot see on bp35 level 6 — volatility is learned only after a stitch succeeds (2026-08-30)
+
+bp35 is the corpus's largest gap — **0.24556**, worth +0.0302 of the mean — and its loss is DEPTH:
+five of nine levels clear, and ~507 of its 726 actions go on level 6 alone. The recorded reading was
+*"a tool that cannot read the board, not one that was interrupted."* This is what it actually sees,
+per level, on a run reproducing the banked 0.24556 / `[18, 87, 45, 23, 46]` exactly.
+
+⭐ **THE WHOLE ANSWER IS ONE TABLE, AND THE CONTRAST IS IN IT** (`scripts/_bp35_see.py`, HEAD
+`fbeaeaed`):
+
+```
+level  turns  steps  quits  stitch outcomes   world  rows  vocab  VOLATILE  edits  idle
+1         18     18      0  grow 18             260    10      4       0        4     0
+2         85     85      0  grow 83, home 2     370    10      7       0       19     0
+3         45     45      0  grow 45             310    10     12       2       13     0
+4         23     23      0  grow 23             320    10     13       0        6     0
+5         45     45      0  grow 44, home 1     300    10     14       0        9     0
+6         14      6      8  grow 6, LOST 8      100     9     15       0        1     8
+```
+
+**crag gets FOURTEEN turns on level 6 and never bids again.** `_idle` reaches 8 against its own
+`_GIVE_UP` of 16 with `_mute` at 0, so **it never retires itself** — the harness stops offering it
+the board — and `GraphSearchTool` then spends **382 actions** and clears nothing. `edits_max` on
+level 6 is **1** against 4-19 everywhere else: it barely acts at all.
+
+⚠️ **"15 known cells" was a misreading of the field.** `_known` is `_vocabulary()` — the count of
+named glyph KINDS (15), not cells. The map is `len(self._world)` and it is **100** on level 6
+against 260-370 on every level that clears.
+
+**WHICH BRANCH.** Every quit is `"window does not belong to this board"` = `_stitch` returning
+`lost`, and that has three exits. `scripts/_bp35_lost.py` replays the scan read-only and separates
+them: **all eight are the score threshold** (`best < _ALIGN_FIT` 0.82), never the physics gate and
+never too-few-cells.
+
+```
+act  6   allow = -1     refused_by_physics 66   too_thin 60   scored  42   best 0.565 / 69 cells
+act 7-13 allow = None   refused_by_physics  0   too_thin 68   scored 100   best 0.600 / 20 cells
+```
+
+⭐ **Acts 7-13 are byte-identical** — same cells, same score, seven times. Nothing is absorbed, so
+nothing can change: the state is frozen.
+
+⭐ **THE DEFECT THAT IS ORTHOGONAL TO WHY THIS FRAME FAILS, AND IT IS A SEQUENCING DEFECT.**
+`self._volatile` — crag's own *"this glyph changes, do not align against it"* set — is populated
+inside `_absorb`, and `_absorb` runs **only after a stitch SUCCEEDS**. So a glyph that changes
+enough to BREAK alignment can never be learned as volatile: **the learning sits on the far side of
+the gate it just failed.** It is not dead code — level 3 learns **2** volatile signatures and clears
+at 0.9560, while level 6 learns **zero** and is the only level ever refused.
+
+⛔ **AND HERE IS WHAT I GOT WRONG, RECORDED BECAUSE IT IS THE ROUND'S REAL LESSON.** I read the
+0.60/20 as *"the board changed under the map"* — a crumbling platform making terrain non-static,
+which the game's source supports. The `game-bp35` agent's in-flight `_reanchor` reads the SAME
+numbers as a **spurious overlap**: the window has travelled off the mapped strip and the 0.60 is
+twenty cells of rock matching rock, with an independent measurement behind it (the camera moves 9.7
+cells through a ten-row window). ⛔ **My data cannot separate the two** — at every refusal SIXTY-EIGHT
+candidate shifts were dropped as too thin, and an off-strip shift would be among exactly those. That
+is rule 7b's trap in its purest form: a quantity that is equally true under two mechanisms is not a
+cause. **The C1/C2/C3 split is measured; the interpretation of the 0.60 is NOT established.**
+
+⚠️ **THE FACT THAT BOUNDS THE REPAIR IN FLIGHT** — `_reanchor` returns None when `allow is None`,
+and **`allow` is None on SEVEN of the eight refusals**. As written it gets one attempt, at act 6.
+⭐ It calls `_absorb` on success, so if that attempt lands it also reopens the volatility path as a
+side effect — which may matter more than the placement.
+
+⛔ **NOTHING WAS BUILT AND NO GATE WAS RUN, AND THE REASON IS RULE 8.** `crag.py` had 103
+uncommitted insertions from another agent at the exact line I was about to edit. Two agents editing
+one function is the failure that rule names. ⚠️ I verified my own numbers do not ride on that edit:
+all four probe snapshots on the box contain **zero** `_reanchor`, so every measurement here
+describes committed HEAD. ⭐ And `crag` is selected on **bp35 and no other game of the 25**, so
+whoever does repair it has a blast radius of one game — that is worth knowing before designing it.
+
+Round page [[.wiki/wiki/rounds/r101_bp35-perception.md]]; artefacts `scripts/rounds/R101BP35SEE/`.

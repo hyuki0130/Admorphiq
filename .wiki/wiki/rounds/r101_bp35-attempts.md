@@ -446,3 +446,15 @@ cells in ten"*, the false fit `_stitch`'s docstring records as having cost every
 ⚠️ `crag` bids **0.5 on bp35 and 0.00 on the other twenty-four games**, so no second game could have
 paid for it either. Board 6 stays closed on its own proof (`_sites` exhausts at 24,644 states with
 zero wins; no six-click win exists at any reach). Rule 7bj.
+
+## The perception lane
+
+⭐ **[[r101_bp35-perception]] (rule 7cr)** answers the other half of bp35's level-6 wall: **crag gets
+FOURTEEN turns there and never bids again**, all eight quits being `_stitch` returning `lost` through
+the SCORE threshold (best 0.60 against 0.82) — never the physics gate, never too-few-cells — and acts
+7-13 byte-identical. The orthogonal defect is a SEQUENCING one: `_volatile` is filled only inside
+`_absorb`, which runs only after a stitch SUCCEEDS, so a glyph that changes enough to break alignment
+can never be learned as volatile (level 3 learns 2 and clears; level 6 learns 0). ⚠️ Whether the 0.60
+is a real terrain change or a spurious off-strip overlap is NOT established there — 68 shifts are
+dropped as too thin at every refusal — and `_reanchor` cannot fire on seven of the eight because
+`allow` is None.
