@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 281.
+**Total pages**: 282.
 
 ## Games (26)
 
@@ -188,7 +188,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (130)
+## Top-level dispatch (architecture, selector, log, schema) (131)
 
 - [[campaign/ACTIVE.md]] — The plan that survives a context compaction. Read this before choosing a direction.
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
@@ -283,6 +283,7 @@ category, drill into specific pages.
 - [[rounds/r101_conquest-wave.md]] — Eight parallel per-game agents took the generic tools from 0.8935 to 0.9069 in a day, conquering
 - [[rounds/r101_discarded-band.md]] — `segment.board_changed` throws the frame's outer band away on purpose. It has exactly **one**
 - [[rounds/r101_inert-actions.md]] — An action that changes nothing is 9.2x more likely to be on a level that never clears. Removing
+- [[rounds/r101_llm-on-a-gpu.md]] — Rule 7ca found that the harness's LLM had never once been in the loop — 404 on ceph-build for an
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
 - [[rounds/r101_ls20-fog-cost.md]] — The briefing asked for **a different way to meet a mover under fog**. The census says the mover is
 - [[rounds/r101_probe-fallback.md]] — A fallback that always pressed the lowest-numbered key spent 83 of lf52's 117 refused ACTION1

@@ -360,3 +360,16 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   genuinely inert (cleared-level dead 1.07% -> 1.94%). ⚠️ The per-pixel ">=80% of probes" HUD test
   cannot see a marching counter and returned zero HUD pixels on all 25 — ask it per REGION and per
   ACTION CLASS. Rule **7cf**.
+
+- **llm / offline model / gpu / vllm / target draw / routing / does the model help / axis closed** →
+  [[r101_llm-on-a-gpu]] — ⭐ **arm_llm 0.908187, arm_fallback 0.908187, ZERO games differing** on a
+  Kaggle GPU with vLLM serving gemma4. The controls are the result: **38** served chat completions,
+  target-draw failures **fallback 3 · llm ZERO** (the draw succeeded for the first time in the
+  campaign), **34** re-decides in each arm, and **104 seconds** of extra wall clock — so the model
+  really ran, answered, drew targets, and changed not one action. ⛔ Amends rule 7ca, whose headline
+  was that the draw had never succeeded anywhere. ⚠️ It does NOT say an LLM is useless: it says
+  **these 25 cannot measure it**, because nineteen sit at the cap and signature routing already picks
+  a tool that clears — the private 110 are the case where no tool fits. ⛔ And the first reading of
+  the log was WRONG (three `Connection refused` lines read as "the draw failed here too"); splitting
+  them by arm banner reversed it — a count spanning two arms describes neither (7aj). Rules **7ch**,
+  and **7cc** for the load-110 incident that preceded it on the CPU box.

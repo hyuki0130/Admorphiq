@@ -136,6 +136,9 @@ denominator).
 
 [[r101_conquest-wave]] · [[r101_tenure-end]] · [[r101_tool-development]] · [[r101_silent-specialists]]
 · [[r101_discarded-band]] · [[r101_inert-actions]] · [[r101_allowance-ledger]] · [[campaign/ACTIVE]]
+· [[r101_llm-on-a-gpu]] — the other half of "does the shipped path have anything left in it":
+the model in the loop is measured INERT on these 25, so this round's 0.9082 is tools and
+signature routing alone.
 
 ⭐ [[r101_render-mutation-transfer]] extends this measurement to the games with no archive by
 MANUFACTURING the re-render (rule 7ce), and corrects one number here: the archive covers
