@@ -4,7 +4,7 @@ round: R101LP85CAP
 axis: generic-tools
 keywords: [lp85, cyclepress, level 4, efficiency, discovery cost, permutation recovery, confirmation press, inverse control, ring, RHAE cap, load-bearing]
 verdict: CLOSED — lp85 level 4's two saveable presses are spent before the evidence that they are unnecessary exists; fifteen arms and two structural axes refuted
-commit: pending
+commit: f3465bc8
 ---
 
 # R101LP85CAP — lp85 level 4, the last efficiency item in the corpus
