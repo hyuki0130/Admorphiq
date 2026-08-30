@@ -99,6 +99,12 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > games are structurally incapable of answering.** Read it before choosing a direction; this
 > section is the work list, that page is the picture.
 
+> ⛔ **SESSION HALTED 2026-08-30 16:35 — READ [[SESSION_END_20260830]] FIRST.** Two facts there are
+> dangerous if missed: **HEAD contains UNGATED changes to `crag.py` and `fogscout.py`** (commit
+> `e165eba7`; the 0.9082 describes the tree WITHOUT them, and gating them is the next session's
+> first action), and **the watchdog cron is cancelled**, so the standing rule below cannot restart
+> itself — the per-game agents must be relaunched deliberately.
+
 ## NEXT ACTIONS — pick from here, not from the last tool output
 
 > ⛔ **THE GOAL IS ALL 25 GAMES COMPLETE. "CLOSED WITH PROOFS" IS NOT PERMISSION TO STOP.**

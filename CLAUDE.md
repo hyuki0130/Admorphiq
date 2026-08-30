@@ -38,6 +38,12 @@
 > proved by intervention, and the harness cannot tell when no tool fits. Boundaries stated per
 > claim.
 >
+> ⛔ **SESSION HALTED 2026-08-30 16:35. HEAD CARRIES UNGATED TOOL EDITS** (`e165eba7`: `crag.py`
+> +179, `fogscout.py` +119). **The 0.9082 above describes the tree WITHOUT them.** Gate them
+> separately before anything else —
+> [`.wiki/wiki/campaign/SESSION_END_20260830.md`](.wiki/wiki/campaign/SESSION_END_20260830.md).
+> The watchdog cron is cancelled, so the rule below does not restart itself.
+>
 > ⛔ **THE GOAL IS ALL 25 COMPLETE, AND EVERY INCOMPLETE GAME HAS AN AGENT ON IT — ALWAYS** (rule
 > **7co**, user correction 2026-08-30). Six are short and six agents are live, one per game, in
 > parallel on ceph. ⚠️ **"CLOSED WITH PROOFS" IS A VERDICT ON THE HYPOTHESES, NOT ON THE GAME** —

@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 288.
+**Total pages**: 293.
 
 ## Games (26)
 
@@ -188,7 +188,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (137)
+## Top-level dispatch (architecture, selector, log, schema) (142)
 
 - [[campaign/ACTIVE.md]] — The plan that survives a context compaction. Read this before choosing a direction.
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
@@ -228,6 +228,7 @@ category, drill into specific pages.
 - [[rounds/r51_fewshot-prior-sweep.md]] — Two-axis sweep (few 15→40, mechanics prior) x 2 models — averages flat but effects are strongly game- and model-dependent; per-game union 0.211 motivates runtime adaptive-config synthesis
 - [[rounds/r52_ewm-integration.md]] — Productized the R49-R51 EWM into the deployed agent (GF_EWM, default OFF) — mechanically works but scores identically to baseline; the no-change pruning signal is redundant with empirical exploration, and runtime fit is far below bench fit
 - [[memory/README.md]] — The machine-local memory directory copied into the wiki, because that directory does not travel and the wiki does.
+- [[campaign/SESSION_END_20260830.md]] — Halted by the user. The watchdog cron is **cancelled**, all nine agents are dead, the box is clean,
 - [[architecture_self_improving_agent.md]] — Per unseen game, the offline runtime brain (the MEASURED-best model on 96GB — currently gemma4-31b-q8 per R50b; re-benched on this harness; candidates gemma4-31b / gpt-oss-120b / Qwen 3.6-27B) SELECTS and APPLIES a library of our
 - [[tool_selector.md]] — The local LLM's decision table — map what you OBSERVE in the first frames to the FIRST tool to run, with how-to-use, falsification (when it's failing → switch), and next-best. Perfect first pick within the tight budget.
 - [[campaign/WHAT_WE_KNOW_ABOUT_THE_110.md]] — One day of measurement turned "the private set is a worry" into a set of numbers with named
@@ -281,6 +282,7 @@ category, drill into specific pages.
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
 - [[rounds/r101_allowance-ledger.md]] — A level that ENDS the game on overrun teaches its own budget: the ledger learns each level's
 - [[rounds/r101_bp35-attempts.md]] — bp35's seven collapses are seven DIFFERENT attempts, so the wa30 mechanism does not apply. The
+- [[rounds/r101_bp35-perception.md]] — bp35 is the largest gap in the corpus: **0.24556**, worth **+0.0302** of the mean. It clears five
 - [[rounds/r101_conquest-wave.md]] — Eight parallel per-game agents took the generic tools from 0.8935 to 0.9069 in a day, conquering
 - [[rounds/r101_dead-reckoning-transfer.md]] — [[r101_visibility-identity-census]] counted the class rule 7cd named and found five sites with the
 - [[rounds/r101_discarded-band.md]] — `segment.board_changed` throws the frame's outer band away on purpose. It has exactly **one**
@@ -288,16 +290,19 @@ category, drill into specific pages.
 - [[rounds/r101_llm-on-a-gpu.md]] — Rule 7ca found that the harness's LLM had never once been in the loop — 404 on ceph-build for an
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
 - [[rounds/r101_lost-signal.md]] — Rule 7cj ended with a hypothesis, not a result: *the harness owns no signal meaning "I do
+- [[rounds/r101_lp85-level-four.md]] — Level 4 costs **18 actions against a human 16**. The whole of it is model identification: with
 - [[rounds/r101_ls20-fog-cost.md]] — The briefing asked for **a different way to meet a mover under fog**. The census says the mover is
 - [[rounds/r101_owner-ablation.md]] — Every transfer instrument this campaign owns perturbs the **rendering** of a game whose mechanic
 - [[rounds/r101_probe-fallback.md]] — A fallback that always pressed the lowest-numbered key spent 83 of lf52's 117 refused ACTION1
 - [[rounds/r101_render-mutation-transfer.md]] — Three independent colour relabellings of every board, full 25 each, against an identity control at
+- [[rounds/r101_routing-or-capability.md]] — 7cj measured that removing a game's owner costs **0.9082 → 0.1932**. 7cm measured that a
 - [[rounds/r101_shipped-and-transfer.md]] — Two numbers that the campaign had been quoting without ever measuring properly. The first is
 - [[rounds/r101_silent-specialists.md]] — Every stuck game retires its specialist because the tool proposes NOTHING, and five separate
 - [[rounds/r101_tenure-end.md]] — Rule 7bd asked why the strong tool goes empty. Rule 7ac closed routing, rule 7bh measured
 - [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear. The
 - [[rounds/r101_visibility-identity-census.md]] — [[r101_zorder-rider]] proved, by intervention, that `TelescopeArmTool` learns which bar carries a
 - [[rounds/r101_wa30-level-restart.md]] — wa30's last level restarts on its 70-action overrun, so the harness gets EIGHT tries at it —
+- [[rounds/r101_which-object.md]] — [[r101_zorder-mutation]] measured fourteen of 25 games depending on paint order and showed that
 - [[rounds/r101_zorder-mutation.md]] — Rule **7cd** named the corpus's only measured transfer defect and ended by saying the arm that
 - [[rounds/r101_zorder-rider.md]] — [[r101_shipped-and-transfer]] measured that twenty-four of twenty-five games are action-for-action
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
