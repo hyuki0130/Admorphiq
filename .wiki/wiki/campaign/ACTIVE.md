@@ -170,10 +170,34 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 >    bijection preserves which sprite is drawn on top — so the campaign's only measured transfer
 >    defect is the one the new instrument is blind to. Permute SAME-LAYER siblings only; validity
 >    check is `scripts/_s5i5_srcdiff.py`; **positive control is s5i5's own 39 -> 61 on L4.**
-> 2. **THE VISIBILITY-IDENTITY CENSUS.** 7cd named a defect CLASS; nobody knows its POPULATION. How
->    many tools filter candidates by whether an object is currently DRAWN, and does the filter
->    actually change the candidate set on a run (rule 7g)? ⚠️ Keep it separate from the eight
->    colour-INDEX-ordering sites, which 7ce measured harmless.
+> 2. ✅ **THE VISIBILITY-IDENTITY CENSUS — ANSWERED, rule 7cl. THE POPULATION IS NOT ONE.** 63 sites
+>    under `tools/` + `harness/`; **14** carry 7cd's exact structure (a candidate set filtered with a
+>    fallback to the UNFILTERED set); **five** filter on what is currently PAINTED — `telescope:1183`
+>    (7cd's exemplar), `swivel:734` (the identical two lines), `blastclock:631`, `slotlaunch:755`,
+>    `tether:413`. On a run, three are live: telescope and swivel on s5i5, blastclock on ka59 (33
+>    evaluations, fallback fired 9 times). ⚠️ **The automated arm caught 3 of the 5** — two are only
+>    visible by following an attribute into another module.
+>
+>    ⛔ **"ZERO EVALUATIONS" IS TWO DIFFERENT FINDINGS**: `slotlaunch` is registered and never wins a
+>    board; `tether` wins r11l and never reaches the line. Neither is evidence the site is harmless —
+>    only that this corpus cannot measure it.
+>
+>    ⭐ **AND THE WORST SITE HAS NO FALLBACK, SO 7cd'S OWN SHAPE UNDER-COUNTS THE CLASS.**
+>    `lattice_maze:484` assigns identity by comparing a colour read NOW against one REMEMBERED — on
+>    tu93 it cuts up to nine candidates down to exactly ONE on 163 of 187 evaluations, on a game
+>    sitting at 1.0000. Its docstring carries the price, measured on that game's archived re-render:
+>    a second piece drawn in the steered piece's colours took it from **9 levels in 188 actions to 4
+>    in 1288 — a 6.9x blow-up**, against telescope's 1.56x. It is already REPAIRED (dead reckoning),
+>    which is why it still scores 1.0000, and **no vocabulary could have found it** — no word in it
+>    names paint. Recovered only by a STRUCTURAL arm for `== self._<remembered>`.
+>
+>    ⚠️ Widened to visibility/colour filters with NO fallback: **49 static sites, 39 evaluated on at
+>    least one game**. The discriminator is not "does it narrow" — nearly every filter does — but
+>    cutting MANY to exactly ONE (identity assigned from paint) or to ZERO (the object lost).
+>    ⛔ **That is an EXPOSURE MAP, not a defect list**: cutting to zero is often the right answer.
+>    ⛔ **No repair** — 7cd's reason: removing a visibility filter takes the tool to the unfiltered
+>    set EVERYWHERE, which IS the 61-action behaviour.
+>
 > 3. ✅ **THE ABLATION TABLE — ANSWERED 2026-08-30, rule 7cj, and it names the campaign's next
 >    lever.** Remove the tool that actually plays each game and score: **0.9082 -> 0.1932, 25 of 25
 >    games moved.** ⛔ The hoped-for flat floor did NOT come back (median 0.0069, stdev 0.2558), so
