@@ -41,7 +41,12 @@ def _arm(directory: str) -> dict[str, dict[str, Any]]:
             "score": float(blob.get("total_score") or 0.0),
             "levels": g.get("levels_completed"),
             "actions": [lv.get("agent_actions") for lv in g.get("per_level", [])],
-            "mutation": g.get("render_mutation", {}),
+            # Both instruments write their accounting under their own key and share
+            # this reader: `rendergate_run.py` relabels the OBSERVATION,
+            # `zordergate_run.py` re-paints the FRAME. The verdict vocabulary
+            # ('applied' / 'inert' / 'invalid' / 'control', plus z-order's 'partial')
+            # is identical, so one comparator serves both.
+            "mutation": g.get("render_mutation") or g.get("zorder_mutation") or {},
         }
     return rows
 
