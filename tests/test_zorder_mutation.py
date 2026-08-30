@@ -209,3 +209,87 @@ def test_scope_is_validated_at_construction() -> None:
         SameLayerPermutation("rev", "zbad", scope="everything")
     assert build("zrevall").describe()["scope"] == "whole-list"
     assert build("zrev").describe()["scope"] == "same-layer"
+
+
+def test_seed_zero_is_the_identity_through_the_sampled_code_path() -> None:
+    """Purpose: the sampled family's own control. `zshuf00` must return the list untouched
+    while travelling through the SAME keying and sorting code as every sampled arm — a
+    control produced by a different code path proves less than one drawn from the same
+    generator.
+
+    Expected feedback: a failure means the run's inner control is not a control, and a flat
+    result from any `zshufNN` arm could be the keying machinery rather than the board.
+    """
+    sprites = [_S(c, i % 3) for i, c in enumerate("abcdefgh")]
+    arm = build("zshuf00")
+    assert [s.tag for s in arm.permute(sprites)] == [s.tag for s in sprites]
+    # ...and again on a second frame, because the keys are assigned once and reused.
+    assert [s.tag for s in arm.permute(sprites)] == [s.tag for s in sprites]
+
+
+def test_a_sampled_order_is_fixed_across_frames() -> None:
+    """Purpose: the order must be drawn ONCE and held. Re-shuffling every frame is a
+    different and far more violent mutation — a board that flickers — and no re-render
+    does that.
+
+    Expected feedback: a failure means every `zshufNN` number describes a flickering board
+    rather than a re-serialised one, and none of them models a re-render.
+    """
+    sprites = [_S(c, i % 3) for i, c in enumerate("abcdefgh")]
+    arm = build("zshuf07")
+    first = [s.tag for s in arm.permute(sprites)]
+    for _ in range(5):
+        assert [s.tag for s in arm.permute(sprites)] == first
+
+
+def test_a_sampled_order_is_reproducible_from_its_seed_alone() -> None:
+    """Purpose: a distribution nobody can reproduce is not a measurement. Two arms built
+    from the same seed must produce the same order, and different seeds must not all
+    collapse to one.
+
+    Expected feedback: a failure means the round's sampled arms cannot be re-run, and its
+    fractions are unverifiable.
+    """
+    sprites = [_S(c, i % 3) for i, c in enumerate("abcdefghij")]
+    a = [s.tag for s in build("zshuf05").permute(sprites)]
+    b = [s.tag for s in build("zshuf05").permute(sprites)]
+    assert a == b
+    others = {tuple(s.tag for s in build(f"zshuf{n:02d}").permute(sprites))
+              for n in range(1, 9)}
+    assert len(others) > 1
+
+
+def test_sprites_arriving_later_keep_their_arrival_order_at_the_end() -> None:
+    """Purpose: model what a re-serialisation actually permutes. The engine APPENDS sprites
+    created during play, so a re-render of the same game appends them identically and only
+    the AUTHORED list is free to differ. Everything present when a board opens is shuffled
+    among itself; later arrivals stay at the end, in arrival order.
+
+    Expected feedback: a failure means the arm is permuting sprites a real re-render could
+    not have permuted, and its "expected case" is more violent than the thing it models.
+    """
+    opening = [_S(c, 0) for c in "abcdef"]
+    arm = build("zshuf03")
+    arm.permute(opening)
+    late_one, late_two = _S("y", 0), _S("z", 0)
+    out = [s.tag for s in arm.permute(opening + [late_one, late_two])]
+    assert out[-2:] == ["y", "z"]
+    assert sorted(out[:-2]) == sorted("abcdef")
+
+
+def test_a_uniform_whole_list_shuffle_never_crosses_a_layer_once_the_engine_sorts() -> None:
+    """Purpose: the sampled arm uses ONE scope for all 25 games, and this is why that is
+    safe. The engine's STABLE ``sorted(key=layer)`` discards everything about a permutation
+    except the order it induces WITHIN each layer, so a uniform whole-list shuffle is the
+    conservative same-layer arm on every layer-sorting game.
+
+    Expected feedback: a failure means the sampled family is a cross-layer mutation on the
+    22 layer-sorting games and would need a different validity argument than the reversal
+    arms it is compared against.
+    """
+    sprites = [_S(c, i % 4) for i, c in enumerate("abcdefghijkl")]
+    painted = [s.layer for s in sorted(sprites, key=lambda s: s.layer)]
+    for seed in range(1, 12):
+        out = sorted(build(f"zshuf{seed:02d}").permute(sprites), key=lambda s: s.layer)
+        assert [s.layer for s in out] == painted, seed
+        assert sorted(id(s) for s in out) == sorted(id(s) for s in sprites), seed

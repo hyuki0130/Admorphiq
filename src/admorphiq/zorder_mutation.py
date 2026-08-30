@@ -87,6 +87,7 @@ of a mover is made from the per-level evidence, never from the score alone.
 
 from __future__ import annotations
 
+import re
 import sys
 from typing import Any
 
@@ -231,6 +232,65 @@ class SameLayerPermutation(ZOrderMutation):
         if self.scope == "whole-list":
             return whole_list_permute(sprites, self.kind)
         return same_layer_permute(sprites, self.kind)
+
+
+class RandomOrder(ZOrderMutation):
+    """A FIXED random re-serialisation of the board — the expected case, not the worst.
+
+    ⭐ WHY THIS EXISTS BESIDE THE REVERSAL ARMS. A whole-list reversal is the MAXIMUM
+    possible perturbation of paint order, so "14 of 25 games depend on paint order" is a
+    worst-case statement. A real re-render is not a reversal — it is some other ordering.
+    The competition's own re-render of s5i5 changed the picture by ONE CELL on level 4.
+    What the 110 needs is the expected case: given a re-ordering, how often does a game
+    move at all, and by how much.
+
+    ⭐ ONE SCOPE SUFFICES, AND THAT IS A THEOREM ABOUT THE ENGINE'S SORT. A uniformly
+    random permutation of the whole list induces, on each layer group, a uniformly random
+    permutation of THAT GROUP — the relative order of a disjoint subset under a uniform
+    permutation is itself uniform, and independent across disjoint subsets. The engine's
+    STABLE ``sorted(key=layer)`` then discards everything except those induced within-layer
+    orders. So a uniform whole-list shuffle IS the conservative same-layer arm on the 22
+    layer-sorting games and the true paint order on the three that never sort. No branch is
+    needed and none is taken.
+
+    ⛔ THE ORDER IS FIXED FOR THE RUN, NOT REDRAWN PER FRAME. Re-shuffling every frame is a
+    different and far more violent mutation — the board would flicker, which no re-render
+    does. Each sprite is keyed ONCE, the first time it is seen, and the key is kept in a
+    weak map so the mutation holds no reference the engine does not.
+
+    ⭐ AND THE KEY MODELS WHAT A RE-SERIALISATION ACTUALLY PERMUTES. The engine APPENDS
+    sprites created during play, so a re-render of the same game appends them in the same
+    order and only the AUTHORED list is free to differ. The key is therefore
+    ``(frame first seen, tie-break)``: everything present when a level opens is shuffled
+    among itself, and anything that arrives later keeps its arrival order at the end,
+    exactly as the engine would place it.
+
+    Seed 0 is the identity — the tie-break becomes the sprite's own list position — so the
+    control travels through the SAME code path as every sampled arm rather than beside it.
+    """
+
+    def __init__(self, seed: int) -> None:
+        import random
+        import weakref
+
+        self.seed = int(seed)
+        self.name = f"zshuf{self.seed:02d}"
+        self._rng = random.Random(self.seed)
+        self._keys: Any = weakref.WeakKeyDictionary()
+        self._frame = 0
+
+    def describe(self) -> dict[str, Any]:
+        return {"name": self.name, "seed": self.seed, "scope": "whole-list uniform",
+                "identity": self.seed == 0}
+
+    def permute(self, sprites: list[Any]) -> list[Any]:
+        self._frame += 1
+        for position, sprite in enumerate(sprites):
+            if sprite in self._keys:
+                continue
+            tiebreak = position if self.seed == 0 else self._rng.random()
+            self._keys[sprite] = (self._frame, tiebreak)
+        return sorted(sprites, key=lambda s: self._keys[s])
 
 
 class ZOrderPatch:
@@ -410,6 +470,13 @@ def build(spec: str) -> ZOrderMutation:
         "zrevall": lambda: SameLayerPermutation("rev", "zrevall", scope="whole-list"),
         "zrotall": lambda: SameLayerPermutation("rot", "zrotall", scope="whole-list"),
     }
-    if spec not in arms:
-        raise KeyError(f"unknown mutation {spec!r}; arms are {sorted(arms)}")
-    return arms[spec]()
+    if spec in arms:
+        return arms[spec]()
+    # ⭐ `zshufNN` — the SAMPLED family, one fixed uniform re-serialisation per seed.
+    # `zshuf00` is the identity by construction and is the control drawn from the same
+    # generator as the samples; a control produced by a different code path proves less.
+    match = re.fullmatch(r"zshuf(\d+)", spec)
+    if match:
+        return RandomOrder(int(match.group(1)))
+    raise KeyError(
+        f"unknown mutation {spec!r}; arms are {sorted(arms)} plus zshuf<NN>")
