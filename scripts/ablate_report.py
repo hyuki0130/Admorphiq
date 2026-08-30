@@ -85,16 +85,20 @@ def main() -> int:
     for game in sorted(set(control) & set(rows)):
         c, a = control[game], rows[game]
         dropped = a["dropped"]
-        held = (c["own"].get("by_tool") or {}).get(dropped, 0)
         if dropped in (None, "none"):
             refused.append((game, "the arm dropped NOTHING"))
             continue
-        if held == 0:
-            refused.append((game, f"'{dropped}' never held the board in the control"))
+        names = [d.strip() for d in str(dropped).split(",") if d.strip()]
+        ctrl_by = c["own"].get("by_tool") or {}
+        # ⛔ At least ONE of the dropped tools must have held this board in the control.
+        # A multi-drop arm whose every name was idle here removed nothing that mattered.
+        if not any(ctrl_by.get(n, 0) for n in names):
+            refused.append((game, f"none of {names} ever held the board in the control"))
             continue
         by = a["own"].get("by_tool", {})
-        if dropped in by:
-            refused.append((game, f"'{dropped}' still played {by[dropped]} actions — not removed"))
+        still = {n: by[n] for n in names if n in by}
+        if still:
+            refused.append((game, f"{still} still played — not removed"))
             continue
         judged.append((game, c["score"], a["score"]))
         heir = ", ".join(f"{k} {v}" for k, v in list(by.items())[:3])

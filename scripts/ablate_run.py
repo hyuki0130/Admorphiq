@@ -65,7 +65,7 @@ class OwnershipRecorder:
         self.inner = inner
         self.by_tool: Counter[str] = Counter()
         self.by_level: dict[int, Counter[str]] = {}
-        self.picks: list[tuple[int, int, str]] = []  # (action, level, tool)
+        self.picks: list[tuple[int, int, str, bool]] = []  # (action, level, tool, primary_owns)
         self._n = 0
 
     def __getattr__(self, item: str) -> Any:
@@ -82,7 +82,12 @@ class OwnershipRecorder:
         self.by_tool[who] += 1
         self.by_level.setdefault(level, Counter())[who] += 1
         if not self.picks or self.picks[-1][2] != who:
-            self.picks.append((self._n, level, who))
+            # ⛔ `_primary_owns` is WHY a tenure does or does not end. A tool whose detect()
+            # cleared `_PRIMARY_CONF` is exempt from stall retirement, so a wrong tool that
+            # bids high holds the board until the outer no-progress guard abandons the game.
+            # Recording it here turns "it was never displaced" into "it COULD not be".
+            self.picks.append((self._n, level, who,
+                               bool(getattr(self.inner, "_primary_owns", False))))
         return action
 
     def report(self) -> dict[str, Any]:
@@ -95,7 +100,8 @@ class OwnershipRecorder:
             "n_tools_used": len(self.by_tool),
             "by_level": {str(k): dict(v.most_common()) for k, v in sorted(self.by_level.items())},
             "tenures": len(self.picks),
-            "picks": [{"action": a, "level": lv, "tool": t} for a, lv, t in self.picks[:80]],
+            "picks": [{"action": a, "level": lv, "tool": t, "primary_owns": p}
+                      for a, lv, t, p in self.picks[:80]],
         }
 
 
@@ -103,7 +109,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--titles", required=True)
     p.add_argument("--drop", required=True,
-                   help="tool name to remove, or 'none' for the control arm")
+                   help="comma-separated tool names to remove, or 'none' for the control arm")
     p.add_argument("--agent", default="unified")
     p.add_argument("--max-actions", type=int, default=4000)
     p.add_argument("--out", required=True)
@@ -112,20 +118,29 @@ def main() -> int:
     full = [t.name for t in _UNPATCHED()]
     drop = args.drop.strip()
     if drop != "none":
-        if drop not in full:
-            print(f"⛔ REFUSING: '{drop}' is not in the registry. Ablating a tool that is "
+        # A multi-drop arm is how the LATCH is tested causally: removing a game's owner AND
+        # the tool that then seizes the board says whether the seizure was the cause of the
+        # collapse or merely its accompaniment.
+        names = [d.strip() for d in drop.split(",") if d.strip()]
+        if len(set(names)) != len(names):
+            print(f"⛔ REFUSING: '{drop}' names a tool twice — the shrink check would pass "
+                  f"for the wrong reason.", flush=True)
+            return 1
+        missing = [d for d in names if d not in full]
+        if missing:
+            print(f"⛔ REFUSING: {missing} not in the registry. Ablating a tool that is "
                   f"not there removes nothing and scores identically, which reads exactly "
                   f"like 'the harness copes without it'. Names are: {sorted(full)}",
                   flush=True)
             return 1
 
         def patched() -> list[Any]:
-            return [t for t in _UNPATCHED() if t.name != drop]
+            return [t for t in _UNPATCHED() if t.name not in names]
 
         registry.default_tools = patched
         after = [t.name for t in registry.default_tools()]
-        if len(after) != len(full) - 1 or drop in after:
-            print(f"⛔ REFUSING: the registry did not shrink by exactly one "
+        if len(after) != len(full) - len(names) or any(d in after for d in names):
+            print(f"⛔ REFUSING: the registry did not shrink by exactly {len(names)} "
                   f"({len(full)} -> {len(after)})", flush=True)
             return 1
     else:
