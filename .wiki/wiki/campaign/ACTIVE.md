@@ -108,6 +108,19 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 >   scripts/xfergate.sh`, ratio 0.9989). **s5i5 L4 is the ONLY render-dependent thing in the entire
 >   corpus** — 39 -> 61 actions on the same level re-rendered.
 >
+> ⛔ **AND THE FIRST INSTRUMENT THAT PERTURBS THE MECHANIC RATHER THAN THE RENDERING SAYS THE
+> TRANSFER PICTURE ABOVE IS MUCH TOO KIND** — [[r101_owner-ablation]], rule **7cj**. The re-render,
+> the recolour and the rename all keep a board whose mechanic one of our tools implements. Remove
+> each game's OWNER instead — the private-110 condition — and **0.9082 -> 0.1932**, 25 of 25 games
+> moved, negative control exact. ⛔ **The floor is NOT flat, so no single number may be quoted**:
+> 13 games under 0.01 against 9 at or above 0.30, split by whether any surviving tool CLAIMS the
+> orphaned board (claimed n=11 mean 0.3725 · unclaimed n=14 mean 0.0523, of which 13 average
+> **0.0014**). And 0.1932 is OPTIMISTIC — every claimant is one of OUR specialists near-missing a
+> PUBLIC board. ⭐ **The failure is SILENT**: 14 of 25 orphaned games are seized at action 1 by a
+> frontier explorer that holds all 500 actions for zero levels, with `primary_owns` FALSE — it never
+> goes silent and never stalls, so it looks productive by every signal the harness watches. ⛔ Not a
+> `graph` problem: dropping `graph` too gives 0.1925 because `world_model` does the identical thing.
+>
 > ⭐ **AND EFFICIENCY OVER CLEARED LEVELS HAS A STRUCTURAL CEILING OF +0.00796** (rule 7cb, one pass
 > over `rounds/*/games/*.json`): only **FIVE** cleared levels in the whole 25 score below 1.0 —
 > bp35 L2/L3/L5, lp85 L4, ls20 L7. Driving all five to a perfect 1.0 is worth eight thousandths of

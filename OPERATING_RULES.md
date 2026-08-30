@@ -3823,3 +3823,65 @@ Fix: `COPYFILE_DISABLE=1 tar --no-xattrs`. Verified — 31 passed where 1 had fa
 ⚠️ ⛔ **AND DO NOT LET THIS BECOME "the box is flaky".** Every one of the four was a real difference
 with a real fix, and the non-dirty full suite has been green throughout (1847 passed, 2 skipped).
 A harness whose failures get attributed to the environment stops being able to report anything.
+
+### 7cj — removing a game's owner costs 0.9082 -> 0.1932, and the floor is NOT flat (2026-08-30)
+
+Every transfer instrument here perturbs the RENDERING of a game one of our tools already implements
+(7by re-render, 7ce recolour and rename, z-order). **None perturbs the MECHANIC**, and the
+private-110 condition is mostly *a board whose mechanic no tool implements*. We cannot obtain a new
+mechanic; we can obtain the CONDITION — remove each game's owner and score it again.
+`scripts/ablategate.sh`, six arms, 110 game-runs from a private snapshot of HEAD.
+
+```
+control `own` (drop nothing)  0.9082   0 of 25 differing from R101SHIPPED *and* R101LP85GATE
+negative (drop `toggle`, 0 actions on every game)  0 of 25 differing in score, levels OR actions
+positive (drop each owner)    0.1932   25 of 25 games MOVED — not one is unchanged
+repeat   (drop1 vs drop1b)    0 of 25 differing
+```
+
+⛔ **THE HOPED-FOR FLAT ROW DID NOT COME BACK, so no single floor may be quoted.** median 0.0069,
+stdev 0.2558, 13 games under 0.01 and 9 at or above 0.30. The split is measured, from `_primary_owns`
+at the ablated run's first tenure — whether any surviving tool CLAIMS the orphaned board:
+
+```
+a second tool claims it   n=11   mean 0.3725   4.2 levels
+nobody claims it          n=14   mean 0.0523   0.6 levels   (m0r0 alone 0.7143; other 13 avg 0.0014)
+```
+
+⛔ **AND 0.1932 IS OPTIMISTIC AS A 110 ANALOGUE.** In all eleven claimed games the claimant is
+another of OUR specialists that partially fits a PUBLIC board we built against. An unseen game has
+no near-miss waiting by construction. **~0.0014 is the analogue of "no tool fits"; 0.1932 is the
+analogue of "new but adjacent to one we implement".** Quote the pair, never the mean.
+
+⭐ **THE LATCH IS REAL AND `_PRIMARY_CONF` IS REFUTED AS ITS CAUSE.** 14 of 25 ablated games have
+exactly ONE `[harness] pick=` line for the whole run — `graph` takes ar25/sb26/tu93 at action 1 and
+holds 500 actions for zero levels. **Every one of those fourteen tenures has `primary_owns` FALSE**,
+so the tool is eligible for stall retirement and is never retired anyway: it never goes silent
+(`_EMPTY_TOLERANCE`) and never stalls (80 steps without a new state) because a frontier explorer
+always proposes and always reaches a new state. **It looks productive by every signal the harness
+watches while clearing nothing** — worse than a threshold, because no tuning addresses it. The other
+eleven games cycle correctly and every chain TERMINATES at `graph`, where the game ends.
+
+⛔ **AND IT IS NOT ABOUT `graph` — the repair was measured before it was proposed.** Dropping owner
+**and** `graph`: **0.1932 -> 0.1925**, 4 of 25 differing, all downward and all trivial.
+`world_model` steps into the slot and does the identical thing (492 actions vs 500, clearing
+nothing, on eleven boards). **The latch is a property of the fallback POSITION, not its occupant**;
+deleting the occupant promotes the next one. "Demote graph" is closed.
+
+⛔ **A SEPARATE TRAP THE ROUND NEARLY FELL INTO: ownership by ACTION SHARE is wrong on three of five
+multi-tool games, and it INVERTS.** bp35's plurality holder is `graph` (486 actions) but `crag`
+clears L0-L4; s5i5's is `linkage` (463) but `swivel` clears L0-L5. The `squat` arm prices it:
+dropping the plurality holder on bp35, lf52 and s5i5 costs **EXACTLY ZERO** (those actions are all
+spent on a level the game never clears — 7bq's shape), while dropping a genuine second owner costs
+real depth (ls20 `fogscout` -0.1621, re86 `reforge` -0.5833). ⚠️ A `drop1` built on action share
+would have ablated nothing on three games and reported "the harness copes" — rule 7aj's fourth
+clause, caught only because the report REFUSES an unchanged game instead of averaging it in.
+
+⭐ **WHAT IT SAYS FOR THE 110: the failure is SILENT.** The harness owns no signal meaning "I do not
+understand this board" — empty proposes, stall and the death clock are all satisfied by a tool that
+explores productively and solves nothing. So the lever is not another specialist and not routing: it
+is a goal-progress signal independent of "reached a new state", or a fallback that can recognise its
+own failure. ⚠️ 7ch says a live LLM changes nothing on these 25; **this is exactly the case 7ch
+says it cannot see**, since routing is what breaks when the right tool is absent.
+
+⛔ Nothing ships off this (7o). Round page [[.wiki/wiki/rounds/r101_owner-ablation.md]].

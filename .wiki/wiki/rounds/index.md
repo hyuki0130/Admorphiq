@@ -373,3 +373,22 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   the log was WRONG (three `Connection refused` lines read as "the draw failed here too"); splitting
   them by arm banner reversed it — a count spanning two arms describes neither (7aj). Rules **7ch**,
   and **7cc** for the load-110 incident that preceded it on the CPU box.
+
+- **ablation / owner / ownership / no tool fits / latch / unseen game / private-110 floor / generic
+  path / fallback position / graph / world_model / primary_owns / ablategate** →
+  [[r101_owner-ablation]] — the closest available proxy to an UNSEEN game, because every other
+  transfer instrument perturbs the RENDERING of a game we already implement and none perturbs the
+  MECHANIC. Remove each game's owner: **0.9082 -> 0.1932**, 25 of 25 moved, negative control (drop a
+  tool with zero actions anywhere) 0 of 25 differing in score, levels or actions. ⛔ **The floor is
+  NOT flat and no single number may be quoted** — median 0.0069, stdev 0.256, 13 games under 0.01
+  against 9 at or above 0.30, split by whether any surviving tool CLAIMS the board (claimed n=11
+  mean 0.3725 · unclaimed n=14 mean 0.0523, and 13 of those 14 average **0.0014**). ⛔ 0.1932 is
+  OPTIMISTIC: every claimant is one of OUR specialists near-missing a PUBLIC board, which an unseen
+  game has no reason to have. ⭐ **The latch is real and `_PRIMARY_CONF` is REFUTED as its cause** —
+  14 games have exactly ONE `pick=` line for the whole run, all with `primary_owns` FALSE: a
+  frontier explorer never goes silent and never stalls, so it looks productive by every signal the
+  harness watches while clearing nothing. ⛔ And it is not about `graph`: dropping owner **and**
+  `graph` gives **0.1925**, `world_model` doing the identical thing — the latch is a property of the
+  fallback POSITION, so "demote graph" is closed. ⚠️ Ownership by ACTION SHARE inverts on 3 of 5
+  multi-tool games (bp35's 486-action `graph` is worth EXACTLY ZERO; `crag` clears the levels).
+  Rule **7cj**.
