@@ -164,12 +164,37 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 >    many tools filter candidates by whether an object is currently DRAWN, and does the filter
 >    actually change the candidate set on a run (rule 7g)? ⚠️ Keep it separate from the eight
 >    colour-INDEX-ordering sites, which 7ce measured harmless.
-> 3. **THE ABLATION TABLE — the closest proxy to an unseen game we can build.** Every transfer
->    instrument we have perturbs the RENDERING of a game whose mechanic a tool already implements.
->    None perturbs the MECHANIC, and that is the actual private-110 condition. So: remove the tool
->    that ACTUALLY plays each game (from the decision log, not `detect()`) and score. ⛔ The decisive
->    question is not the number but whether a wrong tool LATCHES — `_PRIMARY_CONF = 0.70` makes a
->    confident tool unretirable, and a wrong tool that cannot be displaced is worse than no tool.
+> 3. ✅ **THE ABLATION TABLE — ANSWERED 2026-08-30, rule 7cj, and it names the campaign's next
+>    lever.** Remove the tool that actually plays each game and score: **0.9082 -> 0.1932, 25 of 25
+>    games moved.** ⛔ The hoped-for flat floor did NOT come back (median 0.0069, stdev 0.2558), so
+>    **quote the PAIR, never the mean**: `~0.0014` is the analogue of *no tool fits* (14 games nobody
+>    claims), `0.1932` is the analogue of *new but adjacent to something we implement* (11 games where
+>    another of OUR specialists partially fits a PUBLIC board we built against — an unseen game has no
+>    near-miss waiting, by construction).
+>
+>    ⭐ **AND THE LATCH IS REAL WHILE `_PRIMARY_CONF` IS REFUTED AS ITS CAUSE.** Fourteen ablated games
+>    have exactly ONE `[harness] pick=` line for the whole run, and **every one of those tenures has
+>    `primary_owns` FALSE** — the tool is eligible for retirement and is never retired, because a
+>    frontier explorer **always proposes** (so `_EMPTY_TOLERANCE` never fires) and **always reaches a
+>    new state** (so the 80-step stall never fires). **It looks productive by every signal the harness
+>    watches, while clearing nothing.** That is worse than a bad threshold: no tuning addresses it.
+>    ⛔ And it is not about `graph` — dropping owner AND `graph` gives 0.1925, with `world_model`
+>    stepping into the slot and doing the identical thing. **The latch is a property of the fallback
+>    POSITION, not its occupant**; "demote graph" is closed.
+>
+>    ⭐ **THE LEVER, NAMED: the harness owns no signal meaning "I do not understand this board."**
+>    Empty proposes, stall and the death clock are all satisfied by a tool that explores productively
+>    and solves nothing. So the next thing to build is not another specialist and not routing — it is
+>    a **goal-progress signal independent of "reached a new state"**, or a fallback that can recognise
+>    its own failure. ⚠️ 7ch measured a live LLM inert on these 25; **this is exactly the case 7ch says
+>    it cannot see**, because routing is what breaks when the right tool is absent.
+>
+>    ⚠️ One trap it nearly fell into, worth carrying: **ownership by ACTION SHARE is wrong on three of
+>    five multi-tool games and it INVERTS** — bp35's plurality holder is `graph` (486 actions) but
+>    `crag` clears L0-L4. Dropping the plurality holder on bp35/lf52/s5i5 costs EXACTLY ZERO, because
+>    those actions are spent on a level the game never clears (7bq's shape). An ablation built on
+>    action share would have ablated nothing on three games and reported "the harness copes".
+>
 > 4. ✅ **THE LLM ARM — ANSWERED 2026-08-30, rule 7ch. `arm llm` 0.908187, `arm fallback` 0.908187,
 >    ZERO games differing**, on a Kaggle GPU with vLLM serving gemma4 (38 served completions, target
 >    draws SUCCEEDING in the llm arm for the first time in the campaign, 34 re-decides in each arm,
