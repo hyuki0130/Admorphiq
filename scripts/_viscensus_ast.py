@@ -12,22 +12,36 @@ runtime instrument (`scripts/_viscensus_run.py`) can then measure which of them 
 ⛔ THIS IS A GREP, AND A GREP IS NOT THE DELIVERABLE (rule 7g). The source says what is POSSIBLE.
 Only `_viscensus_run.py` on a real 25-game run says what HAPPENS.
 
-The three shapes it looks for
-----------------------------
+The shapes it looks for
+-----------------------
 A  `sel = [x for x in CANDS if P(x)]` then `sel if <cond> else CANDS`      (ternary fallback)
 B  `sel = [x for x in CANDS if P(x)]` then `if <cond>: sel = CANDS`        (statement fallback)
 C  `sel = [x for x in CANDS if P(x)] or CANDS`                            (or-fallback)
+F  `[x for x in CANDS if P(x)]` with NO fallback anywhere                  (filter only)
+
+A-near / C-near are the same as A / C except the fallback expression did not normalise to the
+comprehension's own iterable. They are REPORTED rather than dropped, because a superset can be
+spelled differently — `tether.py:413` iterates `enumerate(board.disks)` and falls back to
+`list(range(len(bodies)))` — and an instrument that silently discards what it could not match is
+one that fails toward "there is nothing here".
 
 The predicate `P` is then CLASSIFIED, because the structure alone is not the defect:
-  visibility  — membership in a set of cells/colours read off the CURRENT frame
-                (`in drawn`, `in lit`, `g[r, c] == col`), i.e. 7cd's shape
-  colour      — orders or selects by a colour INDEX (rule 7ce measured this harmless)
-  other       — geometry, feasibility, arity, budget: not a visibility read
+  visibility  — membership in a set of cells/colours read off the CURRENT frame (`in drawn`)
+  colour      — selects by a colour INDEX (rule 7ce measured colour ORDER harmless)
+  remembered  — a property read NOW compared for equality against one stored on `self`
+  other       — geometry, feasibility, arity, budget, learned state: not a paint read
+
+⛔ THE CLASSIFIER HAS A KNOWN, MEASURED FALSE-NEGATIVE RATE. `blastclock.py:631` and
+`slotlaunch.py:755` filter on `Piece.clickable`, which is `bool(self.marks)`, which
+`slotlaunch._marker()` builds by reading the piece's CENTRE PIXEL — a paint read one attribute hop
+away, and both come back `other`. The automated arm finds three of the five confirmed sites; the
+other two were found by reading. Treat `other` as "not shown to be a paint read", never as "is not".
 
 Expected feedback
 -----------------
-Prints one line per site with file:line, the candidate expression, the predicate source and the
-class. A site whose class is `visibility` is a 7cd candidate and MUST be measured on a run.
+One JSON line per site (`pfan.sh` keeps only lines starting with `{`) carrying file, line, col,
+shape, the candidate expression, the predicate source and the class, then a totals line. A site
+whose class is not `other` is a 7cd candidate and MUST be measured on a run before it is counted.
 """
 
 from __future__ import annotations

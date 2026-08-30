@@ -3896,9 +3896,82 @@ it, the work either did not finish or its author stopped. Fill it in, or delete 
 
 ### 7cl — the visibility-identity census — five fallback sites, three live (2026-08-30)
 
-⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
-Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
-it, the work either did not finish or its author stopped. Fill it in, or delete it.
+Rule **7cd** named a defect class from ONE exemplar — *a frame-only tool that identifies an object
+by whether it is DRAWN is reading PAINT ORDER, not mechanics* — and nobody knew its population. This
+is the count, measured statically and then ON A RUN, because the source only says what is POSSIBLE
+(rule 7g).
+
+⭐ **THE POPULATION IS NOT ONE.** `scripts/_viscensus_ast.py` finds **63 sites** under
+`src/admorphiq/tools/` and `src/admorphiq/harness/`; **14** carry 7cd's exact structure — a
+candidate set filtered by a predicate with a fallback to the UNFILTERED set — and five of those
+filter on what is currently painted:
+
+```
+telescope.py:1183   riders pinned by drawn marker cells, else EVERY bar     7cd's exemplar
+swivel.py:734       the identical two lines, spelled range()/list(range())
+blastclock.py:631   which piece may fill an outline, kept only if `clickable`, else every same shape
+slotlaunch.py:755   the SAME two lines against the SAME property (blastclock imports its Piece)
+tether.py:413       which body a weight belongs to, by its pip colour, else EVERY body
+```
+
+⚠️ `clickable` is `bool(Piece.marks)` and `_marker()` reads the piece's CENTRE PIXEL — so two of the
+five are only visible after following an attribute into another module. The vocabulary classifier
+scores them `other`; they were found by reading. **The automated arm caught 3 of the 5.**
+
+**WHAT A RUN SAYS** — `scripts/_viscensus_run.py` rewrites each site at IMPORT TIME into a logging
+call through a meta-path finder, then plays the game through `score_efficiency.run_game`. Full 25,
+`--agent unified` @4000, and **both arms reproduce every banked R101SHIPPED score, 25 of 25**:
+
+```
+telescope.py:1183   s5i5   5 evaluations, narrowed on 4, candidate set 9 -> 1     <- POSITIVE CONTROL
+swivel.py:734       s5i5   2 evaluations, narrowed on 2,                6 -> 1
+blastclock.py:631   ka59  33 evaluations, narrowed 14, FALLBACK FIRED 9, 2 -> 1
+slotlaunch.py:755      —   0 evaluations: the tool never proposes on any of the 25
+tether.py:413          —   0 evaluations: the tool proposes 6x on r11l, this branch is not reached
+```
+
+⛔ **"ZERO EVALUATIONS" IS TWO DIFFERENT FINDINGS AND THEY MUST NOT BE MERGED.** `slotlaunch` is
+registered and never wins a board; `tether` wins r11l and does not reach the line. Neither is
+evidence the site is harmless — only that this corpus cannot measure it. The instrument counts
+`propose()` per tool class for exactly this reason.
+
+⭐ **AND THE WORST SITE HAS NO FALLBACK AT ALL, SO 7cd'S OWN SHAPE UNDER-COUNTS THE CLASS.**
+`lattice_maze.py:484` is `[c for c, (body, _) in board.pieces.items() if body == self._body]` —
+identity by comparing a colour read NOW against one REMEMBERED. On tu93 it runs **187 times and cuts
+a set of up to nine down to exactly ONE on 163 of them**, on a game sitting at 1.0000. Its own
+docstring carries the cost, measured 2026-08-27 on that game's archived re-render: a second piece
+drawn in the steered piece's colours took it from **9 levels in 188 actions to 4 in 1288** — a 6.9x
+blow-up against telescope's 1.56x. ⚠️ It is already REPAIRED (dead reckoning from the last known
+node), which is why it still scores 1.0000, and it is invisible to any vocabulary — no word in it
+names paint. It was recovered only after adding a STRUCTURAL arm for `== self._<remembered>`.
+
+Widening to visibility/colour filters with NO fallback: **49 static sites, 39 of them evaluated on
+at least one game**. The useful discriminator is not "does it narrow" — nearly every filter does —
+but cutting MANY down to exactly ONE (an identity assigned from paint) or down to ZERO (the object
+lost). Busiest: `cover_targets` 393/457/644 on re86 (1,336 cuts-to-one, 1,409 cuts-to-zero),
+`lattice_maze` 484 on tu93 (163), `crag` 1352 on bp35 (70), `sigilgate` 602 on sc25 (35).
+⚠️ **That is an EXPOSURE MAP, not a defect list** — cutting to zero is often the right answer.
+
+⛔ **NO REPAIR, AND 7cd ALREADY SAYS WHY.** Removing a visibility filter takes the tool to the
+unfiltered set EVERYWHERE, which IS the 61-action behaviour; the fallback fires on all five archived
+levels and costs nothing on four of them. Nothing was gated because nothing was built (rule 7o).
+What the census changes is the SCOPE of any future repair: it is not one tool.
+
+⚠️ **TWO INSTRUMENT FAILURES, BOTH TOWARD "NOTHING HERE"** (rule 7z, ninth and tenth of this
+campaign). The static detector's first version compared raw source text and returned **ZERO over the
+whole tool set including its own exemplar** — indistinguishable from "the population is one", which
+is what I would have reported. And the comprehension arm injected its `_VIS`/`_VISOR` helpers into
+the rewritten modules but not `_VISF`, so every wrapped comprehension raised `NameError` into tools
+that catch `Exception` broadly: they proposed nothing, **eleven games scored ~0.0**, and the run
+reported success. It reads exactly like "the tools are brittle". It was caught ONLY by comparing
+every game to its banked number, which is now a `BANKED_MISMATCH` field inside the instrument
+rather than a habit. Both positives and both negatives are compiled into the scripts:
+`selftest()` refuses to census at all if it cannot score 7cd's exemplar, swivel's differently-spelled
+twin, and lattice_maze's vocabulary-free predicate; `stamppaint.py:197` is the negative that RUNS —
+184 evaluations on cd82 and its fallback fires zero times, as its structure requires.
+
+Round page [[.wiki/wiki/rounds/r101_visibility-identity-census.md]]; artefacts
+`scripts/rounds/R101VISCENSUS/`.
 
 ### 7cm — a run CAN tell it is lost, but only on top of the clock and only in-sample (2026-08-30)
 

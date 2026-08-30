@@ -411,3 +411,24 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   points, and 7ba says there is no better tool to hand the board to. ⚠️ Threshold fitted IN-SAMPLE by
   one segment. ⭐ The consequence points AWAY from a smarter give-up rule and toward having a second
   claimant at all. Rule **7cm**.
+
+- **visibility / identity / drawn / paint-order / z-order / occlusion / census / candidate set /
+  fallback-to-unfiltered / telescope / swivel / blastclock / slotlaunch / tether / lattice_maze /
+  cover_targets / viscensus** →
+  [[r101_visibility-identity-census]] — the POPULATION of the class rule 7cd named from one exemplar.
+  Static: **63 sites**, 14 with the fallback-to-unfiltered structure, and **five of those filter on
+  what is currently painted** in four files but only three distinct mechanics (telescope/swivel are
+  the same two lines; blastclock/slotlaunch are the same two lines against the same
+  `Piece.clickable`, which reads a piece's CENTRE PIXEL). On a run, full 25 @4000, both arms
+  reproducing every banked score: **three fire** — telescope 9 -> 1 on s5i5 (the positive control,
+  landing on 7cd's own table), swivel 6 -> 1, blastclock 2 -> 1 on ka59 with the fallback firing 9
+  times. ⛔ **"Never evaluated" is TWO findings**: `slotlaunch` never proposes on any of the 25;
+  `tether` proposes 6x on r11l and does not reach the line. ⭐ **The worst instance has NO fallback
+  and 7cd's shape cannot see it** — `lattice_maze.py:484` pins one of nine candidates on 163 of 187
+  evaluations on tu93, and its own docstring records **9 levels/188 actions -> 4/1288** from a
+  z-order change on the archived re-render, a 6.9x blow-up against telescope's 1.56x; already
+  repaired 2026-08-27, never connected to 7cd. Widening to filters without a fallback: 49 static, 39
+  live — an EXPOSURE map, not a defect list. ⛔ No repair, no gate (7o): deleting a filter IS the
+  61-action behaviour. ⚠️ Two instruments lied toward "nothing here" — an exact-text matcher scoring
+  its own exemplar at ZERO, and a missing helper injection that put eleven games at ~0.0 while
+  reporting success, caught only by the banked comparison now built in. Rule **7cl**.

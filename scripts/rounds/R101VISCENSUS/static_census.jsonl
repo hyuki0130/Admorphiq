@@ -1,0 +1,66 @@
+{"SELFTEST": "PASS", "neg": [{"cands": "bars", "cls": "visibility", "col": 13, "file": "negative_control.py", "line": 5, "name": "<comp>", "pred": "tip_centre(self._pieces[b[0]].box, b[1]) in drawn", "shape": "F-filter"}], "neg2": [{"cands": "bars", "cls": "other", "col": 11, "file": "negative_control2.py", "line": 4, "name": "wide", "pred": "b.width > 3", "shape": "A-ternary"}], "pos": [{"cands": "bars", "cls": "visibility", "col": 13, "file": "positive_control.py", "line": 6, "name": "pinned", "pred": "tip_centre(self._pieces[b[0]].box, b[1]) in drawn", "shape": "A-ternary"}], "pos2": [{"cands": "range(len(reading.bars))", "cls": "visibility", "col": 13, "file": "positive_control2.py", "line": 6, "name": "pinned", "pred": "rider_at(self._cfg, i) in drawn", "shape": "A-ternary"}], "pos3": [{"cands": "board.pieces.items()", "cls": "remembered", "col": 11, "file": "positive_control3.py", "line": 3, "name": "<comp>", "pred": "body == self._body", "shape": "F-filter"}]}
+{"cands": "range(p.h) -> else cols", "cls": "other", "col": 22, "file": "blastclock.py", "line": 260, "name": "rows", "pred": "(was[r] != now[r]).any()", "shape": "A-near"}
+{"cands": "same", "cls": "other", "col": 17, "file": "blastclock.py", "line": 631, "name": "steer", "pred": "board.pieces[i].clickable", "shape": "C-or"}
+{"cands": "spec[1]", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 142, "name": "<comp>", "pred": "v == colour", "shape": "F-filter"}
+{"cands": "self._parts", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 393, "name": "<comp>", "pred": "p[\"colour\"] == colour", "shape": "F-filter"}
+{"cands": "self._parts", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 457, "name": "<comp>", "pred": "p[\"colour\"] == colour", "shape": "F-filter"}
+{"cands": "pips", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 576, "name": "<comp>", "pred": "v == colour", "shape": "F-filter"}
+{"cands": "enumerate(self._parts)", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 577, "name": "<comp>", "pred": "p[\"colour\"] == colour", "shape": "F-filter"}
+{"cands": "pairing.items()", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 644, "name": "<comp>", "pred": "c == colour", "shape": "F-filter"}
+{"cands": "pips", "cls": "colour", "col": 19, "file": "cover_targets.py", "line": 645, "name": "<comp>", "pred": "v == colour", "shape": "F-filter"}
+{"cands": "pips", "cls": "remembered", "col": 15, "file": "cover_targets.py", "line": 854, "name": "<comp>", "pred": "v == part[\"colour\"] and not self._covered(r, c, v)", "shape": "F-filter"}
+{"cands": "self._world.items()", "cls": "remembered", "col": 19, "file": "crag.py", "line": 1352, "name": "<comp>", "pred": "s == self._exit", "shape": "F-filter"}
+{"cands": "candidate_actions", "cls": "other", "col": 15, "file": "dead_signature.py", "line": 164, "name": "live", "pred": "not self.is_dead(state_sig, a)", "shape": "A-ternary"}
+{"cands": "flat", "cls": "visibility", "col": 11, "file": "decouple.py", "line": 328, "name": "<comp>", "pred": "c not in tints", "shape": "F-filter"}
+{"cands": "b.kinds.items()", "cls": "colour", "col": 16, "file": "decouple.py", "line": 357, "name": "<comp>", "pred": "k and k[0] == \"flat\" and k[1] == colour", "shape": "F-filter"}
+{"cands": "self.b.doors.items()", "cls": "visibility", "col": 15, "file": "decouple.py", "line": 396, "name": "<comp>", "pred": "colour not in opened", "shape": "F-filter"}
+{"cands": "_SIMPLE", "cls": "remembered", "col": 16, "file": "decouple.py", "line": 741, "name": "<comp>", "pred": "self._axis[a] == \"h\"", "shape": "F-filter"}
+{"cands": "board.doors.items()", "cls": "visibility", "col": 42, "file": "decouple.py", "line": 742, "name": "<comp>", "pred": "colour not in {board.keys[p] for p in board.actors if p in board.keys}", "shape": "F-filter"}
+{"cands": "keys", "cls": "other", "col": 15, "file": "graph_search.py", "line": 907, "name": "live", "pred": "not self.deadsig.globally_dead(step(k))", "shape": "A-ternary"}
+{"cands": "middles.items()", "cls": "colour", "col": 12, "file": "hop.py", "line": 223, "name": "<comp>", "pred": "colour == track_colour", "shape": "F-filter"}
+{"cands": "self.carriages", "cls": "visibility", "col": 29, "file": "hop.py", "line": 457, "name": "<comp>", "pred": "not self.visible(c)", "shape": "F-filter"}
+{"cands": "self._probe_order -> else list(unknown)", "cls": "other", "col": 28, "file": "keymaze.py", "line": 416, "name": "[a for a in self._probe_order if a in unknown]", "pred": "a in unknown", "shape": "C-near"}
+{"cands": "board.pieces.items()", "cls": "remembered", "col": 15, "file": "lattice_maze.py", "line": 484, "name": "<comp>", "pred": "body == self._body", "shape": "F-filter"}
+{"cands": "pieces", "cls": "colour", "col": 10, "file": "linkage.py", "line": 325, "name": "<comp>", "pred": "p.colour != band", "shape": "F-filter"}
+{"cands": "comps", "cls": "colour", "col": 21, "file": "llm_goal.py", "line": 281, "name": "<comp>", "pred": "c[\"color\"] != goal.color", "shape": "F-filter"}
+{"cands": "comps", "cls": "colour", "col": 23, "file": "llm_goal.py", "line": 282, "name": "others", "pred": "c[\"color\"] != goal.color", "shape": "C-or"}
+{"cands": "comps", "cls": "colour", "col": 19, "file": "llm_goal.py", "line": 284, "name": "<comp>", "pred": "c[\"color\"] == goal.color", "shape": "F-filter"}
+{"cands": "comps", "cls": "colour", "col": 22, "file": "llm_goal.py", "line": 287, "name": "<comp>", "pred": "c[\"color\"] == goal.color", "shape": "F-filter"}
+{"cands": "comps", "cls": "colour", "col": 22, "file": "llm_goal.py", "line": 288, "name": "<comp>", "pred": "c[\"color\"] == goal.color_b", "shape": "F-filter"}
+{"cands": "groups", "cls": "colour", "col": 25, "file": "maze.py", "line": 171, "name": "<comp>", "pred": "q is not ring and len(q) > 4 and int(grid[_centre(q)]) != colour", "shape": "F-filter"}
+{"cands": "hist", "cls": "visibility", "col": 15, "file": "mirror.py", "line": 218, "name": "<comp>", "pred": "c not in tints", "shape": "F-filter"}
+{"cands": "hist", "cls": "visibility", "col": 15, "file": "mirror.py", "line": 577, "name": "<comp>", "pred": "c not in tints", "shape": "F-filter"}
+{"cands": "marks", "cls": "colour", "col": 12, "file": "orderforge.py", "line": 429, "name": "<comp>", "pred": "m[\"colour\"] != bg and m[\"w\"] <= 12 and m[\"h\"] <= 12", "shape": "F-filter"}
+{"cands": "self._objects(grid, board)", "cls": "visibility", "col": 14, "file": "pattern_cast.py", "line": 324, "name": "<comp>", "pred": "not (_halo(o[\"cells\"]) & ground)             and o[\"cells\"].isdisjoint(self._goal or set())             # Big ", "shape": "F-filter"}
+{"cands": "sorted(painted)", "cls": "remembered", "col": 18, "file": "pattern_cast.py", "line": 370, "name": "<comp>", "pred": "cell not in self._entered             or self._entered[cell] == colours[cell[0]][cell[1]]", "shape": "F-filter"}
+{"cands": "pieces", "cls": "colour", "col": 15, "file": "pillar_transfer.py", "line": 260, "name": "<comp>", "pred": "p.colour == step_colour", "shape": "F-filter"}
+{"cands": "pieces", "cls": "visibility", "col": 16, "file": "pillar_transfer.py", "line": 377, "name": "<comp>", "pred": "p.colour not in (step_colour, chan_colour, pil_colour) and p.colour not in bg", "shape": "F-filter"}
+{"cands": "inner", "cls": "colour", "col": 20, "file": "reforge.py", "line": 507, "name": "<comp>", "pred": "v != bg and v != ring_colour", "shape": "F-filter"}
+{"cands": "pin_cells", "cls": "visibility", "col": 19, "file": "reforge.py", "line": 533, "name": "<comp>", "pred": "int(grid[cy, cx]) == colour                     and any(mask[cy + dy, cx + dx]                             for", "shape": "F-filter"}
+{"cands": "enumerate(board.rules)", "cls": "colour", "col": 12, "file": "rewrite.py", "line": 491, "name": "<comp>", "pred": "r.lhs[0].frame_colour == s_colour", "shape": "F-filter"}
+{"cands": "enumerate(board.rules)", "cls": "colour", "col": 15, "file": "rewrite.py", "line": 497, "name": "<comp>", "pred": "r.lhs[0].frame_colour == mid_colour and r.rhs[0].frame_colour == t_colour", "shape": "F-filter"}
+{"cands": "self._world.items()", "cls": "remembered", "col": 16, "file": "shaft.py", "line": 1021, "name": "<comp>", "pred": "counts[s] == 1 and c != self._at                  and s not in self._solid and s not in self._lethal and not s", "shape": "F-filter"}
+{"cands": "blocks", "cls": "visibility", "col": 18, "file": "sigilgate.py", "line": 602, "name": "<comp>", "pred": "d[\"colour\"] in keyed", "shape": "F-filter"}
+{"cands": "order", "cls": "other", "col": 12, "file": "slotlaunch.py", "line": 679, "name": "[c for c in order if c not in tried]", "pred": "c not in tried", "shape": "C-or"}
+{"cands": "same", "cls": "other", "col": 20, "file": "slotlaunch.py", "line": 755, "name": "steer", "pred": "board.pieces[i].clickable", "shape": "C-or"}
+{"cands": "free", "cls": "remembered", "col": 19, "file": "sluice.py", "line": 957, "name": "<comp>", "pred": "self._goal[g][0] == piece.shape", "shape": "F-filter"}
+{"cands": "other", "cls": "visibility", "col": 18, "file": "socketmerge.py", "line": 360, "name": "<comp>", "pred": "int(g[c[0]][c[1]]) in self._striker_colours", "shape": "F-filter"}
+{"cands": "lone.items()", "cls": "colour", "col": 21, "file": "spill.py", "line": 257, "name": "<comp>", "pred": "col == emit_colour", "shape": "F-filter"}
+{"cands": "lone.items()", "cls": "colour", "col": 19, "file": "spill.py", "line": 258, "name": "<comp>", "pred": "col == water_colour", "shape": "F-filter"}
+{"cands": "free", "cls": "remembered", "col": 19, "file": "spill.py", "line": 740, "name": "<comp>", "pred": "self._goal[g][0] == piece.cells", "shape": "F-filter"}
+{"cands": "found", "cls": "colour", "col": 11, "file": "stamppaint.py", "line": 138, "name": "<comp>", "pred": "len(p[\"colours\"]) == 1", "shape": "F-filter"}
+{"cands": "cells", "cls": "other", "col": 16, "file": "stamppaint.py", "line": 197, "name": "[c for c in cells if int(g[c[0]][c[1]]) == fill]", "pred": "int(g[c[0]][c[1]]) == fill", "shape": "C-or"}
+{"cands": "board.items()", "cls": "colour", "col": 17, "file": "stencil.py", "line": 374, "name": "<comp>", "pred": "len(t[\"colours\"]) > 1", "shape": "F-filter"}
+{"cands": "range(len(reading.bars))", "cls": "visibility", "col": 17, "file": "swivel.py", "line": 732, "name": "<comp>", "pred": "rider_at(self._cfg, i) in drawn", "shape": "F-filter"}
+{"cands": "range(len(reading.bars))", "cls": "visibility", "col": 17, "file": "swivel.py", "line": 734, "name": "pinned", "pred": "rider_at(self._cfg, i) in drawn", "shape": "A-ternary"}
+{"cands": "enumerate(model.colours)", "cls": "colour", "col": 19, "file": "swivel.py", "line": 1071, "name": "<comp>", "pred": "c == colour", "shape": "F-filter"}
+{"cands": "bars", "cls": "visibility", "col": 17, "file": "telescope.py", "line": 1182, "name": "<comp>", "pred": "tip_centre(self._pieces[b[0]].box, b[1]) in drawn", "shape": "F-filter"}
+{"cands": "bars", "cls": "visibility", "col": 17, "file": "telescope.py", "line": 1183, "name": "pinned", "pred": "tip_centre(self._pieces[b[0]].box, b[1]) in drawn", "shape": "A-ternary"}
+{"cands": "enumerate(board.disks)", "cls": "visibility", "col": 15, "file": "tether.py", "line": 412, "name": "<comp>", "pred": "w[\"pip\"] in b[\"colours\"]", "shape": "F-filter"}
+{"cands": "enumerate(board.disks) -> else list(range(len(bodies)))", "cls": "visibility", "col": 23, "file": "tether.py", "line": 413, "name": "near", "pred": "w[\"pip\"] in b[\"colours\"]", "shape": "A-near"}
+{"cands": "board.markers", "cls": "visibility", "col": 15, "file": "tether.py", "line": 805, "name": "<comp>", "pred": "m[\"at\"] not in taken and m[\"colours\"] == body[\"colours\"]", "shape": "F-filter"}
+{"cands": "self.weights", "cls": "colour", "col": 15, "file": "tether.py", "line": 327, "name": "<comp>", "pred": "tally[w[\"colour\"]] == 1", "shape": "F-filter"}
+{"cands": "by_group.values() -> else list(range(len(board.tubes)))", "cls": "other", "col": 11, "file": "tube.py", "line": 777, "name": "out", "pred": "len(members) == 1", "shape": "C-near"}
+{"cands": "steps -> else self._probe(simple_ids, action6)", "cls": "other", "col": 22, "file": "loop.py", "line": 569, "name": "legal", "pred": "self._legal(s, simple_ids, action6)", "shape": "C-near"}
+{"TOTAL": 63, "by_cls": {"colour": 27, "other": 10, "remembered": 8, "visibility": 18}}
+DONE

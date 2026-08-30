@@ -144,3 +144,13 @@ implied two destinations.
 
 Rule: **7cd**. Probes: `scripts/_s5i5_xfer.py`, `scripts/_s5i5_owner.py`, `scripts/_s5i5_tele.py`,
 `scripts/_s5i5_oracle.py`, `scripts/_s5i5_srcdiff.py`, `scripts/_s5i5_framecmp.py`.
+
+## Follow-up: the population of the class
+
+⭐ **[[r101_visibility-identity-census]]** answers the question this round left open — *how many
+tools read identity from visibility?* **Not one.** Five sites carry this exact shape (three of them
+firing on the 25), `swivel.py:734` is the identical two lines, `blastclock.py:631` and
+`slotlaunch.py:755` are the identical two lines against a `clickable` property that reads a piece's
+centre pixel — and the class's **most expensive** recorded instance, `lattice_maze.py:484`, has no
+fallback at all and cost that tool **9 levels in 188 actions -> 4 in 1288** on its own archived
+re-render, a 6.9x blow-up against the 1.56x measured here. Rule **7cl**.
