@@ -1,0 +1,70 @@
+{
+  "agent": "unified",
+  "mutation": "zrev",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.272727,
+  "games": [
+    {
+      "game_id": "lf52-271a04aa",
+      "win_levels": 10,
+      "levels_completed": 5,
+      "elapsed_s": 115.12,
+      "total_actions": 821,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 8,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 50,
+          "human_actions": 81,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 60,
+          "human_actions": 60,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 64,
+          "human_actions": 71,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 139,
+          "human_actions": 205,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.272727,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LF52",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrev",
+          "kind": "rev",
+          "scope": "same-layer"
+        },
+        "frames_seen": 2235,
+        "frames_changed": 885,
+        "cells_changed": 102399,
+        "max_cells_changed_in_a_frame": 1943,
+        "sprites_max": 1,
+        "layers_seen": [
+          0
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "agent": "unified",
+  "mutation": "zrevall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.0,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 0,
+      "elapsed_s": 4.0,
+      "total_actions": 510,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrevall",
+          "kind": "rev",
+          "scope": "whole-list"
+        },
+        "frames_seen": 1778,
+        "frames_changed": 1778,
+        "cells_changed": 32004,
+        "max_cells_changed_in_a_frame": 18,
+        "sprites_max": 3,
+        "layers_seen": [
+          -1,
+          0,
+          1
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

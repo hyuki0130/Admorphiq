@@ -113,9 +113,13 @@ def camera_sorts_by_layer(mod) -> bool:
     """
     from arcengine import Camera
 
+    # ⛔ `value is not Camera` IS LOAD-BEARING. `vars(mod)` holds the imported base class,
+    # whose own `__dict__` naturally contains `_raw_render`, so without this the test
+    # matches in every game that imports Camera and answers "no sort" for all 25 — a
+    # detector firing on its own reference class, which is rule 7z's family.
     for value in vars(mod).values():
-        if (isinstance(value, type) and issubclass(value, Camera)
-                and "_raw_render" in value.__dict__):
+        if (isinstance(value, type) and value is not Camera
+                and issubclass(value, Camera) and "_raw_render" in value.__dict__):
             return False
     return True
 

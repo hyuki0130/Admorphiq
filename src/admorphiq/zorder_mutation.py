@@ -272,9 +272,29 @@ class ZOrderPatch:
                 )
                 return orig(camera_self, sprites)
 
-            reference = orig(camera_self, sprites)
+            # ⛔ THE DIFF GOES THROUGH `_raw_render`, NOT THROUGH `render`, AND THE FIRST
+            # VERSION GOT THIS WRONG. `render` runs the camera's INTERFACES after painting
+            # (`camera.py:300`), and a game is free to give its interface side effects —
+            # bp35 and lf52 draw their whole board from one, and calling `render` twice per
+            # frame reported 272,208 and 102,399 "changed" cells on boards holding a SINGLE
+            # sprite, where a permutation is by definition the identity. lf52 then came
+            # back two actions faster, which was the extra interface pass and not the
+            # mutation. `_raw_render` builds a fresh array from sprite state and runs no
+            # interface, so it is safe to call twice; `render` is called exactly once, on
+            # the order the agent is meant to see.
+            board_before = camera_self._raw_render(sprites)
+            board_after = camera_self._raw_render(permuted)
+            if report["frames_seen"] == 1:
+                # ⛔ AND THE PAINTER'S OWN DETERMINISM IS CHECKED, NOT ASSUMED — that is the
+                # property the double call rests on, and it is exactly what `render` turned
+                # out not to have. Three of the 25 games override `_raw_render`.
+                again = camera_self._raw_render(sprites)
+                if int((np.asarray(board_before) != np.asarray(again)).sum()):
+                    report["violations"].append(
+                        "the game's own _raw_render is not deterministic — the cell "
+                        "accounting cannot separate the mutation from the painter")
             mutated = orig(camera_self, permuted)
-            changed = int((np.asarray(reference) != np.asarray(mutated)).sum())
+            changed = int((np.asarray(board_before) != np.asarray(board_after)).sum())
             if changed:
                 report["frames_changed"] += 1
                 report["cells_changed"] += changed

@@ -1,0 +1,66 @@
+{
+  "agent": "unified",
+  "mutation": "zrev",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.222222,
+  "games": [
+    {
+      "game_id": "tu93-0768757b",
+      "win_levels": 9,
+      "levels_completed": 4,
+      "elapsed_s": 6.35,
+      "total_actions": 578,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 19,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 10,
+          "human_actions": 16,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 19,
+          "human_actions": 34,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 17,
+          "human_actions": 42,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.222222,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "TU93",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrev",
+          "kind": "rev",
+          "scope": "same-layer"
+        },
+        "frames_seen": 2882,
+        "frames_changed": 2290,
+        "cells_changed": 130210,
+        "max_cells_changed_in_a_frame": 63,
+        "sprites_max": 8,
+        "layers_seen": [
+          -1,
+          0,
+          1
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

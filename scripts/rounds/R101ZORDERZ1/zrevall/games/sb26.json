@@ -1,0 +1,91 @@
+{
+  "agent": "unified",
+  "mutation": "zrevall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "sb26-7fbdac44",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 4.56,
+      "total_actions": 124,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 9,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 15,
+          "human_actions": 28,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 15,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 15,
+          "human_actions": 19,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 17,
+          "human_actions": 31,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 19,
+          "human_actions": 23,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 17,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 17,
+          "human_actions": 18,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SB26",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrevall",
+          "kind": "rev",
+          "scope": "whole-list"
+        },
+        "frames_seen": 2556,
+        "frames_changed": 1136,
+        "cells_changed": 22700,
+        "max_cells_changed_in_a_frame": 40,
+        "sprites_max": 60,
+        "layers_seen": [
+          0,
+          1,
+          10,
+          12
+        ],
+        "internal_render_calls": 8,
+        "violations": [],
+        "verdict": "partial"
+      }
+    }
+  ]
+}

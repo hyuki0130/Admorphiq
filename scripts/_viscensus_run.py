@@ -106,6 +106,35 @@ def _VIS(sid: str, ftest, fbody, forelse, pa: bool, pb: bool):
     return chosen
 
 
+def _VISF(sid: str, fcomp, fiter, pure: bool):
+    """A visibility/colour filter with NO fallback: `[x for x in IT if P(x)]`.
+
+    The interesting quantity is not that it narrows — nearly every filter does — but HOW. A site
+    that repeatedly cuts a set of many down to exactly ONE is assigning an identity from current
+    paint (7cd's shape). A site that repeatedly cuts to ZERO has lost the object it was looking
+    for, which is the occlusion failure with no fallback to soften it.
+    """
+    out = fcomp()
+    d = LOG.setdefault(sid, {"eval": 0, "to_zero": 0, "to_one": 0, "kept_all": 0,
+                             "narrowed": 0, "unknown": 0, "max_in": -1})
+    d["eval"] += 1
+    n = _size(out)
+    m = _size(fiter()) if pure else -1
+    if m < 0:
+        d["unknown"] += 1
+        return out
+    d["max_in"] = max(d["max_in"], m)
+    if n == m:
+        d["kept_all"] += 1
+    else:
+        d["narrowed"] += 1
+        if n == 0:
+            d["to_zero"] += 1
+        elif n == 1 and m > 1:
+            d["to_one"] += 1
+    return out
+
+
 def _VISOR(sid: str, fleft, fright, pa: bool, pb: bool):
     """`A or B`, same accounting."""
     left = fleft()
@@ -175,6 +204,26 @@ class _Rewriter(ast.NodeTransformer):
             keywords=[],
         )
 
+    def _comp(self, node: ast.AST) -> ast.AST:
+        self.generic_visit(node)
+        key = (node.lineno, node.col_offset)
+        if key not in self.targets:
+            return node
+        sid = f"{self.fname}:{node.lineno}f"
+        self.done.append(sid)
+        it = node.generators[0].iter  # type: ignore[attr-defined]
+        return ast.Call(
+            func=ast.Name(id="_VISF", ctx=ast.Load()),
+            args=[ast.Constant(sid), _lam(node), _lam(it), ast.Constant(_is_pure(it))],
+            keywords=[],
+        )
+
+    def visit_ListComp(self, node: ast.ListComp) -> ast.AST:
+        return self._comp(node)
+
+    def visit_SetComp(self, node: ast.SetComp) -> ast.AST:
+        return self._comp(node)
+
     def visit_BoolOp(self, node: ast.BoolOp) -> ast.AST:
         self.generic_visit(node)
         key = (node.lineno, node.col_offset)
@@ -221,8 +270,13 @@ class VisFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         tree = rw.visit(tree)
         ast.fix_missing_locations(tree)
         self.installed[name] = rw.done
-        module.__dict__["_VIS"] = _VIS
-        module.__dict__["_VISOR"] = _VISOR
+        # ⛔ EVERY helper the rewriter can emit must be injected. The first version injected only
+        # `_VIS` and `_VISOR`; the comprehension arm then raised `NameError: _VISF` inside tools
+        # that catch Exception broadly, so they proposed NOTHING and eleven games fell to ~0.0
+        # while the run still reported a score. It was caught ONLY by comparing every game against
+        # the banked R101SHIPPED number — the failure looked exactly like "the tools are brittle".
+        for nm, fn in (("_VIS", _VIS), ("_VISOR", _VISOR), ("_VISF", _VISF)):
+            module.__dict__[nm] = fn
         exec(compile(tree, str(path), "exec"), module.__dict__)
 
 
@@ -230,8 +284,14 @@ def _targets() -> dict[str, tuple[Path, set[tuple[int, int]]]]:
     out: dict[str, tuple[Path, set[tuple[int, int]]]] = {}
     for d, pkg in ((census.TOOLS, "admorphiq.tools"), (census.HARNESS, "admorphiq.harness")):
         for f in sorted(d.glob("*.py")):
-            hits = [h for h in census.scan(f) if h["shape"] in ("A-ternary", "A-near",
-                                                                "C-or", "C-near")]
+            # ⛔ `VIS_SHAPES=fallback` measures ONLY the 7cd fallback sites; the default also wraps
+            # every visibility/colour filter that has no fallback. They are separate fans because
+            # the second doubles the evaluation of every iterable it touches and a slow arm must
+            # not be able to invalidate the fast one.
+            want = ("A-ternary", "A-near", "C-or", "C-near")
+            if os.environ.get("VIS_SHAPES", "all") != "fallback":
+                want = (*want, "F-filter")
+            hits = [h for h in census.scan(f) if h["shape"] in want]
             if hits:
                 out[f"{pkg}.{f.stem}"] = (f, {(h["line"], h["col"]) for h in hits})
     return out
@@ -296,12 +356,22 @@ def main() -> None:
     res = se.run_game(arcade, env_info.game_id, env_info.baseline_actions,
                       agent_name="unified", max_actions=budget)
     for d in LOG.values():
-        if d["min_f"] == 10**9:
+        if d.get("min_f") == 10**9:  # sentinel; `_VISF` records have no `min_f` at all
             d["min_f"] = -1
+    # ⛔ THE BANKED NUMBER IS THE GUARD, CHECKED IN THE INSTRUMENT (rule 7aj#2). A rewrite that
+    # breaks a tool looks identical to a brittle tool; only the comparison separates them, and it
+    # already caught one silent `NameError` arm that scored eleven games at ~0.0.
+    banked = ROOT / "scripts" / "rounds" / "R101SHIPPED" / "games" / f"{title}.json"
+    ref = None
+    if banked.exists():
+        ref = round(float(json.loads(banked.read_text())["total_score"]), 6)
+    got = round(float(res.get("game_score", 0.0)), 6)
     print(json.dumps({
         "game": title,
         "arm": "control" if control else "instrumented",
-        "score": round(float(res.get("game_score", 0.0)), 6),
+        "banked": ref,
+        "BANKED_MISMATCH": ref is not None and abs(ref - got) > 1e-6,
+        "score": got,
         "levels": res.get("levels_completed"),
         "per_level": [p.get("agent_actions") for p in res.get("per_level", [])],
         "secs": round(time.time() - t0, 1),

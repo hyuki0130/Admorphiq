@@ -79,6 +79,16 @@ def _norm(s: str) -> str:
 
 
 def _classify(pred_src: str) -> str:
+    # ⛔ A STRUCTURAL SIGNATURE, ADDED BECAUSE THE VOCABULARY MISSED THE MOST EXPENSIVE KNOWN CASE.
+    # `lattice_maze.py:484` is `[c for c, (body, _) in board.pieces.items() if body == self._body]`
+    # — the campaign's costliest instance of this class (its own docstring: 9 levels in 188 actions
+    # -> 4 in 1288, caused by a z-order change on an archived re-render) — and NOT ONE of the
+    # vocabulary words appears in it. What it is, is a property read off the board RIGHT NOW
+    # compared for equality against a property REMEMBERED on self. That shape is nameable without
+    # any vocabulary at all, so it is matched structurally.
+    stripped = "".join(pred_src.split())
+    if "==self._" in stripped or "self._" in stripped and "==" in stripped:
+        return "remembered"
     low = pred_src.lower()
     hits = [w for w in VIS_WORDS if w in low]
     if not hits:
@@ -157,6 +167,27 @@ class Census(ast.NodeVisitor):
             self._record("A-ternary", node, inline[0], inline[1], "<inline>")
         self.generic_visit(node)
 
+    # -- shape F: a visibility filter with NO fallback at all --------------
+    # ⛔ ADDED AFTER READING WHAT THE STRUCTURAL ARM MISSED. `lattice_maze.py:484` and
+    # `cover_targets.py:320` are the same defect — a candidate set cut down by what is currently
+    # PAINTED — but neither spells a fallback, so a detector anchored on the fallback scores both
+    # at zero. The fallback is the SYMPTOM; the visibility filter is the defect. Recording these
+    # separately keeps the two counts honest: a filter with no fallback does not widen the search,
+    # it silently drops the right answer.
+    def visit_ListComp(self, node: ast.ListComp) -> None:
+        self._maybe_filter(node)
+        self.generic_visit(node)
+
+    def visit_SetComp(self, node: ast.SetComp) -> None:
+        self._maybe_filter(node)
+        self.generic_visit(node)
+
+    def _maybe_filter(self, node: ast.AST) -> None:
+        c = self._as_filtered_comp(node)
+        if c is None or _classify(c[1]) == "other":
+            return
+        self._record("F-filter", node, c[0], c[1], "<comp>")
+
     # -- shape B: statement fallback --------------------------------------
     def visit_If(self, node: ast.If) -> None:
         for stmt in node.body:
@@ -229,17 +260,50 @@ def scan_text(text: str, name: str) -> list[dict]:
     return out
 
 
+# A THIRD positive, transcribed from `lattice_maze.py:484` — the class's most expensive recorded
+# instance, and one that carries NONE of the vocabulary. It exists to hold the structural arm.
+POSITIVE3 = '''
+def _where(self, board):
+    same = [c for c, (body, _) in board.pieces.items() if body == self._body]
+    if len(same) == 1:
+        return same[0]
+    return None
+'''
+NEGATIVE2 = '''
+def _pick(self, g):
+    wide = [b for b in bars if b.width > 3]
+    return wide if len(wide) >= 2 else bars
+'''
+
+
 def selftest() -> int:
-    pos = scan_text(POSITIVE, "positive_control.py")
-    pos2 = scan_text(POSITIVE2, "positive_control2.py")
+    """Three controls, in BOTH directions.
+
+    POSITIVE / POSITIVE2 — 7cd's exemplar and its twin in another tool: each must yield exactly one
+    fallback-shape hit, classed `visibility`.
+    NEGATIVE  — the same visibility filter with the FALLBACK REMOVED: no fallback-shape hit (it is
+                an `F-filter`, which is a different and milder finding).
+    NEGATIVE2 — the same fallback STRUCTURE with a geometric predicate: the structure is reported,
+                but classed `other`. The census must never call a width test a visibility read.
+    """
+    def fb(hits: list[dict]) -> list[dict]:
+        return [h for h in hits if h["shape"] != "F-filter"]
+
+    pos = fb(scan_text(POSITIVE, "positive_control.py"))
+    pos2 = fb(scan_text(POSITIVE2, "positive_control2.py"))
+    pos3 = scan_text(POSITIVE3, "positive_control3.py")
     neg = scan_text(NEGATIVE, "negative_control.py")
+    neg2 = scan_text(NEGATIVE2, "negative_control2.py")
     ok = (
+        len(pos3) == 1 and pos3[0]["shape"] == "F-filter" and pos3[0]["cls"] == "remembered"
+        and
         len(pos) == 1 and pos[0]["cls"] == "visibility" and pos[0]["shape"] == "A-ternary"
         and len(pos2) == 1 and pos2[0]["cls"] == "visibility" and pos2[0]["shape"] == "A-ternary"
-        and len(neg) == 0
+        and len(fb(neg)) == 0 and len(neg) == 1 and neg[0]["shape"] == "F-filter"
+        and len(neg2) == 1 and neg2[0]["cls"] == "other"
     )
-    print(json.dumps({"SELFTEST": "PASS" if ok else "FAIL", "pos": pos, "pos2": pos2, "neg": neg},
-                     sort_keys=True))
+    print(json.dumps({"SELFTEST": "PASS" if ok else "FAIL",
+                      "pos": pos, "pos2": pos2, "pos3": pos3, "neg": neg, "neg2": neg2}, sort_keys=True))
     return 0 if ok else 1
 
 
