@@ -35,7 +35,13 @@ next() {
 
 N=$(next)
 DATE=$(date +%Y-%m-%d)
-printf '\n### %s — %s (%s)\n\n_(stub claimed by scripts/newrule.sh — fill this in)_\n' "$N" "$TITLE" "$DATE" >> "$F"
+# ⛔ THE STUB MUST SAY THAT ITS OWN TITLE IS UNEVIDENCED. A number is claimed here BEFORE it is
+# written up — three stubs sat in the file at once on 2026-08-30 with titles like "five sites, three
+# live, firing on two of twenty-five games" — and a heading in OPERATING_RULES.md is exactly what a
+# future session (or a grep) quotes as measured fact. This session already made that error once in
+# the other direction, writing a rule from a commit whose author it had not checked. A placeholder
+# that reads like a conclusion is a placeholder that gets cited.
+printf '\n### %s — %s (%s)\n\n⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**\nNothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read\nit, the work either did not finish or its author stopped. Fill it in, or delete it.\n' "$N" "$TITLE" "$DATE" >> "$F"
 echo "claimed $N"
 echo "header:  ### $N — $TITLE ($DATE)"
 echo "⚠️ the stub is already appended; edit it in place rather than adding a second header."

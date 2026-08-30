@@ -3743,7 +3743,9 @@ is.
 
 ### 7cg — identity-by-visibility census — five sites, three live, firing on two of twenty-five games (2026-08-30)
 
-_(stub claimed by scripts/newrule.sh — fill this in)_
+⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
+Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
+it, the work either did not finish or its author stopped. Fill it in, or delete it.
 
 ### 7ch — the LLM arm on a real GPU is byte-identical to the LLM-free arm (2026-08-30)
 
@@ -3885,3 +3887,9 @@ own failure. ⚠️ 7ch says a live LLM changes nothing on these 25; **this is e
 says it cannot see**, since routing is what breaks when the right tool is absent.
 
 ⛔ Nothing ships off this (7o). Round page [[.wiki/wiki/rounds/r101_owner-ablation.md]].
+
+### 7ck — the z-order arm — paint order is the one transfer defect the corpus has, and only three games' cameras let it move (2026-08-30)
+
+⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
+Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
+it, the work either did not finish or its author stopped. Fill it in, or delete it.
