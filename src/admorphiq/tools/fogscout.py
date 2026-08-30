@@ -63,6 +63,28 @@ dressed as a measurement.
 `detect` returns 0.00 on all 24 other boards, and 0.00 on this game's first six
 levels, which carry no fog ([[lessons/tool_selectivity_20260827]]).
 
+⛔ BUT IT WATCHES THE BOARDS IT CANNOT PLAY, and that is worth a whole level.
+`detect` answering 0.00 says the tool cannot PLAN here; it does not say the tool
+cannot SEE. A first-time human reaches this game's fogged level having played six
+unfogged ones with the SAME three changers and the same refill ring, and arrives
+knowing what each does; the tool used to arrive with nothing and re-derive the
+whole mechanic inside the one level that is scored. So the tool is an
+`augmenter` — the one flag `harness/loop.py` reads to feed a tool transitions it
+did not cause — and while the board has never been fogged it perceives without
+proposing, with the truthful disc replaced by the whole frame.
+
+What survives a level is the MECHANIC and nothing else: what each mark does to
+the token, which marks refill, which do nothing, and which action id is which
+direction. All four are keyed by a glyph or an action, never by a cell, so they
+mean the same thing on the next level — and on a board that shares none of the
+glyphs they simply never match, which is why carrying them is safe. The map, the
+goal cell and the demanded token are properties of a LEVEL and are still dropped.
+Measured (`scripts/_ls20_carry.py`, six arms): every carry containing both the
+changer tables and the direction map takes the fogged level from 231 actions to
+159-167 against a human 186 — the level to the 1.0 cap — and moves the tick at
+which a win route first exists from 168 to 56-74. `kind` alone is 200 and `dirs`
+alone is 302, so it is the pair that matters, not either half.
+
 ⛔ WHY IT REPLANS EVERY ACTION rather than executing a plan open-loop. Under fog
 the map is a belief that grows, and two of this family's rules move the avatar
 where the plan did not put it: a deflector cell shoves it several cells along,
@@ -106,6 +128,11 @@ _PURSUIT_CAP = 30          # actions chasing one target without treading a new c
 _STALE_LOOK = 60           # ticks after which a mapped cell is worth re-seeing
 _MAX_PITCH = 12
 _MIN_PITCH = 3
+# Transitions an unfogged board gets to show a carried token before the tool stops watching
+# it. Nothing here can be learned without one — a changer press with no readable token is
+# indistinguishable from nothing happening — so a board that has not shown one in this many
+# steps is not this family and must not be paid for on every action of every game.
+_PASSIVE_PROBE = 60
 
 
 def _dominant(g: np.ndarray) -> int:
@@ -524,20 +551,43 @@ class FogScoutTool:
     token, and walk into the target cell holding the token it demands."""
 
     name = "fogscout"
+    # ⛔ Fed every transition, including the ones another tool caused. See the module docstring:
+    # this is how the mechanic is learned on the six unfogged levels the tool never plays.
+    augmenter = True
 
     def __init__(self) -> None:
+        # Properties of the GAME rather than of the level, and therefore NOT cleared by `reset`:
+        # what each mark does to the token, which marks refill, which do nothing, and which action
+        # id is which direction. Declared here, before the first `reset`, and rebound by it.
+        self.carry_kind: dict[frozenset[tuple[int, int, int]], dict[Tok, Tok]] = {}
+        self.carry_inert: set[frozenset[tuple[int, int, int]]] = set()
+        self.carry_refill: set[frozenset[tuple[int, int, int]]] = set()
+        self.carry_dirs: dict[int, tuple[int, int]] = {}
+        self._watched = 0
+        self._token_seen = False
         self.reset()
 
     # -- lifecycle ----------------------------------------------------------
 
     def reset(self) -> None:
         self.pitch: int | None = None
-        self.dirs: dict[int, tuple[int, int]] = {}
         self.tpl: np.ndarray | None = None
         self.anchor: tuple[int, int] | None = None   # pixel origin of cell (0,0)
         self.pos: Cell | None = None
         self.start: Cell | None = None
         self.radius: float = 0.0
+
+        # ⛔ THE FOUR CARRIED FACTS. `reset` runs at every level-up and on every switch to this
+        # tool, and rebinding rather than re-creating is what makes them outlive a level. They are
+        # keyed by a mark's own glyph and by an action id, so an entry learned on a board this tool
+        # will never see again either matches the same object or matches nothing.
+        self.kind = self.carry_kind
+        self.inert = self.carry_inert
+        self.refill_marks = self.carry_refill
+        self.dirs = self.carry_dirs
+        # Whether this tenure has proposed anything. `observe` watches only boards it is NOT
+        # driving; the driving path does its own ingesting inside `propose`.
+        self._drove = False
 
         self.floor_colors: set[int] = set()
         self.wall_colors: set[int] = set()
@@ -547,11 +597,11 @@ class FogScoutTool:
         self.edges: dict[tuple[Cell, int], Cell] = {}
 
         self.panel: tuple[int, int, int, int] | None = None
+        # The colour the panel's glyph is drawn ON. Under fog it is the fog colour and agrees with
+        # the board's dominant colour, which is why reading the panel against the board ever worked.
+        self.panel_ground: int | None = None
         self.tok: Tok | None = None
         self.mark: dict[Cell, frozenset[tuple[int, int, int]]] = {}
-        self.kind: dict[frozenset[tuple[int, int, int]], dict[Tok, Tok]] = {}
-        self.inert: set[frozenset[tuple[int, int, int]]] = set()
-        self.refill_marks: set[frozenset[tuple[int, int, int]]] = set()
         self.sighted: dict[frozenset[tuple[int, int, int]], Cell] = {}
         self.checked: dict[frozenset[tuple[int, int, int]], int] = {}
         self.seen_at: dict[frozenset[tuple[int, int, int]], list[tuple[int, Cell]]] = {}
@@ -614,9 +664,43 @@ class FogScoutTool:
     def observe(self, prev: np.ndarray, action: Step, changed: bool) -> None:
         """The harness feeds transitions here; the frame AFTER the action only
         arrives at the next ``propose``, so the learning happens there and this
-        records what produced it."""
+        records what produced it.
+
+        ⛔ EXCEPT ON A BOARD THIS TOOL IS NOT DRIVING, where there is no
+        ``propose`` and this is the only place the frames arrive. The harness
+        hands an augmenter ``(frame at t-1, action at t-1)`` while the board
+        shows ``t``, so consecutive calls carry a complete transition chain one
+        frame behind — enough to learn the mechanic, and the mechanic is the
+        whole reason to watch. See the module docstring for what is kept.
+
+        ⚠️ ``_drove`` is the guard and it has to be, because the harness calls
+        this for the ACTIVE tool too: ingesting here as well would count every
+        transition twice. It is False for exactly one call after a reset, when
+        there is no previous frame to pair with and the ingest can do nothing.
+        """
+        if not self._drove and (self._token_seen or self._watched < _PASSIVE_PROBE):
+            self._watch(prev)
         self._prev = prev
         self._prev_action = action[0] if action else None
+
+    def _watch(self, g: np.ndarray | None) -> None:
+        """Perceive a board this tool is not playing.
+
+        Unfogged there is no truthful disc, so the truthful region is the whole
+        frame and the flat colour is simply the commonest one. The single-pixel
+        ``island`` is the avatar's own corner: it is what keeps `_read_panel`
+        from mistaking the avatar for the token display, and nothing else in the
+        frame needs excluding once the disc is gone.
+        """
+        if g is None or g.ndim != 2:
+            return
+        self._watched += 1
+        self.radius = float(max(g.shape))
+        anchor = self._cell_origin(self.pos) if self.anchor is not None and self.pos is not None \
+            else (0, 0)
+        self._ingest(g, _dominant(g), [anchor])
+        if self.tok is not None:
+            self._token_seen = True
 
     # -- detection ----------------------------------------------------------
 
@@ -702,7 +786,8 @@ class FogScoutTool:
         in it changes size and a box re-derived per frame would move with it."""
         if self.panel is not None:
             y0, x0, y1, x1 = self.panel
-            key = icon_key(g[y0:y1 + 1, x0:x1 + 1], flat)
+            ground = flat if self.panel_ground is None else self.panel_ground
+            key = icon_key(g[y0:y1 + 1, x0:x1 + 1], ground)
             if key is not None:
                 self.tok = key
             return
@@ -713,10 +798,20 @@ class FogScoutTool:
             if any((y, x) in island for y in range(y0, y0 + hh) for x in range(x0, x0 + ww)):
                 continue
             side = max(hh, ww)
-            key = icon_key(g[y0:y0 + side, x0:x0 + side], flat)
+            patch = g[y0:y0 + side, x0:x0 + side]
+            # ⛔ The glyph's ground is what the PATCH is mostly made of, not what the BOARD is. The
+            # panel sits on a backing tile of its own; under fog that backing IS the fog colour, so
+            # the two agree and reading the glyph against the board's flat colour worked by
+            # coincidence. Off the fog it does not: measured on ls20's six unfogged levels, the
+            # board's commonest colour is the wall and the panel's backing is a different one, so
+            # every patch held two non-ground colours, `icon_key` returned None on all six, and no
+            # token was ever read — which then filed all three changers as doing NOTHING.
+            ground = flat if icon_key(patch, flat) is not None else _dominant(patch)
+            key = icon_key(patch, ground)
             if key is None:
                 continue
             self.panel = (y0, x0, y0 + side - 1, x0 + side - 1)
+            self.panel_ground = ground
             self.tok = key
             return
 
@@ -1448,7 +1543,14 @@ class FogScoutTool:
                 elif prev_tok is not None and self.tok is not None and self.tok != prev_tok:
                     self.kind.setdefault(mark, {})[prev_tok] = self.tok
                     self.inert.discard(mark)
-                elif mark not in self.kind:
+                elif mark not in self.kind and prev_tok is not None and self.tok is not None:
+                    # ⛔ NOT while the token is unreadable. "The token did not change" and "the
+                    # token cannot be seen" are different facts and this branch used to treat them
+                    # as one — so every press made before the panel was found filed a changer as
+                    # inert, permanently, since nothing re-examines that set. Harmless while the
+                    # panel is found in the first few frames; fatal once these facts outlive a
+                    # level, where it cost the whole level (6/7, 0.7500) before the panel could be
+                    # read off an unfogged board at all.
                     self.inert.add(mark)
                 self.mark.pop(here, None)
                 self.icon_cells.pop(here, None)
@@ -1519,6 +1621,7 @@ class FogScoutTool:
                 f"{sum(len(v) for v in self.kind.values())}|{self.pos}|{self.tok}")
 
     def propose(self, frames: list[Any], obs: Any) -> list[Step]:
+        self._drove = True
         if not has_frame(obs):
             self._say("no-frame")
             return []

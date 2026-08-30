@@ -70,6 +70,42 @@ __all__ = ["CragTool", "settled_layer", "fit_lattice", "read_lattice"]
 Cell = tuple[int, int]
 Sig = tuple[tuple[int, int], ...]
 Board = dict[Cell, Sig]
+
+
+class _View:
+    """The world map plus the edits ONE searched route has made, without copying the map.
+
+    ⛔ A click used to copy the whole board — `dict(cells)` at every expansion. That was affordable
+    while the map was a hundred cells and the edit cap was six; with the cap at ten and a board the
+    tool now maps in full, the exit search reaches tens of thousands of expansions per action and
+    the copy alone is the difference between a search that returns inside a turn and one that runs
+    for a quarter of an hour. A route holds at most `_MAX_EDITS` edits, so the overlay it carries is
+    ten entries where the copy was four hundred.
+
+    Semantics are identical to the dict it replaces: a signature is never None, so an overlay hit is
+    unambiguous, and nothing in the search mutates a board in place.
+    """
+
+    __slots__ = ("base", "over")
+
+    def __init__(self, base: Board, over: dict[Cell, Sig]) -> None:
+        self.base, self.over = base, over
+
+    def get(self, cell: Cell, default: Sig | None = None) -> Sig | None:
+        got = self.over.get(cell)
+        return got if got is not None else self.base.get(cell, default)
+
+    def __getitem__(self, cell: Cell) -> Sig:
+        got = self.get(cell)
+        if got is None:
+            raise KeyError(cell)
+        return got
+
+    def edit(self, cell: Cell, sig: Sig) -> "_View":
+        over = dict(self.over)
+        over[cell] = sig
+        return _View(self.base, over)
+
 # One leg of a planned route: the action to type, what the tool expects to see afterwards, and
 # the reading that justified it — carried because a death is only interpretable against the
 # expectation the fatal action was taken under.
@@ -86,10 +122,13 @@ _PITCH_HI = 10
 # Terrain agreement before a window is accepted as THIS board, scrolled.
 _ALIGN_FIT = 0.82
 _ALIGN_MIN = 16
-# Clicks allowed inside one searched route. Six, because the shortest route to the fourth
-# board's exit needs six and a cap of two cannot express it. The frontier stays small because
-# the candidate sites are four plus the switches on screen, not the whole window.
-_MAX_EDITS = 6
+# Clicks allowed inside one searched route. Ten. Six was set from the fourth board, whose
+# shortest route needs six — and it EXCLUDES the sixth board outright: a complete search of that
+# level under a six-click cap exhausts with no win at all, under every candidate rule tried
+# (`scripts/_bp35_l6_solve.py`, click_cap=6, 2,126-5,262 states, zero wins). Its cheapest win
+# spends eight clicks and the shortest route the widened site rule finds spends ten, so a cap
+# below ten cannot express the board however long the searcher is given.
+_MAX_EDITS = 10
 _MAX_EXPAND = 40000
 # Clicks a single EXPLORING route may compose. Two, not six: exploration re-plans after every
 # action, so depth buys nothing there, while the frontier it costs is the whole difference
@@ -437,7 +476,65 @@ class CragTool:
                 if best is None or cand > best[0]:
                     best = (cand, shift, idx, 0)
         if best is None or best[0][0] < _ALIGN_FIT:
+            placed = self._reanchor(readings, allow)
+            if placed is not None:
+                return placed
             return "lost", first[2], first[3], first[4]
+        shift, idx = best[1], best[2]
+        oy, ox, board, inks, body = readings[idx]
+        self._shape(board)
+        self._oy, self._ox, self._origin = oy, ox, shift
+        self._absorb(board, body, shift)
+        return "grow", board, inks, body
+
+    def _reanchor(self, readings: list[tuple[int, int, Board, dict[Cell, frozenset[int]], Cell]],
+                  allow: int | None) -> tuple[str, Board, dict[Cell, frozenset[int]], Cell] | None:
+        """Place a window that shares NO row with the map — the body has travelled off the strip.
+
+        ⛔ IT IS NOT A DIFFERENT BOARD, and reading it as one costs the rest of the game. The
+        camera follows the body and shows about ten rows of a board four times as deep, so ONE
+        reversal can carry the body a whole window clear of everything the map holds. MEASURED on
+        bp35's sixth board: the camera moves 9.7 cells through a ten-row window, the true shift
+        overlaps ZERO whole rows, and the best-scoring shift is a spurious 0.60 over twenty cells
+        of rock. There is no shift to find. The tool went blind thirteen actions into the level
+        and handed 486 of its 500 actions to a searcher with no model of the mechanic.
+
+        What CAN still be said is where the window must lie:
+
+          * the body moved in the direction the PHYSICS names — `allow` — and with no direction
+            named there is nothing to say, so the frame stays refused;
+          * had the window reached back into the mapped rows the match would have found it, so it
+            lies BEYOND the strip; the nearest offset leaving no overlap is the honest one, and
+            it is exact whenever the travel is at most one window past the map — which is the
+            most a single settle can be, because the camera never shows more than it settles
+            through.
+
+        ⛔ AND THE READING IS CHOSEN BY THE VOCABULARY, not by `_best_origin`. With no terrain in
+        common there is no positional evidence, but there is glyph evidence: at the right origin
+        nearly every cell is a kind the map already holds, and at a half-cell origin nearly every
+        cell is a slice of two neighbours and a kind never seen. That criterion needs no overlap,
+        which is the whole difficulty here, and getting the origin wrong poisons every signature
+        written from this frame on.
+        """
+        if allow is None or allow == 0 or self._at is None or self._gdir == 0 or not self._world:
+            return None
+        # +1 in world rows when the body moved that way; `allow` is in gravity units.
+        step = self._gdir if allow > 0 else -self._gdir
+        lo = min(r for r, _ in self._world)
+        hi = max(r for r, _ in self._world)
+        known = set(self._world.values())
+        best: tuple[float, int, int] | None = None
+        for idx, (_oy, _ox, board, _inks, body) in enumerate(readings):
+            rows = max(r for r, _ in board) + 1
+            shift = hi + 1 if step > 0 else lo - rows
+            if not self._admissible(body[0] + shift, allow):
+                continue
+            share = sum(1 for c, sg in board.items() if c != body and sg in known)
+            score = share / max(len(board) - 1, 1)
+            if best is None or (score, -idx) > (best[0], -best[2]):
+                best = (score, shift, idx)
+        if best is None:
+            return None
         shift, idx = best[1], best[2]
         oy, ox, board, inks, body = readings[idx]
         self._shape(board)
@@ -716,7 +813,7 @@ class CragTool:
 
     # ------------------------------------------------------------------ physics
 
-    def _settle(self, cells: Board, start: Cell, gdir: int,
+    def _settle(self, cells: "Board | _View", start: Cell, gdir: int,
                 targets: set[Cell]) -> tuple[str, Cell, Sig | None]:
         """Slide from `start` along `gdir` -> (verdict, resting cell, what is underfoot).
 
@@ -751,7 +848,7 @@ class CragTool:
             return "blind", (r, c), sig
         return "rest", (r, c), None
 
-    def _walk(self, cells: Board, at: Cell, gdir: int, dc: int,
+    def _walk(self, cells: "Board | _View", at: Cell, gdir: int, dc: int,
               targets: set[Cell]) -> tuple[str, Cell, Sig | None]:
         """One lateral action -> verdict, resting cell, support.
 
@@ -780,8 +877,8 @@ class CragTool:
             return "test", at, sig
         return self._settle(cells, target, gdir, targets)
 
-    def _click(self, cells: Board, at: Cell, gdir: int, cell: Cell,
-               targets: set[Cell]) -> tuple[Board, int, str, Cell, Sig | None]:
+    def _click(self, cells: "Board | _View", at: Cell, gdir: int, cell: Cell,
+               targets: set[Cell]) -> tuple[_View, int, str, Cell, Sig | None]:
         """The board, the axis, the body and its support after clicking `cell`.
 
         ⛔ The asymmetry that shapes the whole search: a click that is NOT the gravity kind moves
@@ -790,9 +887,8 @@ class CragTool:
         re-settles the body under the reversed axis.
         """
         sig = cells[cell]
-        nxt = dict(cells)
         if sig in self._flip:
-            nxt[cell] = self._air if self._air is not None else sig
+            nxt = cells.edit(cell, self._air if self._air is not None else sig)
             g2 = -gdir
             ahead = nxt.get((at[0] + g2, at[1]))
             if self._is_open(ahead):
@@ -803,7 +899,7 @@ class CragTool:
             # the one path that does not test the cell it starts from. Guessing generously here
             # returns routes that end one action short of the exit.
             return nxt, g2, "rest", at, ahead
-        nxt[cell] = self._air if sig in self._vanish else self._swap[sig]  # type: ignore[assignment]
+        nxt = cells.edit(cell, self._air if sig in self._vanish else self._swap[sig])  # type: ignore[arg-type]
         if cell == (at[0] + gdir, at[1]):
             verdict, rest, under = self._settle(nxt, at, gdir, targets)
             return nxt, gdir, verdict, rest, under
@@ -833,7 +929,8 @@ class CragTool:
         delta = (cell[0] - at[0]) * gdir
         return -behind <= delta <= ahead and 0 <= cell[1] < self._cols
 
-    def _sites(self, cells: Board, at: Cell, gdir: int) -> list[Cell]:
+    def _sites(self, cells: "Board | _View", at: Cell, gdir: int,
+               switches: list[Cell]) -> list[Cell]:
         """The click candidates worth expanding, and no others.
 
         Five local cells plus every gravity switch on screen. ⛔ The local five are exactly the
@@ -856,9 +953,47 @@ class CragTool:
             sig = cells.get(cell)
             if sig is not None and (sig in self._vanish or sig in self._swap):
                 out.append(cell)
-        for cell, sig in cells.items():
-            if sig in self._flip and self._visible(at, cell, gdir):
+        for cell in switches:
+            if self._visible(at, cell, gdir):
                 out.append(cell)
+        out.extend(self._catchers(cells, at, gdir))
+        return out
+
+    def _catchers(self, cells: "Board | _View", at: Cell, gdir: int) -> list[Cell]:
+        """Editable cells that would CATCH the body — or let it through — if the axis reversed.
+
+        ⛔ THE ONE CANDIDATE THE LOCAL FIVE CANNOT NAME, and the sixth board of this family is
+        built on it. A reversal re-settles the body along the OTHER axis, so what stops it is a
+        cell overhead; on that board the cell overhead is a pass-through that has to be made
+        SOLID several actions BEFORE the reversal, or the reversal carries the body onto a row of
+        spikes. Nothing in a neighbourhood of the body names a cell three rows away, and offering
+        every editable cell on screen instead is already measured: it makes the frontier the size
+        of the window and the tool goes from three levels to one.
+
+        So a RAY, not a radius. From the body's column and the two beside it, walk AGAINST the
+        axis and offer the first cell a click can change: made solid it is where the reversal
+        lands, and if it is solid already, changing it is what opens the way up. Three candidates
+        at most, and each of them is a support for an axis not yet in force — which is the
+        mechanic's own way of saying it, so it carries to a board whose art we have never seen.
+
+        MEASURED (`scripts/_bp35_l6_solve.py`): the local five EXHAUST that board at 24,644
+        states with no win; the two clicks this rule adds are exactly the two that open its
+        43-action optimum.
+        """
+        out: list[Cell] = []
+        up = -gdir
+        for dc in (-1, 0, 1):
+            r, c = at[0] + up, at[1] + dc
+            for _ in range(self._rows):
+                sig = cells.get((r, c))
+                if sig is None:
+                    break
+                if sig in self._vanish or sig in self._swap:
+                    out.append((r, c))
+                    break
+                if not self._is_open(sig):
+                    break
+                r += up
         return out
 
     def _pixel(self, cell: Cell) -> tuple[int, int] | None:
@@ -912,9 +1047,13 @@ class CragTool:
         if self._at is None or self._gdir == 0 or self._air is None:
             return None
         home = self._at
+        # ⛔ Computed ONCE. A switch acts from anywhere on screen, so every expansion used to scan
+        # the whole map for them; a click can only ever REMOVE one, and the search already refuses
+        # a cell it has already clicked, so the list is a property of the map, not of the state.
+        switches = [c for c, sg in self._world.items() if sg in self._flip]
         seen: set[tuple[Cell, int, tuple[Cell, ...]]] = {(home, self._gdir, ())}
-        queue: deque[tuple[Cell, int, tuple[Cell, ...], Board, list[Leg]]] = deque()
-        queue.append((home, self._gdir, (), self._world, []))
+        queue: deque[tuple[Cell, int, tuple[Cell, ...], _View, list[Leg]]] = deque()
+        queue.append((home, self._gdir, (), _View(self._world, {}), []))
         expanded = 0
         self._grade = 0
         best: tuple[tuple[int, int, int, int, int], list[Leg]] | None = None
@@ -927,7 +1066,7 @@ class CragTool:
                 moves.append(((aid, None), verdict, rest, gdir, cells, edits, under,
                               ((at, gdir), (aid, None)) in self._deadly))
             if len(edits) < edits_cap:
-                for cell in self._sites(cells, at, gdir):
+                for cell in self._sites(cells, at, gdir, switches):
                     if cell in edits or not self._visible(at, cell, gdir):
                         continue
                     xy = self._pixel_from(at, gdir, cell)
@@ -1054,7 +1193,7 @@ class CragTool:
         self._grade = best[0][0]
         return best[1]
 
-    def _digs_into_trouble(self, cells: Board, at: Cell, gdir: int) -> bool:
+    def _digs_into_trouble(self, cells: "Board | _View", at: Cell, gdir: int) -> bool:
         """Would digging out this column, block by block, end somewhere with no way off?
 
         ⛔ Breaking the floor is a COMMITMENT and one move at a time cannot see it: each block
@@ -1089,7 +1228,7 @@ class CragTool:
                     return False
         return False
 
-    def _is_a_trap(self, cells: Board, at: Cell, gdir: int) -> bool:
+    def _is_a_trap(self, cells: "Board | _View", at: Cell, gdir: int) -> bool:
         """A slot the body can enter and cannot leave except by digging further into itself.
 
         ⛔ Breaking the floor is a COMMITMENT and one move at a time cannot see it: each block
@@ -1511,7 +1650,7 @@ class CragTool:
         while stack and len(seen) < 400:
             cur, g = stack.pop()
             for dc in (-1, 1):
-                verdict, rest, _ = self._walk(self._world, cur, g, dc, set())
+                verdict, rest, _ = self._walk(_View(self._world, {}), cur, g, dc, set())
                 if verdict != "rest" or (rest, g) in seen:
                     continue
                 seen.add((rest, g))
