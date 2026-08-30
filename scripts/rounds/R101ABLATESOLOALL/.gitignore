@@ -1,0 +1,10 @@
+# The 1175 raw per-pair results are 12MB — a fifth of this repository's history for one
+# sweep. Every number the round quotes lives in SOLO.jsonl, which was VERIFIED to reproduce
+# scripts/solo_report.py's output byte-for-byte against these files before they were
+# excluded. Rule 2 is satisfied by the roll-up, not by the dump.
+games/
+
+# ⛔ AND THE ROLL-UP MUST BE RE-INCLUDED BY NAME: the repo root .gitignore carries a blanket
+# `*.jsonl`, so `git add` silently skipped the round's ONLY evidence file. A round whose
+# artefact is ignored reads as a round with no artefact — the fail-toward-nothing shape.
+!SOLO.jsonl

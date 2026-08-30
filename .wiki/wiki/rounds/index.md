@@ -490,3 +490,23 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   at fault. ⚠️ Two burial metrics (ownership vs pixels) nearly read as a contradiction; both are
   right. ⚠️ Consequence: **7ck's "14 of 25 depend on paint order" is a WORST-CASE count** and
   includes a game no re-render can touch. Nothing built, no gate (7o). Rule **7cp**.
+
+- **routing vs capability / forced-alone / solo sweep / exclusive ownership / destination / handoff /
+  idle tools / prune the registry** → [[r101_routing-or-capability]] — the question 7cm left open,
+  since *"there is nowhere better to send the board"* was an INFERENCE from 7ba (full registry, five
+  games, never an ablated board). **47 tools x 25 games forced alone = 1175 runs**, through
+  `ablate_run.py --only` — ⛔ NOT `ceph_sweep.sh`, whose `_solo_tool.py` hand-rolls its own loop and
+  reports no game_score (7aj clause 1). ⭐ Forcing `T` alone builds `UnifiedAgent([T])`, so dropping
+  the owner is a NO-OP for any non-owner — one sweep answers the ablated question AND reproduces
+  7ba's control. **VERDICT: CAPABILITY, 23 of 25.** An oracle always picking the best surviving tool
+  recovers **0.0034 of the 0.7150** the owner was worth — **0.5%**; in **21 of 25 games the best
+  surviving tool scores EXACTLY what the ablated harness scores**, and on **10 of 25 NOTHING in the
+  registry clears level 1 without the owner** — ownership is not merely singular (7bb) but
+  **EXCLUSIVE**. Controls: owner-alone clears 25 of 25; no solo tool beats the full harness on any of
+  the 25 (**7ba reproduced beyond its original five**). ⛔ The 7cj class split does NOT predict
+  recoverability (CLAIMED 1/11, UNCLAIMED 1/14) — expectation refuted. ⭐ **7bb's warning is now a
+  measurement: 12 of the 16 tools that clear anything on an orphaned board are from its
+  never-holds-a-board roster**, so pruning by tenure would delete exactly the tools that hold an
+  unowned board. ⚠️ Solo max is a LOWER bound (the harness composes — cd82 and tn36 beat every single
+  tool), but it settles the single-tool handoff, which is the only kind 7cm's signal could trigger.
+  Rule **7cq**.

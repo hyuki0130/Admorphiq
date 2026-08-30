@@ -4312,3 +4312,62 @@ is for the INSTRUMENT: a paint-order arm should model a re-serialisation of the 
 order" is a WORST-CASE count and includes at least one game (g50t) that no re-render can touch.**
 
 Round page [[.wiki/wiki/rounds/r101_which-object.md]]; artefacts `scripts/rounds/R101ZOBJECT/`.
+
+### 7cq — CAPABILITY not routing — perfect single-tool routing recovers 0.5% of the ablated loss (2026-08-30)
+
+7cm's conclusion rested on *"there is nowhere better to send the board"*, which was an INFERENCE
+from 7ba — measured on the FULL registry, on five games, never on an ABLATED board. **47 tools ×
+25 games forced alone = 1175 runs**, budget 4000, through `ablate_run.py --only`.
+
+⛔ **NOT through `scripts/ceph_sweep.sh`.** Its runner `_solo_tool.py` hand-rolls its own env loop —
+accumulating frames where `run_game` passes `[]`, no `restart_on_game_over`, reports levels and
+never a `game_score`. Rule 7aj clause 1: a hand-rolled loop clears FOUR bp35 boards where the
+scorer clears five, so its numbers cannot be compared with an arm measured through the scorer.
+
+⭐ **THE SIMPLIFICATION THAT MADE ONE SWEEP ANSWER BOTH QUESTIONS, checked in the source not
+assumed**: forcing tool `T` alone builds `UnifiedAgent([T], ...)`, so dropping the owner is a NO-OP
+when `T` is not the owner. The ablated solo sweep IS a plain tools × games sweep minus the owner
+column — so it reproduces 7ba's control for free.
+
+```
+⛔ POSITIVE  owner forced alone clears its own game      25 of 25   PASSES
+⛔ NEGATIVE  some solo tool beats the FULL harness        0 of 25   7ba REPRODUCED on all 25
+             (it had only ever been measured on five)
+
+mean ablated harness 0.1932   mean BEST surviving solo 0.1966   full harness 0.9082
+ROUTING-recoverable  2 of 25 (lf52 hop +0.0909, vc33 toggle +0.0012)
+CAPABILITY-bound    23 of 25
+```
+
+⛔ **AN ORACLE THAT ALWAYS PICKS THE BEST SURVIVING TOOL RECOVERS 0.0034 OF THE 0.7150 THE OWNER WAS
+WORTH — 0.5%.** And the shape is starker than the mean: **in 21 of 25 games the best surviving tool
+scores EXACTLY what the ablated harness scores** (bit-identical, not approximately), and **on 10 of
+25 NOTHING in the 47-tool registry clears level 1 without the owner** (ar25 bp35 cd82 cn04 ft09
+ls20 sb26 sk48 tr87 tu93). ⭐ **Ownership is not merely SINGULAR (7bb) — it is EXCLUSIVE.**
+⚠️ On two games the ablated harness BEATS every single tool (cd82 −0.0064, tn36 −0.0004):
+composition is worth a shade more than the best part, as 7ba's ls20 row already showed.
+
+⛔ **THE 7cj CLASS SPLIT DOES NOT PREDICT RECOVERABILITY — my expectation, refuted.** CLAIMED 1 of
+11, UNCLAIMED 1 of 14. The classes separate the ablated SCORE beautifully (0.3725 vs 0.0523) and
+separate routing-recoverability not at all: being claimed means a second tool can play the board,
+not that a BETTER one was passed over.
+
+⭐ **AND 7bb'S OWN WARNING IS NOW A MEASUREMENT.** It censused 17 tools that never hold a board and
+said *"a tool idle here may be the only claimant there — that is the whole design."* Of the 16
+tools that clear a level on some orphaned board, **12 are from that idle roster** (haul hop maze
+mirror pattern_cast phase_grid slotlaunch socketmerge spill telescope toggle track). ⛔ Pruning the
+registry by observed tenure would delete exactly the tools that hold the line on an unowned board.
+
+⚠️ **WHAT THE SOLO MAXIMUM IS**: a LOWER bound on what perfect routing could do, not an upper one —
+the harness COMPOSES, and ls20 reaches level 7 where no single tool passes 6. It does not prove no
+ROUTE does better. **It does prove the single-tool handoff — the only kind 7cm's signal could
+trigger — has no destination on 23 of 25 boards.** ⚠️ And 19 of these 25 sit at the cap; easy case.
+
+⭐ **SO THE CHAIN TERMINATES AT CAPABILITY.** Detection closed (7cm), routing closed (7ac + the 0.5%
+oracle here), tool set closed (7ba, 7bb, exclusivity). No signal, no router, no model and no
+further per-mechanic specialist changes what happens on a board whose mechanic nothing implements.
+The only remaining lever is a fallback that can LEARN a board it has no tool for — stage two of the
+top policy, now the measured conclusion rather than the assumed one. ⛔ Nothing ships (7o).
+Round page [[.wiki/wiki/rounds/r101_routing-or-capability.md]]; `scripts/solo_report.py`.
+⚠️ The 1175 raw results are 12MB — a fifth of the repo's history for one sweep — so they are rolled
+into `R101ABLATESOLOALL/SOLO.jsonl` (127KB), VERIFIED to reproduce the report byte-for-byte first.

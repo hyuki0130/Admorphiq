@@ -173,6 +173,11 @@ winning segments pass unflagged and only its genuinely doomed level 5 fires.
 
 ## Related
 
+- [[r101_routing-or-capability]] — **the round that tested this page's load-bearing clause.** "There
+  is nowhere better to send the board" was an inference from 7ba; forcing all 47 tools alone on all
+  25 ablated boards makes it a measurement. An oracle picking the best surviving tool recovers
+  **0.5%** of the ablated loss, and on 10 games nothing in the registry clears level 1 without the
+  owner. ⛔ So the signal measured here has no destination on 23 of 25 boards.
 - [[r101_owner-ablation]] — the round that produced these labels and the hypothesis under test
 - Rule **7cm** in `OPERATING_RULES.md`
 - Rules 7ba (no tool alone goes deeper — why freed budget has nowhere to go), 7ax / 7bq

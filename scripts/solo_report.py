@@ -60,13 +60,32 @@ def load_dir(d: str) -> dict[str, dict[str, Any]]:
 
 
 def load_solo() -> dict[str, dict[str, dict[str, Any]]]:
+    """Prefer the committed roll-up; fall back to the per-pair results when they are present.
+
+    ⛔ WHY A ROLL-UP EXISTS. The sweep is 1175 result files and 12MB — a fifth of the whole
+    repository's history for one measurement. `SOLO.jsonl` carries every field this round
+    quotes (score, levels, actions, registry_size) at 127KB, so the numbers survive in the
+    repo as rule 2 requires without the dump. It was verified to reproduce this report
+    byte-for-byte against the raw files before those were dropped.
+    """
     out: dict[str, dict[str, dict[str, Any]]] = {}
-    for p in glob.glob(os.path.join(SOLO, "games", "*.json")):
-        stem = os.path.basename(p)[:-5]
-        if "__" not in stem:
-            continue
-        game, tool = stem.split("__", 1)
-        out.setdefault(game, {})[tool] = _one(p)
+    roll = os.path.join(SOLO, "SOLO.jsonl")
+    raw = glob.glob(os.path.join(SOLO, "games", "*.json"))
+    if raw:
+        for p in raw:
+            stem = os.path.basename(p)[:-5]
+            if "__" not in stem:
+                continue
+            game, tool = stem.split("__", 1)
+            out.setdefault(game, {})[tool] = _one(p)
+        return out
+    if os.path.exists(roll):
+        for line in open(roll):
+            r = json.loads(line)
+            out.setdefault(r["game"], {})[r["tool"]] = {
+                "score": r["score"], "levels": r["levels"], "win": r["win"],
+                "actions": r["actions"], "dropped": f"!only:{r['tool']}", "own": {},
+            }
     return out
 
 
@@ -140,14 +159,20 @@ def main() -> int:
         if not surv:
             print(f"{game:6s} ⛔ NO VERDICT — no surviving tool measured")
             continue
-        bt = max(surv, key=lambda t: surv[t]["score"])
+        # ⛔ DETERMINISTIC tie-break, and no name at all when nothing clears. `max()` over a
+        # dict returns whichever all-zero tool the filesystem happened to yield first, so the
+        # same sweep read two ways named different "best" tools on the ten games where every
+        # surviving tool scores 0.0000 — a name that reads as a finding and is an artefact.
+        bt = sorted(surv, key=lambda t: (-surv[t]["score"], -(surv[t]["levels"] or 0), t))[0]
+        none_clears = (surv[bt]["score"] <= EPS and not (surv[bt]["levels"] or 0))
         bs, ah = surv[bt]["score"], abl[game]["score"]
         cls = "CLM" if game in claimed else "unc"
         wins = bs > ah + EPS
         (routing if wins else capability).append(game)
         print(f"{game:6s} {cls:4s} {ah:10.4f} {bs:9.4f} {bs - ah:+8.4f}  "
               f"{str(abl[game]['levels']):>4s} {str(surv[bt]['levels']):>4s}  "
-              f"{bt}{'   <- BEATS IT' if wins else ''}")
+              f"{'— NOTHING CLEARS' if none_clears else bt}"
+              f"{'   <- BEATS IT' if wins else ''}")
 
     print(f"\nROUTING-recoverable (a surviving tool alone beats the ablated harness): "
           f"{len(routing)} of {len(solo)}  {routing}")

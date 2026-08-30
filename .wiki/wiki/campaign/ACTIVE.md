@@ -154,6 +154,22 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > spent, so it frees wall-clock, not points — **there is no better tool to hand the board to (7ba)**.
 > ⭐ **So the lever is NOT a smarter give-up rule. It is having a second claimant at all.**
 >
+> ⛔⛔ **AND "THERE IS NO BETTER TOOL TO HAND IT TO" IS NOW MEASURED, NOT INFERRED — THE CHAIN
+> TERMINATES AT CAPABILITY** ([[r101_routing-or-capability]], rule **7cq**). 47 tools × 25 games
+> forced alone = 1175 runs through the same scorer. **An oracle that always picks the best surviving
+> tool recovers 0.0034 of the 0.7150 the owner was worth — 0.5%.** In **21 of 25 games the best
+> surviving tool scores EXACTLY what the ablated harness scores**, and on **10 of 25 NOTHING in the
+> 47-tool registry clears level 1 without the owner** — ownership is not merely singular but
+> **EXCLUSIVE**. Controls: owner-alone clears 25/25; no solo tool beats the full harness on any of
+> the 25 (**7ba reproduced beyond its original five games**). ⛔ Detection is closed (7cm), routing is
+> closed (7ac + this 0.5%), the tool set is closed (7ba/7bb/exclusivity). **No signal, no router, no
+> model and no further per-mechanic specialist changes what happens on a board whose mechanic nothing
+> implements. The only remaining lever is a fallback that can LEARN a board it has no tool for —
+> stage two of the top policy, now measured rather than assumed.**
+> ⭐ And 7bb's warning became a measurement: **12 of the 16 tools that clear anything on an orphaned
+> board are from its never-holds-a-board roster**, so pruning the registry by observed tenure would
+> delete exactly the tools that hold an unowned board.
+>
 > ⭐ **AND EFFICIENCY OVER CLEARED LEVELS HAS A STRUCTURAL CEILING OF +0.00796** (rule 7cb, one pass
 > over `rounds/*/games/*.json`): only **FIVE** cleared levels in the whole 25 score below 1.0 —
 > bp35 L2/L3/L5, lp85 L4, ls20 L7. Driving all five to a perfect 1.0 is worth eight thousandths of
