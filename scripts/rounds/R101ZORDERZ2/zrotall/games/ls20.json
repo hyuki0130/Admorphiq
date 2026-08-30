@@ -1,0 +1,90 @@
+{
+  "agent": "unified",
+  "mutation": "zrotall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.912085,
+  "games": [
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 7,
+      "elapsed_s": 21.51,
+      "total_actions": 645,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 17,
+          "human_actions": 22,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 101,
+          "human_actions": 123,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 63,
+          "human_actions": 73,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 66,
+          "human_actions": 84,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 67,
+          "human_actions": 96,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 100,
+          "human_actions": 192,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 231,
+          "human_actions": 186,
+          "score": 0.648339
+        }
+      ],
+      "game_score": 0.912085,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LS20",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrotall",
+          "kind": "rot",
+          "scope": "whole-list"
+        },
+        "frames_seen": 1204,
+        "frames_changed": 0,
+        "cells_changed": 0,
+        "max_cells_changed_in_a_frame": 0,
+        "sprites_max": 128,
+        "layers_seen": [
+          -5,
+          -4,
+          -3,
+          -1,
+          0,
+          1,
+          3,
+          5,
+          10
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "inert"
+      }
+    }
+  ]
+}

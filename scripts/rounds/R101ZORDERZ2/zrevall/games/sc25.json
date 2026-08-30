@@ -1,0 +1,73 @@
+{
+  "agent": "unified",
+  "mutation": "zrevall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.47619,
+  "games": [
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 4,
+      "elapsed_s": 12.08,
+      "total_actions": 571,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 17,
+          "human_actions": 36,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 6,
+          "human_actions": 6,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 12,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 31,
+          "human_actions": 83,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.47619,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrevall",
+          "kind": "rev",
+          "scope": "whole-list"
+        },
+        "frames_seen": 2610,
+        "frames_changed": 2449,
+        "cells_changed": 28780,
+        "max_cells_changed_in_a_frame": 16,
+        "sprites_max": 42,
+        "layers_seen": [
+          -41,
+          -4,
+          -1,
+          0,
+          1,
+          2,
+          10,
+          15,
+          16,
+          20
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

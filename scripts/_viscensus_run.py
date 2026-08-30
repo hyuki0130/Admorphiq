@@ -61,6 +61,22 @@ import _viscensus_ast as census  # noqa: E402
 
 LOG: dict[str, dict[str, int]] = {}
 
+# ⛔ WHEN a site reads identity decides whether dead reckoning is even possible there.
+# `lattice_maze._locate`'s repair needs a PRIOR CELL and a SPENT ACTION of known displacement; a
+# read taken on the opening frame of a level has neither, and no amount of tracking can invent
+# them. `CTX` is filled by a wrapper around the adapter's `choose_action`, which `run_game` calls
+# exactly once per action, so `act` is the count of actions spent on the CURRENT level.
+CTX = {"lvl": 0, "act": 0, "tot": 0}
+
+
+def _when(d: dict[str, int]) -> None:
+    """Record the level and the in-level action index of one evaluation."""
+    a = CTX["act"]
+    d["at0"] = d.get("at0", 0) + (1 if a == 0 else 0)
+    d["at_min"] = min(d.get("at_min", 10**9), a)
+    d["at_max"] = max(d.get("at_max", -1), a)
+    d["lvls"] = d.get("lvls", 0) | (1 << min(CTX["lvl"], 15))
+
 
 def _size(v: object) -> int:
     try:
@@ -73,6 +89,7 @@ def _note(sid: str, took_filter: bool, chosen: object, other: object, have_other
     d = LOG.setdefault(sid, {"eval": 0, "filter": 0, "fallback": 0, "narrowed": 0,
                              "same": 0, "unknown": 0, "min_f": 10**9, "max_o": -1})
     d["eval"] += 1
+    _when(d)
     d["filter" if took_filter else "fallback"] += 1
     if not have_other:
         d["unknown"] += 1
@@ -118,6 +135,7 @@ def _VISF(sid: str, fcomp, fiter, pure: bool):
     d = LOG.setdefault(sid, {"eval": 0, "to_zero": 0, "to_one": 0, "kept_all": 0,
                              "narrowed": 0, "unknown": 0, "max_in": -1})
     d["eval"] += 1
+    _when(d)
     n = _size(out)
     m = _size(fiter()) if pure else -1
     if m < 0:
@@ -343,6 +361,30 @@ def main() -> None:
 
     for t in registry.default_tools():
         _wrap(type(t))
+
+    # ⛔ THE ACTION COUNTER MUST COME FROM THE SCORER'S OWN LOOP, not from a tool's internal step.
+    # `run_game` calls `adapter.choose_action` exactly once per action it sends to the engine, so
+    # wrapping `_make_agent` gives an in-level action index that means the same thing the human
+    # baseline means. A tool's own counter counts planning, which is not what a level costs.
+    orig_make = se._make_agent
+
+    def make(*a, **k):  # noqa: ANN002, ANN003
+        adapter = orig_make(*a, **k)
+        inner = adapter.choose_action
+
+        def choose(frames, obs):  # noqa: ANN001
+            lvl = int(getattr(obs, "levels_completed", 0) or 0)
+            if lvl != CTX["lvl"]:
+                CTX["lvl"], CTX["act"] = lvl, 0
+            out = inner(frames, obs)
+            CTX["act"] += 1
+            CTX["tot"] += 1
+            return out
+
+        adapter.choose_action = choose
+        return adapter
+
+    se._make_agent = make
 
     arcade = Arcade(operation_mode=OperationMode.OFFLINE)
     envs = [e for e in arcade.get_environments()

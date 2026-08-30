@@ -1,0 +1,89 @@
+{
+  "agent": "unified",
+  "mutation": "zrevall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.946118,
+  "games": [
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 14.75,
+      "total_actions": 891,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 25,
+          "human_actions": 26,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 242,
+          "human_actions": 42,
+          "score": 0.030121
+        },
+        {
+          "level": 3,
+          "agent_actions": 49,
+          "human_actions": 86,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 54,
+          "human_actions": 108,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 113,
+          "human_actions": 189,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 139,
+          "human_actions": 139,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 101,
+          "human_actions": 424,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 168,
+          "human_actions": 241,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.946118,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "RE86",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrevall",
+          "kind": "rev",
+          "scope": "whole-list"
+        },
+        "frames_seen": 1316,
+        "frames_changed": 849,
+        "cells_changed": 3136,
+        "max_cells_changed_in_a_frame": 20,
+        "sprites_max": 19,
+        "layers_seen": [
+          -1,
+          0
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}

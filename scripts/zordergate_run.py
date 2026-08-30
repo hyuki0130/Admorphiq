@@ -79,6 +79,9 @@ def main() -> int:
               f"mutation={report['verdict']} frames={report['frames_seen']} "
               f"changed={report['frames_changed']} cells={report['cells_changed']} "
               f"layers={report['layers_seen']} "
+              f"buried_max={report['buried_max']} "
+              f"buried_samples={report['buried_samples']} "
+              f"first_change={report['first_changed_frame']} "
               f"internal={report['internal_render_calls']} "
               f"violations={report['violations'][:2]}", flush=True)
 

@@ -100,6 +100,46 @@ _OBSERVATION_CALLER_FILE = "arcengine/base_game.py"
 _OBSERVATION_CALLER_FUNC = "perform_action"
 
 
+# How often to pay for the burial accounting: it costs one extra `_raw_render` PER SPRITE
+# per sampled frame, so it runs on every Nth frame the mutation actually changed. The first
+# changed frame is always sampled (the counter is 0 there), which is the one that says
+# whether the mutation bites at the opening board or only develops during play.
+_BURIAL_EVERY = 40
+
+
+def _buried(camera: Any, before: list[Any], after: list[Any],
+            board_before: Any, board_after: Any) -> int:
+    """How many sprites contribute a pixel BEFORE the permutation and none after.
+
+    Purpose: separate evidence MOVED from evidence DELETED. Visibility is decided by the
+    camera's own painter — a sprite is visible in an order when removing it changes the
+    picture — so no assumption is made about layer sorting, about `pixels` versus
+    `render()`, or about transparency. Three of the 25 games override `_raw_render` and
+    two of those read raw pixels; re-implementing the paint rule here would answer a
+    question about a different game.
+
+    Expected feedback: 0 means the mutation only rearranged which sprite owns a contested
+    cell — a lower score there is the tool's dependence on paint order. A large count means
+    the picture lost objects, and a lower score is then a property of the BOARD; no
+    shippable re-render can hide a game's avatar, so such a game gets NO VERDICT.
+    """
+    visible_before = set()
+    for i, sprite in enumerate(before):
+        rest = before[:i] + before[i + 1:]
+        if int((np.asarray(camera._raw_render(rest)) != np.asarray(board_before)).sum()):
+            visible_before.add(id(sprite))
+    if not visible_before:
+        return 0
+    gone = 0
+    for i, sprite in enumerate(after):
+        if id(sprite) not in visible_before:
+            continue
+        rest = after[:i] + after[i + 1:]
+        if not int((np.asarray(camera._raw_render(rest)) != np.asarray(board_after)).sum()):
+            gone += 1
+    return gone
+
+
 def same_layer_permute(sprites: list[Any], kind: str) -> list[Any]:
     """Permute same-layer siblings, leaving every layer's list SLOTS where they were.
 
@@ -227,6 +267,10 @@ class ZOrderPatch:
             "frames_changed": 0,
             "cells_changed": 0,
             "max_cells_changed_in_a_frame": 0,
+            "first_changed_frame": None,
+            "buried_max": 0,
+            "buried_seen": 0,
+            "buried_samples": 0,
             "sprites_max": 0,
             "layers_seen": set(),
             "internal_render_calls": 0,
@@ -295,7 +339,20 @@ class ZOrderPatch:
                         "accounting cannot separate the mutation from the painter")
             mutated = orig(camera_self, permuted)
             changed = int((np.asarray(board_before) != np.asarray(board_after)).sum())
+            if changed and report["frames_changed"] % _BURIAL_EVERY == 0:
+                # ⭐ THE DISTINCTION THE SCORE CANNOT MAKE. A lower score under this arm is
+                # either a tool reading PAINT ORDER where the mechanic was available another
+                # way, or a board whose evidence the mutation deleted — and rule 7ce's
+                # shift1 lesson is that the two produce the same number and only the
+                # accounting separates them. A sprite that still contributes a pixel has had
+                # its evidence MOVED; a sprite contributing none has had it DELETED.
+                buried = _buried(camera_self, sprites, permuted, board_before, board_after)
+                report["buried_max"] = max(report["buried_max"], buried)
+                report["buried_samples"] += 1
+                report["buried_seen"] += buried
             if changed:
+                if report["first_changed_frame"] is None:
+                    report["first_changed_frame"] = report["frames_seen"]
                 report["frames_changed"] += 1
                 report["cells_changed"] += changed
                 report["max_cells_changed_in_a_frame"] = max(
