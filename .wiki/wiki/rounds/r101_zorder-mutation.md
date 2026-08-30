@@ -272,3 +272,15 @@ are not decoration — 10 of 25 games land in them:
 Related: [[r101_zorder-rider]] (the defect this arm was built to catch) ·
 [[r101_render-mutation-transfer]] (the colour arm that cannot) · [[r101_shipped-and-transfer]] (the
 archived re-render, rule 7by) · rules **7ck**, 7cd, 7ce, 7by.
+
+## Follow-up: which object — and two verdicts corrected
+
+⭐ **[[r101_which-object]] (rule 7cp)** answers this round's own closing question and corrects two
+of its verdicts. **Both mutations are RENDER-ONLY** — each game replays its own action tape to the
+same levels in the same per-level counts — so *"tu93 is a broken mutation"* is refuted. **tu93 is
+the real and generic dependence**: its full-board maze sprite covers the exit, the steered piece and
+the crowd on all nine levels, and **6 of 7 sampled re-serialisations destroy it**. **g50t is this
+arm's artefact**: zero burial among its AUTHORED sprites, and all 8 `zshuf` seeds change zero pixels
+at 1.0000 — only arms that reorder an ENGINE-CREATED sprite against the authored list hurt it.
+⚠️ So **"14 of 25 games depend on paint order" is a worst-case count** that includes at least one
+game no re-render can touch.

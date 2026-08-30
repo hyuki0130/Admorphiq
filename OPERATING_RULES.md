@@ -4225,6 +4225,90 @@ this file is subordinate to that. The 0.9082 is not the target; 25 games cleared
 
 ### 7cp — which object the paint-order arm buries — tu93 is the real dependence, g50t is the arm's artefact (2026-08-30)
 
-⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
-Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
-it, the work either did not finish or its author stopped. Fill it in, or delete it.
+Rule **7ck** measured two games falling 1.0000 -> 0.0000 under the paint-order arm and said
+plainly that **g50t is NOT CLASSIFIABLE** and **tu93 is "a broken mutation"**. ⛔ Measured, it is
+the OTHER WAY ROUND, and both halves matter.
+
+⭐ **FIRST, THE MUTATION IS RENDER-ONLY ON BOTH — MEASURED, NOT ARGUED** (`_zorder_tape.py`).
+`zorder_mutation.py` argues render-only structurally; this replays each game's OWN action tape
+through `run_game` under the patch:
+
+```
+g50t  296 actions   record [26,31,64,31,52,49,43]  replay-clean SAME  replay-MUTATED SAME
+tu93  187 actions   record [18,10,19,17,29,28,14,23,29]  clean SAME    MUTATED SAME
+s5i5  692 actions   [13,30,47,39,32,31] all three arms   <- cross-game POSITIVE CONTROL
+r11l   83 actions   [4,9,11,14,24,21]   all three arms   <- 7ck's identical-under-arm game
+```
+
+So neither zero is a broken board: the same actions reach the same levels. ⛔ **"tu93 is a broken
+mutation" is REFUTED** — nothing about its mechanic moves.
+
+⭐ **BUT g50t'S ZERO COMES FROM A PERTURBATION NO RE-RENDER CAN MAKE.** The sampled family
+`zshufNN` — one fixed uniform re-serialisation per seed, which keys each sprite by
+`(frame first seen, tie-break)` so that **sprites the ENGINE creates during play keep their
+arrival order**, exactly as a re-render of the same file would:
+
+```
+g50t  zrev / zrevall / zrot    11,435 cells changed, buried_max 1   score 0.0000
+g50t  zrotall + zshuf00..07    ZERO cells changed, buried_max 0     score 1.0000   (9 arms)
+      permute applied and REORDERED on 3,333 of 3,333 renders in every zshuf arm
+```
+
+The nine harmless arms are not inert instruments — they reorder every single frame. ⭐ And
+`_zorder_who.py` shows **ZERO burial among g50t's AUTHORED sprites on all seven levels** while the
+live run buries one, so **the sprite the arm buries is one the engine created during play**.
+Reordering that against the authored list is what no re-serialisation of a game file can do, and
+`RandomOrder`'s own docstring already states the principle. **g50t's 0.0000 is the arm's artefact.**
+
+⚠️ And the two burial metrics are not the same quantity — that nearly read as a contradiction.
+`_zorder_occlude.py` reports g50t `total_cells_moved=39` on the authored boards while `ZOrderPatch`
+reports `cells_changed=0` under every `zshuf`: the first counts OWNERSHIP changes, the second
+PIXELS, and two sprites of the SAME COLOUR swapping owner move no pixel. Both are right.
+
+⭐ **tu93 IS THE REAL ONE, AND IT IS GENERIC.** Six of seven sampled re-serialisations destroy it:
+
+```
+zshuf01 0.0667 · zshuf03 0.0222 · zshuf05 0.0222 · zshuf02/04/06/07 0.0000 · zshuf00 1.0000
+cells changed 15,867 .. 66,740     buried_max 2..5
+```
+
+tu93 is a **no-sort** game (its camera overrides `_raw_render`), so the raw list order IS the paint
+order and any re-serialisation moves the picture.
+
+⭐ **THE OBJECT, NAMED FROM THE GAME'S OWN GRAMMAR.** `_zorder_who.py`, all nine levels, 46
+burials, and the burier is the level's single full-board **maze sprite** every time:
+
+```
+0014mzhhvzrazi  3x3, ONE flat colour (14), on EVERY level   = the EXIT
+0016ihgrljrgpq  3x3, body + facing mark (4,9), EVERY level  = the STEERED PIECE
+0018.., 0032.., 0040..  3x3, facing-mark colour 15          = the OTHER PIECES (the crowd)
+```
+
+Those are exactly the three entities `lattice_maze`'s docstring builds its grammar from. The
+mutation paints the maze over all of them.
+
+⛔ **AND THE READ IS NOT AN IDENTITY READ — IT IS AN EXISTENCE READ, IN `detect`.** `_zorder_read.py`
+instruments the tool's own reads, clean vs mutated:
+
+```
+tu93 clean/zshuf00  LatticeMazeTool proposes 187/187   parse_none 0  pieces_max 9  locate_calls 187
+tu93 zrevall        LatticeMazeTool proposes ZERO      parse_none 0  pieces_max 0  locate_calls 0
+                    GraphSearchTool inherits 468 actions and clears nothing
+```
+
+`parse_board` still returns a board — the lattice is the maze, still visible — but with **no
+pieces**, so `detect` returns 0 on every frame and the harness never picks the tool. ⛔ **`_locate`,
+the site rule 7cl censused and 7cn found repaired, is called ZERO times.** The repair is not what
+fails; it never gets the board. This is a NEW shape, not one of 7cl's five: 7cd's class is about
+CHOOSING among candidates, and this is about there being none.
+
+⭐ **THE TWO GAMES DO NOT SHARE A FAILURE.** tu93's tool DECLINES the board (a routing loss);
+g50t's tool takes it, proposes **25** actions against 296 clean, and then withdraws to
+`GraphSearchTool` (429) and `MazeRunTool` (34). Different failures, and only one of them is real.
+
+**Nothing was built and no gate was run** — there is no repair here to gate (7o). The consequence
+is for the INSTRUMENT: a paint-order arm should model a re-serialisation of the authored list, and
+`zshufNN` does while `zrev`/`zrot` do not. ⚠️ **7ck's headline "14 of 25 games depend on paint
+order" is a WORST-CASE count and includes at least one game (g50t) that no re-render can touch.**
+
+Round page [[.wiki/wiki/rounds/r101_which-object.md]]; artefacts `scripts/rounds/R101ZOBJECT/`.

@@ -472,3 +472,21 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   provably unavailable. **Nothing built, no gate run** (7o). ⭐ Transferable: *dead reckoning is
   available exactly where identity is re-read CONTINUOUSLY*; a commit-once-per-level site admits
   only deferral or cheaper refutation. Rule **7cn**.
+
+- **which object / buried sprite / g50t / tu93 / existence read / detect declines / maze sprite /
+  exit / steered piece / zshuf / expected case / engine-created sprite / broken mutation / zobject**
+  → [[r101_which-object]] — 7ck asked which object, and had two verdicts backwards. ⭐ **Both
+  mutations are RENDER-ONLY** — each game replays its own action tape (g50t 296, tu93 187, s5i5
+  692, r11l 83) to the same levels in the same per-level counts, so *"tu93 is a broken mutation"* is
+  REFUTED. ⭐ **tu93 is the real, GENERIC dependence**: a no-sort game whose single full-board maze
+  sprite covers the EXIT (`0014…`, one flat colour), the STEERED PIECE (`0016…`, body+facing mark)
+  and the crowd on all nine levels — 46 burials — and **6 of 7 sampled re-serialisations destroy
+  it**. ⛔ **g50t is the ARM'S ARTEFACT**: zero burial among its AUTHORED sprites on all 7 levels,
+  and all 8 `zshuf` seeds change ZERO pixels at 1.0000 while reordering every one of 3,333 renders —
+  only arms that move an ENGINE-CREATED sprite against the authored list hurt it, which no
+  re-serialisation can do. ⛔ **The read is an EXISTENCE read, not an identity read**: tu93's
+  `parse_board` returns a board with `pieces_max=0`, `detect` returns 0, the tool proposes ZERO of
+  187, and **`_locate` — the censused, repaired site — is called zero times**, so the repair is not
+  at fault. ⚠️ Two burial metrics (ownership vs pixels) nearly read as a contradiction; both are
+  right. ⚠️ Consequence: **7ck's "14 of 25 depend on paint order" is a WORST-CASE count** and
+  includes a game no re-render can touch. Nothing built, no gate (7o). Rule **7cp**.
