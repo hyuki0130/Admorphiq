@@ -78,6 +78,34 @@ def _support_sites(s):
             if s.on_screen(*c) and next(iter(s.at(*c)), "") in _EDITABLE]
 
 
+def _ray_sites(s, stop_at_first=True):
+    """crag's five, plus the FIRST editable cell up each of three columns AGAINST the axis.
+
+    This is `CragTool._catchers` written in the simulator's terms: from the body's column and the
+    two beside it, walk the way the body would fall if the axis reversed, and offer the first cell
+    a click can change — the cell the reversal lands on once it is solid, or the cell that opens
+    the way up if it is solid already. Three candidates, against the support-rule's dozens.
+
+    `stop_at_first=False` offers every editable cell along the ray instead, which is the support
+    rule restricted to three columns; the pair measures whether "the first one" is enough.
+    """
+    dy = -1 if s.grav_up else 1
+    up = -dy
+    out = set()
+    for dc in (-1, 0, 1):
+        x, y = s.px + dc, s.py + up
+        for _ in range(64):
+            n = next(iter(s.at(x, y)), "")
+            if n in _EDITABLE:
+                out.add((x, y))
+                if stop_at_first:
+                    break
+            if n not in _PASS_NAMES:
+                break
+            y += up
+    return [c for c in out if s.on_screen(*c)]
+
+
 def _clicks_on_path(par, depth, idx):
     """The actions on the path to `idx`, as a list of "is this a click" flags."""
     out = []
@@ -89,7 +117,7 @@ def _clicks_on_path(par, depth, idx):
 
 
 def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius: int = 0,
-          click_cap: int = 0, support: bool = False):
+          click_cap: int = 0, support: bool = False, ray: int = 0):
     """mode 0 = plain BFS inside the engine's own 64-action allowance (finds the SHORTEST win);
     mode 1 = greedy best-first on distance to the gem (finds A win fast, not the shortest);
     mode 2 = BFS with the allowance lifted to 200 — "winnable at all?" is a DIFFERENT claim from
@@ -137,7 +165,14 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
         if d >= limit - 1:
             continue
         cand = s.clickables()
-        if support:
+        if ray:
+            keep = set(_ray_sites(s, stop_at_first=(ray == 1)))
+            dy = -1 if s.grav_up else 1
+            keep |= {(s.px, s.py + dy), (s.px - 1, s.py), (s.px + 1, s.py),
+                     (s.px - 1, s.py + dy), (s.px + 1, s.py + dy)}
+            cand = [c for c in cand
+                    if c in keep or next(iter(s.at(*c)), "") == "lrpkmzabbfa"]
+        elif support:
             keep = set(_support_sites(s))
             cand = [c for c in cand
                     if c in keep or next(iter(s.at(*c)), "") == "lrpkmzabbfa"]
@@ -195,7 +230,7 @@ def solve(seed: int, cap: int, level: int = 6, force_local: bool = False, radius
             break
 
     out = {"seed": seed, "mode": mode, "local": local, "support": support, "radius": radius,
-           "click_cap": click_cap,
+           "ray": ray, "click_cap": click_cap,
            "limit": limit, "level": level, "nodes": nodes,
            "states": len(sims), "secs": round(time.time() - t0, 1)}
     if best is not None:
@@ -236,7 +271,14 @@ def main() -> None:
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     cap = int(sys.argv[2]) if len(sys.argv) > 2 else 40_000_000
     arg = sys.argv[3] if len(sys.argv) > 3 else ""
-    if arg.startswith("s"):
+    if arg.startswith("y"):
+        # "y" is the RAY rule — crag's `_catchers`. Seeds walk (click cap, first-only vs all):
+        # 1-3 cap 6 first-only, 4-6 cap 10 first-only, 7-9 cap 10 every editable on the ray.
+        # Level from the 4th argument so boards 7-9 can be asked the same question.
+        lv = int(sys.argv[4]) if len(sys.argv) > 4 else 6
+        cc = 6 if seed <= 3 else 10
+        solve(seed, cap, level=lv, ray=(2 if seed > 6 else 1), click_cap=cc)
+    elif arg.startswith("s"):
         solve(seed, cap, support=True)
     elif arg.startswith("c"):
         # "c" walks the CLICK cap: seeds 1-3 cap at 6 (crag's `_MAX_EDITS`), 4-6 add radius 2.
