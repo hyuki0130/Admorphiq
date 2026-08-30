@@ -38,6 +38,13 @@
 > proved by intervention, and the harness cannot tell when no tool fits. Boundaries stated per
 > claim.
 >
+> ⛔ **THE GOAL IS ALL 25 COMPLETE, AND EVERY INCOMPLETE GAME HAS AN AGENT ON IT — ALWAYS** (rule
+> **7co**, user correction 2026-08-30). Six are short and six agents are live, one per game, in
+> parallel on ceph. ⚠️ **"CLOSED WITH PROOFS" IS A VERDICT ON THE HYPOTHESES, NOT ON THE GAME** —
+> thirty arms scoring 0.5833 says those thirty fail and says nothing about whether s5i5 L7 is
+> winnable. I read it as a verdict and moved the whole team onto transfer research while the games
+> sat. Research axes are what agents do BETWEEN games, never INSTEAD of them.
+>
 > ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
 > CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
 > Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,

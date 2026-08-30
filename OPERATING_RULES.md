@@ -4188,3 +4188,43 @@ wrong cheaper. Ask which shape a site has before proposing a fix for it.
 
 Round page [[.wiki/wiki/rounds/r101_dead-reckoning-transfer.md]]; artefacts
 `scripts/rounds/R101DEADRECKON/`.
+
+### 7co — an incomplete game always has an agent on it — closed with proofs is not permission to stop (2026-08-30)
+
+⛔ **USER CORRECTION, 2026-08-30 11:41, and it was needed: *"모든 게임 컴플리트한다니깐~ 왜 완결 안된
+게임 ceph 인스턴스에서 병렬로 테스트 안해?"*** Six games were incomplete and **not one agent was on
+any of them.** All three were on the 110-transfer axis, which I had opened myself that morning.
+
+**HOW IT HAPPENED, because the mechanism is the reusable part.** `ACTIVE.md` recorded bp35, s5i5 and
+dc22 as "CLOSED WITH PROOFS", with each refuted hypothesis named. That record is correct and it is
+valuable. **I read it as a verdict on the GAME.** It is a verdict on the HYPOTHESES — a proof that
+thirty arms all scored 0.5833 says those thirty arms fail, and says nothing whatever about whether
+s5i5 level 7 is winnable. ⚠️ The CLOSED section never claimed otherwise; **the misreading was mine,
+and it was invisible while agents were still on the games — it only had a cost the moment they were
+not.**
+
+⭐ **STANDING RULE: every incomplete game has a background agent on it, in parallel on ceph, at all
+times.** Not a rotation, not "when the current axis is done". If an agent finishes and a game is
+still short, the next agent goes to the game. Research axes are what agents do BETWEEN games, never
+INSTEAD of them.
+
+⛔ **AND THE BRIEF MUST CARRY THAT GAME'S REFUTED LIST.** That is what the CLOSED section is FOR, and
+it is the whole reason the misreading was expensive rather than merely wrong: the record's value is
+that an agent does not re-run a dead arm. lf52's brief names that "make the third capture the eighth
+candidate" is IMPOSSIBLE (five legal moves, exactly one capture); ls20's names that ambushing a mover
+is impossible by the engine's own step order, 18 of 18. **Delete a refuted arm from an agent's search
+space, never from the record.**
+
+⚠️ **Effort proportional to prize, and say so in the brief.** bp35 +0.0302 · lf52 +0.0291 ·
+s5i5 +0.0167 · dc22 +0.0114 (one level from the end) · ls20 +0.0035 · lp85 +0.0009. The last is
+three actions on one level; its brief says to report "these are load-bearing" and stop rather than
+spend a day. ⛔ An agent given no sense of scale spends a day on the smallest item.
+
+⛔ **THE GOAL IS ALL 25 COMPLETE.** Every gate line, every transfer number and every closed axis in
+this file is subordinate to that. The 0.9082 is not the target; 25 games cleared is.
+
+### 7cp — which object the paint-order arm buries — tu93 is the real dependence, g50t is the arm's artefact (2026-08-30)
+
+⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
+Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
+it, the work either did not finish or its author stopped. Fill it in, or delete it.
