@@ -157,12 +157,14 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 >    that ACTUALLY plays each game (from the decision log, not `detect()`) and score. ⛔ The decisive
 >    question is not the number but whether a wrong tool LATCHES — `_PRIMARY_CONF = 0.70` makes a
 >    confident tool unretirable, and a wrong tool that cannot be displaced is worse than no tool.
-> 4. **THE LLM ARM, on a GPU** (rule 7ca). The target draw has NEVER once succeeded in any
->    environment we have measured — 404 on the box for an unpulled model name, connection refused on
->    Kaggle — so 0.9082 is tools + signature routing with the LLM contributing exactly zero, and the
->    six measurements that closed the tool-set axis never touched it. ⛔ Not on ceph-build (rule 7cc:
->    37 cores, load 110, and `snapgate.sh` now refuses). The instrument already exists:
->    `bash kaggle_bench/build_and_run.sh` — two arms, a real GPU, and no submission slot spent.
+> 4. ✅ **THE LLM ARM — ANSWERED 2026-08-30, rule 7ch. `arm llm` 0.908187, `arm fallback` 0.908187,
+>    ZERO games differing**, on a Kaggle GPU with vLLM serving gemma4 (38 served completions, target
+>    draws SUCCEEDING in the llm arm for the first time in the campaign, 34 re-decides in each arm,
+>    104 extra seconds of real model work). The model ran, answered, drew targets, and changed
+>    nothing. ⚠️ It does NOT say an LLM is useless — it says **these 25 cannot measure it**, because
+>    nineteen sit at the cap and signature routing already picks a tool that clears. The private 110
+>    are exactly the case where no tool fits, and this run cannot see that case. Same caveat shape as
+>    7cb's about inert actions. _(Historical statement of the axis:_ rule 7ca).
 
 ⛔ **EVERY SHORT GAME AND EVERY TOOL-SET AXIS IS NOW CLOSED WITH PROOFS.** The remaining 0.0918 is
 not reachable by tuning, routing, pairing, retiring differently, or repairing a tool — **SIX**

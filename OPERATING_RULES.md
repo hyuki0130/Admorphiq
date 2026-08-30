@@ -3740,3 +3740,48 @@ discard is correct. ⚠️ What survives for the private 110 is the SHAPE, not a
 renders its feedback in the outer band AND is driven by `graph` would have its working actions
 withheld — none of the 25 is that game, and one command (`band_rate_by_class`) says whether a new one
 is.
+
+### 7cg — identity-by-visibility census — five sites, three live, firing on two of twenty-five games (2026-08-30)
+
+_(stub claimed by scripts/newrule.sh — fill this in)_
+
+### 7ch — the LLM arm on a real GPU is byte-identical to the LLM-free arm (2026-08-30)
+
+Rule 7ca opened this axis by finding the LLM had never once been in the loop. `bash
+kaggle_bench/build_and_run.sh` at HEAD, Kaggle GPU kernel, vLLM serving gemma4 offline, two arms
+differing in one thing only — whether a model is served:
+
+```
+=== arm llm (model=gemma4) ===         total 0.908187   over 25 games   382s
+=== arm fallback (model=NONE) ===      total 0.908187   over 25 games   278s
+games differing:                       ZERO
+```
+
+⭐ **AND THE CONTROLS SAY THE MODEL WAS REALLY THERE, which is the whole value of the run.** A
+"no difference" between two arms is worthless if both arms were LLM-free — the fail-toward-nothing
+shape this file is full of. Four independent checks, and I did not accept the number until they
+agreed:
+
+```
+vLLM served                     38 x "POST /v1/chat/completions HTTP/1.1" 200 OK
+target-draw FAILURES by arm     fallback 3 · llm ZERO   <- the draw SUCCEEDED, first time ever
+harness re-decide picks by arm  llm 34 · fallback 34    <- both arms decided the same number of times
+wall clock                      382s vs 278s            <- the model cost 104 SECONDS of real work
+```
+
+⛔ **SO THE MODEL RAN, ANSWERED, DREW TARGETS, AND CHANGED NOTHING.** Not one game, not one action.
+It also amends 7ca's headline: the target draw HAS now succeeded — on a GPU, in the llm arm — and
+the result was identical anyway. The earlier 404-and-refused finding stands as the reason nobody had
+seen it; this is what happens when you fix it.
+
+⚠️ **WHAT IT DOES NOT SAY.** It does not say an LLM is useless for ARC-AGI-3 — it says that on THESE
+25 games, where nineteen sit at the 1.0 cap and the signature router already picks a tool that
+clears, there is nothing left for a model to add. **The private 110 are the case where signature
+routing has no tool that fits, and this measurement cannot see that case at all.** ⛔ Do not read
+"identical" as "drop the LLM"; read it as "the 25 cannot measure the LLM", which is the same shape
+as 7cb's caveat about inert actions.
+
+⭐ **THE ATTRIBUTION STEP IS THE TRANSFERABLE PART.** My first reading of this log was that the draw
+failed here too — three `Connection refused` lines, exactly the 7ca signature. Splitting them by arm
+banner took one pass and reversed the conclusion: **all three are the fallback arm, which has no
+model and is supposed to fail.** ⛔ A count that spans two arms describes neither (rule 7aj).

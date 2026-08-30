@@ -8,6 +8,10 @@ commit: see `git log --oneline -- src/admorphiq/harness/allowance.py`
 
 # R101ALLOW — learning a level's action budget by dying on it
 
+> A level that ENDS the game on overrun teaches its own budget: the ledger learns each level's
+> allowance from the actions at which it died, and refuses to trust a tool that cannot finish
+> inside it. Inert on every game that does not die.
+
 ## What is measured, and why it is worth having
 
 Many ARC-AGI-3 games END a level on action-count overrun. `obs.state` reports `GAME_OVER` directly,
@@ -157,4 +161,4 @@ cheap decisive experiment left on this axis, and it is worth exactly one round, 
 - `tests/test_harness_loop.py` — inertness with no deaths, retirement on two agreeing deaths, no
   retirement on scattered deaths, ban scoped to the dying level.
 
-[[.wiki/wiki/rounds/r101_silent-specialists]] · [[.wiki/wiki/rounds/index]]
+[[r101_silent-specialists]] · [[index]]

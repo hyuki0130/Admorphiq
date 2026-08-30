@@ -126,7 +126,16 @@ deleted from the repo** — the third time in this campaign, after `data/traces`
 
 ## Related
 
+Three pages this round's subject makes reachable again — each had NO inbound link and was therefore
+invisible to the retriever's backlink walk, which is the same as not existing at runtime:
+[[card_portability]] (what "the card travels" means and how it was measured),
+[[generic_tools_are_shippable_20260828]] (the lesson this round's shipped-gate confirms), and
+[[probe_cost_vs_human_baseline]] (why an action spent probing is an action spent against the human
+denominator).
+
+
 [[r101_conquest-wave]] · [[r101_tenure-end]] · [[r101_tool-development]] · [[r101_silent-specialists]]
+· [[r101_discarded-band]] · [[r101_inert-actions]] · [[r101_allowance-ledger]] · [[campaign/ACTIVE]]
 
 ⭐ [[r101_render-mutation-transfer]] extends this measurement to the games with no archive by
 MANUFACTURING the re-render (rule 7ce), and corrects one number here: the archive covers

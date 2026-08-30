@@ -149,6 +149,15 @@ def resolve_link(target: str, source: Path) -> Path | None | str:
         return "skip"
     if cleaned.endswith("/"):
         return "skip"  # directory-shaped link, intentional
+    # ⛔ A TARGET THAT CANNOT BE A PAGE NAME IS NOT A BROKEN LINK. Measured 2026-08-30: three of the
+    # five remaining findings were `[[...]]` and `[[X]]` in the doctrine page that DOCUMENTS link
+    # syntax, and `[[10,24,2]]` — a coordinate triple in prose. Reporting them trains the reader to
+    # scroll past the report, which is how a real dangling link survives. ⚠️ Kept narrow on purpose:
+    # a comma, or a name with no letter or digit in it. Anything broader would blind the check.
+    if "," in cleaned:
+        return "skip"
+    if not any(ch.isalnum() for ch in cleaned[:-3]):
+        return "skip"
     if not cleaned.endswith(".md"):
         cleaned += ".md"
     candidates = [
@@ -159,6 +168,27 @@ def resolve_link(target: str, source: Path) -> Path | None | str:
     for c in candidates:
         if c.exists() and c.is_relative_to(REPO_ROOT):
             return c
+
+    # ⛔ DEFER TO THE RUNTIME RESOLVER BEFORE CALLING A LINK BROKEN. Measured 2026-08-30: this
+    # function knew only three PATH forms, while `wiki_retrieval.resolve_link` — the one the agent
+    # actually uses — ALSO resolves a bare basename that matches exactly one file anywhere in the
+    # tree. So `[[r101_shipped-and-transfer]]` written in `campaign/` resolved fine at runtime and
+    # was reported here as a missing xref, and the orphan check counted its target unreferenced for
+    # the same reason. **A guard that is stricter than the thing it guards manufactures work**: the
+    # obvious response is to "fix" a link that was never broken by prefixing a directory.
+    #
+    # One implementation, not two. If the retriever cannot be imported (it pulls the package), the
+    # older answer stands rather than becoming a silent pass — an unresolvable import must not turn
+    # this check into a no-op (rule 7q).
+    try:
+        from admorphiq.hypothesis.wiki_retrieval import resolve_link as _runtime_resolve
+    except Exception:  # noqa: BLE001 - the lint must run without the package installed
+        return None
+    hit = _runtime_resolve(cleaned[:-3] if cleaned.endswith(".md") else cleaned, WIKI_DIR)
+    if hit:
+        resolved = (WIKI_DIR / hit).resolve()
+        if resolved.exists() and resolved.is_relative_to(REPO_ROOT):
+            return resolved
     return None
 
 

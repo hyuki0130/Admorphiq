@@ -8,7 +8,7 @@ seeds `llm_context/decision_tree.md` first, then walks `[[backlinks]]`.
 Use this index when authoring or auditing: skim the catalog, pick a
 category, drill into specific pages.
 
-**Total pages**: 273.
+**Total pages**: 281.
 
 ## Games (26)
 
@@ -102,7 +102,7 @@ category, drill into specific pages.
 - [[concepts/tool_claim_breadth.md]] — Twenty-nine of the thirty-seven generic tools bid on EXACTLY ONE of the twenty-five sample
 - [[concepts/version_hash.md]] — A game's identifier in the ARC Prize API has the form `<title>-<hash>` (e.g. `tn36-ab4f63cc`). The hash is a version fingerprint: games with the same title but different hashes share gameplay rules but differ in internal implementation details that solvers may or may not observe.
 
-## Lessons (engineering wisdom from past incidents) (62)
+## Lessons (engineering wisdom from past incidents) (63)
 
 - [[lessons/top_solutions_survey_20260708.md]] — Survey of what is actually open-sourced for ARC-AGI-3 (M1 winners = local-LLM agents), resolution of the leaderboard score-scale confusion (top ~1.56 = 1.56%, not 156%; the 12.58% anchor was the 2025 preview), and the top-3 generic levers to adopt next.
 - [[lessons/online_rl_sprint_round_log.md]] — **🔎 To FIND past work by topic, start at the retrieval map [[../rounds/index]]**
@@ -122,6 +122,7 @@ category, drill into specific pages.
 - [[lessons/env_metadata_duplicate_game_id_20260719.md]] — 15 of 25 games kept a stale old-hash dir whose metadata.json claimed the NEW game_id; arc_agi resolves duplicate ids by rglob scan order, so APFS (Mac) and ext4 (ceph-build) silently loaded DIFFERENT game content under the SAME reported game_id.
 - [[lessons/faithful_offline_simulator_20260715.md]] — Six R56 clears this sprint share one shape: rebuild the game's exact state
 - [[lessons/false_claim_verification_20260715.md]] — A lane reported a nonexistent commit and a two-part result that were both later
+- [[lessons/floor_rule_condemns_a_drawn_tile_20260830.md]] — `phase.py`'s floor rule rejects an avatar-sized tile if ANY pixel in it is a condemned colour,
 - [[lessons/frame_diff_as_probe.md]] — The difference between two consecutive frames is the cheapest, most general signal for classifying entities: what moved is likely the player, what changed locally is likely a toggle, what stays constant is likely background.
 - [[lessons/ft09_glyph_decode_20260715.md]] — Gold-trace reverse-engineering falsifies the R16-R18 "clicking couples
 - [[lessons/ft09_stride_button_drop_20260423.md]] — The default observation stride of 8 px samples 64 candidate
@@ -187,7 +188,7 @@ category, drill into specific pages.
 
 - [[llm_context/decision_tree.md]] — Compact dispatch read first by Qwen — default primary adaptive_bfs_solver, peer-swap only on Observable-Signature match, 3-deep fallback_stack by game shape, re-ask on primary failure via each plan's Falsification Signature + Next-Best.
 
-## Top-level dispatch (architecture, selector, log, schema) (123)
+## Top-level dispatch (architecture, selector, log, schema) (130)
 
 - [[campaign/ACTIVE.md]] — The plan that survives a context compaction. Read this before choosing a direction.
 - [[memory/MEMORY.md]] — The machine-local memory index, mirrored; each line points at one durable fact.
@@ -277,14 +278,21 @@ category, drill into specific pages.
 - [[memory/project_unified_harness_r53.md]] — R53 unified self-improving harness — 6 from-scratch generic tools + retry loop; graph clears 3/9 legacy games; continuation = per-tool strengthening
 - [[memory/project_wiki_agent_first_run.md]] — 40-env Qwen 3 8B WikiAgent bench — 15/40 envs, 36/290 levels (12.41%), classification accuracy 45%
 - [[rounds/r100_tool-selection-wall.md]] — Measured that tool SELECTION was not the bottleneck: a 100-run sweep found one game of twenty where a non-graph tool beats graph.
-- [[rounds/r101_allowance-ledger.md]] — (no description)
+- [[rounds/r101_allowance-ledger.md]] — A level that ENDS the game on overrun teaches its own budget: the ledger learns each level's
 - [[rounds/r101_bp35-attempts.md]] — bp35's seven collapses are seven DIFFERENT attempts, so the wa30 mechanism does not apply. The
 - [[rounds/r101_conquest-wave.md]] — Eight parallel per-game agents took the generic tools from 0.8935 to 0.9069 in a day, conquering
+- [[rounds/r101_discarded-band.md]] — `segment.board_changed` throws the frame's outer band away on purpose. It has exactly **one**
+- [[rounds/r101_inert-actions.md]] — An action that changes nothing is 9.2x more likely to be on a level that never clears. Removing
 - [[rounds/r101_llm-path-measured.md]] — Every generic-path number in R101 came from the LLM-FREE fallback. The path that actually
+- [[rounds/r101_ls20-fog-cost.md]] — The briefing asked for **a different way to meet a mover under fog**. The census says the mover is
 - [[rounds/r101_probe-fallback.md]] — A fallback that always pressed the lowest-numbered key spent 83 of lf52's 117 refused ACTION1
+- [[rounds/r101_render-mutation-transfer.md]] — Three independent colour relabellings of every board, full 25 each, against an identity control at
+- [[rounds/r101_shipped-and-transfer.md]] — Two numbers that the campaign had been quoting without ever measuring properly. The first is
 - [[rounds/r101_silent-specialists.md]] — Every stuck game retires its specialist because the tool proposes NOTHING, and five separate
+- [[rounds/r101_tenure-end.md]] — Rule 7bd asked why the strong tool goes empty. Rule 7ac closed routing, rule 7bh measured
 - [[rounds/r101_tool-development.md]] — Stage-one round: build frame-only rule-recovery tools until the 25 sample games clear. The
 - [[rounds/r101_wa30-level-restart.md]] — wa30's last level restarts on its 70-action overrun, so the harness gets EIGHT tries at it —
+- [[rounds/r101_zorder-rider.md]] — [[r101_shipped-and-transfer]] measured that twenty-four of twenty-five games are action-for-action
 - [[rounds/r53_unified-harness.md]] — The runtime general agent as a retry loop: one offline model reads a minimal
 - [[rounds/r54_vision-llm-policy.md]] — A multimodal LLM plays the game directly: each turn renders the 64×64 frame to
 - [[rounds/r55_code-repl-agent.md]] — A multimodal coding model with a stateless Python REPL and free internal

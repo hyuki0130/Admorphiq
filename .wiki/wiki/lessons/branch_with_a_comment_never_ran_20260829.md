@@ -101,5 +101,6 @@ comment.
 
 Measured 2026-08-29 on dc22 level 6 with `scripts/_dc22_ptrace.py` and
 `scripts/_dc22_gantryx.py`; the 268-press log and the aimed-teleport table are
-in `.wiki/wiki/sample_games_mechanics.md`. Related: [[rules_learned_by_losing_a_day]]
-rule 7g, [[instrument_failures_20260829]].
+in `.wiki/wiki/sample_games_mechanics.md`. Related: `OPERATING_RULES.md` rule 7g (the source says what is POSSIBLE; only a run says what
+HAPPENS) and its instrument-failure family, rules 7c/7d/7aj — neither was ever written as a wiki
+page, and the two wiki links that named them had been dangling since this page was created.
