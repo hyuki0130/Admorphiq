@@ -1,0 +1,45 @@
+{
+  "agent": "unified",
+  "dropped": "stencil",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.0,
+  "games": [
+    {
+      "game_id": "ft09-0d8bbf25",
+      "win_levels": 6,
+      "levels_completed": 0,
+      "elapsed_s": 6.42,
+      "total_actions": 500,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "FT09",
+      "ownership": {
+        "actions": 500,
+        "by_tool": {
+          "graph": 500
+        },
+        "owner": "graph",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "graph": 500
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "graph"
+          }
+        ]
+      }
+    }
+  ]
+}

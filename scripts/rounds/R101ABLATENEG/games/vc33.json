@@ -1,0 +1,106 @@
+{
+  "agent": "unified",
+  "dropped": "toggle",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 7,
+      "elapsed_s": 23.5,
+      "total_actions": 199,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 3,
+          "human_actions": 7,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 8,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 24,
+          "human_actions": 44,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 26,
+          "human_actions": 61,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 55,
+          "human_actions": 131,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 25,
+          "human_actions": 34,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 58,
+          "human_actions": 152,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33",
+      "ownership": {
+        "actions": 199,
+        "by_tool": {
+          "pillar_transfer": 199
+        },
+        "owner": "pillar_transfer",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "pillar_transfer": 3
+          },
+          "1": {
+            "pillar_transfer": 8
+          },
+          "2": {
+            "pillar_transfer": 24
+          },
+          "3": {
+            "pillar_transfer": 26
+          },
+          "4": {
+            "pillar_transfer": 55
+          },
+          "5": {
+            "pillar_transfer": 25
+          },
+          "6": {
+            "pillar_transfer": 58
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "pillar_transfer"
+          }
+        ]
+      }
+    }
+  ]
+}

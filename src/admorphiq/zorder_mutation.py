@@ -36,14 +36,33 @@ level structure and the win predicate are untouched, and no coordinate conjugati
 needed because the mutation moves no pixel to a different place — it only changes
 which of two co-located sprites is visible there.
 
-⛔ THE PERMUTATION IS SAME-LAYER ONLY, AND THAT IS NOT A DETAIL. Reordering across
-layers would change what the engine draws on top in ways a re-render is NOT free to
-make — layer is an authored property. Reordering SAME-LAYER siblings changes only
-which of two co-located sprites wins a pixel, which is exactly the s5i5 perturbation
-and exactly what a legitimate re-serialisation of the same board may differ in.
-:func:`same_layer_permute` therefore preserves every sprite's LAYER SLOT: the sprites
-carrying layer L occupy the same list positions before and after, permuted among
-themselves, so the cross-layer relative order is byte-identical.
+⛔ "SAME-LAYER SIBLINGS ONLY" IS THE RIGHT RULE FOR 22 GAMES AND MEANINGLESS FOR THREE,
+AND THAT DISTINCTION COST THE FIRST ARM ITS POSITIVE CONTROL. The conservative rule —
+permute only sprites sharing a layer, so the cross-layer relative order is byte-identical
+— is correct wherever `layer` is a rendering property. **s5i5, tu93 and wa30 override
+``Camera._raw_render`` with a version that does not sort at all**, so for those three the
+raw list order IS the z-order and `layer` decides nothing about the picture.
+
+MEASURED (`scripts/_s5i5_zprobe.py`, painting with s5i5's own painter): the rider and the
+bar it rides are on DIFFERENT declared layers, so a same-layer reversal changes **0 cells
+on seven of s5i5's eight levels** and the arm scored the game identical action for action
+— it could not reproduce rule 7cd's known answer. A WHOLE-LIST reversal changes 2/1/2/1/6/1
+cells on levels 1-6, and the live-vs-archived difference is 2/1/2/1/6/1 on the same levels,
+including **L4's single cell at (43,31), live 13 -> archived 11**. The whole-list
+permutation reproduces the competition's own re-render, pair for pair.
+
+⭐ AND ON THE OTHER 22 GAMES THE WHOLE-LIST ARM *IS* THE SAME-LAYER ARM. ``_raw_render``
+filters by visibility (order-preserving) and then applies a STABLE ``sorted(key=layer)``,
+so reordering the input list can only ever change the order WITHIN a layer group — the
+sort re-imposes the cross-layer order regardless. ``zrev`` and ``zrevall`` must therefore
+return identical results on every layer-sorting game, and the round runs both so that
+equality is measured rather than argued.
+
+So both scopes ship. :func:`same_layer_permute` preserves every sprite's LAYER SLOT and is
+the strictly conservative arm; :func:`whole_list_permute` permutes the list entire and is
+the one that reproduces the archive. Neither touches ``Level._sprites``, so click
+resolution (``Level.get_sprite_at``, which sorts by layer with ``reverse=True``) is
+identical under both.
 
 ⭐ THE HUMAN DENOMINATOR IS INVARIANT — MEASURED, NOT ASSUMED. The two s5i5
 serializations differ ONLY in list order (`scripts/_s5i5_srcdiff.py`: same sprite art,
@@ -114,6 +133,26 @@ def same_layer_permute(sprites: list[Any], kind: str) -> list[Any]:
     return out
 
 
+def whole_list_permute(sprites: list[Any], kind: str) -> list[Any]:
+    """Permute the sprite list ENTIRE — the perturbation an actual re-render exhibits.
+
+    Purpose: reach the three games (s5i5, tu93, wa30) whose camera does not sort by layer,
+    where the raw list order is the z-order and a same-layer permutation therefore changes
+    almost nothing. On the other 22 this is not a wider mutation at all: the engine's
+    STABLE ``sorted(key=layer)`` re-imposes the cross-layer order, so the only thing a
+    whole-list permutation can change there is the order within a layer.
+
+    Expected feedback: on a layer-sorting game this must produce results identical to
+    :func:`same_layer_permute`'s arm. If a round shows `zrev` and `zrevall` disagreeing on
+    such a game, the equivalence argument is wrong and BOTH arms' numbers are suspect.
+    """
+    if kind == "rev":
+        return list(sprites)[::-1]
+    if kind == "rot":
+        return list(sprites[1:]) + list(sprites[:1])
+    raise ValueError(f"unknown permutation kind {kind!r}")
+
+
 class ZOrderMutation:
     """A permutation of the paint order that leaves the game's meaning intact."""
 
@@ -136,16 +175,21 @@ class SameLayerPermutation(ZOrderMutation):
     `cperm` and `cperm2` do for colour (rule 7ce).
     """
 
-    def __init__(self, kind: str, name: str) -> None:
+    def __init__(self, kind: str, name: str, scope: str = "same-layer") -> None:
         if kind not in ("rev", "rot"):
             raise ValueError(f"kind must be 'rev' or 'rot', got {kind!r}")
+        if scope not in ("same-layer", "whole-list"):
+            raise ValueError(f"scope must be 'same-layer' or 'whole-list', got {scope!r}")
         self.kind = kind
+        self.scope = scope
         self.name = name
 
     def describe(self) -> dict[str, Any]:
-        return {"name": self.name, "kind": self.kind, "scope": "same-layer siblings"}
+        return {"name": self.name, "kind": self.kind, "scope": self.scope}
 
     def permute(self, sprites: list[Any]) -> list[Any]:
+        if self.scope == "whole-list":
+            return whole_list_permute(sprites, self.kind)
         return same_layer_permute(sprites, self.kind)
 
 
@@ -278,8 +322,16 @@ def build(spec: str) -> ZOrderMutation:
     """
     arms = {
         "identity": lambda: ZOrderMutation(),
+        # The strictly conservative scope: no sprite may cross a layer boundary. Correct
+        # wherever `layer` is a rendering property, which is 22 of the 25 games.
         "zrev": lambda: SameLayerPermutation("rev", "zrev"),
         "zrot": lambda: SameLayerPermutation("rot", "zrot"),
+        # ⭐ THE ARM THAT REPRODUCES THE ARCHIVE. On a layer-sorting game the engine's
+        # stable sort makes this IDENTICAL to `zrev`; on s5i5/tu93/wa30, whose camera does
+        # not sort, it is the only scope that can move anything, and it reproduces the
+        # live-vs-archived s5i5 difference cell for cell.
+        "zrevall": lambda: SameLayerPermutation("rev", "zrevall", scope="whole-list"),
+        "zrotall": lambda: SameLayerPermutation("rot", "zrotall", scope="whole-list"),
     }
     if spec not in arms:
         raise KeyError(f"unknown mutation {spec!r}; arms are {sorted(arms)}")

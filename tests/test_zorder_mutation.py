@@ -15,6 +15,7 @@ from admorphiq.zorder_mutation import (
     ZOrderMutation,
     build,
     same_layer_permute,
+    whole_list_permute,
 )
 
 
@@ -137,3 +138,74 @@ def test_an_unknown_permutation_kind_is_rejected_at_construction() -> None:
     """
     with pytest.raises(ValueError):
         SameLayerPermutation("shuffle", "zshuffle")
+
+
+def test_whole_list_reversal_reverses_everything() -> None:
+    """Purpose: the whole-list scope is the arm that reproduces the archived s5i5 board,
+    whose camera does not sort by layer at all — so it must reverse the list entire,
+    across declared layers.
+
+    Expected feedback: a failure means the arm has silently become the conservative
+    same-layer one and can no longer reach the three no-sort games (s5i5, tu93, wa30) —
+    the exact hole that cost the first arm its positive control.
+    """
+    sprites = [_S("a", 1), _S("b", 2), _S("c", 1)]
+    out = whole_list_permute(sprites, "rev")
+    assert [s.tag for s in out] == ["c", "b", "a"]
+    assert [s.tag for s in whole_list_permute(sprites, "rot")] == ["b", "c", "a"]
+
+
+def test_whole_list_scope_stays_within_a_layer_once_the_engine_sorts() -> None:
+    """Purpose: pin the property the whole-list arm's safety rests on for the 22
+    layer-sorting games. The engine paints with ``sorted(sprites, key=layer)``, a STABLE
+    sort, so however the input list is permuted the PAINTED sequence of layers is
+    unchanged — a whole-list permutation can only reorder sprites within a layer there,
+    which is exactly what the conservative scope allows.
+
+    Expected feedback: a failure means `zrevall` is a genuinely cross-layer mutation on
+    those games and every number it produced would need re-reading against a different
+    validity argument.
+    """
+    sprites = [_S(c, i % 3) for i, c in enumerate("abcdefgh")]
+    painted = [s.layer for s in sorted(sprites, key=lambda s: s.layer)]
+    for kind in ("rev", "rot"):
+        out = sorted(whole_list_permute(sprites, kind), key=lambda s: s.layer)
+        assert [s.layer for s in out] == painted, kind
+        assert sorted(id(s) for s in out) == sorted(id(s) for s in sprites), kind
+
+
+def test_reversal_is_the_SAME_permutation_at_both_scopes_after_the_sort() -> None:
+    """Purpose: `zrev` and `zrevall` must be indistinguishable on any layer-sorting game —
+    reversing the whole list reverses each layer's subsequence, which is precisely what the
+    same-layer arm does. That equality is the round's in-run validity check: it is measured
+    on 22 games rather than argued, and only the three no-sort games may differ.
+
+    Expected feedback: a failure means the two arms are different mutations everywhere, the
+    round's equality check stops being evidence, and a divergence on a layer-sorting game
+    could no longer be read as an instrument fault.
+
+    ⚠️ Rotation is deliberately NOT claimed here: rotating the whole list by one rotates
+    only the group the moved sprite belongs to, whereas the same-layer arm rotates every
+    group. Both stay within their layers; they are simply different permutations, which is
+    why `zrotall` is an INDEPENDENT arm and not a duplicate.
+    """
+    sprites = [_S(c, i % 3) for i, c in enumerate("abcdefgh")]
+    whole = sorted(whole_list_permute(sprites, "rev"), key=lambda s: s.layer)
+    same = sorted(same_layer_permute(sprites, "rev"), key=lambda s: s.layer)
+    assert [s.tag for s in whole] == [s.tag for s in same]
+    rot_whole = sorted(whole_list_permute(sprites, "rot"), key=lambda s: s.layer)
+    rot_same = sorted(same_layer_permute(sprites, "rot"), key=lambda s: s.layer)
+    assert [s.tag for s in rot_whole] != [s.tag for s in rot_same]
+
+
+def test_scope_is_validated_at_construction() -> None:
+    """Purpose: an unrecognised scope must fail before a game is played, not silently fall
+    back to one of the two real scopes.
+
+    Expected feedback: a failure means a typo in an arm definition could produce a run that
+    measures the conservative scope while its name and the round page claim the wider one.
+    """
+    with pytest.raises(ValueError):
+        SameLayerPermutation("rev", "zbad", scope="everything")
+    assert build("zrevall").describe()["scope"] == "whole-list"
+    assert build("zrev").describe()["scope"] == "same-layer"

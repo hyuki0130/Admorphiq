@@ -1,0 +1,96 @@
+{
+  "agent": "unified",
+  "dropped": "sigilgate",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.434524,
+  "games": [
+    {
+      "game_id": "sc25-635fd71a",
+      "win_levels": 6,
+      "levels_completed": 4,
+      "elapsed_s": 10.13,
+      "total_actions": 577,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 36,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 8,
+          "human_actions": 6,
+          "score": 0.5625
+        },
+        {
+          "level": 3,
+          "agent_actions": 14,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 32,
+          "human_actions": 83,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.434524,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SC25",
+      "ownership": {
+        "actions": 572,
+        "by_tool": {
+          "graph": 424,
+          "pattern_cast": 147,
+          "none": 1
+        },
+        "owner": "graph",
+        "owner_share": 0.7413,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "pattern_cast": 18
+          },
+          "1": {
+            "pattern_cast": 8
+          },
+          "2": {
+            "pattern_cast": 14
+          },
+          "3": {
+            "pattern_cast": 32
+          },
+          "4": {
+            "graph": 424,
+            "pattern_cast": 75,
+            "none": 1
+          }
+        },
+        "tenures": 3,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "pattern_cast"
+          },
+          {
+            "action": 148,
+            "level": 4,
+            "tool": "none"
+          },
+          {
+            "action": 149,
+            "level": 4,
+            "tool": "graph"
+          }
+        ]
+      }
+    }
+  ]
+}

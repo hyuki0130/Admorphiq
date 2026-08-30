@@ -1,0 +1,96 @@
+{
+  "agent": "unified",
+  "dropped": "gantry",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.47619,
+  "games": [
+    {
+      "game_id": "dc22-fdcac232",
+      "win_levels": 6,
+      "levels_completed": 4,
+      "elapsed_s": 14.58,
+      "total_actions": 731,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 31,
+          "human_actions": 59,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 53,
+          "human_actions": 102,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 59,
+          "human_actions": 67,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 87,
+          "human_actions": 98,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.47619,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "DC22",
+      "ownership": {
+        "actions": 730,
+        "by_tool": {
+          "graph": 438,
+          "phase_grid": 291,
+          "none": 1
+        },
+        "owner": "graph",
+        "owner_share": 0.6,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "phase_grid": 31
+          },
+          "1": {
+            "phase_grid": 53
+          },
+          "2": {
+            "phase_grid": 59
+          },
+          "3": {
+            "phase_grid": 87
+          },
+          "4": {
+            "graph": 438,
+            "phase_grid": 61,
+            "none": 1
+          }
+        },
+        "tenures": 3,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "phase_grid"
+          },
+          {
+            "action": 292,
+            "level": 4,
+            "tool": "none"
+          },
+          {
+            "action": 293,
+            "level": 4,
+            "tool": "graph"
+          }
+        ]
+      }
+    }
+  ]
+}

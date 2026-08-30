@@ -1,0 +1,115 @@
+{
+  "agent": "unified",
+  "dropped": "toggle",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "sb26-7fbdac44",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 4.17,
+      "total_actions": 124,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 9,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 15,
+          "human_actions": 28,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 15,
+          "human_actions": 18,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 15,
+          "human_actions": 19,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 17,
+          "human_actions": 31,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 19,
+          "human_actions": 23,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 17,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 17,
+          "human_actions": 18,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SB26",
+      "ownership": {
+        "actions": 124,
+        "by_tool": {
+          "subroutine": 124
+        },
+        "owner": "subroutine",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "subroutine": 9
+          },
+          "1": {
+            "subroutine": 15
+          },
+          "2": {
+            "subroutine": 15
+          },
+          "3": {
+            "subroutine": 15
+          },
+          "4": {
+            "subroutine": 17
+          },
+          "5": {
+            "subroutine": 19
+          },
+          "6": {
+            "subroutine": 17
+          },
+          "7": {
+            "subroutine": 17
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "subroutine"
+          }
+        ]
+      }
+    }
+  ]
+}

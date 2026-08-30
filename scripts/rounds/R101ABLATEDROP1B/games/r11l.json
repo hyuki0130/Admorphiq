@@ -1,0 +1,56 @@
+{
+  "agent": "unified",
+  "dropped": "tether",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.004325,
+  "games": [
+    {
+      "game_id": "r11l-495a7899",
+      "win_levels": 6,
+      "levels_completed": 1,
+      "elapsed_s": 7.37,
+      "total_actions": 589,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 73,
+          "human_actions": 22,
+          "score": 0.090824
+        }
+      ],
+      "game_score": 0.004325,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "R11L",
+      "ownership": {
+        "actions": 572,
+        "by_tool": {
+          "graph": 572
+        },
+        "owner": "graph",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "graph": 72
+          },
+          "1": {
+            "graph": 500
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "graph",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

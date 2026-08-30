@@ -1,0 +1,122 @@
+{
+  "agent": "unified",
+  "dropped": "sluice,graph",
+  "registry_size": 45,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.714286,
+  "games": [
+    {
+      "game_id": "sp80-589a99af",
+      "win_levels": 6,
+      "levels_completed": 5,
+      "elapsed_s": 50.75,
+      "total_actions": 592,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 5,
+          "human_actions": 39,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 8,
+          "human_actions": 58,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 11,
+          "human_actions": 25,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 27,
+          "human_actions": 148,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 37,
+          "human_actions": 96,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.714286,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "SP80",
+      "ownership": {
+        "actions": 588,
+        "by_tool": {
+          "world_model": 484,
+          "spill": 95,
+          "deadsig": 7,
+          "none": 2
+        },
+        "owner": "world_model",
+        "owner_share": 0.8231,
+        "n_tools_used": 4,
+        "by_level": {
+          "0": {
+            "spill": 5
+          },
+          "1": {
+            "spill": 8
+          },
+          "2": {
+            "spill": 11
+          },
+          "3": {
+            "spill": 27
+          },
+          "4": {
+            "spill": 37
+          },
+          "5": {
+            "world_model": 484,
+            "spill": 7,
+            "deadsig": 7,
+            "none": 2
+          }
+        },
+        "tenures": 5,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "spill",
+            "primary_owns": true
+          },
+          {
+            "action": 96,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": true
+          },
+          {
+            "action": 97,
+            "level": 5,
+            "tool": "deadsig",
+            "primary_owns": false
+          },
+          {
+            "action": 104,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 105,
+            "level": 5,
+            "tool": "world_model",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

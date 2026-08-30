@@ -1,0 +1,81 @@
+{
+  "agent": "unified",
+  "dropped": "clonewalk",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.107143,
+  "games": [
+    {
+      "game_id": "g50t-5849a774",
+      "win_levels": 7,
+      "levels_completed": 2,
+      "elapsed_s": 8.33,
+      "total_actions": 655,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 52,
+          "human_actions": 78,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 100,
+          "human_actions": 175,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.107143,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "G50T",
+      "ownership": {
+        "actions": 652,
+        "by_tool": {
+          "maze": 460,
+          "graph": 191,
+          "none": 1
+        },
+        "owner": "maze",
+        "owner_share": 0.7055,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "maze": 52
+          },
+          "1": {
+            "maze": 100
+          },
+          "2": {
+            "maze": 308,
+            "graph": 191,
+            "none": 1
+          }
+        },
+        "tenures": 3,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "maze",
+            "primary_owns": true
+          },
+          {
+            "action": 461,
+            "level": 2,
+            "tool": "none",
+            "primary_owns": true
+          },
+          {
+            "action": 462,
+            "level": 2,
+            "tool": "graph",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

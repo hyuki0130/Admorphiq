@@ -1,0 +1,55 @@
+{
+  "agent": "unified",
+  "dropped": "pillar_transfer",
+  "registry_size": 46,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.8e-05,
+  "games": [
+    {
+      "game_id": "vc33-5430563c",
+      "win_levels": 7,
+      "levels_completed": 1,
+      "elapsed_s": 9.77,
+      "total_actions": 826,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 316,
+          "human_actions": 7,
+          "score": 0.000491
+        }
+      ],
+      "game_score": 1.8e-05,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "VC33",
+      "ownership": {
+        "actions": 810,
+        "by_tool": {
+          "graph": 810
+        },
+        "owner": "graph",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "graph": 310
+          },
+          "1": {
+            "graph": 500
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "graph"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "agent": "unified",
+  "dropped": "cover_targets,graph",
+  "registry_size": 45,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.027778,
+  "games": [
+    {
+      "game_id": "re86-8af5384d",
+      "win_levels": 8,
+      "levels_completed": 1,
+      "elapsed_s": 7.15,
+      "total_actions": 529,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 24,
+          "human_actions": 26,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.027778,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "RE86",
+      "ownership": {
+        "actions": 524,
+        "by_tool": {
+          "world_model": 484,
+          "reforge": 31,
+          "deadsig": 7,
+          "none": 2
+        },
+        "owner": "world_model",
+        "owner_share": 0.9237,
+        "n_tools_used": 4,
+        "by_level": {
+          "0": {
+            "reforge": 24
+          },
+          "1": {
+            "world_model": 484,
+            "reforge": 7,
+            "deadsig": 7,
+            "none": 2
+          }
+        },
+        "tenures": 5,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "reforge",
+            "primary_owns": true
+          },
+          {
+            "action": 32,
+            "level": 1,
+            "tool": "none",
+            "primary_owns": true
+          },
+          {
+            "action": 33,
+            "level": 1,
+            "tool": "deadsig",
+            "primary_owns": false
+          },
+          {
+            "action": 40,
+            "level": 1,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 41,
+            "level": 1,
+            "tool": "world_model",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

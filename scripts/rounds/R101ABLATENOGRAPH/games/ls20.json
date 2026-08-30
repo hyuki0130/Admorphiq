@@ -1,0 +1,62 @@
+{
+  "agent": "unified",
+  "dropped": "keymaze,graph",
+  "registry_size": 45,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.0,
+  "games": [
+    {
+      "game_id": "ls20-9607627b",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 11.35,
+      "total_actions": 500,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "LS20",
+      "ownership": {
+        "actions": 500,
+        "by_tool": {
+          "world_model": 492,
+          "deadsig": 7,
+          "none": 1
+        },
+        "owner": "world_model",
+        "owner_share": 0.984,
+        "n_tools_used": 3,
+        "by_level": {
+          "0": {
+            "world_model": 492,
+            "deadsig": 7,
+            "none": 1
+          }
+        },
+        "tenures": 3,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "deadsig",
+            "primary_owns": false
+          },
+          {
+            "action": 8,
+            "level": 0,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 9,
+            "level": 0,
+            "tool": "world_model",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

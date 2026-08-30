@@ -41,6 +41,24 @@ import numpy as np
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "environment_files"
 
 
+def _game_source(game_dir: pathlib.Path) -> pathlib.Path | None:
+    """The game's own module, SKIPPING macOS AppleDouble artefacts.
+
+    ⛔ MEASURED 2026-08-30, and it is the fail-toward-nothing shape again. ceph-build's
+    `environment_files` holds a `._<game>.py` beside every real one — a tar artefact the
+    Mac created, which CLAUDE.md already warns about for file-list diffs. It sorts FIRST,
+    it is binary, and importing it raises "source code string cannot contain null bytes".
+    The first census run came back with 24 of 25 games erroring and ONE result, which
+    reads exactly like "the games cannot be read" and is a property of the directory.
+    `scripts/dump_sample_levels.py` picks its source the same way and has the same hole.
+    """
+    for path in sorted(game_dir.rglob("*.py")):
+        if path.name.startswith("._"):
+            continue
+        return path
+    return None
+
+
 def _load(path: pathlib.Path):
     spec = importlib.util.spec_from_file_location(f"_game_{path.stem}", path)
     if spec is None or spec.loader is None:
@@ -81,15 +99,34 @@ def z_sensitive(a, b) -> int:
     return 1 if bool((sub_a[both] != sub_b[both]).any()) else 0
 
 
+def camera_sorts_by_layer(mod) -> bool:
+    """Does this game paint with the engine's layer sort, or with the raw list order?
+
+    Purpose: it decides WHICH of the two counts below is the operative one, and getting it
+    wrong is what cost the first mutation arm its positive control. s5i5, tu93 and wa30
+    each define a ``Camera`` subclass overriding ``_raw_render`` with a version that walks
+    the sprite list in order and never sorts, so for them ``layer`` decides nothing about
+    the picture and the operative count is the any-layer one.
+
+    Expected feedback: detected from the module rather than hardcoded from a grep, so a
+    game re-render that adds or drops the override is reported instead of assumed.
+    """
+    from arcengine import Camera
+
+    for value in vars(mod).values():
+        if (isinstance(value, type) and issubclass(value, Camera)
+                and "_raw_render" in value.__dict__):
+            return False
+    return True
+
+
 def count_level(sprites) -> tuple[int, int]:
     """(z-sensitive same-layer pairs, z-sensitive pairs ignoring layer entirely).
 
-    The second number is not decoration: s5i5, tu93 and wa30 override
-    ``Camera._raw_render`` with a version that does NOT sort by layer, so for those three
-    the list order alone decides the picture and every pair is a same-order pair. The
-    mutation is still same-layer-only there — that is the conservative choice — but the
-    gap between the two numbers says how much of those boards the arm deliberately leaves
-    alone.
+    Which one matters is decided by :func:`camera_sorts_by_layer`. Under the engine's own
+    stable ``sorted(key=layer)`` only same-layer pairs can ever be reordered by a change of
+    list order, so the same-layer count is the exposure; under a camera that does not sort,
+    every overlapping pair is orderable and the any-layer count is the exposure.
     """
     same, any_layer = 0, 0
     n = len(sprites)
@@ -133,7 +170,7 @@ def main() -> None:
         print(json.dumps(row))
         return
 
-    src = next(iter(sorted(game_dir.rglob("*.py"))), None)
+    src = _game_source(game_dir)
     if src is None:
         row["error"] = "no game source"
         print(json.dumps(row))
@@ -159,15 +196,19 @@ def main() -> None:
         per_level_any.append(any_layer)
         sprite_counts.append(len(sprites))
 
+    sorts = camera_sorts_by_layer(mod)
+    operative = per_level if sorts else per_level_any
     row.update({
         "n_levels": len(levels),
+        "camera_sorts_by_layer": sorts,
         "sprites_per_level": sprite_counts,
         "zpairs_same_layer": per_level,
         "zpairs_any_layer": per_level_any,
-        "levels_with_zpairs": sum(1 for v in per_level if v),
-        "total_zpairs": sum(per_level),
-        "max_zpairs": max(per_level) if per_level else 0,
-        "verdict": "CAN_EXHIBIT" if sum(per_level) else "STATICALLY_CLEAN",
+        "zpairs_operative": operative,
+        "levels_with_zpairs": sum(1 for v in operative if v),
+        "total_zpairs": sum(operative),
+        "max_zpairs": max(operative) if operative else 0,
+        "verdict": "CAN_EXHIBIT" if sum(operative) else "STATICALLY_CLEAN",
     })
     print(json.dumps(row))
 

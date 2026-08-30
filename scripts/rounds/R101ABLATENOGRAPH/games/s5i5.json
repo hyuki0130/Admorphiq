@@ -1,0 +1,136 @@
+{
+  "agent": "unified",
+  "dropped": "swivel,graph",
+  "registry_size": 45,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.416667,
+  "games": [
+    {
+      "game_id": "s5i5-18d95033",
+      "win_levels": 8,
+      "levels_completed": 5,
+      "elapsed_s": 28.38,
+      "total_actions": 664,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 13,
+          "human_actions": 20,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 30,
+          "human_actions": 89,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 47,
+          "human_actions": 106,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 39,
+          "human_actions": 54,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 32,
+          "human_actions": 162,
+          "score": 1.0
+        }
+      ],
+      "game_score": 0.416667,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "S5I5",
+      "ownership": {
+        "actions": 661,
+        "by_tool": {
+          "linkage": 335,
+          "telescope": 168,
+          "world_model": 148,
+          "deadsig": 7,
+          "none": 3
+        },
+        "owner": "linkage",
+        "owner_share": 0.5068,
+        "n_tools_used": 5,
+        "by_level": {
+          "0": {
+            "telescope": 13
+          },
+          "1": {
+            "telescope": 30
+          },
+          "2": {
+            "telescope": 47
+          },
+          "3": {
+            "telescope": 39
+          },
+          "4": {
+            "telescope": 32
+          },
+          "5": {
+            "linkage": 335,
+            "world_model": 148,
+            "telescope": 7,
+            "deadsig": 7,
+            "none": 3
+          }
+        },
+        "tenures": 7,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "telescope",
+            "primary_owns": true
+          },
+          {
+            "action": 169,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": true
+          },
+          {
+            "action": 170,
+            "level": 5,
+            "tool": "linkage",
+            "primary_owns": true
+          },
+          {
+            "action": 505,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": true
+          },
+          {
+            "action": 506,
+            "level": 5,
+            "tool": "deadsig",
+            "primary_owns": false
+          },
+          {
+            "action": 513,
+            "level": 5,
+            "tool": "none",
+            "primary_owns": false
+          },
+          {
+            "action": 514,
+            "level": 5,
+            "tool": "world_model",
+            "primary_owns": false
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "agent": "unified",
+  "dropped": "none",
+  "registry_size": 47,
+  "registry_size_full": 47,
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 1.0,
+  "games": [
+    {
+      "game_id": "ar25-0c556536",
+      "win_levels": 8,
+      "levels_completed": 8,
+      "elapsed_s": 9.7,
+      "total_actions": 268,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 16,
+          "human_actions": 32,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 13,
+          "human_actions": 50,
+          "score": 1.0
+        },
+        {
+          "level": 3,
+          "agent_actions": 42,
+          "human_actions": 75,
+          "score": 1.0
+        },
+        {
+          "level": 4,
+          "agent_actions": 24,
+          "human_actions": 37,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 30,
+          "human_actions": 89,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 55,
+          "human_actions": 159,
+          "score": 1.0
+        },
+        {
+          "level": 7,
+          "agent_actions": 39,
+          "human_actions": 233,
+          "score": 1.0
+        },
+        {
+          "level": 8,
+          "agent_actions": 49,
+          "human_actions": 73,
+          "score": 1.0
+        }
+      ],
+      "game_score": 1.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "AR25",
+      "ownership": {
+        "actions": 268,
+        "by_tool": {
+          "reflect_cover": 268
+        },
+        "owner": "reflect_cover",
+        "owner_share": 1.0,
+        "n_tools_used": 1,
+        "by_level": {
+          "0": {
+            "reflect_cover": 16
+          },
+          "1": {
+            "reflect_cover": 13
+          },
+          "2": {
+            "reflect_cover": 42
+          },
+          "3": {
+            "reflect_cover": 24
+          },
+          "4": {
+            "reflect_cover": 30
+          },
+          "5": {
+            "reflect_cover": 55
+          },
+          "6": {
+            "reflect_cover": 39
+          },
+          "7": {
+            "reflect_cover": 49
+          }
+        },
+        "tenures": 1,
+        "picks": [
+          {
+            "action": 1,
+            "level": 0,
+            "tool": "reflect_cover"
+          }
+        ]
+      }
+    }
+  ]
+}
