@@ -192,6 +192,26 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 >    stepping into the slot and doing the identical thing. **The latch is a property of the fallback
 >    POSITION, not its occupant**; "demote graph" is closed.
 >
+>    ⛔ **AND THAT LEVER WAS THEN MEASURED AND CAME BACK WORTH 0.0000 — rule 7cm.** A run CAN tell it
+>    is lost, but only as a SUPPLEMENT to a clock and only in-sample. Three things in it change how
+>    the next arm should be framed:
+>    - **The classes are defined by OUTCOME, not shape.** "The fourteen latched runs are the
+>      negatives" (my framing) is WRONG: m0r0 latches — one tenure, 731 actions, never re-decided —
+>      and CLEARS FIVE LEVELS. The unit is a LEVEL SEGMENT labelled by whether it cleared.
+>    - ⭐ **Elapsed time carries ZERO information at a fixed decision point** — AUC 0.500 BY
+>      CONSTRUCTION, since every segment alive at action k has used exactly k actions. **A clock does
+>      not discriminate between runs; it only decides when to stop.**
+>    - **Alone, no candidate beats the clock.** `coverage@50 OR clock@311` saves 51.5% of doomed
+>      actions at zero levels lost, against 34.9% for the zero-loss clock alone.
+>    ⛔ **All ten flagged segments come from the ABLATED arm; on the shipped configuration the signal
+>    fires ZERO times.** It frees WALL-CLOCK, not points — the actions it saves are on levels that
+>    score zero however they are spent — **unless there is a better tool to hand the board to, and
+>    7ba says on these boards there is not.**
+>
+>    ⭐ **SO THE CHAIN CLOSES SOMEWHERE ELSE THAN EXPECTED. The missing thing is not DETECTION and not
+>    ROUTING — it is a DESTINATION: something to do when nothing in the registry fits.** That is a
+>    capability question, and it is the open one.
+>
 >    ⭐ **THE LEVER, NAMED: the harness owns no signal meaning "I do not understand this board."**
 >    Empty proposes, stall and the death clock are all satisfied by a tool that explores productively
 >    and solves nothing. So the next thing to build is not another specialist and not routing — it is
