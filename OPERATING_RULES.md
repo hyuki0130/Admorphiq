@@ -3895,11 +3895,88 @@ says it cannot see**, since routing is what breaks when the right tool is absent
 
 ⛔ Nothing ships off this (7o). Round page [[.wiki/wiki/rounds/r101_owner-ablation.md]].
 
-### 7ck — the z-order arm — paint order is the one transfer defect the corpus has, and only three games' cameras let it move (2026-08-30)
+### 7ck — the z-order arm: FOURTEEN of 25 games depend on paint order, and burial does not predict the cost (2026-08-30)
 
-⛔ **UNWRITTEN STUB — THE TITLE ABOVE IS A CLAIM, NOT A MEASUREMENT.**
-Nothing here has been evidenced yet. Do not cite this heading; if it is still a stub when you read
-it, the work either did not finish or its author stopped. Fill it in, or delete it.
+⚠️ This rule was claimed under the title *"only three games' cameras let it move"*. That was a
+hypothesis at claim time and **the measurement refutes it** — three games' cameras make the
+dependence maximal, but fourteen games carry it.
+
+Rule **7cd** ended by saying the mutation that would catch the campaign's only measured transfer
+defect *"does not exist in the repository yet"*. `bash scripts/zordergate.sh` is it: it permutes the
+order the engine PAINTS sprites in, which is what a colour bijection and a translation both preserve
+by construction and what an actual re-render is free to change.
+
+⭐ **VALIDITY IS ONE LINE OF THE ENGINE, WHICH IS WHY THIS IS SAFE TO DO IN THE ENGINE AT ALL.**
+`Camera.render` has exactly ONE caller inside arcengine — `base_game.perform_action` (base_game.py:232)
+— and its return value is the observation frame. Game logic that reads the picture goes through
+`BaseGame.get_pixels` -> `camera._raw_render`; click resolution goes through `Level.get_sprite_at`
+over `Level._sprites`. The patch touches neither, so the game's state trajectory stays a function of
+the action sequence alone. ⛔ Do NOT patch `_raw_render` — that is the one games call as logic.
+
+⭐ **THE HUMAN DENOMINATOR IS INVARIANT BY MEASUREMENT.** The two s5i5 serializations differ ONLY in
+list order and ship the IDENTICAL `baseline_actions` `[20, 89, 106, 54, 162, 38, 86, 83]`. The
+competition's own re-render changed the paint order and did not change the human count.
+
+```
+identity control   0.9082 on all 25, reproducing R101SHIPPED — zero drift
+positive control   s5i5 L4  39 -> 61 actions, 0.5833 -> 0.5593, every other level identical
+                   = rule 7cd's banked answer, to the action
+14 applied · 10 INERT (cannot exhibit it at all) · 1 PARTIAL (sb26, see below)
+movers: re86 1.0000->0.9461 · s5i5 0.5833->0.5593 · sc25 1.0000->0.4762 · g50t and tu93 -> 0.0000
+```
+
+⛔ **"PERMUTE SAME-LAYER SIBLINGS ONLY" IS THE RIGHT RULE FOR 22 GAMES AND MEANINGLESS FOR THREE, AND
+THAT COST THE FIRST ARM ITS POSITIVE CONTROL.** s5i5, tu93 and wa30 override `Camera._raw_render`
+with a version that never sorts, so for them the RAW LIST ORDER is the z-order and `layer` decides
+nothing about the picture — s5i5's rider and its bar are on DIFFERENT declared layers. The
+conservative arm changed 0 cells on seven of s5i5's eight levels and scored the game identical. A
+whole-list reversal changes 2/1/2/1/6/1 cells on levels 1-6 and the live-vs-archived difference is
+2/1/2/1/6/1 on the same levels, L4's being the single cell at (43,31), 13 -> 11.
+
+⭐ And the wider scope is not wider elsewhere: `_raw_render` filters visibility (order-preserving)
+then applies a STABLE `sorted(key=layer)`, so a whole-list permutation can only reorder WITHIN a
+layer there. Measured, not argued — `zrev` and `zrevall` differ on exactly two of 25 games, s5i5 and
+tu93, and both are no-sort games.
+
+⛔ **BURIAL DOES NOT PREDICT SCORE LOSS, AND THE TWO GAMES THAT LOSE EVERYTHING HIDE THE LEAST.** The
+obvious reading — "the mutation hid an object, so the board is broken" — is refuted by its own
+column:
+
+```
+r11l  7 of 27 sprites removed from the picture   1.0000 -> 1.0000  identical action for action
+tn36  6 of 101                                   1.0000 -> 1.0000  identical
+sk48  5 of 59                                    1.0000 -> 1.0000  identical
+g50t  1 of 18                                    1.0000 -> 0.0000
+re86  0 of 19  (nothing ever hidden)             1.0000 -> 0.9461  L2 costs 200 EXTRA actions
+tu93  2 of 3                                     1.0000 -> 0.0000
+```
+
+So the burial count is decisive only at the extremes. **re86 is the round's one unambiguous defect**:
+nothing is hidden on any sampled frame, every level still clears, L4 comes back FIVE ACTIONS FASTER
+(which rules out "the board got harder"), and L2 pays 200 actions for a rearrangement that deletes
+nothing. **tu93 is a broken mutation** — 0.67 of a three-sprite board, 2.6x the next fraction; no
+shippable re-render hides most of a game. **g50t and sc25 are NOT classifiable** and saying so is the
+result: what is missing is whether their levels stay solvable with the one hidden sprite.
+
+⛔ **TWO INSTRUMENT FAILURES, BOTH THE USUAL FAMILY.** (1) The diff called `Camera.render` twice, and
+`render` runs the camera's INTERFACES — bp35 and lf52 draw their whole board from one and hold a
+SINGLE level sprite, where a permutation is the identity, yet the arm reported 272,208 and 102,399
+changed cells and lf52 came back TWO ACTIONS FASTER. That delta was the extra interface pass. Diff
+through `_raw_render` and check the painter's determinism instead of assuming it. (2) The camera
+detector matched the imported `Camera` ITSELF, whose `__dict__` naturally holds `_raw_render`, and so
+answered "does not sort" for all 25 — a detector firing on its own reference class (7z).
+
+⚠️ And ceph-build's `environment_files` holds a `._<game>.py` AppleDouble artefact beside every real
+one; it sorts FIRST, it is binary, and importing it raises `source code string cannot contain null
+bytes`. The census's first run reported 24 of 25 games unreadable. **`scripts/dump_sample_levels.py`
+picks its source the same way and has the same hole.**
+
+⚠️ sb26 is the one game with NO evidence of any kind: it calls `Camera.render` itself, as game logic,
+to snapshot the render into a sprite's pixels. Mutating that call would change what the game STORES,
+so the instrument refuses it and reports **partial** — a half-mutated board is 7ce's all-or-nothing
+lesson, and NO VERDICT is the honest output.
+
+⛔ Nothing ships off this (7o). Round page [[.wiki/wiki/rounds/r101_zorder-mutation.md]].
 
 ### 7cl — the visibility-identity census — five fallback sites, three live (2026-08-30)
 
@@ -4037,3 +4114,77 @@ better exists to take the board says the lever is not a smarter give-up rule but
 claimant at all — the same conclusion 7cj reached from the other direction. ⛔ Nothing ships (7o);
 the gate would measure exactly zero, which argues for leaving it alone, not for shipping it quietly.
 Round page [[.wiki/wiki/rounds/r101_lost-signal.md]]; instrument `scripts/signal_report.py`.
+
+### 7cn — dead reckoning does not generalise — the three live sites commit identity before any action is spent (2026-08-30)
+
+Rule **7cl** counted the visibility-identity class and noticed that its worst site,
+`lattice_maze.py:484`, is ALREADY REPAIRED and still holds tu93 at 1.0000. This asks whether that
+repair transfers to the three sites that are live and unrepaired. **It does not, and the reason is
+one measurement.**
+
+⭐ **THE PATTERN, STATED PROPERLY.** `lattice_maze._locate` does NOT remove the paint read — that is
+the repair 7cd forbids, and it IS the 61-action behaviour. It **demotes paint from IDENTITY to
+CANDIDATE GENERATION** and lets tracked state pick among the candidates, in four tiers: one
+candidate → take it; **zero** candidates → the colour's centroid (the mid-redraw case); many
+candidates with no prior cell → the board ranking; many candidates WITH a prior cell → predict
+`prev_cell + effect[prev_action]` from a probe-learned control map, accept it only if it lands ON a
+currently-drawn candidate, else accept `prev_cell` itself (the move was refused), else the nearest
+candidate. ⭐ **Staleness is handled by never trusting the prediction absolutely** — it must agree
+with something the frame actually shows.
+
+⛔ **THE PRECONDITION IS A PRIOR POSITION AND A SPENT ACTION, AND A RUN SAYS WHERE THAT EXISTS.**
+`scripts/_viscensus_run.py` now logs, per evaluation, the in-level action index (`at0` counts reads
+taken on a level's OPENING frame). Full 25 @4000, all 25 games reproducing their banked score:
+
+```
+site                 game  eval  at0   in-level action index   verdict
+lattice_maze.py:484  tu93   187    9   min 0  max 28           178 of 187 reads have the state
+blastclock.py:631    ka59    33   19   min 0  max 39           14 of 33 do
+swivel.py:734        s5i5     2    2   min 0  max 0            NONE — both reads at action 0
+telescope.py:1183    s5i5     5    5   min 0  max 0            NONE — all five at action 0
+```
+
+⭐ **That contrast IS the answer.** `lattice_maze` re-reads identity EVERY action, so 95% of its
+reads have a prior cell to reckon from. `telescope` and `swivel` commit the rider set ONCE per
+level, on the opening frame, and bake it into a `_Model` that is never revised. At the moment of
+the read there is no prior position, no spent action and no learned displacement — and no amount of
+tracking can invent them.
+
+⛔ **AND DEFERRAL IS CLOSED TOO — THE EVIDENCE NEVER ARRIVES.** The obvious answer is to wait:
+telescope probes every control anyway, spending actions already budgeted, so the commitment could
+wait for the markers to appear. `scripts/_s5i5_reveal.py` wraps `read_markers` for a whole run on
+BOTH boards and asks whether `movers` is ever non-empty within a level:
+
+```
+live  [13,30,47,39,32,31]  0.583333   max_movers per level  2 1 2 1 2 1 2
+arch  [13,30,47,61,32,31]  0.559296   max_movers per level  0 0 0 0 0 0 1
+                                      level 3 (the 61-action one): 62 reads, movers EMPTY in ALL
+```
+
+On the archived board the riders are painted under their bars for the **whole of every level the
+tool plays**, not merely at the opening frame. There is no later moment with better evidence, so
+deferring buys nothing. ⚠️ Both controls hold: the live arm reproduces `[13,30,47,39,32,31]` and the
+archived arm `[13,30,47,61,32,31]`, and the archived board's level 6 DOES report `movers=1`, so the
+reader is not simply blind on that copy.
+
+⛔ **AND TWO OF THE THREE HAVE NO SUCCESS CRITERION AT ALL — check this BEFORE building anything.**
+`swivel.py:734` fires on s5i5 levels 5-6, which cost **32 and 31 actions on BOTH boards**;
+`blastclock.py:631` fires only on ka59, which **has an archived re-render and is action-for-action
+identical on it** (7by) and scores 1.0000, and its widening is 2 candidates to 1. Neither site costs
+anything anywhere in the corpus, so a repair there has nothing to demonstrate and can only regress
+(rule 7o). **Of the three live sites only `telescope.py:1183` has a measured cost anywhere**, and
+that is the one where the state is provably unavailable.
+
+**NOTHING WAS BUILT AND NO GATE WAS RUN**, because step 2 answered no. What survives is not an
+identity repair at all: 7cd already named it — the guess is unavoidable on that board, only its
+PRICE is not, and lowering the price means refuting a candidate pairing with something shorter than
+the pairing's own plan. That is a search-cost axis, not a perception axis.
+
+⭐ **THE GENERAL RULE, which is the transferable part.** *Dead reckoning is available exactly where
+identity is re-read CONTINUOUSLY.* A tool that commits identity once per level, on the opening
+frame, has no tracked state by construction — and for that shape the only repairs are to defer the
+commitment (which needs the evidence to arrive later; measured here, it does not) or to make being
+wrong cheaper. Ask which shape a site has before proposing a fix for it.
+
+Round page [[.wiki/wiki/rounds/r101_dead-reckoning-transfer.md]]; artefacts
+`scripts/rounds/R101DEADRECKON/`.

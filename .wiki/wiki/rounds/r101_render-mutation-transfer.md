@@ -179,3 +179,10 @@ not exist in the repository yet, and it is the obvious next build on this axis.
 * Rule **7ce** in `OPERATING_RULES.md`
 
 Related: [[r101_shipped-and-transfer]] (rule 7by, the archived re-render), [[r101_inert-actions]].
+
+⭐ **The gap this round names in its own closing paragraph is now closed: [[r101_zorder-mutation]].**
+Every arm here is a bijection or a rigid shift, and both PRESERVE which sprite is drawn on top, so a
+flat result from this instrument is evidence about colour and naming and about nothing else. The
+paint-order arm permutes the order the engine draws in; it reproduces s5i5's banked 39 -> 61 as its
+positive control and finds **fourteen of 25 games sensitive**, with re86 losing 200 actions on one
+level while nothing at all is hidden. Rule **7ck**.

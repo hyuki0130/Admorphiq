@@ -432,3 +432,43 @@ commit, and `[[backlinks]]`. Narrative overview + reliable-metric + resume steps
   61-action behaviour. ⚠️ Two instruments lied toward "nothing here" — an exact-text matcher scoring
   its own exemplar at ZERO, and a missing helper injection that put eleven games at ~0.0 while
   reporting success, caught only by the banked comparison now built in. Rule **7cl**.
+
+- **z-order / paint order / draw order / occlusion / sprite list order / which sprite is on top /
+  zordergate / zrev / zrevall / buried sprite / camera _raw_render / no-sort camera** →
+  [[r101_zorder-mutation]] — the arm rule 7cd said did not exist. A colour bijection and a
+  translation both PRESERVE which sprite is drawn on top, so [[r101_render-mutation-transfer]] is
+  blind to the corpus's only measured transfer defect by construction; this one permutes the order
+  the engine PAINTS in, installed on `Camera.render` (ONE caller in arcengine, the observation
+  frame) and never on `_raw_render` (which games call as logic). ⭐ **Identity control 0.9082 on all
+  25 reproducing R101SHIPPED, and the positive control lands to the action: s5i5 L4 39 -> 61,
+  0.5833 -> 0.5593, every other level identical.** Population: **14 of 25 applied, 10 INERT (they
+  cannot exhibit it), 1 PARTIAL** (sb26 consumes `Camera.render` as game logic — NO VERDICT).
+  ⛔ **"Same-layer siblings only" is meaningless for s5i5/tu93/wa30**, whose camera never sorts —
+  their rider and bar are on DIFFERENT declared layers, the conservative arm changed 0 cells on
+  seven of s5i5's eight levels, and the two scopes differ on exactly those games. ⛔ **Burial does
+  not predict cost**: r11l loses 7 sprites of 27 and plays identically, g50t loses ONE of 18 and
+  goes to 0.0000, and **re86 loses NOTHING and pays 200 extra actions on L2** — the round's one
+  unambiguous tool defect. tu93 (2 of 3 sprites) is a broken mutation; g50t and sc25 are NOT
+  classifiable and that is the honest output. ⚠️ Two instrument failures paid for: the diff rendered
+  twice through `Camera.render` so the camera's INTERFACES ran twice (272,208 phantom cells on a
+  ONE-sprite board, and lf52 two actions faster), and a camera detector matched the imported
+  `Camera` itself. Rule **7ck**.
+
+- **dead reckoning / tracked identity / repair transfer / deferral / commit-once / opening frame /
+  lattice_maze repair / telescope / swivel / blastclock / success criterion / deadreckon** →
+  [[r101_dead-reckoning-transfer]] — does the repair that ALREADY WORKS on the class's worst site
+  transfer to the three live ones? ⛔ **No, measured both ways.** `lattice_maze._locate` demotes
+  paint from IDENTITY to CANDIDATE GENERATION and lets a tracked prediction
+  (`prev_cell + effect[prev_action]`, accepted only if it lands on a drawn candidate) choose — and it
+  works because **178 of its 187 reads happen mid-level**. `telescope` reads **5 of 5** and `swivel`
+  **2 of 2** on the level's OPENING frame, where no action has been spent and there is nothing to
+  reckon from. ⛔ **Deferral is closed by the board, not the tool**: on the archived s5i5 the rider
+  markers are absent across **all 62 reads of the 61-action level** and every level 0-5, so there is
+  no later moment with better evidence (positive control: the live arm shows 2 1 2 1 2; internal
+  control: the archived board's level 6 DOES report movers=1). ⚠️ **And two of the three had no
+  success criterion at all** — `swivel`'s levels cost 32/31 on BOTH boards, `blastclock` fires only
+  on ka59 which is action-for-action identical on its own re-render at 1.0000 and widens 2 to 1. Of
+  the three, only `telescope` costs anything anywhere, and that is the one where the state is
+  provably unavailable. **Nothing built, no gate run** (7o). ⭐ Transferable: *dead reckoning is
+  available exactly where identity is re-read CONTINUOUSLY*; a commit-once-per-level site admits
+  only deferral or cheaper refutation. Rule **7cn**.

@@ -262,3 +262,15 @@ Related: [[r101_zorder-rider]] (the exemplar, proved by intervention) ·
 sprite is on top, so `rendergate.sh` cannot catch this class) ·
 [[r101_shipped-and-transfer]] (24 of 25 games identical on a re-render — the floor this class bounds)
 · [[r101_owner-ablation]] (what an unseen game's floor looks like when no tool claims the board).
+
+## Follow-up: does the repair that already worked generalise?
+
+⛔ **[[r101_dead-reckoning-transfer]] — no, and both routes are closed by measurement.**
+`lattice_maze`'s repair (paint generates candidates, a tracked prediction chooses among them) works
+because **178 of its 187 reads happen mid-level**; `telescope` reads **5 of 5** and `swivel`
+**2 of 2** on the level's OPENING frame, so the prior position and spent action it needs do not
+exist at the read. Deferring the commitment is closed by the board rather than the tool: on the
+archived s5i5 the rider markers are absent across **all 62 reads of the 61-action level**. ⚠️ And
+two of the three sites have no success criterion at all — `swivel`'s levels cost the same on both
+boards and `blastclock` fires only on ka59, which is action-for-action identical on its own
+re-render at 1.0000. Rule **7cn**.

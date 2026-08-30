@@ -20,10 +20,15 @@ order; the other 22 paint `sorted(key=layer)`, stable. Painting all 25 the same 
 answer a question about a different game — that error is exactly what cost the first
 mutation arm its positive control.
 
-⛔ AND IT REFUSES RATHER THAN APPROXIMATING. It compares `sprite.pixels` with
-`sprite.render()` and abandons the game if they ever differ, because `render()` applies
-rotation, mirroring and scale while two of the three no-sort cameras read `.pixels` raw —
-where the two disagree, this probe would be painting a board the engine does not.
+⛔ AND IT READS THE PIXELS THE GAME'S OWN CAMERA READS. `render()` applies rotation,
+mirroring and scale; s5i5's and wa30's overrides take `sprite.pixels` RAW. An earlier
+version refused any game where the two differ, which knocked out 15 of the 25 including
+four of the five movers — the accessor is detected from the override's source instead.
+
+⚠️ IT IS STATIC AND SEES ONLY THE AUTHORED BOARDS. `ZOrderPatch`'s own `buried_max`
+measures the same quantity DURING PLAY, with the camera itself deciding visibility, and
+that is the authority: g50t's authored level 1 shows nothing moving while 586 of its 2,852
+live frames change.
 
     bash scripts/pfan.sh zoccl scripts/_zorder_occlude.py 25 "" 8
 """

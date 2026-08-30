@@ -154,3 +154,15 @@ firing on the 25), `swivel.py:734` is the identical two lines, `blastclock.py:63
 centre pixel — and the class's **most expensive** recorded instance, `lattice_maze.py:484`, has no
 fallback at all and cost that tool **9 levels in 188 actions -> 4 in 1288** on its own archived
 re-render, a 6.9x blow-up against the 1.56x measured here. Rule **7cl**.
+
+## Follow-up: the instrument this round said did not exist
+
+⭐ **[[r101_zorder-mutation]]** builds it. This round closed by noting that `rendergate.sh` CANNOT
+catch a paint-order read — a colour permutation is a bijection and preserves which sprite is on top —
+and that "a mutation that would catch it has to change the paint order, and nothing in the repository
+does that yet". `scripts/zordergate.sh` now does, installed on `Camera.render` (one caller in
+arcengine) and never on `_raw_render` (which games call as game logic). It reproduces THIS round's
+answer as its positive control — s5i5 L4 39 -> 61, every other level identical — and then finds that
+**fourteen of the 25 games depend on paint order**, ten cannot exhibit it at all, and the one
+unambiguous tool defect is re86, which loses 200 actions on level 2 with nothing hidden anywhere.
+Rule **7ck**.

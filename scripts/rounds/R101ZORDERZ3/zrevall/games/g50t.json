@@ -1,0 +1,47 @@
+{
+  "agent": "unified",
+  "mutation": "zrevall",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "total_score": 0.0,
+  "games": [
+    {
+      "game_id": "g50t-5849a774",
+      "win_levels": 7,
+      "levels_completed": 0,
+      "elapsed_s": 7.75,
+      "total_actions": 503,
+      "per_level": [],
+      "game_score": 0.0,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "G50T",
+      "zorder_mutation": {
+        "mutation": {
+          "name": "zrevall",
+          "kind": "rev",
+          "scope": "whole-list"
+        },
+        "frames_seen": 2852,
+        "frames_changed": 586,
+        "cells_changed": 11435,
+        "max_cells_changed_in_a_frame": 24,
+        "first_changed_frame": 48,
+        "buried_max": 1,
+        "buried_seen": 10,
+        "buried_samples": 15,
+        "sprites_max": 18,
+        "layers_seen": [
+          -10,
+          -1,
+          0,
+          3,
+          4
+        ],
+        "internal_render_calls": 0,
+        "violations": [],
+        "verdict": "applied"
+      }
+    }
+  ]
+}
