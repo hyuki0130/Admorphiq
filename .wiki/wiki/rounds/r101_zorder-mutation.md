@@ -4,7 +4,7 @@ round: R101ZORDER
 axis: generic-tools
 keywords: [z-order, paint order, draw order, occlusion, sprite list order, transfer, re-render, render mutation, zordergate, zrev, zrevall, instrument validity, refusal path, positive control, s5i5, tu93, g50t, sc25, re86, camera _raw_render]
 verdict: BUILT AND MEASURED — the paint-order arm exists, reproduces its known positive exactly (s5i5 L4 39 -> 61), and finds FIVE games that move. re86 is a clean transfer failure (nothing hidden, every level still cleared, 200 extra actions). tu93 is a broken mutation (2 of 3 sprites buried). g50t and sc25 collapse and are NOT classifiable from this evidence. Ten of 25 games cannot exhibit the class at all.
-commit: pending
+commit: 97aa7b07
 ---
 
 # R101ZORDER — the mutation that changes which sprite is on top
