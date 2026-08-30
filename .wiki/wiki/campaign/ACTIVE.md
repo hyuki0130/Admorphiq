@@ -148,6 +148,12 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > costs NOTHING on four of the five archived levels, so this is not "the fallback is bad"; the
 > IDENTITY SIGNAL is a render fact.
 >
+> ⭐ **AND IT IS PROVED BY INTERVENTION, not merely correlated** ([[r101_zorder-rider]]): inject the
+> rider evidence back into the archived board and change NOTHING else, and the level returns to 39
+> actions and the game to 0.5833 — `[13, 30, 47, 39, 32, 31]` in BOTH arms. **The whole gap, gone,
+> from one restored piece of evidence.** That is the difference between "these two co-occur" and
+> "this one causes that one", and it is why the defect can be NAMED rather than suspected.
+>
 > ⭐ **Colour is safe** (rule **7ce**): two fixed-point-free permutations over all 25 games, 16,810
 > frames, 211M cells relabelled — **one action moves in the whole set** (cd82 L3 33 -> 34, no score
 > change), and there is not one numeric colour literal compared against a frame anywhere in the tool

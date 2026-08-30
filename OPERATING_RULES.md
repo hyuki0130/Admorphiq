@@ -3277,6 +3277,13 @@ from `ls environment_files_archive | wc -l` and never checked whether a substitu
 anything: **an instrument that counts inputs instead of effects**, which is the family this file
 keeps meeting. The result stands; what shrinks is how many games the evidence covers.
 
+⛔ **AND I DID IT AGAIN THE SAME DAY, WHICH MAKES IT A METHOD DEFECT RATHER THAN A SLIP.** Both times
+the shape was identical: one python script patching TWO files, `assert old in s` on the second one
+firing AFTER the first had already been written, and the `git commit` in the same shell line landing
+the half-change under a message describing both. **A multi-file patch must assert every pattern
+BEFORE it writes any of them** — validate, then write, then commit. Writing a commit message that
+describes what the script intended is how a repository acquires provenance that is not true.
+
 ⭐ **Twenty-four of twenty-five games score identically, action for action, on a board re-rendered
 with different sprite tags and coordinates.** The ten games with no archive run live in both arms
 and are identical too — that is the instrument's own determinism control, and it passed. This is the
