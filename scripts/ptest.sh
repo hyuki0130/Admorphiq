@@ -34,7 +34,16 @@ SNAP="ptest_$$"
 
 if [ "$DIRTY" = 1 ]; then
   echo "=== shipping the WORKING TREE (uncommitted edits included)"
-  tar czf "/tmp/$SNAP.tgz" --exclude='__pycache__' src scripts tests notebooks .wiki kaggle pyproject.toml
+  # ⛔ `--no-xattrs` AND `COPYFILE_DISABLE=1`. macOS `tar` is libarchive and writes extended-attribute
+  # pax headers (`LIBARCHIVE.xattr.com.apple.provenance`); GNU tar on the box prints a warning for
+  # every file and the resulting tree made `test_real_wiki_has_no_duplicate_titles` die with
+  # `UnicodeDecodeError: 0xa3 in position 45` — RED on the box at a HEAD that is green under the
+  # non-dirty path, which uses `git archive` and carries no xattrs. ⚠️ Two hypotheses were refuted
+  # by measurement first: macOS tar emits no AppleDouble `._*` entries here, and the box's locale is
+  # C.UTF-8 with `getpreferredencoding() == "UTF-8"`. The difference between the two paths was the
+  # archiver, which is the one thing `--dirty` changes.
+  COPYFILE_DISABLE=1 tar czf "/tmp/$SNAP.tgz" --no-xattrs --exclude='__pycache__' \
+    src scripts tests notebooks .wiki kaggle pyproject.toml
 else
   if ! git diff --quiet HEAD -- src/ tests/; then
     echo "⚠️  testing HEAD; these uncommitted edits are EXCLUDED (use --dirty to include them):"

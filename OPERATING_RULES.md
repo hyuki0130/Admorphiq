@@ -3785,3 +3785,41 @@ as 7cb's caveat about inert actions.
 failed here too — three `Connection refused` lines, exactly the 7ca signature. Splitting them by arm
 banner took one pass and reversed the conclusion: **all three are the fallback arm, which has no
 model and is supposed to fail.** ⛔ A count that spans two arms describes neither (rule 7aj).
+
+### 7ci — the box reports RED at a green HEAD — four causes, all the snapshot (2026-08-30)
+
+⛔ **A TEST FAILING ON ceph-build AND PASSING ON THE MAC IS, FOUR TIMES OUT OF FOUR SO FAR, A
+DIFFERENCE BETWEEN THE SNAPSHOT AND THE REPOSITORY — NOT A DEFECT IN THE CODE.** All four cost real
+time, two of them an afternoon each while an agent decided whether the red was its own change:
+
+```
+data/traces  GITIGNORED, so `git archive` never carried it     11 tests, FileNotFoundError
+.wiki        not in the archive list                            2 tests, "cited but missing"
+kaggle       not in the archive list                            1 test,  "cited but missing"
+xattrs       macOS tar writes pax xattr headers; git archive     1 test,  UnicodeDecodeError 0xa3
+             does not — so ONLY `--dirty` was red
+```
+
+**A directory omitted from the archive is indistinguishable from a directory deleted from the repo**,
+and an archiver that adds metadata is indistinguishable from a corrupted file. ⛔ **Before debugging a
+box-only failure, diff what the snapshot contains against what the test reads.**
+
+⭐ **AND THE FOURTH ONE IS THE INSTRUCTIVE ONE, because two plausible explanations were REFUTED by
+measurement before the real one was found** — which is the whole method, and each refutation cost
+about a minute:
+
+```
+"macOS tar emits AppleDouble ._* files"   REFUTED   tar tzf | grep -c '/\._'  ->  0
+"the box's locale is not UTF-8"           REFUTED   locale = C.UTF-8, getpreferredencoding = UTF-8
+"the archiver differs"                    CONFIRMED `git archive` green, `tar czf` red, same tree
+```
+
+The tell was in the output the whole time and I scrolled past it twice: GNU tar on the box printing
+`Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'` once per file.
+⚠️ **The difference between two paths that disagree is the thing one of them does and the other does
+not** — here, `--dirty` swaps `git archive` for macOS `tar`, and that is the ONLY thing it changes.
+Fix: `COPYFILE_DISABLE=1 tar --no-xattrs`. Verified — 31 passed where 1 had failed.
+
+⚠️ ⛔ **AND DO NOT LET THIS BECOME "the box is flaky".** Every one of the four was a real difference
+with a real fix, and the non-dirty full suite has been green throughout (1847 passed, 2 skipped).
+A harness whose failures get attributed to the environment stops being able to report anything.
