@@ -3,7 +3,7 @@ round: R101ZORDER
 axis: name the one render-dependent read left in the whole 25 — why s5i5 level 4 costs 22 more actions on a re-render
 keywords: [transfer, re-render, archived-hash, s5i5, telescope, swivel, rider, z-order, paint-order, occlusion, brittleness, generalisation, xfergate, oracle-intervention]
 verdict: NAMED AND PROVED BY INTERVENTION — the tool reads object identity out of PAINT ORDER. One occluded pixel on level 4's opening frame turns a pinned rider into nine candidate bars; injecting the rider evidence back, and nothing else, returns the level to 39 actions and the game to 0.5833. No repair shipped, and the reason is measured.
-commit: pending
+commit: f782b62d (naming + intervention), 34e3bc69 (the census that followed)
 supersedes: nothing — this is the follow-up [[r101_shipped-and-transfer]] asked for
 ---
 
