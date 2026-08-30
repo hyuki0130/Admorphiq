@@ -62,8 +62,21 @@ class OwnershipRecorder:
     is asking, and the round page must say so rather than average over it.
     """
 
-    def __init__(self, inner: Any, telemetry: bool = False) -> None:
+    def __init__(self, inner: Any, telemetry: bool = False,
+                 swap_at: tuple[int, str] | None = None) -> None:
         self.inner = inner
+        # --- carrier handoff: play the game with one tool, then hand the WALL to another ----
+        # ⛔ WHY IT IS NEEDED. Forcing a tool alone from level 0 asks "can T play this whole
+        # game", not "can T clear the level the game dies on". On lf52 only ONE tool of 47
+        # ever reaches the sixth level, so a plain solo sweep cannot see that level at all.
+        # The carrier drives to the wall with the tool that is known to get there, then
+        # replaces the registry so exactly one tool faces the board that matters.
+        # ⚠️ The swap resets `_current`/`_failed`/`_tried`, so a SWAP-TO-ITSELF arm is the
+        # mandatory instrument control: if it does not reproduce the no-swap run, the
+        # handoff itself perturbs and every other arm inherits that.
+        self.swap_at = swap_at
+        self.swapped = False
+        self.swap_action: int | None = None
         self.by_tool: Counter[str] = Counter()
         self.by_level: dict[int, Counter[str]] = {}
         self.picks: list[tuple[int, int, str, bool]] = []  # (action, level, tool, primary_owns)
@@ -137,6 +150,17 @@ class OwnershipRecorder:
 
     def choose_action(self, frames: list[Any], obs: Any) -> Any:
         level = int(getattr(obs, "levels_completed", 0) or 0)
+        if self.swap_at is not None and not self.swapped and level >= self.swap_at[0]:
+            want = self.swap_at[1]
+            keep = [t for t in _UNPATCHED() if t.name == want]
+            if not keep:
+                raise SystemExit(f"⛔ REFUSING: swap target '{want}' is not in the registry")
+            self.inner.tools = {t.name: t for t in keep}
+            self.inner._current = None       # force a re-decide with the new registry
+            self.inner._failed = set()
+            self.inner._tried = []
+            self.swapped = True
+            self.swap_action = self._n + 1
         action = self.inner.choose_action(frames, obs)
         self._n += 1
         who = str(getattr(self.inner, "_current", None) or "none")
@@ -162,6 +186,8 @@ class OwnershipRecorder:
                             if self._n else None),
             "n_tools_used": len(self.by_tool),
             "by_level": {str(k): dict(v.most_common()) for k, v in sorted(self.by_level.items())},
+            "swapped": self.swapped,
+            "swap_action": self.swap_action,
             "tenures": len(self.picks),
             "picks": [{"action": a, "level": lv, "tool": t, "primary_owns": p}
                       for a, lv, t, p in self.picks[:80]],
@@ -179,6 +205,9 @@ def main() -> int:
     p.add_argument("--titles", required=True)
     p.add_argument("--drop", required=True,
                    help="comma-separated tool names to remove, or 'none' for the control arm")
+    p.add_argument("--swap-at", default="",
+                   help="LEVEL:TOOL — once levels_completed >= LEVEL, replace the registry "
+                        "with TOOL alone. The carrier arm.")
     p.add_argument("--only", default="",
                    help="KEEP only this tool (forced-alone). Mutually exclusive with --drop.")
     p.add_argument("--agent", default="unified")
@@ -199,6 +228,14 @@ def main() -> int:
     # clears five, so its numbers cannot be compared with an arm measured through the
     # scorer. Forcing the registry to one tool inside THIS runner reuses `run_game`
     # unchanged, so the solo number and the harness number are the same measurement.
+    swap_at: tuple[int, str] | None = None
+    if args.swap_at.strip():
+        lv, _, tname = args.swap_at.strip().partition(":")
+        if not tname or tname not in full:
+            print(f"⛔ REFUSING: --swap-at target '{tname}' is not in the registry.", flush=True)
+            return 1
+        swap_at = (int(lv), tname)
+
     only = args.only.strip()
     if only:
         if drop != "none":
@@ -271,7 +308,7 @@ def main() -> int:
 
         def factory() -> OwnershipRecorder:
             rec = OwnershipRecorder(_make_agent(args.agent, game_id=env_info.game_id),
-                                    telemetry=args.telemetry)
+                                    telemetry=args.telemetry, swap_at=swap_at)
             holder["rec"] = rec
             return rec
 

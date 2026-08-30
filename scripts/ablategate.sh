@@ -36,6 +36,10 @@ TELEM="${TELEM:-0}"
 # ONLY=1 reads the pairs file as "<game> <tool>" and FORCES that tool alone instead of
 # dropping it — the solo sweep, measured through the same scorer as every other arm.
 ONLY="${ONLY:-0}"
+# CARRY="<tool>:<level>" plays the game with <tool> until levels_completed >= <level>, then
+# hands the board to the tool named in each pair. The way to put every tool on the ONE level a
+# game actually dies on, when only one tool can reach it unaided.
+CARRY="${CARRY:-}"
 KEY="$HOME/VM/keys/nfw-dev.pem"
 REMOTE="ubuntu@ceph-build"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
@@ -61,9 +65,9 @@ else
   "${SSH[@]}" "rm -f ~/$SNAP.pairs"
 fi
 
-"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$TELEM" "$ONLY" <<'EOS'
+"${SSH[@]}" bash -s "$SNAP" "$PAR" "$BUDGET" "$AGENT" "$TELEM" "$ONLY" "$CARRY" <<'EOS'
 set -u
-SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; TELEM="$5"; ONLY="$6"
+SNAP="$1"; PAR="$2"; BUDGET="$3"; AGENT="$4"; TELEM="$5"; ONLY="$6"; CARRY="$7"
 [ "$TELEM" = "1" ] && TFLAG="--telemetry" || TFLAG=""
 export PATH=$HOME/.local/bin:$PATH
 cd "$HOME"
@@ -85,12 +89,15 @@ else
   ls environment_files | sed 's/$/ none/' > pairs.txt
 fi
 NG=$(wc -l < pairs.txt)
-if [ "$ONLY" = "1" ]; then
+if [ -n "$CARRY" ]; then
+  CT="${CARRY%%:*}"; CL="${CARRY##*:}"
+  ARGSPEC="--drop none --only $CT --swap-at $CL:"'$1'; TAG='$0__$1'
+elif [ "$ONLY" = "1" ]; then
   ARGSPEC='--drop none --only $1'; TAG='$0__$1'
 else
   ARGSPEC='--drop $1'; TAG='$0'
 fi
-echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT telemetry:$TELEM only:$ONLY"
+echo "pairs:$NG par:$PAR budget:$BUDGET agent:$AGENT telemetry:$TELEM only:$ONLY carry:${CARRY:-none}"
 
 cat pairs.txt | xargs -P "$PAR" -n 2 sh -c \
   "timeout 5400 .venv/bin/python \$HOME/$SNAP/scripts/ablate_run.py --agent $AGENT $TFLAG \
