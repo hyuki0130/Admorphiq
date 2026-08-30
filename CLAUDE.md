@@ -15,6 +15,23 @@
 > hardcoded `--agent unified` and this file's own "measure the card AS SHIPPED" warning named a flag
 > the runner did not accept.
 >
+> ⛔ **AND THE 0.9082 IS BUILT ON TOOLS THAT FIT THESE GAMES — REMOVE EACH GAME'S OWNER AND IT IS
+> 0.1932** (rule 7cj, six arms, 110 game-runs, 25 of 25 games moving). The floor is NOT flat, so
+> **quote the PAIR, never the mean**: `~0.0014` is the analogue of *no tool fits* (14 games nobody
+> claims), `0.1932` is *new but adjacent to something we implement* (11 games where another of OUR
+> specialists partially fits a board we built against — an unseen game has no near-miss by
+> construction). The eval is 110 games we have never seen.
+>
+> ⭐ **THE LEVER THAT NAMES: THE HARNESS HAS NO SIGNAL MEANING "I DO NOT UNDERSTAND THIS BOARD."**
+> Fourteen ablated games have ONE `[harness] pick=` line for the whole run, every one with
+> `primary_owns` FALSE — so `_PRIMARY_CONF` is REFUTED as the cause. A frontier explorer **always
+> proposes** (`_EMPTY_TOLERANCE` never fires) and **always reaches a new state** (the 80-step stall
+> never fires): **it looks productive by every signal the harness watches, while clearing nothing.**
+> ⛔ Not a `graph` problem — dropping `graph` too gives 0.1925 and `world_model` does the identical
+> thing; the latch belongs to the fallback POSITION. ⛔ "Demote graph" is CLOSED.
+> ⚠️ 7ch measured a live LLM on a GPU as byte-identical to no LLM here — and this is exactly the case
+> 7ch says these 25 cannot see, because routing is what breaks when the right tool is absent.
+>
 > ⛔ **THREE OF THOSE SIX ARE CLOSED WITH PROOFS — bp35, s5i5, dc22.** Read the campaign file's
 > CLOSED section before touching them; each one has hypotheses that are refuted, not merely untried.
 > Only lp85 (level 4 alone, 19 actions against a human 16) and lf52 (the map stops at 98 cells,
