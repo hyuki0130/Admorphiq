@@ -4,7 +4,12 @@
 
 ## STATE (2026-08-30 08:20, all gated on the full 25)
 
-**MEAN = 0.9082**, NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
+**MEAN = 0.9135** (2026-08-31), NINETEEN games at the 1.0 cap, cumulative regressions ZERO.
+⭐ **bp35 0.2456 -> 0.3771 and now reaches LEVEL 6** — the largest gap in the corpus, moved by
+crag's copy-on-write search view (the exit search had been copying the whole board at every
+expansion, so the tool was TIMING OUT rather than failing to reason). L5 went 46a -> 30a = 1.0000.
+⚠️ Measured on `scripts/gate_local.sh`; ceph-build was deleted 2026-08-31.
+_(previous: 0.9082)_
 Baseline dir: **`scripts/rounds/R101SHIPPED`** — use it as the gate's BASE. (It is the
 SHIPPED-configuration run and scores identically to `R101LP85GATE`, game for game; prefer it so a
 gate and the card it defends are measured through the same wrapper.)

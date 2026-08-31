@@ -1,0 +1,59 @@
+{
+  "agent": "unified",
+  "n_games_run": 1,
+  "n_games_scored": 1,
+  "n_excluded": 0,
+  "total_score": 0.377142,
+  "total_score_pct": 37.714,
+  "games": [
+    {
+      "game_id": "bp35-0a0ad940",
+      "win_levels": 9,
+      "levels_completed": 6,
+      "elapsed_s": 195.79,
+      "total_actions": 833,
+      "per_level": [
+        {
+          "level": 1,
+          "agent_actions": 18,
+          "human_actions": 21,
+          "score": 1.0
+        },
+        {
+          "level": 2,
+          "agent_actions": 87,
+          "human_actions": 48,
+          "score": 0.3044
+        },
+        {
+          "level": 3,
+          "agent_actions": 45,
+          "human_actions": 44,
+          "score": 0.956049
+        },
+        {
+          "level": 4,
+          "agent_actions": 23,
+          "human_actions": 38,
+          "score": 1.0
+        },
+        {
+          "level": 5,
+          "agent_actions": 30,
+          "human_actions": 33,
+          "score": 1.0
+        },
+        {
+          "level": 6,
+          "agent_actions": 114,
+          "human_actions": 87,
+          "score": 0.58241
+        }
+      ],
+      "game_score": 0.377142,
+      "has_baseline": true,
+      "llm_hypothesis": null,
+      "title": "BP35"
+    }
+  ]
+}

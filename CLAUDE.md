@@ -13,7 +13,10 @@
 > This file is 2,300 lines. A fresh session does not read it, which is a measured cause of work
 > being redone. Everything you need to ACT is here or in the campaign file.
 >
-> **State**: generic tools, full 25 on ceph-build = **0.9082**, NINETEEN games at the 1.0 cap,
+> **State**: generic tools, full 25 = **0.9135** (2026-08-31, `scripts/gate_local.sh` — ceph-build
+> is GONE), NINETEEN games at the 1.0 cap, cumulative regressions ZERO. ⭐ **bp35 0.2456 -> 0.3771,
+> reaching LEVEL 6** on crag's copy-on-write search view; its level 5 became perfect on the way.
+> _(was 0.9082, NINETEEN at the cap,)_
 > cumulative regressions 0. Baseline dir for every gate: `scripts/rounds/R101SHIPPED` (the SHIPPED-configuration run).
 > SIX games short: bp35 0.2456 · lf52 0.2727 · s5i5 0.5833 · dc22 0.7143 · ls20 0.9121 · lp85 0.9767.
 >
