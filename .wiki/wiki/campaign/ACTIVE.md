@@ -43,13 +43,20 @@ byte-identical replays.
 gate, not from memory.** Four of the six lose NOTHING BUT DEPTH: every level they reach is at the
 1.0 cap and the game simply ends. For those there is no efficiency work to do at all.
 
+⛔ **REFRESHED 2026-08-31 from `scripts/rounds/R101CRAGONLY` — bp35 MOVED, and a fresh session on
+the replacement host quoted the old 0.2456 back hours later. The ORDER changed too: lf52 is now the
+largest gap.**
+
 ```
-bp35 0.2456  reached 5   1.00 0.30 0.96 1.00 0.51   BOTH
-lf52 0.2727  reached 5   1.00 1.00 1.00 1.00 1.00   DEPTH ONLY
-s5i5 0.5833  reached 6   all six at 1.00            DEPTH ONLY
-dc22 0.7143  reached 5   all five at 1.00           DEPTH ONLY — one level from the end
-ls20 0.9121  reached 7   ...1.00 0.65               EFFICIENCY, L7 alone
-lp85 0.9767  reached 8   ...0.79 at L4...           ⛔ CLOSED — identification, not slack
+game  score   reached  prize    what is lost
+lf52  0.2727     5     +0.0291  DEPTH ONLY — every level it reaches is at the cap
+bp35  0.3771     6     +0.0249  BOTH — L2 0.30, L6 0.58; ⭐ reached L6 on 2026-08-31 (was 5)
+s5i5  0.5833     6     +0.0167  DEPTH ONLY — all six at 1.00
+dc22  0.7143     5     +0.0114  DEPTH ONLY — ⭐ ONE LEVEL FROM THE END, best prize-to-distance
+ls20  0.9121     7     +0.0035  EFFICIENCY, L7 alone (231a against an oracle bound of 61)
+lp85  0.9767     8     +0.0009  ⛔ CLOSED WITH A PROOF — two-action problem or nothing
+                       ------
+                       +0.0865  total available
 ```
 
 Why each is closed, largest gap first:
@@ -60,7 +67,10 @@ lf52    0.2727   gap 0.7273   ⭐ THE WHOLE GAP IS ONE MOVE — the third captur
                              moving red to (6,6). Then a click at (6,56) RESTARTS the level with no
                              signal. Target: make the third capture the eighth candidate, not the
                              first, and stop clicking when nothing is legal (recovers 143 actions).
-bp35    0.2456   gap 0.7544   ⛔ CLOSED — every attempt a near-pure traversal, human clears in ONE.
+bp35    0.3771   gap 0.6229   ⚠️ THE OLD CLOSURE IS SUPERSEDED — it read "every attempt a
+                             near-pure traversal, human clears in ONE", and crag's copy-on-write
+                             search view then took it to LEVEL 6 (+0.1316). The tool had been
+                             TIMING OUT, not failing to reason. ⛔ Re-read before re-closing it.
 s5i5    0.5833   gap 0.4167   ⛔ CLOSED — the win opens by moving a rider that is already home, which
                              swivel's decomposition can never propose. 30 arms, all 0.5833.
 dc22    0.7143   gap 0.2857   ⛔ CLOSED — the blocker is ours (phase.py:430 condemns a drawn tile for
