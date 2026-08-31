@@ -120,7 +120,14 @@ any efficiency arm; it is one pass over `rounds/*/games/*.json`.
 > claimed otherwise. The distinction had no cost while agents were still on the games and a real one
 > the moment they were not.
 >
-> ⭐ **STANDING: one background agent per incomplete game, in parallel on ceph, at all times.**
+> ⛔ **ceph-build WAS DELETED 2026-08-31.** Everything below that says "on ceph" is now a pointer
+> to a host that does not exist. The replacement is `bash scripts/gate_local.sh NAME` (the full 25
+> on ONE machine, every refusal the remote gate had, plus a load guard), and `ADMORPHIQ_REMOTE=` /
+> `ADMORPHIQ_KEY=` point the five remote runners at a new box when one exists.
+> ⚠️ The replacement dev host is an **8-core M2 with 16GB**, not 64 cores — 60-way fan-outs are
+> gone, and someone else's build was already loading it. Size the work to the machine.
+>
+> ⭐ **STANDING: one background agent per incomplete game, in parallel, at all times.**
 > Six are live now — bp35 · lf52 · s5i5 · dc22 · ls20 · lp85. Each carries its own game's refuted
 > list so it does not re-run a dead arm, and each is gated on the full 25 with the canaries.
 > ⚠️ The transfer/110 work below is SECOND. It is real and it is measured, but it is not the goal.

@@ -94,6 +94,13 @@
 > bash scripts/kaggle_bench.sh status|results|push       # no --submit by design; the user decides
 > ```
 >
+> ⛔ **ceph-build WAS DELETED 2026-08-31 — every "run it on the box" instruction below points at a
+> host that no longer exists.** Gate with `bash scripts/gate_local.sh NAME` (full 25, one machine,
+> every refusal the remote gate had, plus a load guard that refuses above the core count). Set
+> `ADMORPHIQ_REMOTE=user@host` and `ADMORPHIQ_KEY=` to point `ptest.sh`, `pfan.sh`, `snapgate.sh`,
+> `xfergate.sh` and `ceph_sweep.sh` at a new box. ⚠️ The current dev host is an 8-core M2 / 16GB —
+> 60-way fan-outs are gone. See [`RESTORE.md`](RESTORE.md).
+>
 > ⛔ **The Mac is editor + grep + ruff. NOTHING ELSE.** Not pytest, not a solver, not a replay, not a
 > "quick offline enumeration". A PreToolUse hook REFUSES local runs and prints the box command — it
 > exists because the written rule was obeyed correctly and three concurrent pytest suites melted the
