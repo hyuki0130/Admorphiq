@@ -1,0 +1,6 @@
+2026-07-17 01:07:41 | INFO | Created new scorecard: 6ccfc4fd-b6fb-4535-aa9e-1c5999f5130d
+2026-07-17 01:07:41 | INFO | Found latest version of ls20: ls20-9607627b (downloaded: 2026-07-15 11:19:50.754945+00:00)
+2026-07-17 01:07:41 | INFO | Successfully loaded game class Ls20 from environment_files/ls20/9607627b/ls20.py
+phase1 reveal ea=32 goal=(29, 50) req=(0, 3, 2) rot_seed=[(54, 15)]
+phase2 ea=432 ticks=35 vmax=15 vmin=10 gaps_below=[]
+FALSIFIED/insufficient: gaps inconsistent=[] -> park

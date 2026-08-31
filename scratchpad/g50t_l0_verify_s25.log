@@ -1,0 +1,8 @@
+Running 1 script25 job(s) (1 adapter(s)) …
+  [1/1] g50t-5849a774 (G50T) via adapter 'g50t' …
+2026-07-17 13:42:40 | INFO | Created new scorecard: 5d74ab60-d9f6-491f-acf1-1c3b07aba4dc
+2026-07-17 13:42:40 | INFO | Successfully loaded game class G50t from environment_files/g50t/5849a774/g50t.py
+    levels=1/7  actions=1000  game_score=0.0357
+
+script25 total_score: 0.0357 (3.57%) [1/1 games scored]
+Output written to: scratchpad/g50t_l0_verify_s25

@@ -1,0 +1,27 @@
+2026-07-18 19:56:49 | INFO | Created new scorecard: 60eeea45-7d00-4968-af3c-51bad95e113d
+2026-07-18 19:56:49 | INFO | Found latest version of re86: re86-8af5384d (downloaded: 2026-07-13 08:19:08.907552+00:00)
+2026-07-18 19:56:49 | INFO | Successfully loaded game class Re86 from environment_files/re86/8af5384d/re86.py
+    !! GAME_OVER at global step 125
+stations={9: (4, 17), 11: (4, 27), 8: (4, 37), 14: (4, 47), 6: (4, 57)} obstacle=(28, 28, 35, 35) idx_color=[10, 12, 7]
+targets={8: [(9, 9), (15, 3), (15, 36), (27, 9)], 9: [(18, 57), (24, 39)], 11: [(30, 45), (48, 39), (48, 51)]}
+--- leg: colour-7 cross (level=6 state=GameState.NOT_FINISHED) ---
+    [it34] 7->recoloured 8 mk=(12, 36)
+    [it35] 7 place plan from (18, 8, 18, 4) len=0
+    [it36] 7 place plan from (18, 8, 18, 7) len=0
+    [it37] 7 place plan from (18, 9, 18, 9) len=21
+      c7 it40 phase=exec mk=(18, 27) cur=8 sel=2
+    [it58] 7 PLACED bbox=(9, 27, 3, 39)
+    -> placed (level now 6 state=GameState.NOT_FINISHED)
+--- leg: colour-10 cross (level=6 state=GameState.NOT_FINISHED) ---
+    [it32] 10->recoloured 11 mk=(12, 27)
+    [it33] 10 place plan from (18, 8, 9, 4) len=0
+    [it34] 10 place plan from (18, 8, 9, 7) len=0
+    [it35] 10 place plan from (18, 9, 9, 9) len=18
+      c10 it40 phase=exec mk=(18, 33) cur=11 sel=0
+    [it53] 10 PLACED bbox=(30, 48, 39, 57)
+    -> placed (level now 6 state=GameState.NOT_FINISHED)
+--- leg: colour-12 outline (level=6 state=GameState.NOT_FINISHED) ---
+    [it37] outline PLACED bbox=(18, 24, 39, 57)
+    -> placed (level now 7 state=GameState.NOT_FINISHED)
+*** L7 CLEARED after colour-12 outline ***
+FINAL levels_completed=7 state=GameState.NOT_FINISHED

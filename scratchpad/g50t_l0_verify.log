@@ -1,0 +1,8 @@
+Scoring 1 game(s) with agent 'graph_frontier' …
+  [1/1] g50t-5849a774 (G50T) baseline=[78, 175, 179, 230, 96, 54, 67] …
+2026-07-17 13:42:06 | INFO | Created new scorecard: ee8e6615-34a7-42c2-9eff-5e3cc0ccd1ed
+2026-07-17 13:42:06 | INFO | Successfully loaded game class G50t from environment_files/g50t/5849a774/g50t.py
+    levels=0/7  game_score=0.0000  actions=1000
+
+Total score: 0.0000 (0.00%)  [1/1 games scored, 0 excluded]
+Output written to: scratchpad/g50t_l0_verify.json

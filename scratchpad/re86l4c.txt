@@ -1,0 +1,35 @@
+2026-07-17 01:20:37 | INFO | Created new scorecard: 842f5e91-3133-46f3-9eca-b74c83427e1d
+2026-07-17 01:20:37 | INFO | Found latest version of re86: re86-8af5384d (downloaded: 2026-07-13 08:19:08.907552+00:00)
+2026-07-17 01:20:37 | INFO | Successfully loaded game class Re86 from environment_files/re86/8af5384d/re86.py
+reached L4 @ 217
+stations: {10: (6, 6), 12: (6, 30), 13: (6, 54), 11: (56, 6), 6: (56, 30), 14: (56, 54)}
+gates_by_color: {12: 3, 14: 3} gate_colors [12, 14]
+dirs: {1: (-1, 0), 2: (1, 0), 3: (0, -1), 4: (0, 1)}
+  ea=1 sel=10@(21, 24) target_phase=recolour movs=[(10, (21, 24), True)]
+  ea=4 sel=12@(14, 25) target_phase=cover movs=[(12, (14, 25), True)]
+  ea=5 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=8 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=11 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=14 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=17 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=20 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=23 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=26 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=29 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=32 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=35 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=38 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=41 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=44 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+  ea=47 sel=12@(14, 23) target_phase=cover movs=[(12, (14, 23), True)]
+  ea=200 sel=10@(14, 14) target_phase=recolour movs=[(10, (14, 14), True)]
+Traceback (most recent call last):
+  File "/Users/nhn/Workspace/Admorphiq/scratchpad/re86_l4_e2e.py", line 209, in <module>
+    main()
+  File "/Users/nhn/Workspace/Admorphiq/scratchpad/re86_l4_e2e.py", line 166, in main
+    movs = parse_movables(grid)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nhn/Workspace/Admorphiq/scratchpad/re86_l4_e2e.py", line 66, in parse_movables
+    H, W = len(grid), len(grid[0])
+                          ~~~~^^^
+IndexError: tuple index out of range

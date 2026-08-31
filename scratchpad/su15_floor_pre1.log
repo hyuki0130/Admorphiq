@@ -1,0 +1,8 @@
+Running 1 script25 job(s) (1 adapter(s)) …
+  [1/1] su15-1944f8ab (SU15) via adapter 'su15' …
+2026-07-19 00:45:48 | INFO | Created new scorecard: 6ab32372-a2ef-4068-a15c-3641361c59f1
+2026-07-19 00:45:48 | INFO | Successfully loaded game class Su15 from environment_files/su15/1944f8ab/su15.py
+    levels=6/9  actions=1000  game_score=0.4368
+
+script25 total_score: 0.4368 (43.68%) [1/1 games scored]
+Output written to: scratchpad/su15_floor_pre1

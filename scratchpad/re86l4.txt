@@ -1,0 +1,9 @@
+2026-07-17 01:16:50 | INFO | Created new scorecard: 7963ab43-2e22-4646-8e97-8e96069fe8fb
+2026-07-17 01:16:50 | INFO | Found latest version of re86: re86-8af5384d (downloaded: 2026-07-13 08:19:08.907552+00:00)
+2026-07-17 01:16:50 | INFO | Successfully loaded game class Re86 from environment_files/re86/8af5384d/re86.py
+reached L4 @ 217
+stations: {10: (6, 6), 12: (6, 30), 13: (6, 54), 11: (56, 6), 6: (56, 30), 14: (56, 54)}
+gates_by_color: {12: 3, 14: 3} gate_colors [12, 14]
+dirs: {3: (0, -1), 4: (0, 1)}
+  ea=100 sel_color=12 cur_colors={1, 6, 10, 11, 12, 13, 14, 15} recoloured={12, 14}
+no win; ea 2500 final movs []

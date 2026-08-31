@@ -1,0 +1,64 @@
+{
+  "tag": "L6 levels_completed=5",
+  "avatar": [
+    24,
+    40
+  ],
+  "token(sh,co,ro)": [
+    0,
+    2,
+    1
+  ],
+  "goals": [
+    {
+      "cell": [
+        54,
+        50
+      ],
+      "req(sh,co,ro)": [
+        5,
+        1,
+        1
+      ],
+      "satisfied": false
+    },
+    {
+      "cell": [
+        54,
+        35
+      ],
+      "req(sh,co,ro)": [
+        0,
+        3,
+        2
+      ],
+      "satisfied": false
+    }
+  ],
+  "n_pushwalls": 2,
+  "n_movers": 3,
+  "refills": [
+    [
+      40,
+      6
+    ],
+    [
+      10,
+      46
+    ],
+    [
+      10,
+      6
+    ]
+  ],
+  "changers": {
+    "24,10": "shape",
+    "19,25": "color",
+    "24,40": "rot"
+  },
+  "life_current/full/decr": [
+    39,
+    42,
+    1
+  ]
+}
