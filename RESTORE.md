@@ -59,11 +59,19 @@ ls environment_files | wc -l                 # expect 25
 ls environment_files_archive | wc -l         # expect 15 dirs (14 usable — sk48's duplicates the live tree, rule 7ce)
 uv run pytest tests/test_wiki_lint.py -q     # cheap smoke
 ```
-⛔ **Everything heavier runs on a box, not on the laptop** — `scripts/ptest.sh`, `scripts/pfan.sh`,
-`scripts/snapgate.sh`. All three hardcode `ubuntu@ceph-build` and `~/VM/keys/nfw-dev.pem`; **that
-host no longer exists**, so a new box must be provisioned and those three edited. Until then there
-is no way to gate anything (rule 7m: a PreToolUse hook refuses local game runs, and that hook exists
-because three concurrent local suites made the laptop unusable).
+⛔ **`ceph-build` NO LONGER EXISTS**, and `ptest.sh` / `pfan.sh` / `snapgate.sh` / `xfergate.sh` /
+`ceph_sweep.sh` all defaulted to it. They now take `ADMORPHIQ_REMOTE=user@host` and
+`ADMORPHIQ_KEY=~/.ssh/key`, so pointing them at a new box is one environment variable, not an edit.
+
+⭐ **And you can gate WITHOUT a box: `bash scripts/gate_local.sh NAME baseline 2 4000`** — the full
+25 on one machine, keeping every refusal the remote gate had (already-used round dir, shadowed
+snapshot, fewer than 25 results) plus a **load guard that refuses above the core count**. Verified
+end to end 2026-08-31; it is what produced the current card.
+
+⚠️ **PAR 1-2 on the dev host, and that is measured, not cautious.** It is an 8-core M2 and someone
+else's `clang` build already held load 11-13, so the guard correctly REFUSED a gate there. On a
+64-core box pass 12. ⛔ A gate killed half-way produces a mean over a subset, which this repository
+has twice reported as if it were a result.
 
 ## 4. WHAT YOU DO NOT NEED
 
@@ -76,18 +84,31 @@ held-out transfer measured **0.00%**. Keep a copy only if you want the history.
 ## 5. STATE AT THE MOMENT OF THE FORMAT
 
 ```
-card, full 25 (generic tools)         0.9082   19 games at the 1.0 cap, cumulative regressions 0
-shipped wrapper (kaggle_unified)      0.9082   zero games differing
-Kaggle server-side at HEAD            all 25 same levels; same TOTAL ACTIONS on all 21 it wins
+card, full 25 (generic tools)         0.9135   NINETEEN at the 1.0 cap, cumulative regressions 0
+shipped wrapper (kaggle_unified)      0.9082   zero games differing  (measured before the bp35 gain)
+Kaggle server-side                    all 25 same levels; same TOTAL ACTIONS on all 21 it wins
 hidden leaderboard                    0.18     from a DIFFERENT card (detection dispatch, 2026-08-26)
 ```
 
-⛔ **HEAD carries UNGATED changes to two shipped tools** (`e165eba7`: `crag.py` +179,
-`fogscout.py` +119). **The 0.9082 above describes the tree WITHOUT them.** Gating them, separately,
-is the first action on a new box:
+⭐ **The two ungated tool edits are now RESOLVED, and the gate split them exactly** — this was
+RESTORE.md's "first action on a new box" and it is done:
+
 ```
-bash scripts/snapgate.sh cragwip     scripts/rounds/R101SHIPPED 8 4000
-bash scripts/snapgate.sh fogscoutwip scripts/rounds/R101SHIPPED 8 4000
+crag.py      KEPT      bp35 0.2456 -> 0.3771, reaching LEVEL 6; card 0.9082 -> 0.9135
+fogscout.py  REVERTED  ls20 0.9121 -> 0.7500 — its own docstring claimed "worth a whole level"
+```
+
+⛔ Two plausible changes, one working tree, opposite signs, and **nothing but the full-25 gate could
+tell them apart**. The losing one carried the confident claim.
+
+⚠️ **STILL OPEN: re-measure the SHIPPED wrapper.** The 0.9082 in the table above is
+`AGENT=kaggle_unified` from BEFORE the bp35 gain. `crag` is in the shipped path, so the shipped
+number should now be 0.9135 too — but that is an inference, and this repository's own rule is that a
+mirror drifts. One command:
+```
+AGENT=kaggle_unified bash scripts/gate_local.sh shipped2 scripts/rounds/R101CRAGONLY 2 4000
+# expect 0.9135 with zero games differing. ⛔ If it differs, the wrapper has drifted from
+# _make_agent("unified") — which is exactly how a card once moved 0.20 -> 0.18 unattributably.
 ```
 
 ⛔ **The watchdog cron is cancelled**, so rule **7co** ("every incomplete game has an agent on it, at

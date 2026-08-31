@@ -84,9 +84,11 @@
 > 0.20 -> 0.18 with no attributable cause.
 >
 > ```
-> bash scripts/snapgate.sh NAME scripts/rounds/R101SHIPPED 8 4000    # GATE a change on the full 25
-> AGENT=kaggle_unified bash scripts/snapgate.sh NAME scripts/rounds/R101SHIPPED  # gate AS SHIPPED
-> bash scripts/xfergate.sh NAME scripts/rounds/R101SHIPPED 12 4000   # TRANSFER: archived re-renders
+> bash scripts/gate_local.sh NAME scripts/rounds/R101SHIPPED 2 4000  # GATE on the full 25, ONE machine
+> AGENT=kaggle_unified bash scripts/gate_local.sh NAME scripts/rounds/R101SHIPPED 2  # gate AS SHIPPED
+> #  ⛔ snapgate.sh / xfergate.sh need a remote box — ceph-build is GONE. Point them at a new one with
+> #     ADMORPHIQ_REMOTE=user@host ADMORPHIQ_KEY=~/.ssh/key, then their old PAR 8-12 applies again.
+> #  ⚠️ PAR 2 on the 8-core dev host. On a 64-core box pass 12.
 > bash kaggle/build_and_push.sh                 # run the card on KAGGLE — costs no submission slot
 > bash scripts/ptest.sh --dirty tests/test_x.py                  # tests run on the BOX, not here
 > bash scripts/pfan.sh NAME PROBE.py 30 ARG 6  # ANY probe, fanned — NAME required (else collision)

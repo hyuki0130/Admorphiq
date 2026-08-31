@@ -8,20 +8,27 @@
 # trustworthy, because those refusals are the reason a gate means something.
 #
 #   bash scripts/gate_local.sh NAME [baseline] [par] [budget]
-#   bash scripts/gate_local.sh cragwip scripts/rounds/R101SHIPPED 4 4000
+#   bash scripts/gate_local.sh cragwip scripts/rounds/R101SHIPPED 2 4000   # small host: PAR 1-2
+#   bash scripts/gate_local.sh cragwip scripts/rounds/R101SHIPPED 12 4000  # a real box
 #   AGENT=kaggle_unified bash scripts/gate_local.sh shipped scripts/rounds/R101SHIPPED
 #
-# ⚠️ PAR DEFAULTS TO 4, NOT 8, AND THAT IS DELIBERATE. The machine that runs this is now also the
-# editor. Three concurrent pytest suites once made the previous laptop unusable and the user asked
-# twice for it to stop (rule 7m) — a gate that makes the only machine unusable will be killed
-# half-finished, and a half-finished gate is worse than none (it produces a mean over a subset).
-# On an 8-core M2, ft09 alone scores in ~3.4s; the full 25 at PAR 4 is minutes, not hours.
+# ⚠️ PAR DEFAULTS TO 2, AND THAT IS A MEASUREMENT, NOT A PREFERENCE. The machine that runs this is
+# now also the editor, and it is an 8-core M2 where someone else's `clang` build already held load
+# 11-13 (2026-08-31, user direction: "1, 2 정도로 해야할거 같아"). PAR 4 on top of that is four
+# jobs queued behind a machine that is already oversubscribed.
+# ⛔ The failure mode is not slowness, it is a KILLED gate: three concurrent pytest suites once made
+# the previous laptop unusable and the user asked twice for it to stop (rule 7m), and a gate killed
+# half-way produces a mean over a subset — which this repository has twice reported as if it were a
+# result ("MEAN new = 1.0000 over 4").
+# ⭐ It costs little: on an idle 14-core Mac the full 25 at PAR 4 finished in about 12 minutes, and
+# ft09 alone scores in 3.4s. PAR 2 trades minutes for a machine that stays usable.
+# ⚠️ On a real box (64 cores) pass PAR explicitly — the default is sized for the small host.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 NAME="${1:?a name for this gate, e.g. cragwip}"
 BASE="${2:-scripts/rounds/R101SHIPPED}"
-PAR="${3:-4}"
+PAR="${3:-2}"
 BUDGET="${4:-4000}"
 AGENT="${AGENT:-unified}"
 OUT="scripts/rounds/R101$(echo "$NAME" | tr 'a-z' 'A-Z')"
