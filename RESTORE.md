@@ -23,38 +23,53 @@ corpus for the entire transfer axis (`scripts/xfergate.sh`, rules 7by / 7cd / 7c
 API has since rotated; **if this directory is lost, every transfer measurement in this repository
 becomes unreproducible forever.**
 
-⚠️ It is NOT pushed to git because the repo is **PUBLIC** and this is Kaggle competition data.
-Redistributing it publicly is a rules question, not a technical one. Keep it in private storage —
-the natural home is a **private Kaggle dataset**, using the flow this repo already has for source
-(`kaggle datasets version`, see `kaggle/build_and_push.sh`).
+✅ **RESOLVED 2026-08-31: it is in a PRIVATE Kaggle dataset**, `jaehyukhyun/admorphiq-envdata` —
+see §2 for the one-line restore and the verification. Not on GitHub, and it must not be: this repo is
+PUBLIC and that is competition data.
 
-## 2. THE BACKUP BUNDLE
+## 2. WHERE THE IRREPLACEABLE DATA LIVES
 
-Created 2026-08-31 15:41 at `~/Desktop/admorphiq_backup_20260831_1541/`:
+⭐ **A PRIVATE KAGGLE DATASET, uploaded 2026-08-31 — this is the durable copy and the one to use.**
 
 ```
-environment_files_archive.tgz   436K   ⛔ irreplaceable
-environment_files.tgz           984K
-data.tgz                        2.4M   traces + transitions
-scratchpad.tgz                  429K
-omc_state.tgz                   157K   session state; not needed to continue
+git clone https://github.com/hyuki0130/Admorphiq.git && cd Admorphiq && uv sync
+uv run kaggle datasets download -d jaehyukhyun/admorphiq-envdata --unzip
 ```
 
-⛔ **Copy that directory off this machine before formatting.** Total ~4.4MB. `models/` (2.3G) is
-deliberately excluded — see §4.
+That restores `environment_files_archive/` (30 files, **15 archived version hashes**),
+`environment_files/` (52) and `data/` (54) — everything `.gitignore` excludes and a clone cannot
+carry. It needs `~/.kaggle/kaggle.json` (your API token) present.
 
-Restore by unpacking each at the repo root:
+⛔ **VERIFIED, not assumed** — a dataset that exists is not a dataset that contains what you think:
+
 ```
-tar xzf environment_files_archive.tgz -C /path/to/Admorphiq
-tar xzf environment_files.tgz         -C /path/to/Admorphiq
-tar xzf data.tgz                      -C /path/to/Admorphiq
+file counts per prefix    archive 30 · environment_files 52 · data 54
+archive game list         ar25 cn04 dc22 ka59 m0r0 r11l re86 s5i5 sc25 sk48 sp80 su15 tn36 tu93 vc33
+private?                  anonymous curl to the dataset URL returns HTTP 404
 ```
+
+⚠️ **The 2.9MB total is NOT a red flag even though it equals the archive's uncompressed size** — that
+coincidence made this look like a partial upload until the file counts were read. **Count the
+entries; never infer contents from a total.**
+
+⛔ **It is NOT on GitHub and must not be.** This repo is PUBLIC (the competition requires
+open-sourcing the notebook) and that is Kaggle competition data; a private dataset on the competition
+platform, in your own account, is the right home.
+
+### Secondary copies
+
+A USB bundle was made at `~/Desktop/admorphiq_backup_20260831_1541/` before the format (five
+tarballs, ~4.4MB, SHA-256 and gzip verified) and copied to `/Volumes/SY/`. The replacement host at
+`62.210.150.230` also holds the data with matching hashes. ⚠️ Both are machines and machines vanish —
+`ceph-build` did, on the day this was written. **Prefer the Kaggle dataset.**
+
+`models/` (2.3G) is in none of them, deliberately — see §4.
 
 ## 3. VERIFY THE RESTORE
 
 ```
 git clone https://github.com/hyuki0130/Admorphiq.git && cd Admorphiq && uv sync
-# unpack the bundle (§2), then:
+uv run kaggle datasets download -d jaehyukhyun/admorphiq-envdata --unzip   # §2
 ls environment_files | wc -l                 # expect 25
 ls environment_files_archive | wc -l         # expect 15 dirs (14 usable — sk48's duplicates the live tree, rule 7ce)
 uv run pytest tests/test_wiki_lint.py -q     # cheap smoke
