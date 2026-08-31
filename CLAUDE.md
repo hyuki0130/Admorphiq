@@ -2,6 +2,14 @@
 
 > ## ⛔ READ THIS BLOCK, THEN `.wiki/wiki/campaign/ACTIVE.md`. NOTHING ELSE FIRST.
 >
+> ⛔ **ON A FRESH MACHINE, READ [`RESTORE.md`](RESTORE.md) FIRST.** A clone does not carry
+> `environment_files_archive/` — 14 archived version hashes that the ARC Prize API has since
+> rotated and **cannot be downloaded again** — and without it every transfer measurement in this
+> repository is unreproducible. It also does not carry `environment_files/`, `data/traces/` (11
+> tests fail without it) or `models/` (not needed — the shipped card carries no weights).
+> ⚠️ And `ceph-build` NO LONGER EXISTS: `ptest.sh`, `pfan.sh` and `snapgate.sh` all hardcode it, so
+> nothing can be gated until a new box is provisioned and those three are edited.
+>
 > This file is 2,300 lines. A fresh session does not read it, which is a measured cause of work
 > being redone. Everything you need to ACT is here or in the campaign file.
 >
