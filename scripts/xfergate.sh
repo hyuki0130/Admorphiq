@@ -26,8 +26,12 @@ BASE="${2:-scripts/rounds/R101SHIPPED}"
 PAR="${3:-12}"
 BUDGET="${4:-4000}"
 AGENT="${AGENT:-unified}"
-KEY="$HOME/VM/keys/nfw-dev.pem"
-REMOTE="ubuntu@ceph-build"
+# ⛔ THE HOST IS NO LONGER A CONSTANT. `ceph-build` was DELETED on 2026-08-31 and every one of these
+# runners hardcoded it, so the whole measurement layer died with one host. Override with the
+# environment; the old values remain the defaults so nothing changes where the box still exists.
+#   ADMORPHIQ_REMOTE=user@host  ADMORPHIQ_KEY=~/.ssh/id_ed25519  bash scripts/...
+KEY="${ADMORPHIQ_KEY:-$HOME/VM/keys/nfw-dev.pem}"
+REMOTE="${ADMORPHIQ_REMOTE:-ubuntu@ceph-build}"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
 SNAP="snap_$NAME"
 OUT="scripts/rounds/R101$(echo "$NAME" | tr 'a-z' 'A-Z')"

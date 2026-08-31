@@ -14,8 +14,12 @@ set -u
 cd "$(dirname "$0")/.."
 GAMES="${1:-dc22 wa30 s5i5 bp35 lf52}"
 CAP="${2:-2500}"
-KEY="$HOME/VM/keys/nfw-dev.pem"
-REMOTE="ubuntu@ceph-build"
+# ⛔ THE HOST IS NO LONGER A CONSTANT. `ceph-build` was DELETED on 2026-08-31 and every one of these
+# runners hardcoded it, so the whole measurement layer died with one host. Override with the
+# environment; the old values remain the defaults so nothing changes where the box still exists.
+#   ADMORPHIQ_REMOTE=user@host  ADMORPHIQ_KEY=~/.ssh/id_ed25519  bash scripts/...
+KEY="${ADMORPHIQ_KEY:-$HOME/VM/keys/nfw-dev.pem}"
+REMOTE="${ADMORPHIQ_REMOTE:-ubuntu@ceph-build}"
 SSH=(ssh -o ConnectTimeout=20 -i "$KEY" "$REMOTE")
 
 # ⛔ IT USED TO EXTRACT INTO THE SHARED `~/admorphiq` — rule 7l forbids that: eight agents edit

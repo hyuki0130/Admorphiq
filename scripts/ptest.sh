@@ -19,7 +19,12 @@
 # loop, so `--dirty` ships the working tree instead. Uncommitted work is named either way.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-KEY="$HOME/VM/keys/nfw-dev.pem"; REMOTE="ubuntu@ceph-build"
+# ⛔ THE HOST IS NO LONGER A CONSTANT. `ceph-build` was DELETED on 2026-08-31 and every one of these
+# runners hardcoded it, so the whole measurement layer died with one host. Override with the
+# environment; the old values remain the defaults so nothing changes where the box still exists.
+#   ADMORPHIQ_REMOTE=user@host  ADMORPHIQ_KEY=~/.ssh/id_ed25519  bash scripts/...
+KEY="${ADMORPHIQ_KEY:-$HOME/VM/keys/nfw-dev.pem}"
+REMOTE="${ADMORPHIQ_REMOTE:-ubuntu@ceph-build}"
 DIRTY=0; [ "${1:-}" = "--dirty" ] && { DIRTY=1; shift; }
 TARGET="${*:-tests}"
 
